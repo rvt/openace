@@ -1,4 +1,5 @@
 #include "coreutils.hpp"
+#include "egm96_dem.hpp"
 
 #if defined(__MACH__)
 #include <stdlib.h>
@@ -44,4 +45,18 @@ uint32_t CoreUtils::getFreeHeap(void)
     return getTotalHeap() - m.uordblks;
 #endif
 
+}
+
+int8_t CoreUtils::egm96GeoidOffset(float lat, float lon)
+{
+  int32_t ilat = roundf((90.f - lat) / 2.f);
+  int32_t ilon = roundf(CoreUtils::toBearing(lon) / 2.f);
+  int32_t offset = ilat * 180 + ilon;
+
+  if (offset < 0 || static_cast<uint32_t>(offset) >= egm96s_dem.size())
+  {
+    return 0;
+  }
+
+  return egm96s_dem[offset];
 }

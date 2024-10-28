@@ -2,10 +2,13 @@
 
 #include "constants.hpp"
 #include <stdint.h>
+#include <time.h>
+
 #include "pico/time.h"
 
-#include <time.h>
 #include "messages.hpp"
+#include "coreutils.hpp"
+
 #include "etl/string.h"
 #include "etl/string_utilities.h"
 
@@ -275,6 +278,20 @@ public:
         return getDistanceRelNorthRelEastInt(from.lat, from.lon, to.lat, to.lon);
     }
 
+    /**
+     * Calculate the bearing and ensures it's between 0..360
+    */
+    template <typename T>
+    static T toBearing(T angle) {
+        while (angle < static_cast<T>(0))
+            angle += static_cast<T>(360);
+
+        while (angle >= static_cast<T>(360))
+            angle -= static_cast<T>(360);
+
+        return angle;
+    }
+
     static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(float fromLat, float fromLon, float toLat, float toLon)
     {
         auto const& drne = getDistanceRelNorthRelEastFloat(fromLat, fromLon, toLat, toLon);
@@ -285,9 +302,7 @@ public:
         // int16_t bearing = static_cast<int16_t>((fbearing * RADS_TO_DEG) + 0.5f);
         // int32_t distance = static_cast<int32_t>(fdistance);
 
-        int16_t bearing = static_cast<int16_t>(drne.bearing  + 0.5f);
-
-        bearing = bearing >= 360? bearing - 360 : bearing;
+        int16_t bearing = toBearing(static_cast<int16_t>(drne.bearing  + 0.5f));
 
         return {static_cast<uint32_t>(drne.distance + 0.5f),
                 static_cast<int32_t>(drne.relNorthMeter + 0.5f),
@@ -334,6 +349,14 @@ public:
     {
         return getRadialSection<SECTIONS>(rad * RADS_TO_DEG);
     }
+
+    /*
+    * taken from XCSoar
+    * Get's the Geiod of a specific location, based on a simple lookup table
+    * See also : https://geographiclib.sourceforge.io/cgi-bin/GeoidEval
+    * Note: Only use of the GPS with GGA does nit send the egm96 data
+    */
+    static int8_t egm96GeoidOffset(float lat, float lon);
 
     /**
     * Add's the checksum and postfix characters to a NMEA string. It may contain an existing checksum that will be overwritten

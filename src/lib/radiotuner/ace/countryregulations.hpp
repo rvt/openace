@@ -54,16 +54,18 @@ public:
     static constexpr Frequency SouthAmerica{917'000'000, 400'000, 24, 30};
     static constexpr Frequency EuropeFanet{869'525'000, 000'000, 00, 14};
 
-    // First byte of the syncWord is the preamble and currently always one byte
-    static constexpr Radio::ProtocolConfig FLARM{Radio::Mode::GFSK, OpenAce::DataSource::FLARM, 24 + 2, 8, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}};   // 0 FLARM 0 airtime 6ms
-    static constexpr Radio::ProtocolConfig OGN1{Radio::Mode::GFSK, OpenAce::DataSource::OGN1, 20 + 6, 8, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}};     // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
-    static constexpr Radio::ProtocolConfig ADSL{Radio::Mode::GFSK, OpenAce::DataSource::ADSL, 2 + 20 + 3, 6, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65
-    static constexpr Radio::ProtocolConfig PAW{Radio::Mode::GFSK, OpenAce::DataSource::PAW, 00 + 0, 8, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}};       // 4 PAW
-    static constexpr Radio::ProtocolConfig FANET{Radio::Mode::LORA, OpenAce::DataSource::FANET, 00 + 0, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};   // 5 FANET 3
+    // First byte of the syncWord is the preamble for TX
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0,          1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_FLARM{Radio::Mode::GFSK, OpenAce::DataSource::FLARM, 24 + 2,   1, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
+    static constexpr Radio::ProtocolConfig PROTOCOL_OGN1{Radio::Mode::GFSK, OpenAce::DataSource::OGN1, 20 + 6,     1, 7, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}}; // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
+    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL{Radio::Mode::GFSK, OpenAce::DataSource::ADSL, 24,         1, 7, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
+    static constexpr Radio::ProtocolConfig PROTOCOL_PAW{Radio::Mode::GFSK, OpenAce::DataSource::PAW, 00 + 0,       1, 8, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}}; // 4 PAW
+    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{Radio::Mode::LORA, OpenAce::DataSource::FANET, 00 + 0,   1, 8, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // 5 FANET 3
 
     enum class ChannelMethod : uint8_t
     {
-        CHANNEL_0, // Europe has 2 channels channel 0 = 868.2MHz, channel 1 = 868.4MHz
+        // Europe has 2 channels channel 0 = 868.2MHz, channel 1 = 868.4MHz. Frequency is finaly decided by the frequency table per area
+        CHANNEL_0,
         CHANNEL_1
     };
 
@@ -85,7 +87,7 @@ public:
     };
 
     //        protocol_t protocol;
-    static constexpr ProtocolTimeSlot NONE_DATASOURCE = ProtocolTimeSlot{0, 0, CountryRegulations::Zone::ZONE0, OpenAce::DataSource::NONE, Europe, FLARM, 000, 0000, 000, 0000, 00, 000, ChannelMethod::CHANNEL_0};
+    static constexpr ProtocolTimeSlot NONE_DATASOURCE = ProtocolTimeSlot{0, 0, CountryRegulations::Zone::ZONE0, OpenAce::DataSource::NONE, Europe, PROTOCOL_NONE, 000, 0000, 000, 0000, 00, 000, ChannelMethod::CHANNEL_0};
 
     // Table with timings for each protocol needs to adhere to the following rules for optimalisation reasons
     // - Minimum of 1 and a maximum of 2 timings packages
@@ -99,22 +101,22 @@ public:
         NONE_DATASOURCE,
 
         // FLARM packages are send/rceived 400..1200ms after PPS channel is based on FLARM_TIME_BASED_2SLOTS. Minimum 600ms between packages, maximum of 1400ms between packages
-        ProtocolTimeSlot{1, 2, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM, Europe, FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
-        ProtocolTimeSlot{2, 1, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM, Europe, FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{1, 2, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM, Europe, PROTOCOL_FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{2, 1, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM, Europe, PROTOCOL_FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
 
-        ProtocolTimeSlot{3, 4, CountryRegulations::Zone::ZONE5, OpenAce::DataSource::FLARM, Israel, FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
-        ProtocolTimeSlot{4, 3, CountryRegulations::Zone::ZONE5, OpenAce::DataSource::FLARM, Israel, FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{3, 4, CountryRegulations::Zone::ZONE5, OpenAce::DataSource::FLARM, Israel, PROTOCOL_FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{4, 3, CountryRegulations::Zone::ZONE5, OpenAce::DataSource::FLARM, Israel, PROTOCOL_FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
 
         // OGN packages are send/rceived 400..1200ms after PPS channel is based on OGN_TIME_BASED_2SLOTS. Minimum 600ms between packages, maximum of 1400ms between packages
-        ProtocolTimeSlot{5, 6, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, OGN1, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
-        ProtocolTimeSlot{6, 5, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, OGN1, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{5, 6, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, PROTOCOL_OGN1, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{6, 5, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, PROTOCOL_OGN1, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
 
         // ADSL
-        ProtocolTimeSlot{7, 8, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
-        ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{7, 8, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
 
         // Fanet
-        ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, FANET, 000, 1000, 500, 1500, 00, 000, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 500, 1500, 00, 000, ChannelMethod::CHANNEL_0},
     };
 
 private:

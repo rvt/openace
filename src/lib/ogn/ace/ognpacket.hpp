@@ -155,6 +155,10 @@ public:
 
     } ;
 
+    OGN1_Packet() : HeaderWord(0) {
+        memset(Data, 0, sizeof(Data));
+    }
+
     // Added to ensure packet length is of correct size
     uint32_t FEC[2];
 

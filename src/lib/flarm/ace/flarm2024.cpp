@@ -183,7 +183,7 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
             scramble(packetCpy, epochSeconds + offset);
             if (radioPacket->flarmTimestampLSB - ((uint8_t)((epochSeconds + offset) & 0x0F)) >= 14)
             {
-                printf(" Match found at %d", offset);
+                // printf(" Match found at %d", offset);
                 break;
             }
         }
@@ -240,6 +240,9 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
 
     float groundSpeed = descale<8, 2, false>(radioPacket->groundSpeed) / 10.0f;
 
+//   printf("FLARM: address:%06X latitude:%0.6f longitude:%0.6f altitude:%d climbRate:%0.2f speed:%0.2f heading:%d turnRate:%0.2f\n",
+//       radioPacket->aircraftID, aircraftLat, aircraftLon, descale<12, 1, false>(radioPacket->altitude) - 1000, descale<6, 2, true>(radioPacket->verticalSpeed) / 10.0f, groundSpeed, static_cast<int16_t>(radioPacket->course >> 1), descale<6, 2, true>(radioPacket->turnRate) / 20.0f);
+
     OpenAce::IcaoAddress icaoAddress;
     etl::string_stream stream(icaoAddress);
     stream << etl::hex << radioPacket->aircraftID;
@@ -283,14 +286,6 @@ void Flarm2024::flarmReceiveTask(void *arg)
         {
             // Validate checksum
             RadioPacket *packet = (RadioPacket *)msg.frame;
-
-            // // Validate packet, and correct if possible
-            // uint8_t check = ogn1->errorCorrect((uint8_t *)&packet, (uint8_t *)msg.frame, (uint8_t *)msg.err);
-            // if (check & 0x0F)
-            // {
-            //     ogn1->statistics.fecErrors++;
-            //     continue;
-            // }
 
             uint16_t calculatedChecksum = flarmCalculateChecksum((uint8_t *)msg.frame, RadioPacket::packetLength);
             if (calculatedChecksum != swapBytes16(packet->checksum))

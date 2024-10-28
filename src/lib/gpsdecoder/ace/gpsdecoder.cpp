@@ -33,7 +33,8 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"receivedOther\":" << statistics.receivedOther;
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude();
     stream << ",\"longitude\":" << longitude() << etl::format_spec{}.precision(1);
-    stream << ",\"altitude\":" << altitude();
+    stream << ",\"altitudeWgs96\":" << altitudeWgs84();
+    stream << ",\"heightGeoidWGS84\":" << heightGeoidWGS84();
     stream << ",\"groundspeed\":" << groundSpeed();
     stream << ",\"track\":" << course();
     stream << ",\"pDop\":" << pDop << OpenAce::RESET_FORMAT;
@@ -117,18 +118,21 @@ void GpsDecoder::on_receive(const OpenAce::GPSMessage &msg)
         struct minmea_sentence_gga frame;
         if (minmea_parse_gga(&frame, msg.sentence.c_str()))
         {
-
+           
             float height = convertToMeters(&frame.height, frame.height_units);
-
             if (height != INVALID_CONVERSION)
             {
-                float alt = convertToMeters(&frame.altitude, frame.altitude_units);
-                if (alt != INVALID_CONVERSION)
-                {
-                    alt += height;
-                }
-                altitude(alt);
+                heightGeoidWGS84(height);
             }
+
+            float alt = convertToMeters(&frame.altitude, frame.height_units);
+            if (alt != INVALID_CONVERSION)
+            {
+                // Altitude from GPS is referenced to MSL, to get WGS96 offset needs to be added
+                // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
+                altitudeWgs84(alt + (height != INVALID_CONVERSION?height:0));
+            }
+
             lastGGATimestamp = frame.time;
             satellitesTracked = frame.satellites_tracked;
             // 0: Fix not valid
@@ -201,6 +205,8 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
     // It's required that both GGA and GMC sentences have the same timestamp in these cases
     // If this in practise is not happening, due to newer GPS systems position should be taken from latest RMC
     // so we take position acuracy over altitude/course
+    auto alt = altitudeWgs84();
+    auto height = heightGeoidWGS84();
     if (lastGGATimestamp.microseconds == lastRMCTimestamp.microseconds && lastGGATimestamp.seconds == lastRMCTimestamp.seconds)
     {
         // Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
@@ -212,22 +218,19 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                 .airborne = groundSpeed() > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
                 .lat = latitude(),
                 .lon = longitude(),
-                .altitudeWgs84 = static_cast<int16_t>(altitude()),
-                .verticalSpeed = altitude.perSecond(), // vertical speed
-                                         .groundSpeed = groundSpeed(),          // Ground Speed
-                                         .course = course(),
-                                         .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
-                                         .velocityNorth = velocityNorth,
-                                         .velocityEast = velocityEast}});
+                .altitudeWgs84 = static_cast<int16_t>(alt),
+                .verticalSpeed = altitudeWgs84.perSecond(), // vertical speed
+                .groundSpeed = groundSpeed(),          // Ground Speed
+                .course = course(),
+                .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
+                .velocityNorth = velocityNorth,
+                .velocityEast = velocityEast,
+                .heightEgm96 = static_cast<int16_t>(alt - height),
+                .geoidOffset = static_cast<int16_t>(height)
+                }
+        }
+        );
 
-        getBus().receive(
-            OpenAce::GpsPositionMsg
-        {
-            CoreUtils::getPositionTs(),
-            latitude(),
-            longitude(),
-            altitude(),
-            course(),
-            groundSpeed()});
+    
     }
 }

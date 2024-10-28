@@ -270,7 +270,7 @@ void ADSL::on_receive(const OpenAce::RadioTxPositionRequest &msg)
             Radio::TxPacket{
                 msg.radioParameters,
                 ADSL_Packet::TotalTxBytes,
-                (const void *)(&packet.length)},
+                packet.data()},
             msg.radioNo});
         statistics.transmittedAircraftPositions++;
     }
@@ -290,9 +290,12 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
         return -1;
     }
 
+    // printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
+    //     packet.address, fLatitude, fLongitude, packet.getAltitudeWGS84(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
+
     OpenAce::IcaoAddress icaoAddress;
     etl::string_stream stream(icaoAddress);
-    stream << etl::hex << packet.address;
+    stream << etl::hex << packet.address; // 5120  5330  
 
     OpenAce::AircraftPositionMsg aircraftPosition{
         OpenAce::AircraftPositionInfo{
@@ -332,14 +335,17 @@ void ADSL::adslReceiveTask(void *arg)
         // msg length expected to be 0x1b == 25byte
         if (xQueueReceive(adsl->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
-            auto check = ADSL_Packet::Correct((uint8_t *)msg.frame + 1, (uint8_t *)msg.err + 1); // +1 because the length is not part of the CRC calculations
+            auto check = ADSL_Packet::Correct((uint8_t *)msg.frame, (uint8_t *)msg.err);
             if (check == -1)
             {
                 adsl->statistics.fecErr++;
                 continue;
             }
-            memcpy(&packet.length, msg.frame, ADSL_Packet::TotalTxBytes);
+            memcpy(packet.data(), msg.frame, ADSL_Packet::TotalTxBytes);
             packet.Descramble();
+
+//            printf(" 0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,\n", msg.frame[0], msg.frame[1], msg.frame[2], msg.frame[3], msg.frame[4], msg.frame[5], msg.frame[6]);
+//            printf(" 0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,\n", msg.err[0], msg.err[1], msg.err[2], msg.err[3], msg.err[4], msg.err[5], msg.err[6]);
 
             if (packet.key != 0)
             {

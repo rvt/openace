@@ -83,8 +83,8 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     // 13.4.6 SetPacketParams
     static constexpr sx126x_pkt_params_gfsk_t DEFAULT_PKG_PARAMS_GFSK =
     {
-        .preamble_len_in_bits = 0,  // SET per protocol
-        .preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS, // Reducing this from 16 to 8Bit seems to increase packet rate (at least for SoftRF)
+        .preamble_len_in_bits = 0,   // SET per protocol
+        .preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS,      // SET per protocol
         .sync_word_len_in_bits = 0,  // SET per protocol
         .address_filtering = SX126X_GFSK_ADDRESS_FILTERING_DISABLE,
         .header_type = SX126X_GFSK_PKT_FIX_LEN,
@@ -125,15 +125,13 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
         .cad_timeout = 0x00000000,
     };
 
-    // Default configuration to initialise the chip with something valid
-    static constexpr Radio::ProtocolConfig DEFAULT_PROTOCOL_CONFIG = {Radio::Mode::NONE, OpenAce::DataSource::NONE, 26, 8, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
-    // static constexpr Radio::RadioParameters DEFAULT_RADIO_CONFIG = {DEFAULT_PROTOCOL_CONFIG, 868'200'000, -9};
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0,          1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
     const uint8_t dio1Pin;
     const uint8_t radioNo;
-    uint32_t offset;
+    uint32_t offsetHz;
     bool txEnabled;
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
@@ -152,7 +150,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
             RxMode rxMode;
             TxPacket txPacket;
         };
-        constexpr Command_t() : commandType(RXMODE), rxMode(RxMode{RadioParameters{DEFAULT_PROTOCOL_CONFIG, 868'200'000, -9}}) {};
+        constexpr Command_t() : commandType(RXMODE), rxMode(RxMode{RadioParameters{PROTOCOL_NONE, 868'200'000, -9}}) {};
         constexpr Command_t(const RxMode &_rxMode) : commandType(RXMODE), rxMode(_rxMode) {};
         constexpr Command_t(const TxPacket &_txPacket) : commandType(TXPACKET), txPacket(_txPacket) {};
     };
@@ -160,12 +158,12 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
 public:
     static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
 
-    Sx1262(etl::imessage_bus &bus, const OpenAce::PinTypeMap &pins, uint8_t radioNo_, bool txEnabled_, uint32_t offset_) : Radio(bus, Radio::NAMES[radioNo_]),
+    Sx1262(etl::imessage_bus &bus, const OpenAce::PinTypeMap &pins, uint8_t radioNo_, bool txEnabled_, uint32_t offsetHz_) : Radio(bus, Radio::NAMES[radioNo_]),
         csPin(pins.at(OpenAce::PinType::CS)),
         busyPin(pins.at(OpenAce::PinType::BUSY)),
         dio1Pin(pins.at(OpenAce::PinType::DIO1)),
         radioNo(radioNo_),
-        offset(offset_),
+        offsetHz(offsetHz_),                
         txEnabled(txEnabled_),
         spiHall(nullptr),
         taskHandle(nullptr),
@@ -229,7 +227,7 @@ public:
     void checkAndClearDeviceErrors();
     void receiveGFSKPacket(Radio::RadioParameters const &parameters);
     void sendGFSKPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length);
-    void configureSx1262(const RadioParameters &lastParameters, const RadioParameters &newParameters);
+    void configureSx1262(const RadioParameters &lastParameters, const RadioParameters &newParameters, bool tx);
     bool applyNewLoraParameters(const Radio::ProtocolConfig &parameters);
     sx126x_irq_mask_t getIrqStatus();
 

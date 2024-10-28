@@ -149,23 +149,6 @@ namespace OpenAce
         GpsTime() : year(0), month(0), day(0), hour(0), minute(0), second(0), millisecond(0) {};
     };
 
-    // 'Raw' Processed GPS position information received from an GPS unit
-    struct GpsPositionMsg : public etl::message<13>
-    {
-        positionTs timestamp;
-        // all variables are at time of fix
-        float latitude;      // lat at time of fix
-        float longitude;     // lon at time of fix
-        float altitudeWgs84; // GNSS Altitude meter
-        float course;        // course over ground to true north
-        float groundSpeed;   // Groundspeed in km/h
-        // Constructor
-        GpsPositionMsg(positionTs timestamp_, float lat_, float lon_, float altitudeWgs84_, float course_, float groundSpeed_) : timestamp(timestamp_), latitude(lat_), longitude(lon_), altitudeWgs84(altitudeWgs84_), course(course_), groundSpeed(groundSpeed_) {};
-
-        // Default constructor
-        //        GpsPositionMsg() : timestamp(0), latitude(0), longitude(0), altitudeWgs84(0), course(0), groundSpeed(0){};
-    };
-
     struct GpsStatus : public etl::message<13>
     {
         bool valid;

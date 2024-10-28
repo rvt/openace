@@ -44,8 +44,6 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
     static constexpr int32_t MAX_IGNORE_DISTANCE = 50000;
 
     friend class message_router;
-    static constexpr uint8_t OGN_PACKET_LENGTH = 20;
-    static constexpr uint8_t OGN_PACKET_LENGTH_FEC = 26;
     mutable struct
     {
         uint32_t receivedAircraftPositions = 0;
@@ -75,8 +73,6 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
     QueueHandle_t frameConsumerQueue;
     OpenAce::OwnshipPositionInfo ownshipPosition;
     OpenAce::Config::OpenAceConfiguration openAceConfiguration;
-    OpenAce::BarometricPressure lastBarometricPressure;
-    LDPC_Decoder<OGN_PACKET_LENGTH*8, 48> decoder;
     OpenAce::GpsStatsMsg gpsStats;
     uint16_t distanceIgnore;
 public:

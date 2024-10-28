@@ -177,7 +177,8 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
 
     auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, fLatitude, fLongitude);
 
-    // printf("latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%d speed:%d heading:%0.2f turnRate:%0.2f\n", fLatitude, fLongitude, packet.DecodeAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
+    // printf("OGN: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld offset:%d, stdaltitude:%ld climbRate:%d speed:%d heading:%0.2f turnRate:%0.2f\n", 
+    //     packet.Header.Address, fLatitude, fLongitude, packet.DecodeAltitude() * 10 + ownshipPosition.geoidOffset, ownshipPosition.geoidOffset, packet.DecodeStdAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
 
     if (fromOwn.distance > distanceIgnore)
     {
@@ -202,11 +203,11 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
             OpenAce::DataSource::OGN1,
             static_cast<OpenAce::AircraftCategory>(packet.Position.AcftType),
             packet.Position.Stealth ? true : false, // Privacy
-            speed0d1ms < 5,                         // noTrack
+            0,                                      // noTrack
             1,                                      // airBorn
             fLatitude,
             fLongitude,
-            packet.DecodeAltitude(),        // relative to WGS84 ellipsoid
+            packet.DecodeAltitude() * 10 + ownshipPosition.geoidOffset,        // relative to WGS84 ellipsoid
             packet.DecodeClimbRate() * .1f, // Climbrate is send s 0.1m/s (10 means 1/ms)
             speed0d1ms * .1f,
             static_cast<int16_t>(packet.DecodeHeading() * .1f),
@@ -244,7 +245,7 @@ void Ogn1::on_receive(const OpenAce::RadioTxPositionRequest &msg)
         packet.EncodeHeading(ownshipPosition.course * 10.f);
         packet.EncodeClimbRate(ownshipPosition.verticalSpeed * 10.f);
         packet.EncodeTurnRate(ownshipPosition.hTurnRate * 10.f);
-        packet.EncodeAltitude(ownshipPosition.altitudeWgs84);
+        packet.EncodeAltitude((ownshipPosition.heightEgm96) + 5 / 10);
         packet.EncodeDOP(gpsStats.pDop + 0.5f);
 
         // TODO: Understand how baro Altitude really works in OGN
@@ -319,7 +320,6 @@ void Ogn1::ognReceiveTask(void *arg)
                 continue;
             }
 
-            // printf("OGN: Address %06X\n", packet.Header.Address);
             ogn1->addReceiveStat(msg.frequency);
             ogn1->parseFrame(packet, msg.rssidBm);
         }

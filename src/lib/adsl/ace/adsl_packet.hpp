@@ -128,14 +128,14 @@ public:
 
 public:
 #pragma pack(push, 1)
-    static constexpr uint8_t TotalTxBytes=25;
+    static constexpr uint8_t TotalTxBytes=24;
     // 2Byte
     uint16_t ALLIGN;        // two bytes for correct alignment for the Word to allow XXTEA_Encrypt_Key0(..) be allign on word boundery
 
     // 1Byte
     uint8_t length;         // [bytes] Packet length excluding this byte and SYNC but including sCRC, eg everything after this byte
 
-    // 1 Byte
+    // 1Byte
     union
     {
         uint8_t header;
@@ -180,7 +180,6 @@ public:
     };
     // 3 Byte
     uint8_t CRC[3];           // 24-bit (is aligned to 32-bit)
-    //uint32_t CRC2;           // 24-bit (is aligned to 32-bit)
 #pragma pack(pop)
 
 public:
@@ -321,7 +320,9 @@ public:
     }
 
 
-
+    inline void * data() {
+        return &header;
+    }
 
 private:
     /****************************************************************/

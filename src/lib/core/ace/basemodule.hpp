@@ -269,14 +269,16 @@ public:
         Radio::Mode mode;               // Mode of the radio
         OpenAce::DataSource dataSource; // Data source
         uint8_t packetLength;           // Total packet length including CRC
+        uint8_t preambleLength;
         uint8_t syncLength;
         etl::array<uint8_t, 10> syncWord; // Sync word
-        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
-            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), syncLength(syncLength_), syncWord(syncWord_) {}
+        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t preambleLength_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
+            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), preambleLength(preambleLength_), syncLength(syncLength_), syncWord(syncWord_) {}
         constexpr ProtocolConfig(const ProtocolConfig &other)
             : mode(other.mode),
               dataSource(other.dataSource),
               packetLength(other.packetLength),
+              preambleLength(other.preambleLength),
               syncLength(other.syncLength),
               syncWord(other.syncWord) {}
     };
@@ -299,7 +301,10 @@ public:
         OpenAce::TxPacketType data;
         TxPacket(const RadioParameters &radioParameters_, uint8_t length_, const void *data_) : radioParameters(radioParameters_), length(length_)
         {
-            memcpy(this->data.data(), data_, length < sizeof(this->data) ? length : sizeof(this->data));
+            if (length_ > data.size()) {
+                panic("TxPacket: Frame length to large for this packet");
+            }
+            memcpy(data.data(), data_, length < data.size() ? length : data.size());
         }
     };
 

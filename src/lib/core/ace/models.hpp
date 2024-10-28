@@ -215,7 +215,7 @@ namespace OpenAce
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), icaoAddress(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::FLARM), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeWgs84(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), icaoAddress(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeWgs84(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
         {
         }
     };
@@ -226,13 +226,15 @@ namespace OpenAce
         bool airborne;                 // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
         float lat;
         float lon;
-        int16_t altitudeWgs84; // Altitude above WGS84 ellipsoid in meters
-        float verticalSpeed;   // in m/s
-        float groundSpeed;     // in m/s
-        float course;          // 0..359
-        float hTurnRate;       // deg/s Turn rate in the horizontal plane
-        float velocityNorth;   // North velocity in m/s
-        float velocityEast;    // East velocity in m/s
+        int16_t altitudeWgs84;   // Altitude above WGS84 ellipsoid in meters
+        float verticalSpeed;     // in m/s
+        float groundSpeed;       // in m/s
+        float course;            // 0..359
+        float hTurnRate;         // deg/s Turn rate in the horizontal plane
+        float velocityNorth;     // North velocity in m/s
+        float velocityEast;      // East velocity in m/s
+        int16_t heightEgm96;     // Height above egm96, eg MSL
+        int16_t geoidOffset;     // Height of geoid above WGS84 ellipsoid
     };
 
     namespace Config

@@ -14,8 +14,6 @@
 void Sx1262::start()
 {
     getBus().subscribe(*this);
-
-    // startListen();
 };
 
 void Sx1262::stop()
@@ -24,11 +22,6 @@ void Sx1262::stop()
     vQueueDelete(commandQueue);
     xTaskNotify(taskHandle, TaskState::DELETE, eSetBits);
 };
-
-//  const char* Sx1262::name() const
-// {
-//     return Sx1262::NAMES[radioNo];
-// }
 
 OpenAce::PostConstruct Sx1262::postConstruct()
 {
@@ -111,7 +104,7 @@ void Sx1262::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
     if (msg.moduleName == NAMES[radioNo])
     {
         txEnabled = msg.config.valueByPath(true, NAMES[radioNo], "txEnabled");
-        offset = msg.config.valueByPath(true, NAMES[radioNo], "offset");
+        offsetHz = msg.config.valueByPath(true, NAMES[radioNo], "offset");
     }
 }
 
@@ -217,8 +210,9 @@ void Sx1262::checkAndClearDeviceErrors()
     }
 }
 
-void Sx1262::configureSx1262(const RadioParameters &lastParameters, const RadioParameters &newParameters)
+void Sx1262::configureSx1262(const RadioParameters &lastParameters, const RadioParameters &newParameters, bool tx)
 {
+    (void)tx;
     standBy();
     if (newParameters.config.mode == Radio::Mode::GFSK)
     {
@@ -231,16 +225,15 @@ void Sx1262::configureSx1262(const RadioParameters &lastParameters, const RadioP
 
         if (lastParameters.config.dataSource != newParameters.config.dataSource || true)
         {
-            //    printf("DataSource:%s\n",  OpenAce::dataSourceToString(newParameters.config.dataSource));
             auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
-            pkt_params_gfsk.preamble_len_in_bits = 1 * 8;
-            pkt_params_gfsk.sync_word_len_in_bits = (newParameters.config.syncLength) * 8;
             pkt_params_gfsk.pld_len_in_bytes = newParameters.config.packetLength * MANCHESTER;
-
+            pkt_params_gfsk.preamble_len_in_bits = 1 * 8;
+            pkt_params_gfsk.preamble_detector = static_cast<sx126x_gfsk_preamble_detector_t>((1 + 3) & 0b1100);
+            pkt_params_gfsk.sync_word_len_in_bits = (newParameters.config.syncLength) * 8;
             sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
 
             sx126x_set_ocp_value(this, (uint8_t)(60.0 / 2.5));
-            sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data(), newParameters.config.syncLength);
+            sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data() + newParameters.config.preambleLength, newParameters.config.syncLength);
         }
         statistics.mode = newParameters.config.mode;
     }
@@ -256,8 +249,8 @@ void Sx1262::configureSx1262(const RadioParameters &lastParameters, const RadioP
     if (lastParameters.frequency != newParameters.frequency)
     {
         //        printf("Freq:%ld\n", newParameters.frequency);
-        sx126x_set_rf_freq(this, newParameters.frequency + offset);
-        statistics.frequency = newParameters.frequency + offset;
+        sx126x_set_rf_freq(this, newParameters.frequency + offsetHz);
+        statistics.frequency = newParameters.frequency + offsetHz;
     }
 
     checkAndClearDeviceErrors();
@@ -376,8 +369,8 @@ void Sx1262::sx1262Task(void *arg)
     TaskHandle_t taskHandle = xTaskGetCurrentTaskHandle();
     TimerHandle_t txClearTimerHandle = xTimerCreate("txClearTimerHandle", TASK_DELAY_MS(12), pdFALSE, taskHandle, clearTXCallback); // TX takes about 5ms, 8ms to clear should be fine
 
-    Radio::RadioParameters lastRadioParameters{DEFAULT_PROTOCOL_CONFIG, 868'000'000, -100};
-    Radio::RadioParameters beforeSendConfig{DEFAULT_PROTOCOL_CONFIG, 868'200'000, -100};
+    Radio::RadioParameters lastRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
+    Radio::RadioParameters beforeSendConfig{PROTOCOL_NONE, 868'200'000, -100};
 
     aceSpi->aquireSlot(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, taskHandle);
     bool txMode = false;
@@ -413,7 +406,7 @@ void Sx1262::sx1262Task(void *arg)
                 if (irqStatus & SX126X_IRQ_TX_DONE || notifyValue & TaskState::CLEAR_TX)
                 {
                     xTimerStop(txClearTimerHandle, TASK_DELAY_MS(5));
-                    sx1262->configureSx1262(beforeSendConfig, lastRadioParameters);
+                    sx1262->configureSx1262(beforeSendConfig, lastRadioParameters, false);
                     sx1262->Listen();
                     txMode = false;
                     // printf("TX_HANDLE %d\n", CoreUtils::msInSecond());
@@ -421,7 +414,7 @@ void Sx1262::sx1262Task(void *arg)
 
                 if (notifyValue & TaskState::FAILSAVE_LISTEN_MODE)
                 {
-                    sx1262->configureSx1262(beforeSendConfig, lastRadioParameters);
+                    sx1262->configureSx1262(beforeSendConfig, lastRadioParameters, false);
                     sx1262->Listen();
                     txMode = false;
                 }
@@ -438,7 +431,7 @@ void Sx1262::sx1262Task(void *arg)
                         case CommandType::RXMODE:
                         {
                             // printf("Set RX: %s %d\n", OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
-                            sx1262->configureSx1262(lastRadioParameters, command.rxMode.radioParameters);
+                            sx1262->configureSx1262(lastRadioParameters, command.rxMode.radioParameters, false);
                             lastRadioParameters = command.rxMode.radioParameters;
                             sx1262->Listen();
                             break;
@@ -448,7 +441,7 @@ void Sx1262::sx1262Task(void *arg)
                             if (sx1262->txEnabled)
                             {
                                 beforeSendConfig = lastRadioParameters;
-                                sx1262->configureSx1262(lastRadioParameters, command.txPacket.radioParameters);
+                                sx1262->configureSx1262(lastRadioParameters, command.txPacket.radioParameters, true);
 
                                 uint8_t frame[OpenAce::RADIO_MAX_FRAME_LENGTH * 2];
                                 manchechesterEncode(frame, command.txPacket.data.data(), command.txPacket.length);
@@ -483,7 +476,7 @@ void Sx1262::sx1262Task(void *arg)
         }
         else
         {
-            // Endup here when timeout, only count in statistics if there was actually active
+            // End up here when timeout, only count in statistics so we know this is happening
             if (lastRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
             {
                 sx1262->statistics.waitPacketTimeout++;
