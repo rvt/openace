@@ -98,8 +98,9 @@ module cdebyte_E108_GN04 () {
   }
 
   diff()
-  rrect( rt=0.1, rs=SQUARE_ROUND*0.9, d=_DIAMETER, l=BHEIGHT ,anchor=TOP){
+  rrect( rt=0.1, rs=SQUARE_ROUND, d=_DIAMETER, l=BHEIGHT ,anchor=TOP){
     tag("remove") attach(TOP) up(0.01) cuboid([DIAMETER, 21, BHEIGHT], anchor=TOP);
+    tag("remove") attach(BOTTOM) right(15) up(1) cube([10, 10, 3], anchor=TOP);
   }
 }
 //***STOP Place here your visualisation modules
@@ -121,13 +122,13 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
     tag("remove") {
       attach(TOP) up(1) rrect(rt=0.1, rs=SQUARE_ROUND*0.9, l=BHEIGHT, d=DIAMETER, anchor=TOP);
       // Gap bottom
-      #position(BOTTOM+RIGHT) right(1) cube([10,3,WALL],anchor=BOTTOM+RIGHT);
+      position(BOTTOM+RIGHT) right(1) down(0.1) cube([10,3,WALL],anchor=BOTTOM+RIGHT);
     }
     
     
     attach(BOTTOM)
       for (n = NOTCHES) {
-        zrot(n + NOTCHES[1]) left(_DIAMETER/2-0.25)  zrot(90) wedge([3, 1+CAP_BOTTOM_SLACK, 5], anchor=BOTTOM+FRONT, orient=DOWN);
+        zrot(n + NOTCHES[1]) left(_DIAMETER/2-0.25) zrot(90) wedge([3, 1+CAP_BOTTOM_SLACK, 5], anchor=BOTTOM+FRONT, orient=DOWN);
       }
   }
 
