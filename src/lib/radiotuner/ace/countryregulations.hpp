@@ -104,16 +104,17 @@ public:
         ProtocolTimeSlot{1, 2, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM, Europe, PROTOCOL_FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
         ProtocolTimeSlot{2, 1, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM, Europe, PROTOCOL_FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
 
+        // FLARM Zone 5
         ProtocolTimeSlot{3, 4, CountryRegulations::Zone::ZONE5, OpenAce::DataSource::FLARM, Israel, PROTOCOL_FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
         ProtocolTimeSlot{4, 3, CountryRegulations::Zone::ZONE5, OpenAce::DataSource::FLARM, Israel, PROTOCOL_FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
 
-        // OGN packages are send/rceived 400..1200ms after PPS channel is based on OGN_TIME_BASED_2SLOTS. Minimum 600ms between packages, maximum of 1400ms between packages
+        // OGN 
         ProtocolTimeSlot{5, 6, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, PROTOCOL_OGN1, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
         ProtocolTimeSlot{6, 5, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, PROTOCOL_OGN1, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
 
         // ADSL
-        ProtocolTimeSlot{7, 8, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_1},
-        ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{7, 8, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 400, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_1},
 
         // Fanet
         ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 500, 1500, 00, 000, ChannelMethod::CHANNEL_0},

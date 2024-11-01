@@ -81,6 +81,7 @@ void RadioTunerRx::getData(etl::string_stream &stream, const etl::string_view pa
 {
     (void)path;
     stream << "{";
+    stream << "\"_dummy\": 0";
     for (auto it = radioTasks.cbegin(); it != radioTasks.cend(); ++it)
     {
         it->getData(stream);
@@ -141,18 +142,30 @@ void RadioTunerRx::radioTuneTask(void *arg)
                         frequency,
                         nextTimeSlot.frequency.powerdBm}});
 
+                // Calculate any delays up to a maximum of 20ms and use that as an offset
+                auto currentMs = (uint16_t)(CoreUtils::msSinceEpoch()%1000);
+                auto thisSlotTime = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot).slotStartTime;
+                auto offset = etl::max(0, etl::min(20, (int16_t)currentMs -  (int16_t)thisSlotTime));
+
                 // Set timer for the next slot
                 auto delay = taskCtx->advanceReceiveSlot(taskCtx->controller->currentZone);
-                xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay), TASK_DELAY_MS(10));
+
+                // printf("radio:%s protocol: %s Freq:%ld slotTime:%d time:%d delay:%d offset:%d\n",  taskCtx->radio->name().cbegin(), dataSourceToString(nextTimeSlot.radioConfig.dataSource), frequency, thisSlotTime, currentMs, delay, offset);
+
+                xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay - offset), TASK_DELAY_MS(10));
                 taskCtx->statistics.rxRequests++;
             }
         }
         else
         {
+            // Only count if it was not a NONE datasource 
+            if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx) {
+                taskCtx->statistics.timerMissed++;
+            }
+
             // Try to find a next slot
             taskCtx->advanceReceiveSlot(taskCtx->controller->currentZone);
-            xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(TIMEOUT_DELAY / 2), TASK_DELAY_MS(2));
-            taskCtx->statistics.timerMissed++;
+            xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(900), TASK_DELAY_MS(10));
         }
     }
 }

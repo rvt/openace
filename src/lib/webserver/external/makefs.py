@@ -3,6 +3,12 @@ import re
 from argparse import ArgumentParser
 
 # Overwrite specific settings per filename
+# The following can be overwritten
+#   content_type
+#   content_encoding
+#   cache_control
+#   headers_included Can be set to True or False. When set to true it's just headers, for example redirects
+
 SPECIALS = {
     "/index.html.br": {
         "cache_control": 300

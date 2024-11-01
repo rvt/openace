@@ -15,6 +15,7 @@
 #include "etl/message_bus.h"
 #include "etl/list.h"
 #include "etl/array.h"
+#include "etl/algorithm.h"
 #include <etl/array_view.h>
 #include "etl/string.h"
 #include "etl/bitset.h"
@@ -36,9 +37,9 @@ class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx,
     using  SlotReceive = etl::array<uint8_t, static_cast<uint8_t>(OpenAce::DataSource::_ITEMS)>;
 public:
     static constexpr const uint32_t UPDATE_ZONE_REGULATION_EVERY = 30000; // Get new regulatory dataset every XXms
-    static constexpr const size_t   MAX_SLOTS_PER_SOURCE = 3;             // Maximum slots a datasource can get while receiving
-    static constexpr const size_t   MAX_SOURCE_PER_RADIO = 3;             // Maximum source per radio, eg maximum protocols it will search for
-    static constexpr const size_t   TIME_SLOT_SIZE = MAX_SLOTS_PER_SOURCE * MAX_SLOTS_PER_SOURCE;
+    static constexpr const uint8_t MAX_SLOTS_PER_SOURCE = 1;             // Maximum slots a datasource can get while receiving
+    static constexpr const uint8_t MAX_SOURCE_PER_RADIO = 3;             // Maximum source per radio, eg maximum protocols it will search for
+    static constexpr const uint8_t TIME_SLOT_SIZE = MAX_SLOTS_PER_SOURCE * MAX_SLOTS_PER_SOURCE;
 
 private:
     // Each radio will get one task Context to handle
@@ -60,7 +61,7 @@ private:
         etl::vector<OpenAce::DataSource, MAX_SOURCE_PER_RADIO> dataSources;
 
         // datasources processed by this task and used by prioritizeDatasources
-        using DataSources = etl::vector<OpenAce::DataSource, TIME_SLOT_SIZE>;
+        using DataSources = etl::vector<OpenAce::DataSource, TIME_SLOT_SIZE * 2>;
         using CircularDataSourceIterator = etl::circular_iterator<DataSources::iterator>;
         DataSources dataSourceTimeSlots;
         CircularDataSourceIterator upcomingDataSource;
@@ -84,7 +85,7 @@ private:
         void getData(etl::string_stream &stream) const
         {
 
-            stream << "\"radio_" << radio->radio() << "\":[";
+            stream << ",\"radio_" << radio->radio() << "\":[";
             for (auto it = dataSourceTimeSlots.cbegin(); it != dataSourceTimeSlots.cend(); ++it)
             {
                 stream << "\"" << OpenAce::dataSourceToString(*it) << "\"";
@@ -94,7 +95,6 @@ private:
                 }
             }
             stream << "]";
-            stream << ",\"nextRx_" << radio->radio() << "\":" << "\"" << OpenAce::dataSourceToString(*upcomingDataSource) << "\"";
             stream << ",\"timerMissedRadio_" << radio->radio() << "\":" << statistics.timerMissed;
             stream << ",\"rxRequestsRadio_" << radio->radio() << "\":" << statistics.rxRequests;
         }
@@ -182,23 +182,8 @@ private:
 
             for (const auto &ds : dataSources)
             {
-                uint8_t slotCount;
-
-                // Check the slotReceive array to see if more entries are needed
-                if (slotReceive[(uint8_t)ds] == 0)
-                {
-                    slotCount = 1;
-                }
-                else if (slotReceive[(uint8_t)ds] == 1)
-                {
-                    slotCount = 2;
-                }
-                else
-                {
-                    slotCount = MAX_SLOTS_PER_SOURCE;
-                }
-
-                dataSourceTimeSlots.insert(dataSourceTimeSlots.end(), slotCount, ds);
+                uint8_t slotCount = slotReceive[(uint8_t)ds] + 1;
+                dataSourceTimeSlots.insert(dataSourceTimeSlots.end(), etl::min(slotCount, MAX_SLOTS_PER_SOURCE), ds);
             }
 
             // Re-initialize the circular iterator after modifying the dataSourceTimeSlots

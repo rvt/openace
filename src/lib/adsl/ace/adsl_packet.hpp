@@ -485,7 +485,7 @@ private:
         if(ErrBit!=0xFF)
         {
             FlipBit(PktData, ErrBit);
-            printf(":ErrBit %d\n", ErrBit);
+            // printf(":ErrBit %d\n", ErrBit);
             return 1;
         }
 

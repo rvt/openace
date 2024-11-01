@@ -133,7 +133,7 @@ uint8_t CountryRegulations::nextProtocolTimeslot(uint16_t currentMs, CountryRegu
         do
         {
             const auto &slot = protocolTimeslotById(currentIdx);
-            if (currentMs <= (slot.slotStartTime + msOffset))
+            if (currentMs < (slot.slotStartTime + msOffset))
             {
                 return slot.idx;
             }

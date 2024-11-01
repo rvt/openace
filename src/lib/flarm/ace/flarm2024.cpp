@@ -238,8 +238,8 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
 
     float groundSpeed = descale<8, 2, false>(radioPacket->groundSpeed) / 10.0f;
 
-    // printf("FLARM: time:%lld address:%06X latitude:%0.6f longitude:%0.6f altitude:%d climbRate:%0.2f speed:%0.2f heading:%d turnRate:%0.2f\n",
-    //     (int64_t)CoreUtils::getPositionTs(), radioPacket->aircraftID, aircraftLat, aircraftLon, descale<12, 1, false>(radioPacket->altitude) - 1000, descale<6, 2, true>(radioPacket->verticalSpeed) / 10.0f, groundSpeed, static_cast<int16_t>(radioPacket->course >> 1), descale<6, 2, true>(radioPacket->turnRate) / 20.0f);
+//    printf("FLARM: time:%lld address:%06X latitude:%0.6f longitude:%0.6f altitude:%d climbRate:%0.2f speed:%0.2f heading:%d turnRate:%0.2f\n",
+//        (int64_t)CoreUtils::getPositionTs(), radioPacket->aircraftID, aircraftLat, aircraftLon, descale<12, 1, false>(radioPacket->altitude) - 1000, descale<6, 2, true>(radioPacket->verticalSpeed) / 10.0f, groundSpeed, static_cast<int16_t>(radioPacket->course >> 1), descale<6, 2, true>(radioPacket->turnRate) / 20.0f);
 
     OpenAce::IcaoAddress icaoAddress;
     etl::string_stream stream(icaoAddress);
