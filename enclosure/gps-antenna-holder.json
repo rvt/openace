@@ -11,12 +11,25 @@
         "cdebyte_E108_GN04": {
             "ANTENNA_CLERARANCE": "1",
             "BHEIGHT": "5",
-            "CAP_POSITION": "19",
+            "CAP_POSITION": "22",
             "CROP": "false",
-            "DIAMETER": "27",
+            "DIAMETER": "26",
+            "FRICTION_RING": "true",
+            "HINGE_ANGLE": "61",
+            "MODULE": "cdebyte_E108_GN04",
+            "NOTCHES": "[0, 90, 180, 180]",
+            "SQUARE_ROUND": "5",
+            "THEIGHT": "13"
+        },
+        "Empty": {
+            "ANTENNA_CLERARANCE": "1",
+            "BHEIGHT": "5",
+            "CAP_POSITION": "25",
+            "CROP": "false",
+            "DIAMETER": "24",
             "FRICTION_RING": "true",
             "HINGE_ANGLE": "45",
-            "MODULE": "cdebyte_E108_GN04",
+            "MODULE": "No Module",
             "NOTCHES": "[0, 90, 180, 180]",
             "SQUARE_ROUND": "11",
             "THEIGHT": "13"

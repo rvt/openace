@@ -2,6 +2,7 @@ include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
 include <BOSL2/walls.scad>
 include <parts.scad>
+include <BOSL2/hinges.scad>
 include <NopSCADlib/vitamins/batteries.scad>
 include <NopSCADlib/vitamins/toggles.scad>
 
@@ -24,6 +25,9 @@ WALL_THICKNESS = 2.4; // [1.6, 2.0, 2.4, 2.8]
 // Thickness of the bottom of the caseinclude 
 BOTTOM_THICKNESS = 2.5; // [2.0, 2.5, 3, 3.5]
 TOP_THICKNESS = 2.0; // [2.0, 2.5, 3, 3.5]
+
+// Add a hinge for a smaller GPS on LID
+HINGE_ON_LID=true;
 
 // Printer tolerance (Mainly used to fix the box)
 PRINT_TOLERANCE=0.2; // [0.05, 0.075, 0.1, 0.15, 0.175, 0.2]
@@ -53,7 +57,7 @@ echo("CASE", case);
 
 FEET_HEIGHT=4; //RVT INCREASED BY ONE
 
-BAT_HOLDER_HEIGHT=5;
+BAT_HOLDER_HEIGHT=2;
 BAT_HOLDER=[BATTERY_COMPARTEMENT_WIDTH+WALL_THICKNESS*2, case.y];
 //down(BAT_HOLDER_HEIGHT+2) left(case.x/2-BAT_HOLDER.x/2)
 back(100) left(40)
@@ -210,6 +214,25 @@ diff("removeBox")
      
      tag("removeBox")
        mount_system(hole=true, type=0);
+        
+        
+      if (HINGE_ON_LID) {
+        KNUNCKLE_DIAM=6;       // Size of the nuckle    
+        HINGE_LENGTH=6;        // Length of each hinge  
+        KNUCKLE_OFFSET = 1;
+        HINGE_SEGS=5;
+//        back(HINGE_SEGS*3)
+        position(RIGHT+FRONT+TOP)
+        cuboid([HINGE_LENGTH*5+0, 7, 0.2*3], anchor=FRONT+TOP+LEFT, orient=LEFT, spin=90, chamfer=0.2*3, edges=[BOTTOM+BACK]) {
+          left(HINGE_LENGTH*3-HINGE_LENGTH/2) 
+          attach(BOTTOM)
+          down(0.5)
+          position(FRONT+TOP) 
+            knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+KNUCKLE_OFFSET, 
+            arm_height=0, anchor=BOT+RIGHT+FRONT, inner=false, knuckle_diam=KNUNCKLE_DIAM);     
+        }
+      }
+
   }
 
 

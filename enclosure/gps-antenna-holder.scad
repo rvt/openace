@@ -89,7 +89,7 @@ module topGNSS() {
 }
 
 module cdebyte_E108_GN04 () {
-  right(3) if ($preview) {
+  right(2) if ($preview) {
     #cuboid([21,20,0.6], anchor=BOTTOM) {
       position(TOP) cuboid([18,18,4.5],anchor=BOTTOM);
       position(BOTTOM) right(2.5) cuboid([18,15.5,3],anchor=TOP, spin=90);
@@ -120,7 +120,7 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
   rrect(rt=0.1, rs=SQUARE_ROUND, l=BHEIGHT, d=_DIAMETER, anchor=TOP) {
 
     tag("remove") {
-      attach(TOP) up(1) rrect(rt=0.1, rs=SQUARE_ROUND*0.9, l=BHEIGHT, d=DIAMETER, anchor=TOP);
+      attach(TOP) up(1) rrect(rt=0.1, rs=SQUARE_ROUND-WALL, l=BHEIGHT, d=DIAMETER, anchor=TOP);
       // Gap bottom
       position(BOTTOM+RIGHT) right(1) down(0.1) cube([10,3,WALL],anchor=BOTTOM+RIGHT);
     }
@@ -141,7 +141,7 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
     attach(TOP) down(0.5) {
       tag("remove")  {
         cylinder(d=DIAMETER-5,h=ANTENNA_CLERARANCE, anchor=TOP);
-        down(ANTENNA_CLERARANCE) rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, d=_DIAMETER, anchor=TOP);
+        down(ANTENNA_CLERARANCE) rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, d=_DIAMETER+0.5, anchor=TOP);
       }
     }
     
@@ -158,7 +158,7 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
   down(BHEIGHT+PLATE_DOWN)
   diff()
   cuboid([HINGE_LENGTH*3+4, 20, 0.2*4], anchor=TOP, chamfer=0.2*4, edges=[BOTTOM+LEFT, BOTTOM+RIGHT, BOTTOM+FRONT, BOTTOM+BACK]) {
-    left(HINGE_LENGTH*2-HINGE_LENGTH/2) attach(BOTTOM) right(HINGE_LENGTH) knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+KNUCKLE_OFFSET, arm_height=0, anchor=BOT+RIGHT, inner=true,knuckle_diam=KNUNCKLE_DIAM);     
+    left(HINGE_LENGTH*3-HINGE_LENGTH/2) attach(BOTTOM) knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+KNUCKLE_OFFSET, arm_height=0, anchor=BOT+RIGHT, inner=true,knuckle_diam=KNUNCKLE_DIAM);     
   }
 
 
@@ -167,7 +167,10 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
   WIDTH=14;
   down(BHEIGHT+PLATE_DOWN+KNUCKLE_OFFSET+($preview?3.5:15))
   xrot(($preview?-HINGE_ANGLE:0))
-  left(HINGE_LENGTH*3-HINGE_LENGTH/2) back(3) xrot(90) zrot(-90) diff()
+  left(HINGE_LENGTH*3-HINGE_LENGTH/2) back(3) 
+  xrot(90) 
+  zrot(-90) 
+  diff()
   prismoid(size1=[KNUNCKLE_DIAM/8,LENGTH], size2=[KNUNCKLE_DIAM,LENGTH], shift=[(KNUNCKLE_DIAM - KNUNCKLE_DIAM/8)/2,0], h=WIDTH, anchor=FRONT+TOP) {
        
        
@@ -199,10 +202,10 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
         
         tag("remove") {
           up(4) right(2) attach(FRONT) cyl(d=3, l=10) {
-            %position(TOP) cyl(d=6, l=2);
+            if ($preview) tag("keep") #position(TOP) cyl(d=6, l=2);
           }
           down(4) right(-1) attach(FRONT) cyl(d=3, l=10) {
-            %position(TOP) cyl(d=6, l=2);
+            if ($preview) tag("keep") #position(TOP) cyl(d=6, l=2);
           }
         }
       }      
