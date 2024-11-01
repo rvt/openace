@@ -8,16 +8,16 @@
     "prettier": "npx prettier . --write"
   },
   "devDependencies": {
-    "@parcel/compressor-brotli": "^2.12.0",
-    "@parcel/compressor-gzip": "^2.12.0",
-    "@parcel/transformer-sass": "^2.12.0",
-    "http-proxy-middleware": "^3.0.0",
-    "parcel": "^2.12.0",
-    "prettier": "^3.2.5"
+    "@parcel/compressor-brotli": "2.12.0",
+    "@parcel/compressor-gzip": "2.12.0",
+    "@parcel/transformer-sass": "2.12.0",
+    "http-proxy-middleware": "3.0.0",
+    "parcel": "2.12.0",
+    "prettier": "3.2.5"
   },
   "dependencies": {
-    "@frameable/el": "^0.7.3",
-    "@ggedde/spry-css": "^2.3.23",
-    "just-validate": "^4.3.0"
+    "@frameable/el": "0.7.3",
+    "@ggedde/spry-css": "2.3.23",
+    "just-validate": "4.3.0"
   }
 }

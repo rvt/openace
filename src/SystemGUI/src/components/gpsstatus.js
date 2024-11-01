@@ -50,7 +50,8 @@ class GpsStatus extends El {
           <tbody>
             ${this._row(html, "GPS Time", this.state.data?.gpstime)} ${this._row(html, "Tracked Satellites", this.state.data?.satellitesTracked)}
             ${this._row(html, "Longitude", this.state.data?.longitude)} ${this._row(html, "Latitude", this.state.data?.latitude)}
-            ${this._row(html, "GPS Altitude", (this.state.data?.altitude * 3.28).toFixed(0), "ft")}
+            ${this._row(html, "Altitude MSL", ((this.state.data?.altitudeWgs96 - this.state.data?.heightGeoidWGS84)* 3.281).toFixed(0), "ft")}
+            ${this._row(html, "Altitude Wgs96", (this.state.data?.altitudeWgs96 * 3.281).toFixed(0), "ft")}
             ${this._row(html, "Groundspeed", (this.state.data?.groundspeed * 1.94).toFixed(0), "knt")}
             ${this._row(html, "Track", this.state.data?.track?.toFixed(0), "deg")}
             ${this._row(html, "pDOP", this.state.data?.pDop + " / " + this.state.data?.dopValue)} ${this._row(html, "Fix Quality", this.state.data?.fixQuality)}
