@@ -26,7 +26,7 @@ constexpr uint8_t manchesterEncodeLookupTable[] =
 };
 
 
-void manchechesterEncode(uint8_t *destination, const uint8_t* source, uint8_t sourceLength)
+void manchesterEncode(uint8_t *destination, const uint8_t* source, uint8_t sourceLength)
 {
     for (uint8_t i = 0; i < sourceLength; i++)
     {

@@ -17,17 +17,22 @@
  * Wait for BUZY pin to go low or timeout.
  * When BUZY is low, the SX1262 is ready for new commands
  * returns 0 for sucess, 1 for timeout
+ * Should this be a IRQ?
  */
-uint8_t sx126x_buzy_wait(uint8_t busyPin, uint32_t timeoutMs)
+uint8_t sx126x_buzy_wait(uint8_t busyPin)
 {
-    auto startTime = CoreUtils::msSinceBoot();
+    auto timeoutTime = CoreUtils::timeUs32() + 1'000'000;
+    uint16_t counter = 1; // to reduce the number of calls to timer functions
     while (gpio_get(busyPin))
     {
-        if (CoreUtils::msElapsed(startTime) > timeoutMs)
-        {
-            return 1;
+        if (counter % 100 == 0) {
+            if (CoreUtils::isUsReached(timeoutTime))
+            {
+                return 1;
+            }
         }
-        vTaskDelay(2);
+        counter++;
+        tight_loop_contents();
     }
     return 0;
 }
@@ -39,8 +44,8 @@ sx126x_hal_status_t sx126x_hal_write(const void *context, const uint8_t *command
     SpiModule *spi = sx1262->spi();
 
     sx126x_hal_status_t ret = SX126X_HAL_STATUS_OK;
-    if (sx126x_buzy_wait(sx1262->busy(), OPENACE_SX1261_MAX_BUSY_WAIT_TIME_MS))
-    {        
+    if (sx126x_buzy_wait(sx1262->busy()))
+    {
         puts("hal write, Wait busy timeout");
         ret = SX126X_HAL_STATUS_ERROR;
     }
@@ -64,7 +69,7 @@ sx126x_hal_status_t sx126x_hal_read(const void *context, const uint8_t *command,
     SpiModule *spi = sx1262->spi();
 
     sx126x_hal_status_t ret = SX126X_HAL_STATUS_OK;
-    if (sx126x_buzy_wait(sx1262->busy(), OPENACE_SX1261_MAX_BUSY_WAIT_TIME_MS))
+    if (sx126x_buzy_wait(sx1262->busy()))
     {
         puts("hal read, Wait busy timeout");
         ret = SX126X_HAL_STATUS_ERROR;

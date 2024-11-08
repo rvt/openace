@@ -177,8 +177,8 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
 
     auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, fLatitude, fLongitude);
 
-//    printf("OGN: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld offset:%d, stdaltitude:%ld climbRate:%d speed:%d heading:%0.2f turnRate:%0.2f\n",
-//        packet.Header.Address, fLatitude, fLongitude, packet.DecodeAltitude() * 10 + ownshipPosition.geoidOffset, ownshipPosition.geoidOffset, packet.DecodeStdAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
+    // printf("OGN: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld offset:%d, stdaltitude:%ld climbRate:%d speed:%d heading:%0.2f turnRate:%0.2f\n",
+    //    packet.Header.Address, fLatitude, fLongitude, packet.DecodeAltitude() * 10 + ownshipPosition.geoidOffset, ownshipPosition.geoidOffset, packet.DecodeStdAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
 
     if (fromOwn.distance > distanceIgnore)
     {

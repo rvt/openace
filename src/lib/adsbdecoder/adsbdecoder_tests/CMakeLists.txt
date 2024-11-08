@@ -30,8 +30,12 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 
 # Add cmake modules
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/libmodes libmodes)
+if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
+    # This project is part of a larger build
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/libmodes libmodes)
+endif()
+
 
 # These examples use the standard separate compilation
 set(SOURCES_IDIOMATIC_EXAMPLES # Tests

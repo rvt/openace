@@ -578,7 +578,7 @@ class SX1262 extends ModuleConfig {
         },
         {
           rule: "minNumber",
-          value: 0,
+          value: -30000,
         },
         {
           rule: "maxNumber",

@@ -266,6 +266,7 @@ void ADSL::on_receive(const OpenAce::RadioTxPositionRequest &msg)
         packet.Scramble();
         packet.setCRC();
 
+        // Takes about 4ms from the request to end up here
         getBus().receive(OpenAce::RadioTxFrame{
             Radio::TxPacket{
                 msg.radioParameters,
@@ -290,8 +291,8 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
         return -1;
     }
 
-//    printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
-//        packet.address, fLatitude, fLongitude, packet.getAltitudeWGS84(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
+    // printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
+    //   packet.address, fLatitude, fLongitude, packet.getAltitudeWGS84(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
 
     OpenAce::IcaoAddress icaoAddress;
     etl::string_stream stream(icaoAddress);

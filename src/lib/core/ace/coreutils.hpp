@@ -38,6 +38,27 @@ public:
     }
 
     /**
+     * Get a timestamp in us
+     * this works together with isReached to measure time differences
+     * Use this to measure short time differences of less then 71minutes
+     * \sa isReached
+     */
+    static inline uint32_t timeUs32() 
+    {
+        return time_us_32();
+    }
+
+    /**
+     * Decide if the refrence time is reached
+     * Use this to measure short time differences of less then 71minutes
+     * \sa timeUs32
+     */
+    static inline uint32_t isUsReached(uint32_t referenceUs)
+    {
+        return timeUs32() > referenceUs;
+    }
+
+    /**
      * Get the current time in ms since boot. Use this for time differences calculations only, eg how long since last message
      * This function is faster than msSinceEpoch and just uses to_ms_since_boot from the PICO     *
      * \sa msElapsed()

@@ -86,16 +86,19 @@ uint8_t CountryRegulations::nextSlotIdx(CountryRegulations::Zone zone, uint8_t c
 
 CountryRegulations::GetNextTxTimeResult CountryRegulations::getNextTxTime(uint16_t msInSecond, uint8_t currentIdx)
 {
-    constexpr uint8_t MAXFAILSAFE = 3; // maximum number of tries until give up trying to find a time
+    constexpr uint8_t MAXFAILSAFE = 4; // maximum number of tries until give up trying to find a time
     const auto &slot = protocolTimeslotById(currentIdx);
 
     // Counter just in case that during zone changes no protocol can be found
     uint8_t failSafe = 0; 
     uint16_t randomTime;
     uint8_t idx;
+
+    auto maxRandTime = slot.txMaxTime - slot.txMinTime;
+    auto offset = slot.txMinTime + msInSecond;
     do
     {
-        randomTime = (get_rand_64() % slot.slotDuration) + slot.slotStartTime;
+        randomTime = ((get_rand_64() >> 4) % maxRandTime) + offset;
 
         // Don't generate a time close to a whole second to prevent
         // a tx time with a rollover seconds. This prevents decryption issues for some protocols mainly FLARM and ogn 3.x.x receiver
@@ -113,59 +116,51 @@ CountryRegulations::GetNextTxTimeResult CountryRegulations::getNextTxTime(uint16
     // If fail safe, then return a default timeout that always matches
     if (idx == NONE_DATASOURCE.idx)
     {
-        return GetNextTxTimeResult{slot.idx, CoreUtils::msDelayToReference(slot.slotStartTime + 100, msInSecond)};
+        idx = findFittingTimeslot(slot.txMinTime + msInSecond, currentIdx);
+        return GetNextTxTimeResult{idx, slot.txMinTime};
     }
 
-    return GetNextTxTimeResult{idx, CoreUtils::msDelayToReference(randomTime, msInSecond) };
+    return GetNextTxTimeResult{idx, uint16_t(randomTime - msInSecond)};
 }
 
-uint8_t CountryRegulations::nextProtocolTimeslot(uint16_t currentMs, CountryRegulations::Zone zone, OpenAce::DataSource source)
+uint8_t CountryRegulations::nextProtocolTimeslot(uint16_t msInSecond, CountryRegulations::Zone zone, OpenAce::DataSource source)
 {
-    currentMs = currentMs % 1000;
+    msInSecond = msInSecond % 1000;
     auto startIdx = getFirstSlotIdx(zone, source);
-
-    auto currentIdx = startIdx;
-    for (auto msOffset :
-            {
-                0, 1000
-            })
+    auto currentIdx = getFirstSlotIdx(zone, source);
+    do
     {
-        do
+        const auto &slot = protocolTimeslotById(currentIdx);
+        if (msInSecond < slot.slotStartTime)
         {
-            const auto &slot = protocolTimeslotById(currentIdx);
-            if (currentMs < (slot.slotStartTime + msOffset))
-            {
-                return slot.idx;
-            }
-            currentIdx = slot.nextSlotIdx;
+            return slot.idx;
         }
-        while (currentIdx != startIdx);
+        currentIdx = slot.nextSlotIdx;
     }
-
-    return NONE_DATASOURCE.idx;
+    while (currentIdx > startIdx);
+    return startIdx;
 }
 
 uint8_t CountryRegulations::findFittingTimeslot(uint16_t currentMs, uint8_t currentIdx)
 {
     auto startIdx = currentIdx;
     currentMs = currentMs % 1000;
-    for (auto msOffset :
-            {
-                0, 1000
-            })
+    do
     {
-        auto msWithOffset = currentMs + msOffset;
-        do
+        const auto & slot = protocolTimeslotById(currentIdx);
+        auto endTime = slot.slotStartTime + slot.slotDuration;
+        if (currentMs >= slot.slotStartTime && currentMs < endTime)
         {
-            const auto &slot = protocolTimeslotById(currentIdx);
-            if (msWithOffset >= (slot.slotStartTime) && msWithOffset < (slot.slotStartTime + slot.slotDuration))
-            {
-                return slot.idx;
-            }
-            currentIdx = slot.nextSlotIdx;
+            return slot.idx;
         }
-        while (currentIdx != startIdx);
+        auto msWithOffset=currentMs+1000;
+        if (msWithOffset >= slot.slotStartTime && msWithOffset < endTime)
+        {
+            return slot.idx;
+        }
+        currentIdx = slot.nextSlotIdx;
     }
+    while (currentIdx != startIdx);
 
     return NONE_DATASOURCE.idx;
 }

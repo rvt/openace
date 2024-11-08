@@ -57,10 +57,16 @@ set( ACE_SOURCE_FILES
 )
 
 
-foreach( name ${TARGETS_IDIOMATIC_EXAMPLES} )
-    add_executable( ${name}    
-    ${ACE_SOURCE_FILES}
-      ${name}.cpp )
+foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
+  add_executable(${name} ${ACE_SOURCE_FILES} ${name}.cpp)
+
+  # Run test for each target
+  set(UNIT_TEST ${name})
+  add_custom_command(
+    TARGET ${UNIT_TEST}
+    COMMENT "Run tests"
+    POST_BUILD
+    COMMAND ${UNIT_TEST})
 endforeach()
 
 set(ALL_EXAMPLE_TARGETS

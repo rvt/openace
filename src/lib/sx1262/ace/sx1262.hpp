@@ -59,22 +59,22 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
         uint32_t queueFull = 0;
         uint32_t txTimeout = 0;
         uint32_t txOk = 0;
-        Radio::Mode mode=Radio::Mode::NONE;
-        OpenAce::DataSource dataSource=OpenAce::DataSource::NONE;
-        uint32_t frequency=0;
-        int8_t powerdBm=-100;
+        Radio::Mode mode = Radio::Mode::NONE;
+        OpenAce::DataSource dataSource = OpenAce::DataSource::NONE;
+        uint32_t frequency = 0;
+        int8_t powerdBm = -100;
     } statistics;
 
     // ************************************************************************************
     // 13.1.14 SetPaConfig
     // Table 13-21: PA Operating Modes with Optimal Settings
     static constexpr sx126x_pa_cfg_params_s DEFAULT_HIGH_POWER_PA_CFG =
-    {
-        .pa_duty_cycle = 0x04,
-        .hp_max = 0x07,
-        .device_sel = 0x00,
-        .pa_lut = 0x01,
-    };
+        {
+            .pa_duty_cycle = 0x04, // Never increase above 0x04, device might damage
+            .hp_max = 0x07,        // never ever increase above 0x07, device might damage
+            .device_sel = 0x00,    // sx1262
+            .pa_lut = 0x01,        // Always 1
+        };
 
     // ************************************************************************************
     // GFSK
@@ -82,34 +82,25 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     // GFSK packet is setup such that we get the last byte from teh syncword as the first byte of the packet
     // 13.4.6 SetPacketParams
     static constexpr sx126x_pkt_params_gfsk_t DEFAULT_PKG_PARAMS_GFSK =
-    {
-        .preamble_len_in_bits = 0,   // SET per protocol
-        .preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS,      // SET per protocol
-        .sync_word_len_in_bits = 0,  // SET per protocol
-        .address_filtering = SX126X_GFSK_ADDRESS_FILTERING_DISABLE,
-        .header_type = SX126X_GFSK_PKT_FIX_LEN,
-        .pld_len_in_bytes = 0,          // SET per protocol
-        .crc_type = SX126X_GFSK_CRC_OFF, // Manchester decoding used. so no CRC possible
-        .dc_free = SX126X_GFSK_DC_FREE_OFF
-    };
+        {
+            .preamble_len_in_bits = 0,                                    // SET per protocol
+            .preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS, // SET per protocol
+            .sync_word_len_in_bits = 0,                                   // SET per protocol
+            .address_filtering = SX126X_GFSK_ADDRESS_FILTERING_DISABLE,
+            .header_type = SX126X_GFSK_PKT_FIX_LEN,
+            .pld_len_in_bytes = 0,           // SET per protocol
+            .crc_type = SX126X_GFSK_CRC_OFF, // Manchester decoding used. so no CRC possible
+            .dc_free = SX126X_GFSK_DC_FREE_OFF};
 
     // Verified, looks ok
     // 13.4.5 SetModulationParams
     static constexpr sx126x_mod_params_gfsk_t DEFAULT_MOD_PARAMS_GFSK =
-    {
-        .br_in_bps = 100000,                          // 50kbps*2 (Manchester) = 100000
-        .fdev_in_hz = 50000,                          // 
-        .pulse_shape = SX126X_GFSK_PULSE_SHAPE_BT_05, // Gaussian BT 0.5
-        .bw_dsb_param = SX126X_GFSK_BW_125000         // 
-    };
-
-    // static constexpr sx126x_mod_params_gfsk_t mod_params_gfsk_adsl =
-    // {
-    //     .br_in_bps = 100000,  // 100Kbps
-    //     .fdev_in_hz = 100000, // -50Khz .. 50Khz
-    //     .pulse_shape = SX126X_GFSK_PULSE_SHAPE_OFF,
-    //     .bw_dsb_param = SX126X_GFSK_BW_234300
-    // };
+        {
+            .br_in_bps = 100000,                          // 50kbps*2 (Manchester) = 100000
+            .fdev_in_hz = 50000,                          //
+            .pulse_shape = SX126X_GFSK_PULSE_SHAPE_BT_05, // Gaussian BT 0.5
+            .bw_dsb_param = SX126X_GFSK_BW_234300         //
+        };
 
     // ************************************************************************************
     // LORA
@@ -117,15 +108,15 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     // 13.1.8 SetCAD
     // CAD is only used by LORA
     static constexpr sx126x_cad_params_t cad_params_lora =
-    {
-        .cad_symb_nb = SX126X_CAD_08_SYMB,
-        .cad_detect_peak = 0x14,
-        .cad_detect_min = 0X0A,
-        .cad_exit_mode = SX126X_CAD_ONLY,
-        .cad_timeout = 0x00000000,
-    };
+        {
+            .cad_symb_nb = SX126X_CAD_08_SYMB,
+            .cad_detect_peak = 0x14,
+            .cad_detect_min = 0X0A,
+            .cad_exit_mode = SX126X_CAD_ONLY,
+            .cad_timeout = 0x00000000,
+        };
 
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0,          1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::NONE, OpenAce::DataSource::NONE, 0, 1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
     const uint8_t csPin;
     const uint8_t busyPin;
@@ -159,22 +150,22 @@ public:
     static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
 
     Sx1262(etl::imessage_bus &bus, const OpenAce::PinTypeMap &pins, uint8_t radioNo_, bool txEnabled_, uint32_t offsetHz_) : Radio(bus, Radio::NAMES[radioNo_]),
-        csPin(pins.at(OpenAce::PinType::CS)),
-        busyPin(pins.at(OpenAce::PinType::BUSY)),
-        dio1Pin(pins.at(OpenAce::PinType::DIO1)),
-        radioNo(radioNo_),
-        offsetHz(offsetHz_),                
-        txEnabled(txEnabled_),
-        spiHall(nullptr),
-        taskHandle(nullptr),
-        commandQueue(nullptr)
+                                                                                                                             csPin(pins.at(OpenAce::PinType::CS)),
+                                                                                                                             busyPin(pins.at(OpenAce::PinType::BUSY)),
+                                                                                                                             dio1Pin(pins.at(OpenAce::PinType::DIO1)),
+                                                                                                                             radioNo(radioNo_),
+                                                                                                                             offsetHz(offsetHz_),
+                                                                                                                             txEnabled(txEnabled_),
+                                                                                                                             spiHall(nullptr),
+                                                                                                                             taskHandle(nullptr),
+                                                                                                                             commandQueue(nullptr)
     {
         //        assert(num >=0 && num <= 1);
     }
     Sx1262(etl::imessage_bus &bus, const Configuration &config, uint8_t radioNo_) : Sx1262(bus, config.pinMap(NAMES[radioNo_]),
-            radioNo_,
-            config.valueByPath(true, NAMES[radioNo_], "txEnabled"),
-            config.valueByPath(true, NAMES[radioNo_], "offset"))
+                                                                                           radioNo_,
+                                                                                           config.valueByPath(true, NAMES[radioNo_], "txEnabled"),
+                                                                                           config.valueByPath(true, NAMES[radioNo_], "offset"))
     {
     }
 
@@ -241,4 +232,6 @@ public:
 
     virtual void rxMode(const RxMode &rxMode) override;
     virtual void txPacket(const TxPacket &txpacket) override;
+
+    void waitBusy(uint16_t minimumDelay) const;
 };

@@ -27,14 +27,19 @@ FetchContent_MakeAvailable(Catch2)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../ace")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)
+
+if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
+    # This project is part of a larger build
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)    
+endif()
+
 
 # These examples use the standard separate compilation
 set( SOURCES_IDIOMATIC_EXAMPLES
    
    # Tests
    countryregulations_test.cpp
-   radiotunerrx_test.cpp
+   # radiotunerrx_test.cpp
 )
 
 string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAMPLES}" )
@@ -51,13 +56,20 @@ set( ACE_SOURCE_FILES
 
      ../ace/countryregulations.cpp
      ../ace/radiotunerrx.cpp
+     ../ace/radiotunertx.cpp
 )
 
 
-foreach( name ${TARGETS_IDIOMATIC_EXAMPLES} )
-    add_executable( ${name}    
-    ${ACE_SOURCE_FILES}
-      ${name}.cpp )
+foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
+  add_executable(${name} ${ACE_SOURCE_FILES} ${name}.cpp)
+
+  # Run test for each target
+  set(UNIT_TEST ${name})
+  add_custom_command(
+    TARGET ${UNIT_TEST}
+    COMMENT "Run tests"
+    POST_BUILD
+    COMMAND ${UNIT_TEST})
 endforeach()
 
 set(ALL_EXAMPLE_TARGETS

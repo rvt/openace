@@ -37,9 +37,10 @@ private:
         TaskHandle_t handler;
         pinIntrCallback_t callback;
         uint32_t notificationValue;
-        pinInterruptHandler(uint32_t _event, TaskHandle_t _handler, uint32_t _notificationValue) : event(_event), handler(_handler), callback(nullptr), notificationValue(_notificationValue) {}
-        pinInterruptHandler(uint32_t _event, pinIntrCallback_t _callback) : event(_event), handler(nullptr), callback(_callback), notificationValue(0x00) {}
-        pinInterruptHandler() : event(0x00), handler(nullptr), callback(nullptr), notificationValue(0x00) {}
+        bool enabled;
+        pinInterruptHandler(uint32_t _event, TaskHandle_t _handler, uint32_t _notificationValue) : event(_event), handler(_handler), callback(nullptr), notificationValue(_notificationValue), enabled(true) {}
+        pinInterruptHandler(uint32_t _event, pinIntrCallback_t _callback) : event(_event), handler(nullptr), callback(_callback), notificationValue(0x00), enabled(true) {}
+        pinInterruptHandler() : event(0x00), handler(nullptr), callback(nullptr), notificationValue(0x00), enabled(true) {}
     };
     inline static etl::map<uint8_t, BaseModule::pinInterruptHandler, 8> pinInteruptHandlers;
 
@@ -169,6 +170,12 @@ public:
      * Register a pin interupt handler with callback function
      */
     void registerPinInterupt(uint8_t pin, uint32_t events, pinIntrCallback_t callback);
+
+    /**
+     * Register a pin interupt handler with callback function
+     */
+    void disablePinInterrupt(uint8_t pin);
+    void enablePinInterrupt(uint8_t pin);
 
     /**
      * Unregister a pin interupt handler

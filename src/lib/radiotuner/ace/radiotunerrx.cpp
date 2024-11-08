@@ -3,6 +3,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
+#include "radiotunertx.hpp"
 
 #include "etl/algorithm.h"
 
@@ -143,14 +144,14 @@ void RadioTunerRx::radioTuneTask(void *arg)
                         nextTimeSlot.frequency.powerdBm}});
 
                 // Calculate any delays up to a maximum of 20ms and use that as an offset
-                auto currentMs = (uint16_t)(CoreUtils::msSinceEpoch()%1000);
+                auto currentMs = (uint16_t)(CoreUtils::msSinceEpoch() % 1000);
                 auto thisSlotTime = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot).slotStartTime;
-                auto offset = etl::max(0, etl::min(20, (int16_t)currentMs -  (int16_t)thisSlotTime));
+                auto offset = etl::max(0, etl::min(20, (int16_t)currentMs - (int16_t)thisSlotTime));
 
                 // Set timer for the next slot
                 auto delay = taskCtx->advanceReceiveSlot(taskCtx->controller->currentZone);
 
-                // printf("radio:%s protocol: %s Freq:%ld slotTime:%d time:%d delay:%d offset:%d\n",  taskCtx->radio->name().cbegin(), dataSourceToString(nextTimeSlot.radioConfig.dataSource), frequency, thisSlotTime, currentMs, delay, offset);
+                // printf("RadioTunerRx: radio:%s protocol: %s Freq:%ld slotTime:%d time:%d delay:%d offset:%d\n",  taskCtx->radio->name().cbegin(), dataSourceToString(nextTimeSlot.radioConfig.dataSource), frequency, thisSlotTime, currentMs, delay, offset);
 
                 xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay - offset), TASK_DELAY_MS(10));
                 taskCtx->statistics.rxRequests++;
@@ -158,8 +159,9 @@ void RadioTunerRx::radioTuneTask(void *arg)
         }
         else
         {
-            // Only count if it was not a NONE datasource 
-            if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx) {
+            // Only count if it was not a NONE datasource
+            if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx)
+            {
                 taskCtx->statistics.timerMissed++;
             }
 
@@ -177,6 +179,7 @@ void RadioTunerRx::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     static uint32_t lastTime = CoreUtils::msSinceBoot();
     auto msSinceBoot = CoreUtils::msSinceBoot();
     // Update ZONE every 30 seconds, or when still at ZONE0
+    // DOes nto require to often since this module requiresZONE information
     if (currentZone == CountryRegulations::Zone::ZONE0 || CoreUtils::msElapsed(lastTime, msSinceBoot) > 30000)
     {
         lastTime = msSinceBoot;
@@ -190,6 +193,7 @@ void RadioTunerRx::on_receive(const OpenAce::AircraftPositionMsg &msg)
     slotReceive[(uint8_t)msg.position.dataSource]++;
 
     // Update the tasks at least every seconds, but not on each and every aircraft message
+    // The positions are only used for statistics, not for positional information
     auto msSinceBoot = CoreUtils::msSinceBoot();
     if (CoreUtils::msElapsed(lastTime, msSinceBoot) > 1000)
     {
@@ -217,7 +221,7 @@ void RadioTunerRx::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 
 void RadioTunerRx::enableDisableDatasources(const etl::ivector<OpenAce::DataSource> &dataSources)
 {
-    // Step 1: Block all tasks first
+    // Block all tasks first
     for (auto &taskCtx : radioTasks)
     {
         xTaskNotify(taskCtx.taskHandle, TaskState::BLOCK, eSetBits);
@@ -226,32 +230,43 @@ void RadioTunerRx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
     // TODO: Synchronize task blocking here instead of fixed delay
     vTaskDelay(TASK_DELAY_MS(50)); // This delay could be replaced with a synchronization mechanism
 
-    // Step 2: Precompute how many protocols each radio should handle
+    // Precompute how many protocols each radio should handle
     uint8_t dsPerRadio = dataSources.size() / radioTasks.size();
     uint8_t remainingSources = dataSources.size() % radioTasks.size(); // Handle remainder for last radio
     uint8_t newDsPos = 0;
 
-    // Step 3: Distribute data sources across radios
+    // Validate if there is a TX module loaded, if so use that as a source for the RX datasource so all protocols remain on the same radio
+    auto rTx = static_cast<const RadioTunerTx *>(BaseModule::moduleByName(*this, RadioTunerTx::NAME, false));
+
     for (auto &taskCtx : radioTasks)
     {
-        uint8_t sourcesForThisRadio = dsPerRadio;
 
-        // Distribute the remainder to the last radio
-        if (&taskCtx == &radioTasks.back())
+        if (rTx != nullptr)
         {
-            sourcesForThisRadio += remainingSources;
+            taskCtx.updateDataSources(rTx->datasourcesOnRadio(taskCtx.radio->radio()));
         }
-
-        // Copy the assigned data sources for this radio
-        etl::vector<OpenAce::DataSource, MAX_SOURCE_PER_RADIO> newDataSources;
-        for (uint8_t i = 0; i < sourcesForThisRadio; ++i)
+        else
         {
-            newDataSources.emplace_back(dataSources[newDsPos]);
-            newDsPos++;
-        }
+            // Distribute data sources across radios
+            uint8_t sourcesForThisRadio = dsPerRadio;
 
-        // Step 4: Update task with new data sources
-        taskCtx.updateDataSources(newDataSources);
+            // Distribute the remainder to the last radio
+            if (&taskCtx == &radioTasks.back())
+            {
+                sourcesForThisRadio += remainingSources;
+            }
+
+            // Copy the assigned data sources for this radio
+            etl::vector<OpenAce::DataSource, MAX_SOURCE_PER_RADIO> newDataSources;
+            for (uint8_t i = 0; i < sourcesForThisRadio; ++i)
+            {
+                newDataSources.emplace_back(dataSources[newDsPos]);
+                newDsPos++;
+            }
+
+            // Step 4: Update task with new data sources
+            taskCtx.updateDataSources(newDataSources);
+        }
 
         // Unblock the task
         xTaskNotify(taskCtx.taskHandle, TaskState::UNBLOCK, eSetBits);

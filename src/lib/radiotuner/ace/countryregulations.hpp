@@ -58,7 +58,7 @@ public:
     static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0,          1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
     static constexpr Radio::ProtocolConfig PROTOCOL_FLARM{Radio::Mode::GFSK, OpenAce::DataSource::FLARM, 24 + 2,   1, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
     static constexpr Radio::ProtocolConfig PROTOCOL_OGN1{Radio::Mode::GFSK, OpenAce::DataSource::OGN1, 20 + 6,     1, 7, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}}; // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
-    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL{Radio::Mode::GFSK, OpenAce::DataSource::ADSL, 24,         1, 7, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
+    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL{Radio::Mode::GFSK, OpenAce::DataSource::ADSL, 24,         2, 6, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
     static constexpr Radio::ProtocolConfig PROTOCOL_PAW{Radio::Mode::GFSK, OpenAce::DataSource::PAW, 00 + 0,       1, 8, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}}; // 4 PAW
     static constexpr Radio::ProtocolConfig PROTOCOL_FANET{Radio::Mode::LORA, OpenAce::DataSource::FANET, 00 + 0,   1, 8, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // 5 FANET 3
 
@@ -113,8 +113,8 @@ public:
         ProtocolTimeSlot{6, 5, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, PROTOCOL_OGN1, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
 
         // ADSL
-        ProtocolTimeSlot{7, 8, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 400, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
-        ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{7, 8, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 400, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
 
         // Fanet
         ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 500, 1500, 00, 000, ChannelMethod::CHANNEL_0},
@@ -172,7 +172,7 @@ public:
     /**
      * Based on the current time in Ms, decide for the given zone and protocol what the next timeslot is going to be
      */
-    static uint8_t nextProtocolTimeslot(uint16_t currentMs, CountryRegulations::Zone zone, OpenAce::DataSource dataSource);
+    static uint8_t nextProtocolTimeslot(uint16_t msInSecond, CountryRegulations::Zone zone, OpenAce::DataSource dataSource);
 
     /**
      * Find a timeslot that fits the givenMs

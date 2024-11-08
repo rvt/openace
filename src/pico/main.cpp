@@ -224,8 +224,10 @@ static void loadModules(void *arch)
     {
         load(Sx1262::NAMES[i], bus, config);
     }
-    load(RadioTunerRx::NAME, bus, config);
+    // Other for these two are currently important to ensure configuration on TX is set before RX 
+    // see RadioTunerRx::enableDisableDatasources()
     load(RadioTunerTx::NAME, bus, config);
+    load(RadioTunerRx::NAME, bus, config);
 
     load(Bmp280::NAME, bus, config);
     load(Gdl90Service::NAME, bus, config);

@@ -83,7 +83,7 @@ void RadioTunerTx::radioTxTask(void *arg)
 {
     constexpr uint16_t TIMEOUT_DELAY = 3'000; // Cannot be lower than one of the timeouts from CountryRegulations
     RadioTunerTx::SendPositionCtx *taskCtx = static_cast<RadioTunerTx::SendPositionCtx *>(arg);
-
+    // uint32_t lastTx = 0;
     while (true)
     {
         uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(TIMEOUT_DELAY));
@@ -113,6 +113,11 @@ void RadioTunerTx::radioTxTask(void *arg)
             {
                 // Create a message on the message bus to request positional message for a specific protocol
                 uint32_t frequency = CountryRegulations::determineFrequency(protocolTimeSlot);
+                auto msInSecond = CoreUtils::msInSecond();
+
+                // printf("RadioTunerTX: %d %s currentMs:%d sinceLast:%d\n",taskCtx->radioNo, OpenAce::dataSourceToString(protocolTimeSlot.radioConfig.dataSource), msInSecond, (uint16_t)(CoreUtils::msSinceEpoch()-lastTx));
+                // lastTx = CoreUtils::msSinceEpoch();
+
                 taskCtx->controller->getBus().receive(
                     OpenAce::RadioTxPositionRequest
                 {
@@ -121,8 +126,7 @@ void RadioTunerTx::radioTxTask(void *arg)
                         frequency,
                         protocolTimeSlot.frequency.powerdBm},
                     taskCtx->radioNo});
-
-                auto msInSecond = CoreUtils::msInSecond();
+                
                 auto nextTxTime = CountryRegulations::getNextTxTime(msInSecond, taskCtx->protocolTimingIdx);
 
                 taskCtx->protocolTimingIdx = nextTxTime.idx;
@@ -161,7 +165,6 @@ void RadioTunerTx::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 
 void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSource> &datasources)
 {
-
     // Remove all DataSources that are not required
     for (auto it = txTasks.begin(); it != txTasks.end();)
     {
@@ -192,7 +195,6 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
     uint8_t numRadio = 0;
     for (auto dataSource : datasources)
     {
-        numRadio++;
         bool isRunning = etl::find_if(txTasks.cbegin(), txTasks.cend(), [dataSource](const SendPositionCtx &ctx)
         {
             return ctx.source == dataSource;
@@ -203,6 +205,7 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
             if (!txTasks.full())
             {
                 auto &ref = txTasks.emplace_back(dataSource, this, numRadio % numRadios);
+                numRadio++;
 
                 ref.timerHandle = xTimerCreate("txTaskTimer", TASK_DELAY_MS(250), pdFALSE /* Must not be autostart */, &ref, timerTxCallback);
                 if (ref.timerHandle == nullptr)
@@ -226,4 +229,14 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
 void RadioTunerTx::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
+}
+
+etl::vector<OpenAce::DataSource, 6> RadioTunerTx::datasourcesOnRadio(uint8_t radioNo) const {
+    etl::vector<OpenAce::DataSource, 6> datasources;
+    for (const auto &it : txTasks) {
+        if (it.radioNo == radioNo) {
+            datasources.emplace_back(it.source);
+        }
+    }
+    return datasources;
 }

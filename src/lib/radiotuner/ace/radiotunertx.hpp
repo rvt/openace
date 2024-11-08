@@ -98,4 +98,9 @@ public:
     virtual void start() override;
     virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
+
+    /*
+    * Returns the datasources for a specific radio
+    */
+    etl::vector<OpenAce::DataSource, MAX_PROTOCOLS> datasourcesOnRadio(uint8_t radioNo) const;
 };

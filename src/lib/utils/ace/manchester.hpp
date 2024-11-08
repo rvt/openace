@@ -2,7 +2,7 @@
 
 #include "stdint.h"
 
-void manchechesterEncode(uint8_t *destination, const uint8_t* source, uint8_t sourceLength);
+void manchesterEncode(uint8_t *destination, const uint8_t* source, uint8_t sourceLength);
 
 /**
  * Manchester Decode a buffer of maximum length 255

@@ -60,7 +60,6 @@ ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/constants.cpp
     ../ace/adsl.cpp
 )
 
-
 foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
   add_executable(${name} ${ACE_SOURCE_FILES} ${name}.cpp)
 

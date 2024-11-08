@@ -21,11 +21,11 @@ TEST_CASE( "swapBytes16", "[single-file]" )
     REQUIRE( (swapBytes16(0xABCD) == 0xCDAB ) );
 }
 
-TEST_CASE( "manchechesterEncodeTest", "[single-file]" )
+TEST_CASE( "manchesterEncodeTest", "[single-file]" )
 {
     uint8_t decode[] = {0x72, 0x4B};
     uint8_t encoded[] = {0, 0, 0};
-    manchechesterEncode(encoded, decode, 2);
+    manchesterEncode(encoded, decode, 2);
     printf("Manchester:");
     print_buffer_hex(encoded, 4);
     printf("\n");

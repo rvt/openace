@@ -108,7 +108,7 @@ void BaseModule::gpioInterrupt(uint pin, uint32_t event)
     // printf("Pin %d event %d\n", pin, event);
     // Cannot wrap this in a mutex since when tehre is an imterrupt we get an asset on suspend
     // THis is in reality only an isue when modules are added/removed which is not expected during normal operation
-    if (pinInteruptHandlers.contains(pin))
+    if (pinInteruptHandlers.contains(pin) && pinInteruptHandlers[pin].enabled)
     {
         pinInterruptHandler &iHandler = pinInteruptHandlers[pin];
         if (iHandler.callback && ((iHandler.event & event) == iHandler.event))
@@ -156,6 +156,15 @@ void BaseModule::registerPinInterupt(uint8_t pin, uint32_t events, pinIntrCallba
         pinInteruptHandlers[pin] = {events, callback};
         xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
+}
+
+
+void BaseModule::disablePinInterrupt(uint8_t pin) {
+    pinInteruptHandlers[pin].enabled = false;
+}
+
+void BaseModule::enablePinInterrupt(uint8_t pin) {
+    pinInteruptHandlers[pin].enabled = true;    
 }
 
 /**
