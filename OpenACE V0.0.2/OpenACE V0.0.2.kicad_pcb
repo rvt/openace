@@ -24560,39 +24560,6 @@
 	(dimension
 		(type aligned)
 		(layer "F.Cu")
-		(uuid "1d52d9be-ada4-4c88-99b5-1ed54b440614")
-		(pts
-			(xy 128.727 65.786) (xy 128.778 36.195)
-		)
-		(height 0.036334)
-		(gr_text "29.5910 mm"
-			(at 126.988837 50.987461 89.90125099)
-			(layer "F.Cu")
-			(uuid "1d52d9be-ada4-4c88-99b5-1ed54b440614")
-			(effects
-				(font
-					(size 1.5 1.5)
-					(thickness 0.3)
-				)
-			)
-		)
-		(format
-			(prefix "")
-			(suffix "")
-			(units 3)
-			(units_format 1)
-			(precision 4)
-		)
-		(style
-			(thickness 0.2)
-			(arrow_length 1.27)
-			(text_position_mode 0)
-			(extension_height 0.58642)
-			(extension_offset 0.5) keep_text_aligned)
-	)
-	(dimension
-		(type aligned)
-		(layer "F.Cu")
 		(uuid "5e43da73-1987-4d03-9ce1-6dbfab2211bb")
 		(pts
 			(xy 130.429 36.195) (xy 49.53 36.195)
@@ -24602,72 +24569,6 @@
 			(at 89.9795 43.031 0)
 			(layer "F.Cu")
 			(uuid "5e43da73-1987-4d03-9ce1-6dbfab2211bb")
-			(effects
-				(font
-					(size 1.5 1.5)
-					(thickness 0.3)
-				)
-			)
-		)
-		(format
-			(prefix "")
-			(suffix "")
-			(units 3)
-			(units_format 1)
-			(precision 4)
-		)
-		(style
-			(thickness 0.2)
-			(arrow_length 1.27)
-			(text_position_mode 0)
-			(extension_height 0.58642)
-			(extension_offset 0.5) keep_text_aligned)
-	)
-	(dimension
-		(type aligned)
-		(layer "F.Cu")
-		(uuid "c008d217-dae2-445e-9948-e26673903858")
-		(pts
-			(xy 46.482 33.147) (xy 49.53 114.173)
-		)
-		(height -2.931268)
-		(gr_text "81.0833 mm"
-			(at 52.733924 73.482147 272.1543113)
-			(layer "F.Cu")
-			(uuid "c008d217-dae2-445e-9948-e26673903858")
-			(effects
-				(font
-					(size 1.5 1.5)
-					(thickness 0.3)
-				)
-			)
-		)
-		(format
-			(prefix "")
-			(suffix "")
-			(units 3)
-			(units_format 1)
-			(precision 4)
-		)
-		(style
-			(thickness 0.2)
-			(arrow_length 1.27)
-			(text_position_mode 0)
-			(extension_height 0.58642)
-			(extension_offset 0.5) keep_text_aligned)
-	)
-	(dimension
-		(type aligned)
-		(layer "F.Cu")
-		(uuid "c756ad29-30ee-4df1-aa35-5dee151319cf")
-		(pts
-			(xy 49.53 114.173) (xy 49.53 36.195)
-		)
-		(height 0)
-		(gr_text "77.9780 mm"
-			(at 47.73 75.184 90)
-			(layer "F.Cu")
-			(uuid "c756ad29-30ee-4df1-aa35-5dee151319cf")
 			(effects
 				(font
 					(size 1.5 1.5)
