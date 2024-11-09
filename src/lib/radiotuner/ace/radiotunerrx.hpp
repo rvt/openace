@@ -37,9 +37,12 @@ class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx,
     using  SlotReceive = etl::array<uint8_t, static_cast<uint8_t>(OpenAce::DataSource::_ITEMS)>;
 public:
     static constexpr const uint32_t UPDATE_ZONE_REGULATION_EVERY = 30000; // Get new regulatory dataset every XXms
-    static constexpr const uint8_t MAX_SLOTS_PER_SOURCE = 1;             // Maximum slots a datasource can get while receiving
-    static constexpr const uint8_t MAX_SOURCE_PER_RADIO = 3;             // Maximum source per radio, eg maximum protocols it will search for
-    static constexpr const uint8_t TIME_SLOT_SIZE = MAX_SLOTS_PER_SOURCE * MAX_SLOTS_PER_SOURCE;
+    // Maximum slots a datasource can get while receiving
+    // A Slot is like a timeframe a datasource will get for listening. When data is received on a datasource, an extra slot can be added
+    // 1 slot  => ADSL,FLARM,OGN,ADSL,FLARM,OGN
+    // 2 slots => ADSL,ADSL,FLARM,OGN,ADSL,ADSL,FLARM,OGN,
+    static constexpr const uint8_t MAX_SLOTS_PER_SOURCE = 1;             
+    static constexpr const uint8_t TIME_SLOT_SIZE = MAX_SLOTS_PER_SOURCE * OPENACE_MAX_SOURCE_PER_RADIO;
 
 private:
     // Each radio will get one task Context to handle
@@ -58,7 +61,7 @@ private:
         TimerHandle_t timerHandle;
 
         // The DataSources this radio will handle
-        etl::vector<OpenAce::DataSource, MAX_SOURCE_PER_RADIO> dataSources;
+        etl::vector<OpenAce::DataSource, OPENACE_MAX_SOURCE_PER_RADIO> dataSources;
 
         // datasources processed by this task and used by prioritizeDatasources
         using DataSources = etl::vector<OpenAce::DataSource, TIME_SLOT_SIZE * 2>;
@@ -195,7 +198,7 @@ private:
     SlotReceive slotReceive;
 
     // Keep track of one task per each radio
-    etl::list<RadioProtocolCtx, OPEN_ACE_MAX_RADIOS> radioTasks;
+    etl::list<RadioProtocolCtx, OPENACE_MAX_RADIOS> radioTasks;
 
     enum TaskState : uint32_t
     {

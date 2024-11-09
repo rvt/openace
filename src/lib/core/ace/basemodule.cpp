@@ -7,6 +7,9 @@
 /* PICO. */
 #include "hardware/gpio.h"
 
+/* OpenAce */
+#include "coreutils.hpp"
+
 const char *postConstructToString(OpenAce::PostConstruct value)
 {
     switch (value)
@@ -101,8 +104,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
     return nullptr;
 }
 
-// __time_critical_func
-void BaseModule::gpioInterrupt(uint pin, uint32_t event)
+void __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
 {
     // Handle the interrupt and call back over callback or task notification
     // printf("Pin %d event %d\n", pin, event);
@@ -117,6 +119,7 @@ void BaseModule::gpioInterrupt(uint pin, uint32_t event)
         }
         else if ((iHandler.event & event) == iHandler.event)
         {
+            // Takes about 3ms to reach the RX function in SX1262
             BaseType_t xHigherPriorityTaskWoken = pdFALSE;
             xTaskNotifyFromISR(iHandler.handler, iHandler.notificationValue, eSetBits, &xHigherPriorityTaskWoken);
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);

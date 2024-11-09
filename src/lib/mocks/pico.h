@@ -18,3 +18,5 @@ inline void panic(const char *msg)
 {
     printf("panic: %s\n", msg);
 }
+
+#define __time_critical_func(func_name) func_name

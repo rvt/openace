@@ -143,7 +143,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
                         frequency,
                         nextTimeSlot.frequency.powerdBm}});
 
-                // Calculate any delays up to a maximum of 20ms and use that as an offset
+                // Calculate any delays up to a maximum of 20ms and use that as an offset to compensate against FreeRTOS delays for the next tick
                 auto currentMs = (uint16_t)(CoreUtils::msSinceEpoch() % 1000);
                 auto thisSlotTime = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot).slotStartTime;
                 auto offset = etl::max(0, etl::min(20, (int16_t)currentMs - (int16_t)thisSlotTime));
@@ -257,7 +257,7 @@ void RadioTunerRx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
             }
 
             // Copy the assigned data sources for this radio
-            etl::vector<OpenAce::DataSource, MAX_SOURCE_PER_RADIO> newDataSources;
+            etl::vector<OpenAce::DataSource, OPENACE_MAX_SOURCE_PER_RADIO> newDataSources;
             for (uint8_t i = 0; i < sourcesForThisRadio; ++i)
             {
                 newDataSources.emplace_back(dataSources[newDsPos]);

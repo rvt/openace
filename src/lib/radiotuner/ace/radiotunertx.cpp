@@ -166,33 +166,34 @@ void RadioTunerTx::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSource> &datasources)
 {
     // Remove all DataSources that are not required
+    etl::array<int8_t, OPENACE_MAX_RADIOS> radioOccupation={};
+    radioOccupation.fill(-1);
+
     for (auto it = txTasks.begin(); it != txTasks.end();)
     {
+        bool taskSourceInDatasource = etl::find_if(datasources.cbegin(), datasources.cend(), [&it](const OpenAce::DataSource &source)
         {
-            bool taskSourceInDatasource = etl::find_if(datasources.cbegin(), datasources.cend(), [&it](const OpenAce::DataSource &source)
-            {
-                return it->source == source;
-            }) != datasources.cend();
+            return it->source == source;
+        }) != datasources.cend();
 
-            if (!taskSourceInDatasource)
+        if (!taskSourceInDatasource)
+        {
+            xTimerDelete(it->timerHandle, TASK_DELAY_MS(2'000));
+            xTaskNotify(it->taskHandle, TaskState::EXIT, eSetBits);
+            while (eTaskGetState(it->taskHandle) != eDeleted)
             {
-                xTimerDelete(it->timerHandle, TASK_DELAY_MS(2'000));
-                xTaskNotify(it->taskHandle, TaskState::EXIT, eSetBits);
-                while (eTaskGetState(it->taskHandle) != eDeleted)
-                {
-                    vTaskDelay(TASK_DELAY_MS(50));
-                }
-                it = txTasks.erase(it);
+                vTaskDelay(TASK_DELAY_MS(50));
             }
-            else
-            {
-                ++it;
-            }
+            it = txTasks.erase(it);
+        }
+        else
+        {
+            radioOccupation[it->radioNo]++;
+            ++it;
         }
     }
 
     // Add all DataSources that are required, but not yet running
-    uint8_t numRadio = 0;
     for (auto dataSource : datasources)
     {
         bool isRunning = etl::find_if(txTasks.cbegin(), txTasks.cend(), [dataSource](const SendPositionCtx &ctx)
@@ -203,9 +204,13 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
         if (!isRunning)
         {
             if (!txTasks.full())
-            {
-                auto &ref = txTasks.emplace_back(dataSource, this, numRadio % numRadios);
-                numRadio++;
+            { 
+                // Get the least occupied radio
+                // TODO: HEre we could add an additional check based on conditions, for example two protocols not at one radio
+                const auto numRadio = etl::find_if(radioOccupation.begin(), radioOccupation.end(), [](int8_t value) { return value > -1; });
+                radioOccupation[*numRadio]++;
+
+                auto &ref = txTasks.emplace_back(dataSource, this, 0/*numRadio*/);
 
                 ref.timerHandle = xTimerCreate("txTaskTimer", TASK_DELAY_MS(250), pdFALSE /* Must not be autostart */, &ref, timerTxCallback);
                 if (ref.timerHandle == nullptr)
@@ -217,7 +222,7 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
                 xTaskCreate(radioTxTask, "txTask", configMINIMAL_STACK_SIZE + 64, &ref, tskIDLE_PRIORITY, &ref.taskHandle);
                 if (ref.taskHandle == nullptr)
                 {
-
+                    xTimerDelete(ref.timerHandle, TASK_DELAY_MS(250));
                     txTasks.pop_back();
                     continue;
                 }

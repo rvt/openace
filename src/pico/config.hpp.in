@@ -94,9 +94,6 @@
 // 4ms to be on the safe side
 #define OPENACE_SX1261_MAX_BUSY_WAIT_TIME_MS 4
 
-// Time set for SetRX() in ms
-#define OPENACE_SX126X_MAX_RX_TIME  10000
-
 // Turn GNXXX sentences into GPXXX SENTENCES
 // The GPS sends the combined as GN, but tools like skydemon seems to want GPXXX sentences
 #define OPENACE_DATAPORT_GNXXX_TO_GPXXX true
@@ -126,7 +123,9 @@
 #define OPENACE_EMAFLOAT_K_FACTOR_1S ( 1.9f )
 
 // Maximum radios that can be controlled
-#define OPEN_ACE_MAX_RADIOS ( 2 ) 
+#define OPENACE_MAX_RADIOS ( 2 ) 
+// Maximum number of datasources per radio that can be handled
+#define OPENACE_MAX_SOURCE_PER_RADIO ( 3 )
 
 // Maximum time the system will start scanning. If a scan result was found, then scanning will stop  aswell.
 #define OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS 10000

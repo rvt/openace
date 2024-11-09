@@ -143,6 +143,8 @@ void Sx1262::radioInit()
     clamp |= 0x1E;
     sx126x_write_register(this, 0x08D8, &clamp, 1);
 
+    sx126x_set_buffer_base_address(this, 0x00, 0x80);
+
     standBy();
 }
 
@@ -209,32 +211,26 @@ void Sx1262::checkAndClearDeviceErrors()
     }
 }
 
-void Sx1262::configureSx1262(const RadioParameters &lastParameters, const RadioParameters &newParameters, bool tx)
+void Sx1262::configureSx1262(const RadioParameters &newParameters)
 {
-    (void)tx;
     standBy();
+    // THis routines takes about 250us
     if (newParameters.config.mode == Radio::Mode::GFSK)
     {
-        if (lastParameters.config.mode != newParameters.config.mode)
-        {
-            sx126x_set_pkt_type(this, SX126X_PKT_TYPE_GFSK);
-            sx126x_set_gfsk_mod_params(this, &DEFAULT_MOD_PARAMS_GFSK);
-            sx126x_set_rx_tx_fallback_mode(this, SX126X_FALLBACK_STDBY_XOSC);
-            statistics.mode = newParameters.config.mode;
-        }
+        sx126x_set_pkt_type(this, SX126X_PKT_TYPE_GFSK);
+        sx126x_set_gfsk_mod_params(this, &DEFAULT_MOD_PARAMS_GFSK);
+        sx126x_set_rx_tx_fallback_mode(this, SX126X_FALLBACK_STDBY_XOSC);
+        statistics.mode = newParameters.config.mode;
 
-        if (lastParameters.config.dataSource != newParameters.config.dataSource)
-        {
-            auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
-            pkt_params_gfsk.pld_len_in_bytes = newParameters.config.packetLength * MANCHESTER;
-            pkt_params_gfsk.preamble_len_in_bits = 1 * 8;
-            pkt_params_gfsk.preamble_detector = static_cast<sx126x_gfsk_preamble_detector_t>((1 + 3) & 0b1100); // Must be set to 1 for now (even though ADS-L has 2...)
-            pkt_params_gfsk.sync_word_len_in_bits = (newParameters.config.syncLength) * 8;
-            sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
-            sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data() + newParameters.config.preambleLength, newParameters.config.syncLength);
-            // printf("Radio %d changed from %s to %s\n", radioNo, OpenAce::dataSourceToString(lastParameters.config.dataSource), OpenAce::dataSourceToString(newParameters.config.dataSource));
-            statistics.dataSource = newParameters.config.dataSource;
-        }
+        auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
+        pkt_params_gfsk.pld_len_in_bytes = newParameters.config.packetLength * MANCHESTER;
+        pkt_params_gfsk.preamble_len_in_bits = 1 * 8;
+        pkt_params_gfsk.preamble_detector = static_cast<sx126x_gfsk_preamble_detector_t>((1 + 3) & 0b1100); // Must be set to 1 for now (even though ADS-L has 2...)
+        pkt_params_gfsk.sync_word_len_in_bits = (newParameters.config.syncLength) * 8;
+        sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
+        sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data() + newParameters.config.preambleLength, newParameters.config.syncLength);
+        // printf("Radio %d changed from %s to %s\n", radioNo, OpenAce::dataSourceToString(lastParameters.config.dataSource), OpenAce::dataSourceToString(newParameters.config.dataSource));
+        statistics.dataSource = newParameters.config.dataSource;
     }
     else if (newParameters.config.mode == Radio::Mode::LORA)
     {
@@ -245,12 +241,10 @@ void Sx1262::configureSx1262(const RadioParameters &lastParameters, const RadioP
         printf("Lora not yet supported");
     }
 
-    if (lastParameters.frequency != newParameters.frequency)
-    {
-        sx126x_set_rf_freq(this, newParameters.frequency + offsetHz);
-        statistics.frequency = newParameters.frequency + offsetHz;
-        // printf("Radio %d changed frequency from %ld to %ld\n", radioNo, lastParameters.frequency, newParameters.frequency);
-    }
+    sx126x_set_rf_freq(this, newParameters.frequency + offsetHz);
+    statistics.frequency = newParameters.frequency + offsetHz;
+
+    // printf("Radio %d changed frequency from %ld to %ld\n", radioNo, lastParameters.frequency, newParameters.frequency);
     checkAndClearDeviceErrors();
 }
 
@@ -260,15 +254,14 @@ void Sx1262::Listen()
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
     enablePinInterrupt(dio1Pin);
 
-    sx126x_set_buffer_base_address(this, 0x00, 0x00);
-
     // https://forum.lora-developers.semtech.com/t/sx1262-reduced-rx-sensitivity-packet-reception-fails/162/12
     // Need to call SetFs() and then RxBoosted() periodically to fix a issue with receiver gain
     sx126x_cfg_rx_boosted(this, true);
 
-    // Device is out into listen with timeout because there where reports
-    // that sensitivity goes down at some point
-    sx126x_set_rx(this, OPENACE_SX126X_MAX_RX_TIME);
+    // sx126x_set_rx_with_timeout_in_rtc_step( this, SX126X_RX_CONTINUOUS );
+    //  Device is out into listen with timeout because there where reports
+    //  that sensitivity goes down at some point
+    sx126x_set_rx(this, SX126X_MAX_TIMEOUT_IN_MS);
     // printf("Radio %d set to listen\n", radioNo);
 }
 
@@ -285,7 +278,7 @@ void Sx1262::sendGFSKPacket(const RadioParameters &parameters, const uint8_t *da
     statistics.powerdBm = parameters.powerdBm;
     sx126x_set_tx_params(this, parameters.powerdBm, SX126X_RAMP_200_US);
 
-    sx126x_write_buffer(this, 0, data, length);
+    sx126x_write_buffer(this, 0x00, data, length);
     sx126x_set_tx(this, SX126X_MAX_TIMEOUT_IN_MS);
 
     // 8.3
@@ -325,7 +318,7 @@ void Sx1262::receiveGFSKPacket(Radio::RadioParameters const &parameters)
         if (receivedFrameLength > 0 && receivedFrameLength <= maxFrameLength)
         {
             uint8_t data[maxFrameLength];
-            sx126x_read_buffer(this, 0x00, data, receivedFrameLength);
+            sx126x_read_buffer(this, 0x80, data, receivedFrameLength);
 
             OpenAce::RadioRxFrame RadioRxFrame{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), (int8_t)(-pkt_status.rssi_sync / 2), parameters.frequency, parameters.config.dataSource};
 
@@ -394,7 +387,7 @@ void Sx1262::sx1262Task(void *arg)
     aceSpi->aquireSlot(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, taskHandle);
     while (true)
     {
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(OPENACE_SX126X_MAX_RX_TIME)))
+        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(10000)))
         {
 
             if ((notifyValue & SpiModule::SPI_BUS_READY) == SpiModule::SPI_BUS_READY)
@@ -405,13 +398,16 @@ void Sx1262::sx1262Task(void *arg)
                 // printf("Radio %d IRQ Status: %d %ld\n", sx1262->radioNo, irqStatus, notifyValue);
                 if (irqStatus & SX126X_IRQ_RX_DONE)
                 {
-                    // printf("Radio %d Packet RX: %s %d\n", sx1262->radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
+                    // Reading the data takes about 4ms
+                    // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
                     sx1262->receiveGFSKPacket(lastRadioParameters);
+                    sx1262->configureSx1262(lastRadioParameters);
                     sx1262->Listen();
                 }
 
                 if (notifyValue & TaskState::FAILSAVE_LISTEN_MODE && lastRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
                 {
+                    sx1262->configureSx1262(lastRadioParameters);
                     sx1262->Listen();
                     // printf("Radio %d FailSafe %d\n", sx1262->radioNo, CoreUtils::msInSecond());
                 }
@@ -424,8 +420,8 @@ void Sx1262::sx1262Task(void *arg)
                     {
                     case CommandType::RXMODE:
                     {
-                        // printf("Radio %d RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
-                        sx1262->configureSx1262(lastRadioParameters, command.rxMode.radioParameters, false);
+                        printf("Radio %d RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
+                        sx1262->configureSx1262(command.rxMode.radioParameters);
                         sx1262->Listen();
                         lastRadioParameters = command.rxMode.radioParameters;
                         break;
@@ -435,14 +431,14 @@ void Sx1262::sx1262Task(void *arg)
                         if (sx1262->txEnabled)
                         {
                             // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
-                            sx1262->configureSx1262(lastRadioParameters, command.txPacket.radioParameters, true);
+                            sx1262->configureSx1262(command.txPacket.radioParameters);
 
                             uint8_t frame[OpenAce::RADIO_MAX_FRAME_LENGTH * 2];
                             manchesterEncode(frame, command.txPacket.data.data(), command.txPacket.length);
 
                             sx1262->sendGFSKPacket(command.txPacket.radioParameters, frame, command.txPacket.length * 2);
 
-                            sx1262->configureSx1262(command.txPacket.radioParameters, lastRadioParameters, false);
+                            sx1262->configureSx1262(lastRadioParameters);
                             sx1262->Listen();
                         }
                         break;

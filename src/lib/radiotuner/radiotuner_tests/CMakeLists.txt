@@ -7,7 +7,8 @@ message(STATUS "Building tests.")
 add_definitions(-DCATCH_CONFIG_NO_POSIX_SIGNALS)
 add_definitions(-DUNIT_TESTING)
 add_definitions(-DOPENACE_MAXIMUM_TCP_CLIENTS=4)
-add_definitions(-DOPEN_ACE_MAX_RADIOS=2)
+add_definitions(-DOPENACE_MAX_RADIOS=2)
+add_definitions(-DOPENACE_MAX_SOURCE_PER_RADIO=3)
 add_definitions(-DOPENACE_GPS_FREQUENCY=5)
 
 

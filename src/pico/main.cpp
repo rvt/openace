@@ -220,7 +220,7 @@ static void loadModules(void *arch)
     load(AceSpi::NAME, bus, config, true);
     load(PicoRtc::NAME, bus, config, true);
 
-    for (uint8_t i = 0; i < OPEN_ACE_MAX_RADIOS; i++)
+    for (uint8_t i = 0; i < OPENACE_MAX_RADIOS; i++)
     {
         load(Sx1262::NAMES[i], bus, config);
     }

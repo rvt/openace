@@ -26,8 +26,8 @@
  */
 class RadioTunerTx : public BaseModule, public etl::message_router<RadioTunerTx, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg>
 {
-    static constexpr const size_t MAX_PROTOCOLS = 6;                      // Maximum number of datasources per radio
-    static constexpr const uint32_t UPDATE_ZONE_REGULATION_EVERY = 30000; // Get new regulatory dataset every XXms
+    static constexpr const size_t MAX_PROTOCOLS = OPENACE_MAX_SOURCE_PER_RADIO * OPENACE_MAX_RADIOS; // Maximum number of datasources per radio
+    static constexpr const uint32_t UPDATE_ZONE_REGULATION_EVERY = 30000;  // Get new regulatory dataset every XXms
 
 private:
     enum TaskState : uint32_t

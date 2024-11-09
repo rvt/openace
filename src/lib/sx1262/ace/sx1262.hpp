@@ -218,7 +218,7 @@ public:
     void checkAndClearDeviceErrors();
     void receiveGFSKPacket(Radio::RadioParameters const &parameters);
     void sendGFSKPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length);
-    void configureSx1262(const RadioParameters &lastParameters, const RadioParameters &newParameters, bool tx);
+    void configureSx1262(const RadioParameters &newParameters);
     bool applyNewLoraParameters(const Radio::ProtocolConfig &parameters);
     sx126x_irq_mask_t getIrqStatus();
 
