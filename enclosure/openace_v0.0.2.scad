@@ -10,64 +10,75 @@ include <NopSCADlib/vitamins/toggles.scad>
 // Change log
 // 9 Oct 2024 set chamfer of box to 0
 // 9 Oct 2024 widen USB plugs
-
+// 5 Nov made higher + option to remove GPS port
+// 8 Nov PCB higher to 5mm
 
 $fn = $preview ? 20 : 76;
 BOX_CORNER_RADUIS=4; // [0:5]
-
-VISUALIZE_PCB=true;
-VISUALIZE_TEXT=true;
-VISUALIZE_LID_ON_TOP=true;
-VISUALIZE_MAIN_CASE=true;
 
 // Width of all the walls of the box
 WALL_THICKNESS = 2.4; // [1.6, 2.0, 2.4, 2.8]
 // Thickness of the bottom of the caseinclude 
 BOTTOM_THICKNESS = 2.5; // [2.0, 2.5, 3, 3.5]
-TOP_THICKNESS = 2.0; // [2.0, 2.5, 3, 3.5]
+TOP_THICKNESS = 2.0; // [2.0, 2.5, 3, 3.5]LID_SCREW_DIAM
 
 // Add a hinge for a smaller GPS on LID
-HINGE_ON_LID=true;
+HINGE_ON_LID=false;
+
+// Make room for a GPS SMA connector for specific GPS types
+GPS_SMA=false;
 
 // Printer tolerance (Mainly used to fix the box)
 PRINT_TOLERANCE=0.2; // [0.05, 0.075, 0.1, 0.15, 0.175, 0.2]
 // Screw diameter if the screws for the pi
-PCB_SCREW_DIAM=2.5; // [2:2.2,2.4,2.5,3.0]
+PCB_SCREW_DIAM=2.4; // [2:2.2,2.4,2.5,3.0]
 // Screw diameter for the lid
-LID_SCREW_DIAM=3; // [2:2.2,2.4,2.5,3.0]
+LID_SCREW_DIAM=2.4; // [2:2.2,2.4,2.5,3.0]
 // Rim lid
 RIM=0.75; // RVT Decreased by 0.75
 
-VISUALIZE_CUT=true;
-VISUALIZE_CUT_POS=75; // [-30,-21,0,47,75]
 
 BATTERY_COMPARTEMENT_WIDTH=22;
+/* [VISUALISATION] */
+VISUALIZE_PCB=true;
+VISUALIZE_TEXT=true;
+VISUALIZE_LID_ON_TOP=true;
+VISUALIZE_MAIN_CASE=true;
+
+VISUALIZE_LID_POSITION=0; // [0:0.5:50]
+
+VISUALIZE_CUT=true;
+VISUALIZE_CUT_POS_X=75; // [-30,-21,0,47,75]
+VISUALIZE_CUT_POS_Y=75; // [-30,-21,0,47,75]
+
+
 
 /* [Hidden] */
-LID_HOLE_DIAM=LID_SCREW_DIAM+0.5;
+LID_HOLE_DIAM=LID_SCREW_DIAM+0.2;
 LID_INNER_HIGHT=2;
 ATTACH_OFFSET = 0.01; // BOLS2 seems to leave part deatched.
 
-CASE_HEIGHT= 15;
+CASE_HEIGHT= 18;
 
 case_inner=[90+BATTERY_COMPARTEMENT_WIDTH, 87];
 case=case_inner + [WALL_THICKNESS*2, WALL_THICKNESS*2];
 echo("Case height:", CASE_HEIGHT);
 echo("CASE", case);
 
-FEET_HEIGHT=4; //RVT INCREASED BY ONE
+FEET_HEIGHT=4.5; 
 
-BAT_HOLDER_HEIGHT=2;
-BAT_HOLDER=[BATTERY_COMPARTEMENT_WIDTH+WALL_THICKNESS*2, case.y];
-//down(BAT_HOLDER_HEIGHT+2) left(case.x/2-BAT_HOLDER.x/2)
-back(100) left(40)
-bottomAndWall(size=BAT_HOLDER, wall=WALL_THICKNESS, bottom=2, rounding=BOX_CORNER_RADUIS, ichamfer=0, h=BAT_HOLDER_HEIGHT) {
 
-  position(BACK)
-    cuboid([16,2,12], anchor=FRONT+BOTTOM, rounding=2, edges=[BACK+BOTTOM,RIGHT+BACK,LEFT+BACK,TOP+BACK]);
-  position(FRONT)
-    cuboid([16,2,12], anchor=BACK+BOTTOM, rounding=2, edges=[FRONT+BOTTOM,RIGHT+FRONT,LEFT+FRONT,TOP+FRONT]);
-}
+//BAT_HOLDER_HEIGHT=2;
+//BAT_HOLDER=[BATTERY_COMPARTEMENT_WIDTH+WALL_THICKNESS*2, case.y];
+////down(BAT_HOLDER_HEIGHT+2) left(case.x/2-BAT_HOLDER.x/2)
+//back(100) left(40)
+//bottomAndWall(size=BAT_HOLDER, wall=WALL_THICKNESS, bottom=2, rounding=BOX_CORNER_RADUIS, ichamfer=0, h=BAT_HOLDER_HEIGHT) {
+//
+//  position(BACK)
+//    cuboid([16,2,12], anchor=FRONT+BOTTOM, rounding=2, edges=[BACK+BOTTOM,RIGHT+BACK,LEFT+BACK,TOP+BACK]);
+//  position(FRONT)
+//    cuboid([16,2,12], anchor=BACK+BOTTOM, rounding=2, edges=[FRONT+BOTTOM,RIGHT+FRONT,LEFT+FRONT,TOP+FRONT]);
+//}
 
 
 // up(25) right(45) fwd(72) zrot(90) import("gps-antenna-holder.stl", convexity=2);
@@ -76,7 +87,8 @@ bottomAndWall(size=BAT_HOLDER, wall=WALL_THICKNESS, bottom=2, rounding=BOX_CORNE
 //////////////// CASE ////////////////
 removeTag=$preview?"preview":"remove";
 if (VISUALIZE_MAIN_CASE)
-left_half(x=VISUALIZE_CUT&&$preview?VISUALIZE_CUT_POS:1000,s=200)
+left_half(x=VISUALIZE_CUT&&$preview?VISUALIZE_CUT_POS_X:1000,s=200)
+back_half(y=VISUALIZE_CUT&&$preview?VISUALIZE_CUT_POS_Y:1000,s=200)
 diff("remove", "keep")
 color_this("gray")
 up(ATTACH_OFFSET)
@@ -91,17 +103,24 @@ bottomAndWall(size=case, wall=WALL_THICKNESS, bottom=BOTTOM_THICKNESS, rounding=
         // Screw Mounts PI
         attach(["mnt1", "mnt2", "mnt3", "mnt4"]) 
           color("lightgreen") orient(anchor=BOTTOM) down(ATTACH_OFFSET) {
-              screw_mount(anchor=TOP,height=FEET_HEIGHT, screw=PCB_SCREW_DIAM);
-              tag("remove") cyl(d=PCB_SCREW_DIAM*0.75,l=FEET_HEIGHT+BOTTOM_THICKNESS-0.5, anchor=TOP);
+              screw_mount(anchor=TOP,height=FEET_HEIGHT, screw=PCB_SCREW_DIAM)
+              tag("remove") position(TOP) cyl(d=PCB_SCREW_DIAM*0.9,l=FEET_HEIGHT+BOTTOM_THICKNESS-0.5, anchor=TOP);
             }
 
               
         //
         tag("remove") {
           left(0.4)
-          attach(["ant1","ant2","adsb", "gps"]) {
+          attach(["ant1","ant2","adsb"]) {
             cube([7,7,WALL_THICKNESS+0.2],anchor=BOTTOM);
           }
+          
+          if (GPS_SMA) {
+            attach(["gps"]) {
+              cube([7,7,WALL_THICKNESS+0.2],anchor=BOTTOM);
+            }
+          }
+          
           attach("PICO") {
              {
               cuboid([11.5,6.5,5], rounding=2, anchor=BOTTOM, edges=[LEFT+FWD, RIGHT+FWD, LEFT+BACK, RIGHT+BACK]);
@@ -128,15 +147,15 @@ bottomAndWall(size=case, wall=WALL_THICKNESS, bottom=BOTTOM_THICKNESS, rounding=
         M4_washer, 3, [3.94, 2.03, 0.76, 3, 4.83]]; // 20
  
     if ($preview)
-     position("iback") left(20) up(8.5) yrot(90) xrot(-90) toggle(MINI_ROCKER, 3);  
+     position(TOP + BACK + RIGHT) left(70) fwd(3) down(5) yrot(90) xrot(-90) toggle(MINI_ROCKER, 3);  
       
       
     // Battery compartement    removal 
-    tag("remove")  
-      position(BOTTOM+LEFT) 
-        down(0.01)
-        right(WALL_THICKNESS) 
-        cube([BATTERY_COMPARTEMENT_WIDTH,case_inner.y,BOTTOM_THICKNESS+0.4], anchor=LEFT+BOTTOM);
+//    tag("remove")  
+//      position(BOTTOM+LEFT) 
+//        down(0.01)
+//        right(WALL_THICKNESS) 
+//        cube([BATTERY_COMPARTEMENT_WIDTH,case_inner.y,BOTTOM_THICKNESS+0.4], anchor=LEFT+BOTTOM);
       
     // battery / PCB seperation
     position("ileft") 
@@ -144,26 +163,24 @@ bottomAndWall(size=case, wall=WALL_THICKNESS, bottom=BOTTOM_THICKNESS, rounding=
       cube([2,case_inner.y,CASE_HEIGHT-8], anchor=LEFT+BOTTOM) {
         tag("remove")
           up(0.01) back(32) align(FRONT,TOP)
-          cube([2.2,25,8], anchor=RIGHT);
-        
+          cube([2.2,25,8], anchor=RIGHT);        
       }
-
 
     // battery
     bcontact = ["bcontact", 9.33, 9.75, 0.4, 2.86, 6, [1.6, 3, 5], [4.5, batt_spring]];
     if ($preview)
       position("ileft") 
-      right(BATTERY_COMPARTEMENT_WIDTH/2) up(3)
+      right(BATTERY_COMPARTEMENT_WIDTH/2) up(19/2)
       xrot(90) 
-        battery(["", "",69, 19, 13, 10,  0,   "MediumSeaGreen", [], 0, []]);
+        battery(["", "", 69, 19, 13, 10,  0,   "MediumSeaGreen", [], 0, []]);
     
             
     // Mount for Lid
     down(RIM)  // 1.25 for RIM
-      mount_system(h=9);
+      mount_system(h=11);
  
       
-    // Extra material for support      , center thingy
+    // Extra material for support, center thingy
     position("inside") 
       down(ATTACH_OFFSET) 
       cube([30,30,1],anchor=BOTTOM) {
@@ -196,8 +213,9 @@ bottomAndWall(size=case, wall=WALL_THICKNESS, bottom=BOTTOM_THICKNESS, rounding=
 
 if (true)
 left($preview && VISUALIZE_LID_ON_TOP?0:case_inner.x+10) 
-up($preview && VISUALIZE_LID_ON_TOP?CASE_HEIGHT+1+TOP_THICKNESS+0.5:TOP_THICKNESS+LID_INNER_HIGHT)
-left_half(x=VISUALIZE_CUT&&$preview?VISUALIZE_CUT_POS:1000,s=200)
+up($preview && VISUALIZE_LID_ON_TOP?CASE_HEIGHT+TOP_THICKNESS+VISUALIZE_LID_POSITION:TOP_THICKNESS+LID_INNER_HIGHT)
+left_half(x=VISUALIZE_CUT&&$preview?VISUALIZE_CUT_POS_X:1000,s=200)
+back_half(y=VISUALIZE_CUT&&$preview?VISUALIZE_CUT_POS_Y:1000,s=200)
 diff("removeBox")
   yrot(VISUALIZE_LID_ON_TOP?0:180)
   color_this("gray")
@@ -221,7 +239,7 @@ diff("removeBox")
         HINGE_LENGTH=6;        // Length of each hinge  
         KNUCKLE_OFFSET = 1;
         HINGE_SEGS=5;
-//        back(HINGE_SEGS*3)
+        back(BOX_CORNER_RADUIS)
         position(RIGHT+FRONT+TOP)
         cuboid([HINGE_LENGTH*5+0, 7, 0.2*3], anchor=FRONT+TOP+LEFT, orient=LEFT, spin=90, chamfer=0.2*3, edges=[BOTTOM+BACK]) {
           left(HINGE_LENGTH*3-HINGE_LENGTH/2) 
@@ -241,19 +259,19 @@ module mount_system(hole=false, h=10, type=1) {
   // FOr case
   if (type==1) {
     position(TOP+LEFT+BACK) translate([WALL_THICKNESS,-WALL_THICKNESS]) zrot(-90) 
-      side_support(d=5, w=5, cl=5, l=h, toPrint=hole?4:2, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_SCREW_DIAM);    
+      side_support(d=5, w=5, cl=h-5, l=h, toPrint=hole?4:2, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_SCREW_DIAM);    
     position(TOP+LEFT+FRONT) translate([WALL_THICKNESS,WALL_THICKNESS]) zrot(0) 
-      side_support(d=5, w=5, cl=5,  l=h, toPrint=hole?4:2, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_SCREW_DIAM);    
+      side_support(d=5, w=5, cl=h-5,  l=h, toPrint=hole?4:2, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_SCREW_DIAM);    
     
     position(TOP+RIGHT+FRONT) translate([-WALL_THICKNESS-OFFSET_RIGHT-6,WALL_THICKNESS]) zrot(0) 
-      side_support(d=4, w=6, cl=4,  l=h, toPrint=hole?4:1, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_SCREW_DIAM);    
+      side_support(d=4, w=6, cl=h-5,  l=h, toPrint=hole?4:1, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_SCREW_DIAM);    
     
     position(TOP+RIGHT+BACK) translate([-WALL_THICKNESS-OFFSET_RIGHT,-WALL_THICKNESS]) zrot(180) 
-      side_support(d=4, w=6, cl=4,  l=h, toPrint=hole?4:1, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_SCREW_DIAM); 
+      side_support(d=4, w=6, cl=h-5,  l=h, toPrint=hole?4:1, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_SCREW_DIAM); 
 
   }
    
-  // fot LID 
+  // Rot LID 
   if (type==0) {
     position(TOP+LEFT+BACK) translate([WALL_THICKNESS,-WALL_THICKNESS]) zrot(-90) 
       side_support(d=5, w=5, l=h, toPrint=hole?4:3, anchor=FRONT+LEFT+TOP, sideOfsset=2.5, screwDiam=LID_HOLE_DIAM);    
@@ -409,7 +427,7 @@ module openace_pcb(anchor=BOTTOM, spin=0, orient=UP, center, bbox=false, rough=f
         named_anchor("adsb_h", [positions[2].x+xornerOff,positions[2].y-50.67,size.z/2+6.5], unit(RIGHT)),
 
         named_anchor("gps",  [positions[2].x+xornerOff,positions[2].y-69,size.z/2+4.2], unit(RIGHT)),
-        named_anchor("PICO", PICO + [0,0,2.5], unit(BACK)),
+        named_anchor("PICO", PICO + [-0.25,0,2.5], unit(BACK)),
         named_anchor("POWER", [positions[0].x+15.05,positions[0].y-xornerOff,size.z/2+5.0], unit(FRONT)),
         named_anchor("FLASH", [positions[0].x+47.46,positions[0].y-xornerOff,size.z/2+0.5], unit(FRONT)),
 
