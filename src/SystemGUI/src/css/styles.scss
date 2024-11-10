@@ -4,7 +4,8 @@ $gaps: (
   lg: 2.25em,
 ) !default;
 
-@use "@ggedde/spry-css/spry";
+/* Importing of SASS started to fail */
+@use "spry.min.css";
 
 .section {
   margin-top: 0.8em;
