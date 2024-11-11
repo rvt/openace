@@ -10,6 +10,7 @@
   "devDependencies": {
     "@parcel/compressor-brotli": "2.12.0",
     "@parcel/compressor-gzip": "2.12.0",
+    "@parcel/optimizer-terser": "2.12.0",
     "@parcel/transformer-sass": "2.12.0",
     "http-proxy-middleware": "3.0.0",
     "parcel": "2.12.0",
@@ -19,5 +20,16 @@
     "@frameable/el": "0.7.3",
     "@ggedde/spry-css": "2.3.23",
     "just-validate": "4.3.0"
+  },
+  "overrides": {
+    "htmlnano": {
+      "svgo": "3.3.2"
+    },
+    "@parcel/optimizer-htmlnano": {
+      "svgo": "3.3.2"
+    },
+    "postcss-svgo": {
+      "svgo": "3.3.2"
+    }
   }
 }

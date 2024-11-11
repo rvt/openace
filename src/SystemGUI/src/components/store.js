@@ -193,7 +193,7 @@ export class OpenAceStore {
       })
       .catch((e) => {
         this.state.connected = false;
-        throw new Error();
+        throw new Error(e);
       });
   }
 }

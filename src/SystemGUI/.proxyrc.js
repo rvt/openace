@@ -1,7 +1,7 @@
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
-const TARGET = "192.168.1.1";
-//const TARGET = "192.168.178.143";
+//const TARGET = "192.168.1.1";
+const TARGET = "192.168.178.227";
 
 function capitalizeHeader(header) {
   return header.replace(/\b\w/g, (char) => char.toUpperCase());

@@ -15,5 +15,8 @@
     "*.json": [
       "@parcel/transformer-raw"
     ]
+  },
+  "optimizers": {
+    "*.js": ["@parcel/optimizer-terser"]
   }
 }

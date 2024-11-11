@@ -1,0 +1,17 @@
+{
+  "compress": {
+    "defaults": true,
+    "passes": 2,
+    "keep_fargs": false,
+    "inline": true,
+    "unsafe": true
+  },
+  "mangle": true,
+  "output": {
+    "beautify": false,
+    "comments": false,
+    "quote_style": 3,
+    "preserve_annotations": false,
+    "wrap_func_args": false
+  }
+}
