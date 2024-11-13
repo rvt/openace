@@ -18,9 +18,7 @@ OpenAce::PostConstruct WifiService::postConstruct()
 
 void WifiService::start()
 {
-    // timerHandle = xTimerCreate("wifiServiceTask", TASK_DELAY_MS(2'500), pdTRUE /* Must not be autostart */, this, timerTask);
-    xTaskCreate(wifiTask, "wifiTask", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY, &taskHandle);
-
+    xTaskCreate(wifiTask, "wifiTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 1, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -32,12 +30,6 @@ void WifiService::stop()
 void WifiService::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
-}
-
-void WifiService::timerTask(TimerHandle_t timer)
-{
-    WifiService *at = (WifiService *)pvTimerGetTimerID(timer);
-    xTaskNotify(at->taskHandle, TaskState::TIMER, eSetBits);
 }
 
 void WifiService::wifiTask(void *arg)
@@ -84,11 +76,13 @@ void WifiService::wifiTask(void *arg)
                     wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
                 }
                 // If for whatever reason WIFI scan does not find any network, then stop scanning after OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS
-                if (CoreUtils::msElapsed(startScan) > OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS) {
+                if (CoreUtils::msElapsed(startScan) > OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS) 
+                {
                     wifiService->connectionState = ConnectionState::APMODESTART;
                     cyw43_wifi_leave(&cyw43_state, 0);
                     wifiService->disableSta();
-                    wifiService->connectionState = ConnectionState::APMODESTART;                }
+                    wifiService->connectionState = ConnectionState::APMODESTART;                
+                }
                 break;
 
             case ConnectionState::TRYCLIENTCONNECT:
@@ -100,6 +94,7 @@ void WifiService::wifiTask(void *arg)
                     {
                         wifiService->mDnsInit();
                         wifiService->connectionState = ConnectionState::CLIENTMODESTARTED;
+                        wifiService->getBus().receive(OpenAce::WifiConnectionState{true});
                     }
                     else
                     {
@@ -128,6 +123,7 @@ void WifiService::wifiTask(void *arg)
                 wifiService->startAccessPoint();
                 wifiService->mDnsInit();
                 wifiService->connectionState = ConnectionState::APSTARTED;
+                wifiService->getBus().receive(OpenAce::WifiConnectionState{true});
                 break;
 
             case ConnectionState::APSTARTED:
@@ -143,6 +139,7 @@ void WifiService::wifiTask(void *arg)
 
             case ConnectionState::APSTOPPED:
                 wifiService->connectionState = ConnectionState::WIFISCAN;
+                wifiService->getBus().receive(OpenAce::WifiConnectionState{false});
                 break;
 
             default:
@@ -173,7 +170,7 @@ void WifiService::startAccessPoint()
 {
     // puts("Starting access point");
     cyw43_arch_enable_ap_mode(wifiData.ap.ssid.c_str(), wifiData.ap.password.c_str(), CYW43_AUTH_WPA2_AES_PSK);
-    //    cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
+    cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
 
     ip4_addr_t mask;
     ip_addr_t gw;
@@ -307,8 +304,7 @@ bool WifiService::checkIfClientActive()
 void WifiService::enableSta()
 {
     cyw43_arch_enable_sta_mode();
-    // cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
-    cyw43_wifi_pm(&cyw43_state, CYW43_NO_POWERSAVE_MODE);
+    cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
 }
 
 void WifiService::disableSta()

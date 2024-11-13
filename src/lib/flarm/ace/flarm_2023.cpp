@@ -79,7 +79,7 @@ OpenAce::PostConstruct Flarm::postConstruct()
 
 void Flarm::start()
 {
-    xTaskCreate(flarmReceiveTask, "flarmReceiveTask", configMINIMAL_STACK_SIZE+1024, this, tskIDLE_PRIORITY, &taskHandle);
+    xTaskCreate(flarmReceiveTask, "flarmReceiveTask", configMINIMAL_STACK_SIZE+1024, this, tskIDLE_PRIORITY + 1, &taskHandle);
 //    getBus().receive(OpenAce::DataSourceListen{OpenAce::DataSource::FLARM, true});
     // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
     // tuner->startListen(OpenAce::DataSource::FLARM);

@@ -10,7 +10,7 @@
 #include "etl/map.h"
 #include "etl/message_bus.h"
 
-class Webserver : public BaseModule, public etl::message_router<Webserver>
+class Webserver : public BaseModule, public etl::message_router<Webserver, OpenAce::WifiConnectionState>
 {
     friend class message_router;
 public:
@@ -29,6 +29,8 @@ public:
     virtual void start() override;
 
     virtual void stop() override;
+
+    void on_receive(const OpenAce::WifiConnectionState &wcs);
 
     void on_receive_unknown(const etl::imessage& msg);
 };

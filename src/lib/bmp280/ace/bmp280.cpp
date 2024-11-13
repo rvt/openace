@@ -4,7 +4,7 @@
 
 void Bmp280::start()
 {
-    xTaskCreate(bmp280Task, "Bmp280Task", configMINIMAL_STACK_SIZE+128, this, tskIDLE_PRIORITY, &taskHandle);
+    xTaskCreate(bmp280Task, "Bmp280Task", configMINIMAL_STACK_SIZE+128, this, tskIDLE_PRIORITY + 1, &taskHandle);
     getBus().subscribe(*this);
 };
 

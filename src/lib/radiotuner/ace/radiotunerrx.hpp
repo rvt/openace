@@ -141,9 +141,9 @@ private:
          * @return The delay in milliseconds until the next protocol timeslot starts, minimum delay is 1 ms
          */
 
-        int16_t advanceReceiveSlot(CountryRegulations::Zone zone)
+        int16_t advanceReceiveSlot()
         {
-            // Can we do better than this??
+            // Can we do better than this check?
             if (dataSources.empty())
             {
                 upcomingTimeslot = CountryRegulations::NONE_DATASOURCE.idx;
@@ -157,8 +157,8 @@ private:
             }
 
             auto currentMs = CoreUtils::msInSecond();
-            upcomingTimeslot = CountryRegulations::nextProtocolTimeslot(currentMs, zone, *upcomingDataSource);
-            ++upcomingDataSource;
+            upcomingTimeslot = CountryRegulations::nextProtocolTimeslot(currentMs, controller->currentZone, *upcomingDataSource);
+            upcomingDataSource++;
             const auto &next = CountryRegulations::protocolTimeslotById(upcomingTimeslot);
             return CoreUtils::msDelayToReference(next.slotStartTime, currentMs) + 1;
         }

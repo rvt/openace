@@ -245,4 +245,14 @@ namespace OpenAce
         GDLMsg() {};
     };
 
+    /**
+     * Message send when WIFI connection state changes
+     */
+    struct WifiConnectionState: public etl::message<24>
+    {
+        bool connected;
+
+        // Default constructor
+        WifiConnectionState(bool connected_) : connected(connected_) {};
+    };
 }

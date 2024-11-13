@@ -46,7 +46,7 @@
 #define configUSE_IDLE_HOOK                     0
 #define configUSE_TICK_HOOK                     0
 #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
-#define configMAX_PRIORITIES                    32
+#define configMAX_PRIORITIES                    15
 #define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 256
 #define configUSE_16_BIT_TICKS                  0
 
@@ -81,16 +81,18 @@
 #if OPENACE_FREERTOS_DEBUG == 1
 #define configCHECK_FOR_STACK_OVERFLOW          1
 #define configUSE_MALLOC_FAILED_HOOK            1
+/* Run time and task stats gathering related definitions. */
+#define configGENERATE_RUN_TIME_STATS           0
+#define configUSE_TRACE_FACILITY                0
+#define configUSE_STATS_FORMATTING_FUNCTIONS    0
 #else
+/* Run time and task stats gathering related definitions. */
+#define configGENERATE_RUN_TIME_STATS           0
+#define configUSE_TRACE_FACILITY                0
+#define configUSE_STATS_FORMATTING_FUNCTIONS    0
 #define configCHECK_FOR_STACK_OVERFLOW          0
 #define configUSE_MALLOC_FAILED_HOOK            0
 #endif
-#define configUSE_DAEMON_TASK_STARTUP_HOOK      0
-
-/* Run time and task stats gathering related definitions. */
-#define configGENERATE_RUN_TIME_STATS           0
-#define configUSE_TRACE_FACILITY                1
-#define configUSE_STATS_FORMATTING_FUNCTIONS    0
 
 /* Co-routine related definitions. */
 #define configUSE_CO_ROUTINES                   0
@@ -130,7 +132,7 @@
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 #define INCLUDE_vTaskPrioritySet                1
-#define INCLUDE_uxTaskPriorityGet               1
+#define INCLUDE_uxTaskPriorityGet               0
 #define INCLUDE_vTaskDelete                     1
 #define INCLUDE_vTaskSuspend                    1
 #define INCLUDE_vTaskDelayUntil                 1

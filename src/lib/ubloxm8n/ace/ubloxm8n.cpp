@@ -80,7 +80,7 @@ void UbloxM8N::start()
     pioSerial.start();
     xTaskCreate(ubloxM8NTask, "UbloxM8N"
                 "Task",
-                configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY, &taskHandle);
+                configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 1, &taskHandle);
     // ublox uses rising pulse to trigger
     // https://portal.u-blox.com/s/question/0D52p0000D35wjlCQA/how-to-minimize-serial-output-time-variance
     // Note: when we really have a GPS without PPS, perhaps we can just call UbloxM8N_rtc->ppsEvent();

@@ -209,8 +209,7 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
                 // TODO: HEre we could add an additional check based on conditions, for example two protocols not at one radio
                 const auto numRadio = etl::find_if(radioOccupation.begin(), radioOccupation.end(), [](int8_t value) { return value > -1; });
                 radioOccupation[*numRadio]++;
-
-                auto &ref = txTasks.emplace_back(dataSource, this, 0/*numRadio*/);
+                auto &ref = txTasks.emplace_back(dataSource, this, *numRadio);
 
                 ref.timerHandle = xTimerCreate("txTaskTimer", TASK_DELAY_MS(250), pdFALSE /* Must not be autostart */, &ref, timerTxCallback);
                 if (ref.timerHandle == nullptr)
@@ -219,7 +218,7 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
                     continue;
                 }
 
-                xTaskCreate(radioTxTask, "txTask", configMINIMAL_STACK_SIZE + 64, &ref, tskIDLE_PRIORITY, &ref.taskHandle);
+                xTaskCreate(radioTxTask, "txTask", configMINIMAL_STACK_SIZE + 64, &ref, tskIDLE_PRIORITY + 1, &ref.taskHandle);
                 if (ref.taskHandle == nullptr)
                 {
                     xTimerDelete(ref.timerHandle, TASK_DELAY_MS(250));

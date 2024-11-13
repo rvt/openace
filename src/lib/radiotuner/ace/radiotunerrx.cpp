@@ -6,6 +6,7 @@
 #include "radiotunertx.hpp"
 
 #include "etl/algorithm.h"
+#include "etl/pseudo_moving_average.h"
 
 #include "pico/rand.h"
 
@@ -67,10 +68,9 @@ void RadioTunerRx::addRadioTasks(uint8_t numRadios)
             continue;
         }
 
-        xTaskCreate(radioTuneTask, "rxTask", configMINIMAL_STACK_SIZE + 64, &ref, tskIDLE_PRIORITY, &ref.taskHandle);
+        xTaskCreate(radioTuneTask, "rxTask", configMINIMAL_STACK_SIZE + 64, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
         if (ref.taskHandle == nullptr)
         {
-
             radioTasks.pop_back();
             puts("RadioTunerRx: Failed to create task.");
             continue;
@@ -132,10 +132,16 @@ void RadioTunerRx::radioTuneTask(void *arg)
         {
             if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx)
             {
+
                 // printf("Set frequency to f:%ld ms:%d zone:%d source:%s\n", frequency, CoreUtils::msInSecond(), taskCtx->nextTimeSlot.zone, OpenAce::dataSourceToString(radioTask->nextTimeSlot.source));
                 auto nextTimeSlot = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot);
                 auto frequency = CountryRegulations::determineFrequency(nextTimeSlot);
+                auto delay = taskCtx->advanceReceiveSlot();
 
+                // Set timer for the next slot
+                xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay<1?1:delay), TASK_DELAY_MS(1));
+
+                // Takes 7ms from here to ...
                 // Send a message to the radio to indicate to switch and listen to a different protocol
                 taskCtx->radio->rxMode(
                     {Radio::RadioParameters{
@@ -143,17 +149,10 @@ void RadioTunerRx::radioTuneTask(void *arg)
                         frequency,
                         nextTimeSlot.frequency.powerdBm}});
 
-                // Calculate any delays up to a maximum of 20ms and use that as an offset to compensate against FreeRTOS delays for the next tick
-                auto currentMs = (uint16_t)(CoreUtils::msSinceEpoch() % 1000);
-                auto thisSlotTime = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot).slotStartTime;
-                auto offset = etl::max(0, etl::min(20, (int16_t)currentMs - (int16_t)thisSlotTime));
+                printf("RadioTunerRx: radio:%s protocol: %s Freq:%ld delay:%d\n",
+                       taskCtx->radio->name().cbegin(), dataSourceToString(nextTimeSlot.radioConfig.dataSource), frequency, delay);
 
-                // Set timer for the next slot
-                auto delay = taskCtx->advanceReceiveSlot(taskCtx->controller->currentZone);
-
-                // printf("RadioTunerRx: radio:%s protocol: %s Freq:%ld slotTime:%d time:%d delay:%d offset:%d\n",  taskCtx->radio->name().cbegin(), dataSourceToString(nextTimeSlot.radioConfig.dataSource), frequency, thisSlotTime, currentMs, delay, offset);
-
-                xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay - offset), TASK_DELAY_MS(10));
+                // Here....
                 taskCtx->statistics.rxRequests++;
             }
         }
@@ -166,7 +165,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
             }
 
             // Try to find a next slot
-            taskCtx->advanceReceiveSlot(taskCtx->controller->currentZone);
+            taskCtx->advanceReceiveSlot();
             xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(900), TASK_DELAY_MS(10));
         }
     }

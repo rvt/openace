@@ -27,7 +27,7 @@ OpenAce::PostConstruct Ogn1::postConstruct()
 
 void Ogn1::start()
 {
-    xTaskCreate(ognReceiveTask, "ognReceiveTask", configMINIMAL_STACK_SIZE + 1024, this, tskIDLE_PRIORITY, &taskHandle);
+    xTaskCreate(ognReceiveTask, "ognReceiveTask", configMINIMAL_STACK_SIZE + 1024, this, tskIDLE_PRIORITY + 1, &taskHandle);
     // auto tuner = static_cast<Tuner *>(BaseModule::moduleByName(*this, Tuner::NAME));
     // tuner->startListen(OpenAce::DataSource::OGN1);
     getBus().subscribe(*this);

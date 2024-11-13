@@ -32,7 +32,8 @@
 class AceSpi : public SpiModule, public etl::message_router<AceSpi>
 {
 private:
-    static constexpr uint16_t INIT_SPI_MAX_WAIT = 1000;
+    // Maximum time a module can hold the spi bus
+    static constexpr uint16_t INIT_SPI_MAX_WAIT = 100;
     struct ConsumerRequest
     {
         uint8_t busFrequency;
@@ -70,7 +71,7 @@ public:
 
     virtual void start() override
     {
-        xTaskCreate(aceSpiTask, "AceSpiTask", configMINIMAL_STACK_SIZE+128, this, tskIDLE_PRIORITY, &taskHandle);
+        xTaskCreate(aceSpiTask, "AceSpiTask", configMINIMAL_STACK_SIZE+128, this, tskIDLE_PRIORITY + 1, &taskHandle);
         getBus().subscribe(*this);
     };
 
@@ -144,7 +145,7 @@ public:
     /**
      * Reset all attached devices that is using the rst pin
     */
-    inline void resetDevices()
+    void resetDevices() const
     {
         gpio_put(rst, 0);
         vTaskDelay(TASK_DELAY_MS(100));

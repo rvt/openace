@@ -21,7 +21,7 @@ OpenAce::PostConstruct ADSL::postConstruct()
 
 void ADSL::start()
 {
-    xTaskCreate(adslReceiveTask, "adslReceiveTask", configMINIMAL_STACK_SIZE + 1024, this, tskIDLE_PRIORITY, &taskHandle);
+    xTaskCreate(adslReceiveTask, "adslReceiveTask", configMINIMAL_STACK_SIZE + 1024, this, tskIDLE_PRIORITY + 1, &taskHandle);
     // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
     // tuner->startListen(OpenAce::DataSource::ADSL);
     getBus().subscribe(*this);

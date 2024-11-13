@@ -80,7 +80,6 @@ private:
     // Producer Consumer queue to handle data between this task and the send task
     etl::set<OpenAce::SsidOrPasswdStr, 4> scanResult;
 
-    static void timerTask(TimerHandle_t timer);
     static void wifiTask(void *arg);
 
     void startAccessPoint();

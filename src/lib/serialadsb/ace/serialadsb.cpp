@@ -22,7 +22,7 @@
 void SerialADSB::start()
 {
     pioSerial.start();
-    xTaskCreate(serialADSBTask, "serialADSBTask", configMINIMAL_STACK_SIZE+512, this, tskIDLE_PRIORITY, &taskHandle);
+    xTaskCreate(serialADSBTask, "serialADSBTask", configMINIMAL_STACK_SIZE+512, this, tskIDLE_PRIORITY + 1, &taskHandle);
 };
 
 void SerialADSB::stop()

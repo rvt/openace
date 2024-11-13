@@ -299,7 +299,6 @@ OpenAce::PostConstruct Webserver::postConstruct()
 void Webserver::start()
 {
     webserver = this;
-    httpd_init();
     getBus().subscribe(*this);
 };
 
@@ -311,4 +310,15 @@ void Webserver::stop()
 void Webserver::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
+}
+
+void Webserver::on_receive(const OpenAce::WifiConnectionState &wcs) {
+    // Only start the webserver after WIFI has been connected.
+    // We have seen halts from the microcontroller when the website did a request to the webserver while WIFI was not fully up yet.
+    // This runs in a general stack (properly of the message bus)
+    if (wcs.connected) {
+        httpd_init();
+    } else {
+        puts("Webserver does not handle yet disconnets");
+    }
 }

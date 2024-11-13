@@ -281,7 +281,7 @@ void vLaunch(void)
     // + 1024 because we run the message bus in this task
     TaskHandle_t taskpublish_handle;
     UBaseType_t uxCoreAffinityMask;
-    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 2048 /* 96 */, NULL, tskIDLE_PRIORITY, &(taskpublish_handle));
+    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 2048 /* 96 */, NULL, tskIDLE_PRIORITY + 1, &(taskpublish_handle));
     uxCoreAffinityMask = ((1 << 0));
     vTaskCoreAffinitySet(taskpublish_handle, uxCoreAffinityMask);
 
