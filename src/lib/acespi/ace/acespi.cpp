@@ -1,15 +1,16 @@
 #include "acespi.hpp"
 
-
 OpenAce::PostConstruct AceSpi::postConstruct()
 {
     // Make the SPI pins available to picotool
     bi_decl(bi_3pins_with_func(static_cast<uint32_t>(miso), static_cast<uint32_t>(mosi), static_cast<uint32_t>(clk), GPIO_FUNC_SPI));
-    spiConsumerQueue = xQueueCreate( 10, sizeof( ConsumerRequest ) );
-    if (spiConsumerQueue == nullptr)
+
+    mutex = xSemaphoreCreateMutex();
+    if (mutex == nullptr)
     {
-        return OpenAce::PostConstruct::XQUEUE_ERROR;
+        return OpenAce::PostConstruct::MUTEX_ERROR;
     }
+
     // Chip select is active-low, so we'll initialise it to a driven-high state
     gpio_init(rst);
     gpio_set_dir(rst, GPIO_OUT);
@@ -27,46 +28,94 @@ OpenAce::PostConstruct AceSpi::postConstruct()
     return OpenAce::PostConstruct::OK;
 }
 
-
-bool AceSpi::aquireSlot(uint8_t busFrequencyMhz, TaskHandle_t consumerHandle, uint32_t bits) const
+void AceSpi::start()
 {
-    ConsumerRequest request{busFrequencyMhz, consumerHandle, bits};
-    return xQueueSendToBack(spiConsumerQueue, static_cast<void *>(&request), TASK_DELAY_MS(5)) != pdPASS;
+    getBus().subscribe(*this);
+};
+
+void AceSpi::stop()
+{
+    getBus().unsubscribe(*this);
+};
+
+void AceSpi::read_registers(uint8_t cs, uint8_t reg, uint8_t *buf, uint16_t len, uint8_t delayMs) const
+{
+    reg |= READ_BIT;
+    cs_select(cs);
+    spi_write_blocking(OPENACE_SPI_DEFAULT, &reg, 1);
+    vTaskDelay(TASK_DELAY_MS(delayMs));
+    spi_read_blocking(OPENACE_SPI_DEFAULT, 0, buf, len);
+    cs_deselect(cs);
+    vTaskDelay(TASK_DELAY_MS(delayMs));
 }
 
-void AceSpi::aceSpiTask(void *arg)
+void AceSpi::read_registers_select(uint8_t cs, uint8_t reg) const
 {
-    AceSpi* aceSpi = static_cast<AceSpi*>(arg);
-    ConsumerRequest consumerRequest{};
-    uint8_t lastBusFrequency = OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY;
-    while (true)
+    reg |= READ_BIT;
+    cs_select(cs);
+    spi_write_blocking(OPENACE_SPI_DEFAULT, &reg, 1);
+}
+
+void AceSpi::read_registers_read(uint8_t cs, uint8_t *buf, uint16_t len) const
+{
+    spi_read_blocking(OPENACE_SPI_DEFAULT, 0, buf, len);
+    cs_deselect(cs);
+}
+
+void AceSpi::cs_select(uint8_t cs) const
+{
+    gpio_put(cs, 0); // Active low
+}
+
+void AceSpi::cs_deselect(uint8_t cs) const
+{
+    gpio_put(cs, 1);
+}
+
+void AceSpi::write_array(uint8_t cs, uint8_t *data, uint8_t length, uint8_t delayMs) const
+{
+    cs_select(cs);
+    spi_write_blocking(OPENACE_SPI_DEFAULT, data, length);
+    cs_deselect(cs);
+    vTaskDelay(TASK_DELAY_MS(delayMs));
+}
+
+void AceSpi::write_byte(uint8_t cs, uint8_t data, uint8_t delayMs) const
+{
+    write_array(cs, &data, 1, delayMs);
+}
+
+/**
+ * Reset all attached devices that is using the rst pin
+ */
+void AceSpi::resetDevices() const
+{
+    gpio_put(rst, 0);
+    vTaskDelay(TASK_DELAY_MS(100));
+    gpio_put(rst, 1);
+}
+
+bool AceSpi::acquireSlotSync(uint8_t busFrequencyMhz)
+{
+    if (xSemaphoreTake(mutex, TASK_DELAY_MS(10)) == pdTRUE)
     {
-        // Wait for a client to request a slot
-        if( xQueueReceive( aceSpi->spiConsumerQueue, &consumerRequest,  portMAX_DELAY) == pdPASS )
+        if (lastBusFrequency != busFrequencyMhz)
         {
-            if (lastBusFrequency != consumerRequest.busFrequency)
-            {
-                lastBusFrequency = consumerRequest.busFrequency;
-                spi_init(OPENACE_SPI_DEFAULT, lastBusFrequency * 1000'000);
-            }
-            xTaskNotify( consumerRequest.taskHandle, consumerRequest.notificationValue, eSetBits);
-        
-            if (!ulTaskNotifyTake( pdTRUE,  TASK_DELAY_MS(INIT_SPI_MAX_WAIT)))
-            {
-                // @techdebt: SHould we have all CPU consumer be registered and have some function to force CS back up
-                // SO we can recover from this issue? To might be still communicating.. I should they pass the task handle so we can kill the task?
-                // Or should this be a device reset??
-    
-                // TODO: Never seen it, but could be moved into some DEBUG functionality            
-                // TaskStatus_t xTaskDetails;
-                // vTaskGetInfo(comsumerRequest.taskHandle, &xTaskDetails, pdTRUE, eInvalid);
-                // printf("Warning SPI bus never released by %s after %dms needs fxing\n", xTaskDetails.pcTaskName, INIT_SPI_MAX_WAIT);
-            }
+            lastBusFrequency = busFrequencyMhz;
+            spi_init(OPENACE_SPI_DEFAULT, lastBusFrequency * 1000'000);
         }
+        return true;
     }
+
+    return false;
 }
 
-void AceSpi::on_receive_unknown(const etl::imessage& msg)
+void AceSpi::releaseSlotSync()
+{
+    xSemaphoreGive(mutex);
+}
+
+void AceSpi::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
 }

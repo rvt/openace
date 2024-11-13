@@ -143,8 +143,7 @@ void Bmp280::bmp280Task(void *arg)
 {
     Bmp280 *bmp280 = static_cast<Bmp280*>(arg);
     SpiModule* aceSpi = static_cast<SpiModule*>(BaseModule::moduleByName(*bmp280, SpiModule::NAME));
-    TaskHandle_t baroTaskHandle = xTaskGetCurrentTaskHandle(  );
-    // aceSpi->aquireSlot(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, baroTaskHandle);
+    // aceSpi->acquireSlot(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, baroTaskHandle);
     while (true)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake( pdTRUE, TASK_DELAY_MS(2'000)))
@@ -153,12 +152,13 @@ void Bmp280::bmp280Task(void *arg)
             {
                 vTaskDelete(nullptr);
             }
-            if ((notifyValue & SpiModule::SPI_BUS_READY) == SpiModule::SPI_BUS_READY)
+
+            if (aceSpi->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
             {
                 uint8_t buffer[8]; // I think this can be buffer[6] (No humidity needed)
                 aceSpi->read_registers_select(bmp280->cs, 0xF7);
                 aceSpi->read_registers_read(bmp280->cs, buffer, sizeof(buffer));
-                aceSpi->releaseSlot();
+                aceSpi->releaseSlotSync();
 
                 int32_t pressure = ((uint32_t) buffer[0] << 12) | ((uint32_t) buffer[1] << 4) | (buffer[2] >> 4);
                 int32_t temperature = ((uint32_t) buffer[3] << 12) | ((uint32_t) buffer[4] << 4) | (buffer[5] >> 4);
@@ -170,10 +170,6 @@ void Bmp280::bmp280Task(void *arg)
                 bmp280->statistics.lastPressurehPa = value;
                 bmp280->getBus().receive(OpenAce::BarometricPressure{value, CoreUtils::msSinceBoot()});
             }
-        }
-        else
-        {
-            aceSpi->aquireSlot(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, baroTaskHandle);
         }
     }
 }

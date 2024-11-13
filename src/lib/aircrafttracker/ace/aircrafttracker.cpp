@@ -15,6 +15,10 @@ OpenAce::PostConstruct AircraftTracker::postConstruct()
     aircraftMutex = xSemaphoreCreateMutex();
     ownshipMutex = xSemaphoreCreateMutex();
 
+    if (aircraftMutex == nullptr || ownshipMutex == nullptr)
+    {
+        return OpenAce::PostConstruct::MUTEX_ERROR;
+    }
     return OpenAce::PostConstruct::OK;
 }
 
@@ -233,15 +237,12 @@ void AircraftTracker::removeStaleEntries()
     {
         float trackDistance = autoDistanceTrack;
         trackedAircraft.erase(etl::remove_if(trackedAircraft.begin(), trackedAircraft.end(), [trackPoints, trackDistance](const auto &it)
-        {
-            return it.numberOfTries > trackPoints || it.position.distanceFromOwn > trackDistance;
-        }),
-        trackedAircraft.end());
+                                             { return it.numberOfTries > trackPoints || it.position.distanceFromOwn > trackDistance; }),
+                              trackedAircraft.end());
         trackPoints--;
         // Call the distance estimator to quickly autoDistanceTrack
         distanceEstimator();
-    }
-    while ((trackedAircraft.size() > CLEAR_UP_SIZE) && trackPoints > 2);
+    } while ((trackedAircraft.size() > CLEAR_UP_SIZE) && trackPoints > 2);
 
     statistics.lastTrackPoint = trackPoints;
 }

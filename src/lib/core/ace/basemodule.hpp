@@ -232,12 +232,15 @@ public:
     virtual void read_registers(uint8_t cs, uint8_t reg, uint8_t *buf, uint16_t len, uint8_t delayMs) const = 0;
     virtual void read_registers_select(uint8_t cs, uint8_t reg) const = 0;
     virtual void read_registers_read(uint8_t cs, uint8_t *buf, uint16_t len) const = 0;
+
     virtual void cs_select(uint8_t cs) const = 0;
     virtual void cs_deselect(uint8_t cs) const = 0;
+
     virtual void write_array(uint8_t cs, uint8_t *data, uint8_t length, uint8_t delayMs) const = 0;
     virtual void write_byte(uint8_t cs, uint8_t data, uint8_t delayMs) const = 0;
-    virtual void releaseSlot() const = 0;
-    virtual bool aquireSlot(uint8_t busFrequencyMhz, TaskHandle_t consumerHandle, uint32_t bits = 0) const = 0;
+
+    virtual bool acquireSlotSync(uint8_t busFrequencyMhz) = 0;
+    virtual void releaseSlotSync() = 0;
 };
 
 /**

@@ -38,7 +38,7 @@ namespace OpenAce
 
         ThreadSafeBus(etl::imessage_router &successor) : etl::imessage_bus(router_list, successor), xMutex(nullptr), lastMessages(0), lastTime(0)
         {
-            xMutex = xSemaphoreCreateRecursiveMutex();
+            xMutex = xSemaphoreCreateRecursiveMutex();            
         }
 
         virtual ~ThreadSafeBus()

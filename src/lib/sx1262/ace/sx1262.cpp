@@ -380,17 +380,20 @@ void Sx1262::sx1262Task(void *arg)
 {
     Sx1262 *sx1262 = static_cast<Sx1262 *>(arg);
     SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*sx1262, SpiModule::NAME));
-    TaskHandle_t taskHandle = xTaskGetCurrentTaskHandle();
 
     Radio::RadioParameters lastRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
 
-    aceSpi->aquireSlot(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, taskHandle);
     while (true)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(10000)))
         {
+            if (notifyValue & TaskState::DELETE)
+            {
+                vTaskDelete(nullptr);
+                return;
+            }
 
-            if ((notifyValue & SpiModule::SPI_BUS_READY) == SpiModule::SPI_BUS_READY)
+            if (aceSpi->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
             {
 
                 // Read device status to validate if there is anything to do
@@ -447,19 +450,7 @@ void Sx1262::sx1262Task(void *arg)
                 }
                 // Always releasing the slot is sub-optmial, specially when sending is quickly followed by receiving
                 // TODO: design some way to keep the slot aquired for a short time after sending?
-                aceSpi->releaseSlot();
-            }
-            else
-            {
-                if (notifyValue & TaskState::DELETE)
-                {
-                    vTaskDelete(nullptr);
-                    return;
-                }
-                else if (notifyValue & ~SpiModule::SPI_BUS_READY)
-                {
-                    aceSpi->aquireSlot(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, taskHandle, notifyValue);
-                }
+                aceSpi->releaseSlotSync();
             }
         }
         else
@@ -469,7 +460,6 @@ void Sx1262::sx1262Task(void *arg)
             {
                 sx1262->statistics.waitPacketTimeout++;
             }
-            aceSpi->aquireSlot(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, taskHandle, TaskState::FAILSAVE_LISTEN_MODE);
         }
     }
 }

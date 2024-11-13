@@ -8,6 +8,10 @@
 OpenAce::PostConstruct Gdl90Service::postConstruct()
 {
     configMutex = xSemaphoreCreateMutex();
+    if (configMutex == nullptr)
+    {
+        return OpenAce::PostConstruct::MUTEX_ERROR;
+    }
     return OpenAce::PostConstruct::OK;
 }
 
