@@ -19,7 +19,6 @@ void Sx1262::start()
 void Sx1262::stop()
 {
     getBus().unsubscribe(*this);
-    vQueueDelete(commandQueue);
     xTaskNotify(taskHandle, TaskState::DELETE, eSetBits);
 };
 
@@ -52,12 +51,6 @@ OpenAce::PostConstruct Sx1262::postConstruct()
         return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;
     }
     printf(" found [%s] (Sx1261 is normal for a Sx1262) ", data);
-
-    commandQueue = xQueueCreate(2, sizeof(Sx1262::Command_t));
-    if (commandQueue == nullptr)
-    {
-        return OpenAce::PostConstruct::XQUEUE_ERROR;
-    }
 
     radioInit();
 
@@ -349,39 +342,44 @@ sx126x_irq_mask_t Sx1262::getIrqStatus()
 
 void Sx1262::rxMode(const RxMode &rxMode)
 {
-    auto command = Command_t{rxMode};
-
-    if (xQueueSend(commandQueue, &command, TASK_DELAY_MS(5)) == pdFALSE)
+    if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
     {
-        statistics.queueFull++;
-        return;
+        //printf("Radio %d RX: %s timeMs:%d\n", radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
+        configureSx1262(rxMode.radioParameters);
+        Listen();
+        lastRadioParameters = rxMode.radioParameters;
+        spiHall->releaseSlotSync();
+    } else {
+        //puts("Missed");
     }
-    xTaskNotify(taskHandle, TaskState::NEW_COMMAND, eSetBits);
 }
 
-void Sx1262::txPacket(const TxPacket &txpacket)
+void Sx1262::txPacket(const TxPacket &txPacket)
 {
-    auto command = Command_t{txpacket};
-    if (xQueueSend(commandQueue, &command, TASK_DELAY_MS(5)) == pdFALSE)
-    {
-        statistics.queueFull++;
-        return;
-    }
-    xTaskNotify(taskHandle, TaskState::NEW_COMMAND, eSetBits);
-}
 
-void Sx1262::clearTXCallback(TimerHandle_t xTimer)
-{
-    TaskHandle_t handle = (TaskHandle_t)pvTimerGetTimerID(xTimer);
-    xTaskNotify(handle, TaskState::CLEAR_TX, eSetBits);
+    if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
+    {
+        // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
+        configureSx1262(txPacket.radioParameters);
+
+        uint8_t frame[OpenAce::RADIO_MAX_FRAME_LENGTH * 2];
+        manchesterEncode(frame, txPacket.data.data(), txPacket.length);
+
+        sendGFSKPacket(txPacket.radioParameters, frame, txPacket.length * 2);
+
+        configureSx1262(lastRadioParameters);
+        Listen();
+        spiHall->releaseSlotSync();
+    } else {
+        puts("Missed");
+    }
+
 }
 
 void Sx1262::sx1262Task(void *arg)
 {
     Sx1262 *sx1262 = static_cast<Sx1262 *>(arg);
     SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*sx1262, SpiModule::NAME));
-
-    Radio::RadioParameters lastRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
 
     while (true)
     {
@@ -402,52 +400,19 @@ void Sx1262::sx1262Task(void *arg)
                 if (irqStatus & SX126X_IRQ_RX_DONE)
                 {
                     // Reading the data takes about 4ms
-                    // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
-                    sx1262->receiveGFSKPacket(lastRadioParameters);
-                    sx1262->configureSx1262(lastRadioParameters);
+                    // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
+                    sx1262->receiveGFSKPacket(sx1262->lastRadioParameters);
+                    sx1262->configureSx1262(sx1262->lastRadioParameters);
                     sx1262->Listen();
                 }
 
-                if (notifyValue & TaskState::FAILSAVE_LISTEN_MODE && lastRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
+                if (notifyValue & TaskState::FAILSAVE_LISTEN_MODE && sx1262->lastRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
                 {
-                    sx1262->configureSx1262(lastRadioParameters);
+                    sx1262->configureSx1262(sx1262->lastRadioParameters);
                     sx1262->Listen();
                     // printf("Radio %d FailSafe %d\n", sx1262->radioNo, CoreUtils::msInSecond());
                 }
 
-                // Read the next command if available
-                Command_t command;
-                if (xQueueReceive(sx1262->commandQueue, &command, 0) == pdTRUE)
-                {
-                    switch (command.commandType)
-                    {
-                    case CommandType::RXMODE:
-                    {
-                        printf("Radio %d RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
-                        sx1262->configureSx1262(command.rxMode.radioParameters);
-                        sx1262->Listen();
-                        lastRadioParameters = command.rxMode.radioParameters;
-                        break;
-                    }
-                    case CommandType::TXPACKET:
-                    {
-                        if (sx1262->txEnabled)
-                        {
-                            // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
-                            sx1262->configureSx1262(command.txPacket.radioParameters);
-
-                            uint8_t frame[OpenAce::RADIO_MAX_FRAME_LENGTH * 2];
-                            manchesterEncode(frame, command.txPacket.data.data(), command.txPacket.length);
-
-                            sx1262->sendGFSKPacket(command.txPacket.radioParameters, frame, command.txPacket.length * 2);
-
-                            sx1262->configureSx1262(lastRadioParameters);
-                            sx1262->Listen();
-                        }
-                        break;
-                    }
-                    }
-                }
                 // Always releasing the slot is sub-optmial, specially when sending is quickly followed by receiving
                 // TODO: design some way to keep the slot aquired for a short time after sending?
                 aceSpi->releaseSlotSync();
@@ -456,7 +421,7 @@ void Sx1262::sx1262Task(void *arg)
         else
         {
             // End up here when timeout, only count in statistics so we know this is happening
-            if (lastRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
+            if (sx1262->lastRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
             {
                 sx1262->statistics.waitPacketTimeout++;
             }

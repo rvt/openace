@@ -41,13 +41,8 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     enum TaskState : uint8_t
     {
         DELETE = 1 << 0,
-        START = 1 << 1,
         TASK_VALUE_DIO1_INTERRUPT = 1 << 2,
-        FAILSAVE_LISTEN_MODE = 1 << 3,
-        WAIT_FOR_IRQ = 1 << 4,
-        WAIT_FOR_TX_DONE = 1 << 5,
-        NEW_COMMAND = 1 << 6,
-        CLEAR_TX = 1 << 7
+        FAILSAVE_LISTEN_MODE = 1 << 3
     };
 
     mutable struct
@@ -126,25 +121,8 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     bool txEnabled;
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
-    QueueHandle_t commandQueue;
+    Radio::RadioParameters lastRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
 
-    enum CommandType
-    {
-        RXMODE,
-        TXPACKET
-    };
-    struct Command_t
-    {
-        CommandType commandType;
-        union
-        {
-            RxMode rxMode;
-            TxPacket txPacket;
-        };
-        constexpr Command_t() : commandType(RXMODE), rxMode(RxMode{RadioParameters{PROTOCOL_NONE, 868'200'000, -9}}) {};
-        constexpr Command_t(const RxMode &_rxMode) : commandType(RXMODE), rxMode(_rxMode) {};
-        constexpr Command_t(const TxPacket &_txPacket) : commandType(TXPACKET), txPacket(_txPacket) {};
-    };
 
 public:
     static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
@@ -157,8 +135,7 @@ public:
                                                                                                                              offsetHz(offsetHz_),
                                                                                                                              txEnabled(txEnabled_),
                                                                                                                              spiHall(nullptr),
-                                                                                                                             taskHandle(nullptr),
-                                                                                                                             commandQueue(nullptr)
+                                                                                                                             taskHandle(nullptr)
     {
         //        assert(num >=0 && num <= 1);
     }
@@ -225,7 +202,6 @@ public:
     void Listen();
     void standBy();
 
-    static void clearTXCallback(TimerHandle_t xTimer);
     static void sx1262Task(void *arg);
 
     uint8_t receivedPacketLength() const;

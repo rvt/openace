@@ -136,12 +136,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
                 // printf("Set frequency to f:%ld ms:%d zone:%d source:%s\n", frequency, CoreUtils::msInSecond(), taskCtx->nextTimeSlot.zone, OpenAce::dataSourceToString(radioTask->nextTimeSlot.source));
                 auto nextTimeSlot = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot);
                 auto frequency = CountryRegulations::determineFrequency(nextTimeSlot);
-                auto delay = taskCtx->advanceReceiveSlot();
 
-                // Set timer for the next slot
-                xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay<1?1:delay), TASK_DELAY_MS(1));
-
-                // Takes 7ms from here to ...
                 // Send a message to the radio to indicate to switch and listen to a different protocol
                 taskCtx->radio->rxMode(
                     {Radio::RadioParameters{
@@ -149,10 +144,12 @@ void RadioTunerRx::radioTuneTask(void *arg)
                         frequency,
                         nextTimeSlot.frequency.powerdBm}});
 
-                printf("RadioTunerRx: radio:%s protocol: %s Freq:%ld delay:%d\n",
-                       taskCtx->radio->name().cbegin(), dataSourceToString(nextTimeSlot.radioConfig.dataSource), frequency, delay);
+                auto delay = taskCtx->advanceReceiveSlot() - OPENACE_RX_OFFSET;
+                xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay < 1 ? 1 : delay), TASK_DELAY_MS(1));
 
-                // Here....
+                printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
+                       taskCtx->radio->name().cbegin(), dataSourceToString(nextTimeSlot.radioConfig.dataSource), frequency, CoreUtils::msInSecond(), delay);
+
                 taskCtx->statistics.rxRequests++;
             }
         }

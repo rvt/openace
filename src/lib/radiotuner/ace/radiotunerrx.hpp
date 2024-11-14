@@ -43,6 +43,9 @@ public:
     // 2 slots => ADSL,ADSL,FLARM,OGN,ADSL,ADSL,FLARM,OGN,
     static constexpr const uint8_t MAX_SLOTS_PER_SOURCE = 1;             
     static constexpr const uint8_t TIME_SLOT_SIZE = MAX_SLOTS_PER_SOURCE * OPENACE_MAX_SOURCE_PER_RADIO;
+    // Offset applies to the timing so that the receiver is set on time to new frequencies and/or modes
+    static constexpr const uint8_t OPENACE_RX_OFFSET = 1;
+
 
 private:
     // Each radio will get one task Context to handle
@@ -160,7 +163,7 @@ private:
             upcomingTimeslot = CountryRegulations::nextProtocolTimeslot(currentMs, controller->currentZone, *upcomingDataSource);
             upcomingDataSource++;
             const auto &next = CountryRegulations::protocolTimeslotById(upcomingTimeslot);
-            return CoreUtils::msDelayToReference(next.slotStartTime, currentMs) + 1;
+            return CoreUtils::msDelayToReference(next.slotStartTime, currentMs);
         }
 
         /**
