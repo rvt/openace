@@ -38,6 +38,9 @@ LID_SCREW_DIAM=2.4; // [2:2.2,2.4,2.5,3.0]
 RIM=0.75; // RVT Decreased by 0.75
 
 
+// place the switch in the lid for better protection
+SWITCH_IN_LID=true;
+
 BATTERY_COMPARTEMENT_WIDTH=22;
 /* [VISUALISATION] */
 VISUALIZE_PCB=true;
@@ -48,8 +51,8 @@ VISUALIZE_MAIN_CASE=true;
 VISUALIZE_LID_POSITION=0; // [0:0.5:50]
 
 VISUALIZE_CUT=true;
-VISUALIZE_CUT_POS_X=75; // [-30,-21,0,47,75]
-VISUALIZE_CUT_POS_Y=75; // [-30,-21,0,47,75]
+VISUALIZE_CUT_POS_X=75; // [-50:1:50]
+VISUALIZE_CUT_POS_Y=75; // [-50:1:50]
 
 
 
@@ -66,6 +69,18 @@ echo("Case height:", CASE_HEIGHT);
 echo("CASE", case);
 
 FEET_HEIGHT=4.5; 
+
+// Parameters of teh switch in the LID
+// Z roitation of the switch in the lid
+SWITCH_LID_ZROT=0;  
+// Position X/Y relative to the back left corner
+SWITCH_LID_POS=[40,-20, 0];  
+// 'Cube' size (even though cylinder shape
+SWITCH_LID_CUBE_SIZE=[22,20];
+// Switch bore diam
+SWITCH_LID_BORE=5.5;
+// Z- Offset of the switch
+SWITCH_LID_Z_OFFSET=5.5;
 
 
 //BAT_HOLDER_HEIGHT=2;
@@ -84,6 +99,14 @@ FEET_HEIGHT=4.5;
 // up(25) right(45) fwd(72) zrot(90) import("gps-antenna-holder.stl", convexity=2);
 
 
+    // Switch    
+MINI_ROCKER = ["", "", 5, 8, 8.89,      // 0
+  0.4, 2.0, "red", 5.1, 4,   // 5
+  6.5, 0, 0, 1.45,          // 10
+  25/2, 10.67, 2.92, 0,   ["M4_nut",           4,   8.1, 1.2, 5,    M4_washer,     M4_nut_trap_depth, 0, [8,   5.74]],  // 15
+  M4_washer, 3, [3.94, 2.03, 0.76, 3, 4.83]]; // 20
+
+        
 //////////////// CASE ////////////////
 removeTag=$preview?"preview":"remove";
 if (VISUALIZE_MAIN_CASE)
@@ -138,16 +161,12 @@ bottomAndWall(size=case, wall=WALL_THICKNESS, bottom=BOTTOM_THICKNESS, rounding=
           }  
         }
       }      
-
-    // Switch    
-      MINI_ROCKER = ["", "", 5, 8, 8.89,      // 0
-        0.4, 2.0, "red", 5.1, 4,   // 5
-        6.5, 0, 0, 1.45,          // 10
-        25/2, 10.67, 2.92, 0,   ["M4_nut",           4,   8.1, 1.2, 5,    M4_washer,     M4_nut_trap_depth, 0, [8,   5.74]],  // 15
-        M4_washer, 3, [3.94, 2.03, 0.76, 3, 4.83]]; // 20
  
-    if ($preview)
-     position(TOP + BACK + RIGHT) left(70) fwd(3) down(5) yrot(90) xrot(-90) toggle(MINI_ROCKER, 3);  
+      // Switch on case
+      if ($preview && !SWITCH_IN_LID) {
+        position(TOP + BACK + RIGHT) left(70) fwd(3) down(5) 
+          yrot(90) xrot(-90) toggle(MINI_ROCKER, 3);  
+      }
       
       
     // Battery compartement    removal 
@@ -221,7 +240,7 @@ diff("removeBox")
   color_this("gray")
   bottomAndWall(size=case, wall=WALL_THICKNESS, bottom=TOP_THICKNESS, rounding=BOX_CORNER_RADUIS, ichamfer=3, h=-LID_INNER_HIGHT, rim=RIM) {
      //#show_anchors(std=false);
-
+     TEXT_LENGTH=1;
      tag("removeBox")
        down(0.4) 
        position(TOP) 
@@ -232,24 +251,52 @@ diff("removeBox")
      
      tag("removeBox")
        mount_system(hole=true, type=0);
-        
-        
-      if (HINGE_ON_LID) {
-        KNUNCKLE_DIAM=6;       // Size of the nuckle    
-        HINGE_LENGTH=6;        // Length of each hinge  
-        KNUCKLE_OFFSET = 1;
-        HINGE_SEGS=5;
-        back(BOX_CORNER_RADUIS)
-        position(RIGHT+FRONT+TOP)
-        cuboid([HINGE_LENGTH*5+0, 7, 0.2*3], anchor=FRONT+TOP+LEFT, orient=LEFT, spin=90, chamfer=0.2*3, edges=[BOTTOM+BACK]) {
-          left(HINGE_LENGTH*3-HINGE_LENGTH/2) 
-          attach(BOTTOM)
-          down(0.5)
-          position(FRONT+TOP) 
-            knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+KNUCKLE_OFFSET, 
-            arm_height=0, anchor=BOT+RIGHT+FRONT, inner=false, knuckle_diam=KNUNCKLE_DIAM);     
+      
+    if (SWITCH_IN_LID) {
+      
+      up(0.01) translate(SWITCH_LID_POS) 
+      position(LEFT+BACK+TOP) { 
+      
+        zrot(SWITCH_LID_ZROT) {
+          bottom_half() cyl(d=SWITCH_LID_CUBE_SIZE.x,l=SWITCH_LID_CUBE_SIZE.y, orient=FWD);
+          up(0.001) tag("removeBox") bottom_half() back(0.5) cyl(d=SWITCH_LID_CUBE_SIZE.x-1.5,l=SWITCH_LID_CUBE_SIZE.y-3, orient=FWD) {
+
+
+          left(SWITCH_LID_CUBE_SIZE.x/2) position(BOTTOM) down(4) fwd(TEXT_LENGTH/2) xrot(-90) linear_extrude(TEXT_LENGTH) zrot(0) 
+             text("OFF", halign="center", valign="center", font = "Arial Black", size = 5);
+
+          right(SWITCH_LID_CUBE_SIZE.x/2) position(BOTTOM) down(4) fwd(TEXT_LENGTH/2) xrot(-90) linear_extrude(TEXT_LENGTH) zrot(0) 
+             text("ON", halign="center", valign="center", font = "Arial Black", size = 5);
+
+
+          position(TOP) fwd(SWITCH_LID_Z_OFFSET) xrot(180) zrot(90)  
+            if ($preview) {
+              down(3) toggle(MINI_ROCKER, 3);  
+            } else {
+              tag("removeBox") cyl(d=SWITCH_LID_BORE,l=6,center=true);
+            }
+          }
         }
       }
+    }
+        
+        
+    if (HINGE_ON_LID) {
+      KNUNCKLE_DIAM=6;       // Size of the nuckle    
+      HINGE_LENGTH=6;        // Length of each hinge  
+      KNUCKLE_OFFSET = 1;
+      HINGE_SEGS=5;
+      back(BOX_CORNER_RADUIS)
+      position(RIGHT+FRONT+TOP)
+      cuboid([HINGE_LENGTH*5+0, 7, 0.2*3], anchor=FRONT+TOP+LEFT, orient=LEFT, spin=90, chamfer=0.2*3, edges=[BOTTOM+BACK]) {
+        left(HINGE_LENGTH*3-HINGE_LENGTH/2) 
+        attach(BOTTOM)
+        down(0.5)
+        position(FRONT+TOP) 
+          knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+KNUCKLE_OFFSET, 
+          arm_height=0, anchor=BOT+RIGHT+FRONT, inner=false, knuckle_diam=KNUNCKLE_DIAM);     
+      }
+    }
 
   }
 
