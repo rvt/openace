@@ -115,8 +115,8 @@ void RadioTunerTx::radioTxTask(void *arg)
                 uint32_t frequency = CountryRegulations::determineFrequency(protocolTimeSlot);
                 auto msInSecond = CoreUtils::msInSecond();
 
-                // printf("RadioTunerTX: %d %s currentMs:%d sinceLast:%d\n",taskCtx->radioNo, OpenAce::dataSourceToString(protocolTimeSlot.radioConfig.dataSource), msInSecond, (uint16_t)(CoreUtils::msSinceEpoch()-lastTx));
-                // lastTx = CoreUtils::msSinceEpoch();
+//                printf("RadioTunerTX: %d %s currentMs:%d sinceLast:%d\n",taskCtx->radioNo, OpenAce::dataSourceToString(protocolTimeSlot.radioConfig.dataSource), msInSecond, (uint16_t)(CoreUtils::msSinceEpoch()-lastTx));
+//                lastTx = CoreUtils::msSinceEpoch();
 
                 taskCtx->controller->getBus().receive(
                     OpenAce::RadioTxPositionRequest
@@ -130,7 +130,6 @@ void RadioTunerTx::radioTxTask(void *arg)
                 auto nextTxTime = CountryRegulations::getNextTxTime(msInSecond, taskCtx->protocolTimingIdx);
 
                 taskCtx->protocolTimingIdx = nextTxTime.idx;
-                // printf("idx:%d expected: %d\n", nextTxTime.idx, (nextTxTime.duration + currentMs) % 1000);
                 xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(nextTxTime.duration), TASK_DELAY_MS(10));
                 taskCtx->statistics.txRequests++;
             }
@@ -207,9 +206,11 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
             { 
                 // Get the least occupied radio
                 // TODO: HEre we could add an additional check based on conditions, for example two protocols not at one radio
-                const auto numRadio = etl::find_if(radioOccupation.begin(), radioOccupation.end(), [](int8_t value) { return value > -1; });
-                radioOccupation[*numRadio]++;
-                auto &ref = txTasks.emplace_back(dataSource, this, *numRadio);
+                auto minIt = etl::min_element(radioOccupation.begin(), radioOccupation.end());
+                std::size_t numRadio = etl::distance(radioOccupation.begin(), minIt);
+
+                radioOccupation[numRadio]++;
+                auto &ref = txTasks.emplace_back(dataSource, this, numRadio);
 
                 ref.timerHandle = xTimerCreate("txTaskTimer", TASK_DELAY_MS(250), pdFALSE /* Must not be autostart */, &ref, timerTxCallback);
                 if (ref.timerHandle == nullptr)
