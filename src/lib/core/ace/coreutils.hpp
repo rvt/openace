@@ -15,6 +15,7 @@
 class CoreUtils
 {
     inline static uint64_t offsetTimeToAbsolute;
+    inline static uint32_t timeUs32Pps; // monotonic timestamp at which PPS happened
 
 public:
     /**
@@ -108,7 +109,12 @@ public:
      */
     static inline void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
     {
-        CoreUtils::offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1000;
+        CoreUtils::offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1'000;
+    }
+
+    static inline void setPPS() 
+    {
+        timeUs32Pps = time_us_32();
     }
 
     /**
@@ -116,16 +122,28 @@ public:
      */
     static inline uint64_t msSinceEpoch()
     {
-        return (time_us_64() / 1000) + CoreUtils::offsetTimeToAbsolute;
+        return (time_us_64() / 1'000) + CoreUtils::offsetTimeToAbsolute;
     }
 
     /**
-     * Returns the current ms within teh current second (sinced to epoch)
+     * Returns the current ms within teh current second (based on epoch)
      * eg: a value of 119 means 119ms since PPS
+     * 
      */
-    static inline uint16_t msInSecond(uint64_t msSinceEpoch = CoreUtils::msSinceEpoch())
+    [[deprecated]]
+    static inline uint16_t msInSecondFromEpoch(uint64_t msSinceEpoch = CoreUtils::msSinceEpoch())
     {
         return msSinceEpoch % 1000;
+    }
+
+    /**
+     * Returns the current ms within the current second (based on PPS)
+     * eg: a value of 119 means 119ms since PPS
+     * THis version is slightly faster than msInSecondFromEpoch because it uses 32 bit operations
+     */
+    static inline uint16_t msInSecond()
+    {
+        return ((time_us_32() - timeUs32Pps) / 1'000) % 1'000;
     }
 
     /**

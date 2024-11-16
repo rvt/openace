@@ -261,7 +261,7 @@ void Ogn1::on_receive(const OpenAce::RadioTxPositionRequest &msg)
         tm time = CoreUtils::localTime(msSinceEpoch);
         uint8_t secondTime = time.tm_sec;
         // Round time to nearest full second
-        if (CoreUtils::msInSecond(msSinceEpoch) >= 500)
+        if (CoreUtils::msInSecond() >= 500)
         {
             secondTime++;
             if (secondTime >= 60)

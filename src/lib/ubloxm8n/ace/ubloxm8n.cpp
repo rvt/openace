@@ -68,8 +68,8 @@ inline constexpr uint8_t *UbloxM8N_m8nConfig[UbloxM8N_m8nConfig_size] = {
 // TODO: For some reason casting to RTC did not work, so we use a global pointer PicoRtc, properly some casting did not go well
 RtcModule *UbloxM8N_rtc = nullptr;
 
-// Call RTC in interrupt to notive of when last second pulse happened
-void UbloxM8N_pps_callback(uint32_t events)
+// Call RTC in interrupt to native of when last second pulse happened
+void __time_critical_func(UbloxM8N_pps_callback)(uint32_t events)
 {
     (void)events;
     UbloxM8N_rtc->ppsEvent();

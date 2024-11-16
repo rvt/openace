@@ -17,9 +17,10 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
 }
 
 // This method is not protected with a mutex since it's called from hardware interrupt well before OpenAce::GpsTime& event is end
-void PicoRtc::ppsEvent()
+void __time_critical_func(PicoRtc::ppsEvent)()
 {
-    lastPpstime = time_us_32();
+    CoreUtils::setPPS();
+    lastPpstime = CoreUtils::timeUs32();
     statistics.ppsEventsReceived++;
 }
 
@@ -46,7 +47,7 @@ void PicoRtc::on_receive(const OpenAce::GpsTime& msg)
     //     msg.hour, msg.minute, msg.second, msg.millisecond,
     //     msg.year, msg.month, msg.day);
 
-    uint32_t elapsedUsSincePps = time_us_32() - lastPpstime;
+    uint32_t elapsedUsSincePps = CoreUtils::timeUs32() - lastPpstime;
 
 
     // Don't set the time if it's more than 100ms since the last PPS and also ensures RTC
@@ -99,10 +100,11 @@ void PicoRtc::on_receive(const OpenAce::GpsTime& msg)
     // printf("GPS: %02d:%02d:%02d.%03d   Current Pico:%02d:%02d:%02d.%03ld \n", msg.hour, msg.minute, msg.second, elapsedUsSincePps/1000, time.tm_hour, time.tm_min, time.tm_sec, CoreUtils::msInSecond());
 
     settimeofday(&tv, nullptr);
-    elapsedUsSincePps = time_us_32() - lastPpstime;
+    elapsedUsSincePps = CoreUtils::timeUs32() - lastPpstime;
     statistics.delayUs = elapsedUsSincePps;
     CoreUtils::setOffsetMsSinceEpoch(secondsSinceEpoch*1000 + elapsedUsSincePps/1000);
     statistics.epochSet++;
+
 }
 
 void PicoRtc::on_receive_unknown(const etl::imessage& msg)
