@@ -108,12 +108,12 @@ void __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
 {
     // Handle the interrupt and call back over callback or task notification
     // printf("Pin %d event %d\n", pin, event);
-    // Cannot wrap this in a mutex since when tehre is an imterrupt we get an asset on suspend
-    // THis is in reality only an isue when modules are added/removed which is not expected during normal operation
-    if (pinInteruptHandlers.contains(pin) && pinInteruptHandlers[pin].enabled)
+    // Cannot wrap this in a mutex since when there is an interrupt we get an assert on suspend
+    // This is in reality only an issue when modules are added/removed which is not expected during normal operation
+    if (pinInterruptHandlers.contains(pin) && pinInterruptHandlers[pin].enabled)
     {
-        pinInterruptHandler &iHandler = pinInteruptHandlers[pin];
-        if (iHandler.callback && ((iHandler.event & event) == iHandler.event))
+        pinInterruptHandler &iHandler = pinInterruptHandlers[pin];
+        if (iHandler.callback != nullptr && ((iHandler.event & event) == iHandler.event))
         {
             iHandler.callback(event);
         }
@@ -127,58 +127,59 @@ void __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
     }
 }
 
+
 /**
- * Register a pin interupt handler with task notification
+ * Register a pin interrupt handler with task notification
  */
-void BaseModule::registerPinInterupt(uint8_t pin, uint32_t events, TaskHandle_t handler, uint32_t notificationValue)
+void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t handler, uint32_t notificationValue)
 {
     if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
     {
-        if (pinInteruptHandlers.full())
+        if (pinInterruptHandlers.full())
         {
-            panic("pinInteruptHandlers is full");
+            panic("pinInterruptHandlers is full");
         }
         gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
-        pinInteruptHandlers[pin] = {events, handler, notificationValue};
+        pinInterruptHandlers[pin] = {events, handler, notificationValue};
         xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 }
 
 /**
- * Register a pin interupt handler with callback function
+ * Register a pin interrupt handler with callback function
  */
-void BaseModule::registerPinInterupt(uint8_t pin, uint32_t events, pinIntrCallback_t callback)
+void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallback_t callback)
 {
     if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
     {
-        if (pinInteruptHandlers.full())
+        if (pinInterruptHandlers.full())
         {
-            panic("pinInteruptHandlers is full");
+            panic("pinInterruptHandlers is full");
         }
         gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
-        pinInteruptHandlers[pin] = {events, callback};
+        pinInterruptHandlers[pin] = {events, callback};
         xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 }
 
 
 void BaseModule::disablePinInterrupt(uint8_t pin) {
-    pinInteruptHandlers[pin].enabled = false;
+    pinInterruptHandlers[pin].enabled = false;
 }
 
 void BaseModule::enablePinInterrupt(uint8_t pin) {
-    pinInteruptHandlers[pin].enabled = true;    
+    pinInterruptHandlers[pin].enabled = true;    
 }
 
 /**
- * Unregister a pin interupt handler
+ * Unregister a pin interrupt handler
  */
-void BaseModule::unregisterPinInterupt(uint8_t pin)
+void BaseModule::unregisterPinInterrupt(uint8_t pin)
 {
     if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
     {
         gpio_set_irq_enabled(pin, 0x00, false);
-        pinInteruptHandlers.erase(pin);
+        pinInterruptHandlers.erase(pin);
         xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 }

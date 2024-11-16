@@ -58,7 +58,7 @@ OpenAce::PostConstruct Sx1262::postConstruct()
     {
         return OpenAce::PostConstruct::TASK_ERROR;
     }
-    registerPinInterupt(dio1Pin, GPIO_IRQ_EDGE_RISE, taskHandle, TASK_VALUE_DIO1_INTERRUPT);
+    registerPinInterrupt(dio1Pin, GPIO_IRQ_EDGE_RISE, taskHandle, TASK_VALUE_DIO1_INTERRUPT);
 
     printf("Initialised on cs:%d busy:%d dio1:%d ", csPin, busyPin, dio1Pin);
     return OpenAce::PostConstruct::OK;

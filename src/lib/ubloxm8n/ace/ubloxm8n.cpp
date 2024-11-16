@@ -85,12 +85,12 @@ void UbloxM8N::start()
     // https://portal.u-blox.com/s/question/0D52p0000D35wjlCQA/how-to-minimize-serial-output-time-variance
     // Note: when we really have a GPS without PPS, perhaps we can just call UbloxM8N_rtc->ppsEvent();
     // after detecting GMC? and just 'add' a few us to compensate for incomming GPS time messages?
-    registerPinInterupt(ppsPin, GPIO_IRQ_EDGE_RISE, UbloxM8N_pps_callback);
+    registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, UbloxM8N_pps_callback);
 };
 
 void UbloxM8N::stop()
 {
-    unregisterPinInterupt(ppsPin);
+    unregisterPinInterrupt(ppsPin);
     if (taskHandle != nullptr)
     {
         vTaskDelete(taskHandle);
