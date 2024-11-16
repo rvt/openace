@@ -157,6 +157,7 @@ void Bmp280::bmp280Task(void *arg)
             {
                 uint8_t buffer[8]; // I think this can be buffer[6] (No humidity needed)
                 aceSpi->read_registers_select(bmp280->cs, 0xF7);
+                vTaskDelay(50);
                 aceSpi->read_registers_read(bmp280->cs, buffer, sizeof(buffer));
                 aceSpi->releaseSlotSync();
 
@@ -168,7 +169,7 @@ void Bmp280::bmp280Task(void *arg)
 
                 auto value = (pressure+bmp280->compensation) / 100.0f;
                 bmp280->statistics.lastPressurehPa = value;
-                bmp280->getBus().receive(OpenAce::BarometricPressure{value, CoreUtils::msSinceBoot()});
+                bmp280->getBus().receive(OpenAce::BarometricPressure{value, CoreUtils::timeUs32()});
             }
         }
     }

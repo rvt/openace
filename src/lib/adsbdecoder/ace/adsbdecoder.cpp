@@ -61,9 +61,6 @@ void ADSBDecoder::on_receive(const OpenAce::ADSBMessageBin &msg)
 void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
 {
     (void)length;
-    // auto usSinceBoot = CoreUtils::usSinceBoot();
-    // static int msgCount = 0;
-
     mode_s_msg mm;
     // Two phase decoder to first decode the address.. when not in ignoredAirplanes continue decoding
     mode_s_decode_phase1(state, &mm, data);
@@ -80,16 +77,15 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         return;
     }
 
-    auto msSinceBoot = CoreUtils::msSinceBoot();
-    if (ignoredAirplanes.contains(mm.aa, msSinceBoot))
+    auto usTime = CoreUtils::timeUs32();
+    if (ignoredAirplanes.contains(mm.aa, usTime))
     {
         statistics.totalMsgIgnored++;
         return;
     }
     mode_s_decode_phase2(state, &mm);
 
-    //    auto usSinceBoot = CoreUtils::usSinceBoot();
-    if (!adsbDataCollector.start(mm.aa, msSinceBoot))
+    if (!adsbDataCollector.start(mm.aa, usTime))
     {
         statistics.knownAircraftFull++;
         return;
@@ -144,8 +140,9 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             }
         }
     }
+
     // Used to take specific performance peasurements
-    // auto usDuration = CoreUtils::usSinceBoot();
+    // auto usDuration = CoreUtils::timeUs32();
     // const static int EVERY = 250;
     // static int count = 0;
     // static uint32_t duration = 0;
@@ -168,9 +165,9 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         if (outOfAltitudeRange(current.gnsAltitude))
         {
             statistics.totalMsgIgnored++;
-            ignoredAirplanes.insert(current.icao, msSinceBoot);
+            ignoredAirplanes.insert(current.icao, usTime);
             current.evict = true;
-            adsbDataCollector.evictOldEntries(msSinceBoot);
+            adsbDataCollector.evictOldEntries(usTime);
             return;
         }
 

@@ -37,14 +37,9 @@ void RadioTunerRx::stop()
 {
     getBus().unsubscribe(*this);
 
-    for (auto it = radioTasks.cbegin(); it != radioTasks.cend(); it++)
+    for (auto& it : radioTasks)
     {
-        xTimerDelete(it->timerHandle, TASK_DELAY_MS(2'000));
-        xTaskNotify(it->taskHandle, TaskState::EXIT, eSetBits);
-        while (eTaskGetState(it->taskHandle) != eDeleted)
-        {
-            vTaskDelay(TASK_DELAY_MS(50));
-        }
+        it.stop();
     }
     radioTasks.clear();
 };
@@ -134,21 +129,21 @@ void RadioTunerRx::radioTuneTask(void *arg)
             {
 
                 // printf("Set frequency to f:%ld ms:%d zone:%d source:%s\n", frequency, CoreUtils::msInSecond(), taskCtx->nextTimeSlot.zone, OpenAce::dataSourceToString(radioTask->nextTimeSlot.source));
-                auto nextTimeSlot = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot);
-                auto frequency = CountryRegulations::determineFrequency(nextTimeSlot);
+                auto thisTimeSlot = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot);
+                auto frequency = CountryRegulations::determineFrequency(thisTimeSlot);
 
                 // Send a message to the radio to indicate to switch and listen to a different protocol
                 taskCtx->radio->rxMode(
                     {Radio::RadioParameters{
-                        nextTimeSlot.radioConfig,
+                        thisTimeSlot.radioConfig,
                         frequency,
-                        nextTimeSlot.frequency.powerdBm}});
+                        thisTimeSlot.frequency.powerdBm}});
 
                 auto delay = taskCtx->advanceReceiveSlot() - OPENACE_RX_OFFSET;
                 xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay < 1 ? 1 : delay), TASK_DELAY_MS(1));
 
-                printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
-                       taskCtx->radio->name().cbegin(), dataSourceToString(nextTimeSlot.radioConfig.dataSource), frequency, CoreUtils::msInSecond(), delay);
+                // printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
+                //        taskCtx->radio->name().cbegin(), dataSourceToString(thisTimeSlot.radioConfig.dataSource), frequency, CoreUtils::msInSecond(), delay);
 
                 taskCtx->statistics.rxRequests++;
             }
@@ -172,28 +167,26 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
 void RadioTunerRx::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
-    static uint32_t lastTime = CoreUtils::msSinceBoot();
-    auto msSinceBoot = CoreUtils::msSinceBoot();
+    static auto lastTime = 0;
     // Update ZONE every 30 seconds, or when still at ZONE0
-    // DOes nto require to often since this module requiresZONE information
-    if (currentZone == CountryRegulations::Zone::ZONE0 || CoreUtils::msElapsed(lastTime, msSinceBoot) > 30000)
+    // Does not require to often since this module requiresZONE information
+    if (currentZone == CountryRegulations::Zone::ZONE0 || CoreUtils::isUsReached(lastTime))
     {
-        lastTime = msSinceBoot;
+        lastTime = CoreUtils::timeUs32() + 30'000'000;
         currentZone = CountryRegulations::zone(msg.position.lat, msg.position.lon);
     }
 }
 
 void RadioTunerRx::on_receive(const OpenAce::AircraftPositionMsg &msg)
 {
-    static uint32_t lastTime = CoreUtils::msSinceBoot();
+    static uint32_t lastTime = 0;
     slotReceive[(uint8_t)msg.position.dataSource]++;
 
     // Update the tasks at least every seconds, but not on each and every aircraft message
     // The positions are only used for statistics, not for positional information
-    auto msSinceBoot = CoreUtils::msSinceBoot();
-    if (CoreUtils::msElapsed(lastTime, msSinceBoot) > 1000)
+    if (CoreUtils::isUsReached(lastTime))
     {
-        lastTime = msSinceBoot;
+        lastTime = CoreUtils::timeUs32() + 1'000'000;
         for (auto &taskCtx : radioTasks)
         {
             taskCtx.updateSlotReceive(slotReceive);

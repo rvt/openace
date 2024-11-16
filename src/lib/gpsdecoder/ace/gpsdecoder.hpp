@@ -28,7 +28,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, Ope
         uint32_t receivedRMC = 0;
         uint32_t receivedGSA = 0;
         uint32_t receivedOther = 0;
-        uint32_t startTime = CoreUtils::msSinceBoot();
+        uint32_t startTime = CoreUtils::timeS32();
     } statistics;
 
     static constexpr float INVALID_CONVERSION = -9999;

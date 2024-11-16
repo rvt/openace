@@ -174,9 +174,9 @@ namespace OpenAce
     struct BarometricPressure : public etl::message<15>
     {
         float pressurehPa;    // Preasure in hPa (hectopascal)
-        uint32_t msSinceBoot; // Time since boot
-        BarometricPressure(float pressurehPa_, uint32_t msSinceBoot_) : pressurehPa(pressurehPa_), msSinceBoot(msSinceBoot_) {};
-        BarometricPressure() : pressurehPa(0), msSinceBoot(0) {};
+        uint32_t usSinceBoot; // Time since boot
+        BarometricPressure(float pressurehPa_, uint32_t usSinceBoot_) : pressurehPa(pressurehPa_), usSinceBoot(usSinceBoot_) {};
+        BarometricPressure() : pressurehPa(0), usSinceBoot(0) {};
     };
 
     struct RadioRxFrame : public etl::message<16>

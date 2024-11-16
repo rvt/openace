@@ -86,7 +86,7 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
 
 void Sx1262::on_receive(const OpenAce::RadioTxFrame &msg)
 {
-    if (msg.radioNo == radioNo)
+    if (msg.radioNo == radioNo && txEnabled)
     {
         txPacket(msg.txPacket);
     }
@@ -328,7 +328,7 @@ void Sx1262::receiveGFSKPacket(Radio::RadioParameters const &parameters)
     }
     else
     {
-        puts("Why are we here?");
+        // Normally we don't end up here, but if we do we package is ignored
     }
     // printf("\n");
 }
@@ -344,7 +344,7 @@ void Sx1262::rxMode(const RxMode &rxMode)
 {
     if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
     {
-        //printf("Radio %d RX: %s timeMs:%d\n", radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
+//        printf("Radio %d RX: %s timeMs:%d\n", radioNo, OpenAce::dataSourceToString(lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
         configureSx1262(rxMode.radioParameters);
         Listen();
         lastRadioParameters = rxMode.radioParameters;
@@ -400,7 +400,7 @@ void Sx1262::sx1262Task(void *arg)
                 if (irqStatus & SX126X_IRQ_RX_DONE)
                 {
                     // Reading the data takes about 4ms
-                    // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
+//                    printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->lastRadioParameters.config.dataSource), CoreUtils::msInSecond());
                     sx1262->receiveGFSKPacket(sx1262->lastRadioParameters);
                     sx1262->configureSx1262(sx1262->lastRadioParameters);
                     sx1262->Listen();

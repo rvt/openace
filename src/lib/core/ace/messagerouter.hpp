@@ -53,14 +53,14 @@ namespace OpenAce
          */
         uint16_t messagesPerSec()
         {
-            uint32_t msBoot = CoreUtils::msSinceBoot();
-            uint32_t elapsed = CoreUtils::msElapsed(lastTime, msBoot);
-            if (elapsed > 100)
+            auto usBoot = CoreUtils::timeUs32();
+            auto elapsed = CoreUtils::usElapsed(lastTime, usBoot);
+            if (elapsed > 100'000)
             {
                 // Calculate number of messages per second
                 lastMessages = statistics.totalMessages;
-                lastTime = msBoot;
-                return (statistics.totalMessages - lastMessages) * (1000 / elapsed);
+                lastTime = usBoot;
+                return (statistics.totalMessages - lastMessages) * (1'000'000 / elapsed);
             }
             return 0;
         }

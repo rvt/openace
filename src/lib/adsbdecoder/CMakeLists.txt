@@ -4,8 +4,6 @@ project(adsbdecoder VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/addresscache.cpp
-    ace/adsbdatacollector.cpp
     ace/adsbdecoder.cpp
     ace/cpr.cpp
 )

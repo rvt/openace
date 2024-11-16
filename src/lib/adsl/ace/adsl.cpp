@@ -49,13 +49,6 @@ void ADSL::getData(etl::string_stream &stream, const etl::string_view path) cons
     stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
     stream << ",\"fecErr\":" << statistics.fecErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
-    stream << ",\"addressTypeFlarm\":" << statistics.addressTypeFlarm;
-    stream << ",\"addressTypeRandom\":" << statistics.addressTypeRandom;
-    stream << ",\"addressTypeOgn\":" << statistics.addressTypeOgn;
-    stream << ",\"addressTypeICAO\":" << statistics.addressTypeICAO;
-    stream << ",\"addressTypeFanet\":" << statistics.addressTypeFanet;
-    stream << ",\"addressTypeOther\":" << statistics.addressTypeOther;
-    stream << ",\"addressTypeReserved\":" << statistics.addressTypeReserved;
     stream << ",\"encrypted\":" << statistics.encrypted;
     stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"relay\":" << statistics.relay;
@@ -118,29 +111,22 @@ OpenAce::AddressType ADSL::addressMapToAddressType(uint8_t addressMap) const
     switch (addressMap)
     {
     case 0x00:
-        statistics.addressTypeRandom++;
         return OpenAce::AddressType::RANDOM;
     case 0x01:
     case 0x02:
     case 0x03:
     case 0x04:
-        statistics.addressTypeReserved++;
         return OpenAce::AddressType::RESERVED;
     case 0x05:
-        statistics.addressTypeICAO++;
         return OpenAce::AddressType::ICAO;
     case 0x06:
-        statistics.addressTypeFlarm++;
         return OpenAce::AddressType::FLARM;
     case 0x07:
-        statistics.addressTypeOgn++;
         return OpenAce::AddressType::OGN;
     case 0x08:
-        statistics.addressTypeFanet++;
         return OpenAce::AddressType::FANET;
     // Not a bug, if we don't the the type we just say random
     default:
-        statistics.addressTypeOther++;
         return OpenAce::AddressType::UNKNOWN;
     }
 }
@@ -344,9 +330,6 @@ void ADSL::adslReceiveTask(void *arg)
             }
             memcpy(packet.data(), msg.frame, ADSL_Packet::TotalTxBytes);
             packet.Descramble();
-
-//            printf(" 0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,\n", msg.frame[0], msg.frame[1], msg.frame[2], msg.frame[3], msg.frame[4], msg.frame[5], msg.frame[6]);
-//            printf(" 0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,0x%08lX,\n", msg.err[0], msg.err[1], msg.err[2], msg.err[3], msg.err[4], msg.err[5], msg.err[6]);
 
             if (packet.key != 0)
             {

@@ -46,15 +46,10 @@ class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioR
     {
         uint32_t receivedAircraftPositions = 0;
         uint32_t transmittedAircraftPositions = 0;
-        uint32_t fecErrors = 0;
+        uint32_t fecErr = 0;
         uint32_t outOfDistance = 0;
-        uint32_t addressTypeErr = 0;
-        uint32_t addressTypeFlarm = 0;
-        uint32_t addressTypeRandom = 0;
-        uint32_t addressTypeOgn = 0;
-        uint32_t addressTypeICAO = 0;
         uint32_t encrypted = 0;
-        uint32_t queueFull = 0;
+        uint32_t queueFullErr = 0;
         uint32_t nonPositional = 0;
         uint32_t relay[4] = {};
     } statistics;

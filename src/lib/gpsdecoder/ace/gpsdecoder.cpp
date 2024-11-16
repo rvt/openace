@@ -41,7 +41,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"dopValue\":\"" << dopValue << "\"";
     stream << ",\"fixQuality\":\"" << fixQuality << "\"";
     stream << ",\"satellitesTracked\":" << satellitesTracked;
-    stream << ",\"upTime\":" << CoreUtils::msElapsed(statistics.startTime) / 1000; // ToDo, movr to some better location
+    stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
     stream << ",\"gpstime\":" << "\""
            << width2fill0 << lastGGATimestamp.hours << OpenAce::RESET_FORMAT << ":"
            << width2fill0 << lastGGATimestamp.minutes << OpenAce::RESET_FORMAT << ":"

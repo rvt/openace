@@ -31,14 +31,6 @@ class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, OpenAce::G
     } statistics;
 
 private:
-    /**
-     * Set the PICO's hardware clock.
-     * See: https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#timestamp
-     * Use the convenience function PicoRtc::timeMsSinceBoot() or PicoRtc::timeUsSinceBoot() to get the times;
-     * Use gettimeofday(&tv, nullptr); to get the time in seconds and microseconds since the epoch.
-     * Only use it when you need absolute time (logging, display, etc) or to calculate time based encryption
-     * When SET_PICO_RTC is set to true, also the RTC will be set, but that will only give second accuracy and will always
-    */
     void on_receive(const OpenAce::GpsTime& msg);
 
     void on_receive_unknown(const etl::imessage& msg);

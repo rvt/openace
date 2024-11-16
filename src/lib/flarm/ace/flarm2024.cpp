@@ -122,12 +122,10 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
     }
     stream << "\"receivedAircraftPositions\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
-    stream << ",\"crcErrors\":" << statistics.crcErrors;
+    stream << ",\"crcErr\":" << statistics.crcErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"ownshipAddress\":" << openAceConfiguration.address;
-    stream << ",\"addressType\":[" << statistics.addressType[0] << "," << statistics.addressType[1] << "," << statistics.addressType[2] << "," << statistics.addressType[3] << "]";
-    stream << ",\"queueFull\":" << statistics.queueFull;
-    stream << ",\"msgType\":[" << statistics.msgType[0] << "," << statistics.msgType[1] << "," << statistics.msgType[2] << "," << statistics.msgType[3] << "]";
+    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << "}\n";
 }
 
@@ -233,9 +231,6 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
         return -1;
     }
 
-    statistics.addressType[radioPacket->addressType & 0x03]++;
-    statistics.msgType[radioPacket->messageType & 0x03]++;
-
     float groundSpeed = descale<8, 2, false>(radioPacket->groundSpeed) / 10.0f;
 
 //    printf("FLARM: time:%d address:%06X latitude:%0.6f longitude:%0.6f altitude:%d climbRate:%0.2f speed:%0.2f heading:%d turnRate:%0.2f\n",
@@ -288,7 +283,7 @@ void Flarm2024::flarmReceiveTask(void *arg)
             uint16_t calculatedChecksum = flarmCalculateChecksum((uint8_t *)msg.frame, RadioPacket::packetLength);
             if (calculatedChecksum != swapBytes16(packet->checksum))
             {
-                flarm->statistics.crcErrors++;
+                flarm->statistics.crcErr++;
                 continue;
             }
 
@@ -311,7 +306,7 @@ void Flarm2024::on_receive(const OpenAce::RadioRxFrame &msg)
         const OpenAce::RadioRxFrame cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
-            statistics.queueFull++;
+            statistics.queueFullErr++;
         }
     }
 }

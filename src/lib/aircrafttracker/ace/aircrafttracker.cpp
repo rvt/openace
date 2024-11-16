@@ -162,7 +162,7 @@ void AircraftTracker::handleNew()
     };
 
     uint16_t spread = 0;
-    auto time = CoreUtils::msSinceBoot() + 1'000;
+    auto time = CoreUtils::timeUs32() + 1'000'000;
     OpenAce::AircraftPositionInfo position;
     while (queue.pop(position) && !trackedAircraft.full())
     {
@@ -194,11 +194,11 @@ void AircraftTracker::handleNew()
 void AircraftTracker::handleTimer()
 {
     auto next = trackedAircraft.begin();
-    while (next != trackedAircraft.end() && next->nextSendTime < (CoreUtils::msSinceBoot() + 75)) // Subtract 75 ms to also send any other aircraft within 75ms, for efficienty
+    while (next != trackedAircraft.end() && next->nextSendTime < (CoreUtils::timeUs32() + 75'000)) // Subtract 75 ms to also send any other aircraft within 75ms, for efficienty
     {
 
         // Update stats for this entry
-        next->nextSendTime += 1'000;
+        next->nextSendTime += 1'000'000;
         next->numberOfTries++;
 
         // Move to end of the queue
@@ -218,7 +218,7 @@ void AircraftTracker::handleTimer()
     if (next != trackedAircraft.end())
     {
         // +1 added to ensure to never get a 0 delay which is invalid
-        uint16_t delay = next->nextSendTime - CoreUtils::msSinceBoot();
+        uint16_t delay = (next->nextSendTime - CoreUtils::timeUs32()) / 1'000;
         if (delay == 0)
         {
             delay = 1;

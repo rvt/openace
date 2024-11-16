@@ -76,7 +76,7 @@ struct AdsbCombinedDataStatus
  * flat map took 16us
  * unordered_map takes 5us
  */
-template <size_t SIZE, uint32_t EVICT_TIME_MS>
+template <size_t SIZE, uint32_t EVICT_TIME_US>
 class AdsbDataCollector
 {
     static constexpr uint8_t ADSBDECODER_MS_DELAY_SERIAL_AND_OVERHEAD = 5; // Estimate time to send 24characters + some additional overhead
@@ -131,13 +131,13 @@ public:
     void clear() {
         cache.clear();
     }
-    bool start(uint32_t address, uint32_t msSinceBoot)
+    bool start(uint32_t address, uint32_t usTime)
     {
         auto it = cache.find(address);
         if (it != cache.end())
         {
             currentDataStatus = &it->second;
-            currentDataStatus->lastSeen = msSinceBoot;
+            currentDataStatus->lastSeen = usTime;
             return true;
         }
 
@@ -146,12 +146,12 @@ public:
         if (evictCycle == 25 || cache.full())
         {
             evictCycle = 0;
-            evictOldEntries(msSinceBoot);
+            evictOldEntries(usTime);
         }
 
         if (!cache.full())
         {
-            cache[address] = AdsbCombinedDataStatus{address, msSinceBoot};
+            cache[address] = AdsbCombinedDataStatus{address, usTime};
             auto it = cache.find(address);
             currentDataStatus = &it->second;
             return true;
@@ -161,25 +161,15 @@ public:
         return false;
     }
 
-    void evictOldEntries(uint32_t msSinceBoot)
+    void evictOldEntries(uint32_t usTime)
     {
 
-        // Always ensure there is room for new cache entries be reducing evictTime untill there is room again
-        // auto evictTime = EVICT_TIME_MS;
-        // while (cache.full() && evictTime > 2000)
-        // {
-        //     cache.erase(etl::remove_if(cache.cbegin(), cache.cend(), [msSinceBoot, evictTime](const auto &it)
-        //                                { return it.second.evict; }),
-        //                 cache.end());
-        //     evictTime -= 1000;
-        // }
-
-        auto evictTime = EVICT_TIME_MS;
-        while ((cache.size() > CLEAR_UP_SIZE) && evictTime > 2000)
+        auto evictTime = EVICT_TIME_US;
+        while ((cache.size() > CLEAR_UP_SIZE) && evictTime > 2'000'000)
         {
             for (auto it = cache.cbegin(); it != cache.cend();)
             {
-                if (it->second.evict || (CoreUtils::msElapsed(it->second.lastSeen, msSinceBoot) > evictTime))
+                if (it->second.evict || (CoreUtils::usElapsed(it->second.lastSeen, usTime) > evictTime))
                 {
                     it = cache.erase(it);
                 }
@@ -188,17 +178,17 @@ public:
                     ++it;
                 }
             }
-            evictTime -= 1000;
+            evictTime -= 5'000'000;
         }
     }
 
     void dump()
     {
-        auto sinceBoot = CoreUtils::msSinceBoot();
+        auto usTime = CoreUtils::timeUs32();
         for (const auto &entry : cache)
         {
             const auto &data = entry.second; // Access the value part of the pair
-            printf("%06X %02X %06d %s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::msElapsed(data.lastSeen, sinceBoot), data.icaoAddress.c_str(), data.gnsAltitude);
+            printf("%06X %02X %06d %s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usElapsed(data.lastSeen, usTime), data.icaoAddress.c_str(), data.gnsAltitude);
         }
     }
 

@@ -57,15 +57,10 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
     }
     stream << "\"receivedAircraftPositions\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
-    stream << ",\"fecErrors\":" << statistics.fecErrors;
+    stream << ",\"fecErr\":" << statistics.fecErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
-    stream << ",\"addressTypeErr\":" << statistics.addressTypeErr;
-    stream << ",\"addressTypeFlarm\":" << statistics.addressTypeFlarm;
-    stream << ",\"addressTypeRandom\":" << statistics.addressTypeRandom;
-    stream << ",\"addressTypeOgn\":" << statistics.addressTypeOgn;
-    stream << ",\"addressTypeICAO\":" << statistics.addressTypeICAO;
     stream << ",\"encrypted\":" << statistics.encrypted;
-    stream << ",\"queueFull\":" << statistics.queueFull;
+    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"nonPositional\":" << statistics.nonPositional;
     stream << "}\n";
 }
@@ -304,7 +299,7 @@ void Ogn1::ognReceiveTask(void *arg)
             uint8_t check = ogn1->errorCorrect((uint8_t *)&packet, (uint8_t *)msg.frame, (uint8_t *)msg.err);
             if (check & 0x0F)
             {
-                ogn1->statistics.fecErrors++;
+                ogn1->statistics.fecErr++;
                 continue;
             }
             // dumpBuffer((uint8_t*)msg.frame, msg.length);
@@ -333,7 +328,7 @@ void Ogn1::on_receive(const OpenAce::RadioRxFrame &msg)
         const OpenAce::RadioRxFrame cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
-            statistics.queueFull++;
+            statistics.queueFullErr++;
         }
     }
 }

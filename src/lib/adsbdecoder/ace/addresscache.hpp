@@ -6,7 +6,7 @@
 
 #include "etl/flat_set.h"
 
-template <size_t SIZE, uint32_t EVICT_TIME_MS>
+template <size_t SIZE, uint32_t EVICT_TIME_US>
 class AddressCache
 {
     static constexpr uint32_t CLEAR_UP_SIZE = (SIZE * 90) / 100;
@@ -62,42 +62,42 @@ public:
         return cache.size();
     }
 
-    bool contains(uint32_t icao, uint32_t msSinceBoot)
+    bool contains(uint32_t icao, uint32_t usTime)
     {
         auto it = etl::find_if(cache.begin(), cache.end(), FindByIcao(icao));
 
         if (it != cache.end())
         {
-            it->lastSeen = msSinceBoot;
+            it->lastSeen = usTime;
             return true;
         }
 
         return false;
     }
 
-    bool insert(uint32_t address, uint32_t msSinceBoot)
+    bool insert(uint32_t address, uint32_t usTime)
     {
         if (cache.full())
         {
-            evictOldEntries(msSinceBoot);
+            evictOldEntries(usTime);
         }
 
-        cache.insert(AddressStatus{address, msSinceBoot});
+        cache.insert(AddressStatus{address, usTime});
         return true;
     }
 
-    void evictOldEntries(uint32_t msSinceBoot)
+    void evictOldEntries(uint32_t usTime)
     {
         // Always ensure there is room for new cache entries be reducing evictTime untill there is room again
-        auto evictTime = EVICT_TIME_MS;
-        while ((cache.size() > CLEAR_UP_SIZE) && evictTime > 2000)
+        auto evictTime = EVICT_TIME_US;
+        while ((cache.size() > CLEAR_UP_SIZE) && evictTime > 2'000'000)
         {
-            cache.erase(etl::remove_if(cache.begin(), cache.end(), [msSinceBoot, evictTime](const auto &it)
+            cache.erase(etl::remove_if(cache.begin(), cache.end(), [usTime, evictTime](const auto &it)
             {
-                return CoreUtils::msElapsed(it.lastSeen, msSinceBoot) > evictTime;
+                return CoreUtils::usElapsed(it.lastSeen, usTime) > evictTime;
             }),
             cache.end());
-            evictTime -= 1000;
+            evictTime -= 5'000'000;
         }
     }
 };

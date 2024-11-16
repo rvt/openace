@@ -83,11 +83,9 @@ private:
     {
         uint32_t receivedAircraftPositions = 0;
         uint32_t transmittedAircraftPositions = 0;
-        uint32_t crcErrors = 0;
+        uint32_t crcErr = 0;
         uint32_t outOfDistance = 0;
-        etl::array<uint32_t, 4> addressType = {0, 0, 0, 0};
-        uint32_t queueFull = 0;
-        etl::array<uint32_t, 4> msgType = {0, 0, 0, 0};
+        uint32_t queueFullErr = 0;
     } statistics;
 
     struct DataSourceTimeStats

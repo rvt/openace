@@ -42,8 +42,8 @@ class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, Open
     } statistics;
 
 public:
-    AddressCache<MAX_ADDRESS_CACHE_SIZE, 30000> ignoredAirplanes; // A quick cache to store all airplanes that we already know we should not track
-    AdsbDataCollector<MAX_PLANES_TRACKED, 15000> adsbDataCollector;
+    AddressCache<MAX_ADDRESS_CACHE_SIZE, 30'000'000> ignoredAirplanes; // A quick cache to store all airplanes that we already know we should not track
+    AdsbDataCollector<MAX_PLANES_TRACKED, 15'000'000> adsbDataCollector;
 
     int32_t filterAbove; // Filter out all aircraft above me in meters. 1000 means all aircraft 1000m or more above me will not get processed
     int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed

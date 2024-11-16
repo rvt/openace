@@ -88,6 +88,21 @@ private:
         RadioProtocolCtx(const RadioProtocolCtx &) = delete;
         RadioProtocolCtx &operator=(RadioProtocolCtx const &) = delete;
 
+        void stop() {
+            if (taskHandle) {
+                xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
+            }            
+            while (eTaskGetState(taskHandle) != eDeleted)
+            {
+                vTaskDelay(TASK_DELAY_MS(50));
+            }
+            if (timerHandle) {
+                xTimerDelete(timerHandle, TASK_DELAY_MS(2'000));
+            }
+            timerHandle = nullptr;
+            taskHandle = nullptr;
+        }
+
         void getData(etl::string_stream &stream) const
         {
 
@@ -159,8 +174,9 @@ private:
                 prioritizeDatasources();
             }
 
-            auto currentMs = CoreUtils::msInSecond();
-            upcomingTimeslot = CountryRegulations::nextProtocolTimeslot(currentMs, controller->currentZone, *upcomingDataSource);
+            auto currentMs = CoreUtils::msInSecond(); 
+            // Add 100ms Ensure well into the slot we where suppose to be in, even if the current one is almost finished
+            upcomingTimeslot = CountryRegulations::nextProtocolTimeslot(currentMs + 100, controller->currentZone, *upcomingDataSource);
             upcomingDataSource++;
             const auto &next = CountryRegulations::protocolTimeslotById(upcomingTimeslot);
             return CoreUtils::msDelayToReference(next.slotStartTime, currentMs);

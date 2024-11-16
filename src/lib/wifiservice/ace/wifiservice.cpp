@@ -65,7 +65,7 @@ void WifiService::wifiTask(void *arg)
                 break;
 
             case ConnectionState::WIFISCAN:
-                startScan = CoreUtils::msSinceBoot();
+                startScan = CoreUtils::timeUs32() + (OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS * 1'000);
                 wifiService->startWifiScan();
                 wifiService->connectionState = ConnectionState::WIFISCANNING;
                 break;
@@ -76,7 +76,7 @@ void WifiService::wifiTask(void *arg)
                     wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
                 }
                 // If for whatever reason WIFI scan does not find any network, then stop scanning after OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS
-                if (CoreUtils::msElapsed(startScan) > OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS) 
+                if (CoreUtils::isUsReached(startScan)) 
                 {
                     wifiService->connectionState = ConnectionState::APMODESTART;
                     cyw43_wifi_leave(&cyw43_state, 0);
@@ -152,7 +152,7 @@ void WifiService::wifiTask(void *arg)
 
 void WifiService::accessPointConnectionScanner()
 {
-    auto cyw43TickMs = CoreUtils::msSinceBoot();
+    auto cyw43TickMs = cyw43_hal_ticks_ms();
     // Generate a lit of connected clients and send it
     etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> clients;
     for (uint8_t i = 0; i < DHCPS_MAX_IP; i++)
