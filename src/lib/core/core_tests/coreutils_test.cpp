@@ -12,37 +12,48 @@ TEST_CASE( "msSinceEpoch", "[single-file]" )
     time_us_64Value = 0;
     CoreUtils::setOffsetMsSinceEpoch(0);
     time_us_64Value = 1000000;
-    REQUIRE( (CoreUtils::msSinceEpoch() == 1000) );
+    REQUIRE( CoreUtils::msSinceEpoch() == 1000 );
 
     time_us_64Value = 1200'000;
     CoreUtils::setOffsetMsSinceEpoch(1210);
-    REQUIRE( (CoreUtils::msSinceEpoch() == 1210) );
+    REQUIRE( CoreUtils::msSinceEpoch() == 1210 );
 
     time_us_64Value = 2500'000;
-    REQUIRE( (CoreUtils::msSinceEpoch() == 2510) );
+    REQUIRE( CoreUtils::msSinceEpoch() == 2510 );
 }
 
 
-TEST_CASE( "msInSecond", "[single-file]" )
+TEST_CASE( "msInSecondFromEpoch", "[single-file]" )
 {
     time_us_64Value = 0;
     CoreUtils::setOffsetMsSinceEpoch(1698800584411);
-    REQUIRE( (CoreUtils::msInSecond() == 411) );
+    REQUIRE( CoreUtils::msInSecondFromEpoch() == 411 );
 
     CoreUtils::setOffsetMsSinceEpoch(1698800584000);
-    REQUIRE( (CoreUtils::msInSecond() == 0) );
+    REQUIRE( CoreUtils::msInSecondFromEpoch() == 0 );
 }
 
+TEST_CASE( "msInSecond", "[single-file]" )
+{
+    time_us_32Value = 23456623;
+    CoreUtils::setPPS();
+    REQUIRE( CoreUtils::msInSecond() == 0 );
+
+    time_us_32Value = time_us_32Value + 1758'000;
+    REQUIRE( CoreUtils::msInSecond() == 758 );
+}
 
 TEST_CASE( "msDelayToReference", "[single-file]" )
 {
     time_us_64Value = 0;
-    REQUIRE( (CoreUtils::msDelayToReference(411, 123) == 288) ); // 123ms into whole second
+    time_us_32Value = 23456623;
+    CoreUtils::setPPS();
+    time_us_32Value = time_us_32Value + 313'000;
+    REQUIRE( CoreUtils::msDelayToReference(411, 123) == 288 ); // 123ms into whole second
 
-    REQUIRE( (CoreUtils::msDelayToReference(123, 411) == 712) );  // 411ms into whole second
+    REQUIRE( CoreUtils::msDelayToReference(123, 411) == 712 );  // 411ms into whole second
 
-    CoreUtils::setOffsetMsSinceEpoch(1698800584010); // 10ms into whole second
-    REQUIRE( (CoreUtils::msDelayToReference(123) == 113) );
+    REQUIRE( CoreUtils::msDelayToReference(200) == 887 );
 }
 
 
@@ -50,11 +61,11 @@ TEST_CASE( "secondsSinceEpoch", "[single-file]" )
 {
     time_us_64Value = 0;
     CoreUtils::setOffsetMsSinceEpoch(1698800584010);
-    REQUIRE( (CoreUtils::secondsSinceEpoch() == 1698800584) );
+    REQUIRE( CoreUtils::secondsSinceEpoch() == 1698800584 );
 
     // ms is always round down by design so 999ms in second is still considered teh previous second
     CoreUtils::setOffsetMsSinceEpoch(1698800584510);
-    REQUIRE( (CoreUtils::secondsSinceEpoch() == 1698800584) );
+    REQUIRE( CoreUtils::secondsSinceEpoch() == 1698800584 );
 }
 
 TEST_CASE( "distanceAccurate", "[single-file]" )
@@ -177,26 +188,26 @@ TEST_CASE( "addChecksumToNMEA", "[single-file]" )
     // Empty string stays empty
     OpenAce::NMEAString pflau="$";
     CoreUtils::addChecksumToNMEA(pflau);
-    REQUIRE( (pflau.size() == 6 ) );
-    REQUIRE( (pflau.compare("$*00")) );
+    REQUIRE( pflau.size() == 6  );
+    REQUIRE( pflau.compare("$*00") );
 
     // Should start from 0
     pflau="1234";
     CoreUtils::addChecksumToNMEA(pflau);
-    REQUIRE( (pflau.size() == 9 ) );
-    REQUIRE( (pflau.compare("1234*35\r\n") == 0 ) );
+    REQUIRE( pflau.size() == 9  );
+    REQUIRE( pflau.compare("1234*35\r\n") == 0  );
 
     // Add checksum
     pflau="$1234";
     CoreUtils::addChecksumToNMEA(pflau);
-    REQUIRE( (pflau.size() == 10 ) );
-    REQUIRE( (pflau.compare("$1234*04\r\n") == 0) );
+    REQUIRE( pflau.size() == 10  );
+    REQUIRE( pflau.compare("$1234*04\r\n") == 0 );
 
     // Replace existing checksum
     pflau="$1234*35";
     CoreUtils::addChecksumToNMEA(pflau);
-    REQUIRE( (pflau.size() == 10 ) );
-    REQUIRE( (pflau.compare("$1234*04\r\n") == 0) );
+    REQUIRE( pflau.size() == 10  );
+    REQUIRE( pflau.compare("$1234*04\r\n") == 0 );
 }
 
 TEST_CASE( "hexStrToByteArray overflow", "[single-file]" )

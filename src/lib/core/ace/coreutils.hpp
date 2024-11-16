@@ -130,7 +130,7 @@ public:
      * eg: a value of 119 means 119ms since PPS
      * 
      */
-    [[deprecated]]
+    // [[deprecated]]
     static inline uint16_t msInSecondFromEpoch(uint64_t msSinceEpoch = CoreUtils::msSinceEpoch())
     {
         return msSinceEpoch % 1000;
