@@ -211,7 +211,7 @@ int fs_open_custom(fs_file *file, const char *name)
     }
 
     // TODO: Test and handle captive portal
-    // Was stable for iOS, but for Android it worked fine, but it didn't feel intuitive yet
+    // Was stable for iOS, but for Android it worked fine okish, but it didn't feel intuitive yet
     // if (handle_captive(file, path))
     // {
     //     return 1;
