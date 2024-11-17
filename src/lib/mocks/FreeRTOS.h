@@ -35,3 +35,10 @@ typedef enum
     eSetValueWithoutOverwrite /* Set the task's notification value if the previous value has been read by the task. */
 } eNotifyAction;
 
+
+#ifndef taskENTER_CRITICAL_FROM_ISR
+#define taskENTER_CRITICAL_FROM_ISR() (0)
+#endif 
+#ifndef taskEXIT_CRITICAL_FROM_ISR
+#define taskEXIT_CRITICAL_FROM_ISR(saved) ((void)(saved))
+#endif 

@@ -371,7 +371,7 @@ void Sx1262::txPacket(const TxPacket &txPacket)
         Listen();
         spiHall->releaseSlotSync();
     } else {
-        puts("Missed");
+        // puts("Missed");
     }
 
 }
