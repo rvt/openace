@@ -16,28 +16,14 @@ OpenAce::PostConstruct Dump1090Client::postConstruct()
         return result;
     }
 
-    timerHandle = xTimerCreate("dump1090Timer", TASK_DELAY_MS(2'000), pdTRUE, this, dump1090Timer);
-    if (timerHandle == nullptr)
-    {
-        return OpenAce::PostConstruct::TIMER_ERROR;
-    }
-
     return OpenAce::PostConstruct::OK;
-}
-
-void Dump1090Client::dump1090Timer(TimerHandle_t xTimer)
-{
-    auto *handle = (Dump1090Client *)pvTimerGetTimerID(xTimer);
-    if (handle->tcpClient.isStopped() && (handle->stoppedCounter++ == 2))
-    {
-        handle->stoppedCounter = 0;
-        handle->tcpClient.start();
-    }
 }
 
 void Dump1090Client::stop()
 {
-    // xTimerDelete(timerHandle, TASK_DELAY_MS(250));
+    if (taskHandle) {
+        xTaskNotify(taskHandle, 1, eSetBits);
+    }
     tcpClient.stop();
     getBus().unsubscribe(*this);
 };

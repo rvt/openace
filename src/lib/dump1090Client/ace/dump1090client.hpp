@@ -63,8 +63,6 @@ public:
         (void)msg;
     }
 
-    static void dump1090Timer(TimerHandle_t xTimer);
-
     void processNewSentence(const char *sentence)
     {
         // Fast detection of msgType 17 and hexStrToByteArray to reduce resources
