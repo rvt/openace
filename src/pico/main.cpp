@@ -48,7 +48,7 @@
 #include "ace/gdl90service.hpp"
 #include "ace/gdloverudp.hpp"
 
-const char* buildTime = BUILD_TIMESTAMP;
+const char *buildTime = BUILD_TIMESTAMP;
 
 /* Prototypes for the standard FreeRTOS callback/hook functions implemented
 within this file. */
@@ -224,7 +224,7 @@ static void loadModules(void *arch)
     {
         load(Sx1262::NAMES[i], bus, config);
     }
-    // Other for these two are currently important to ensure configuration on TX is set before RX 
+    // Other for these two are currently important to ensure configuration on TX is set before RX
     // see RadioTunerRx::enableDisableDatasources()
     load(RadioTunerTx::NAME, bus, config);
     load(RadioTunerRx::NAME, bus, config);
@@ -245,19 +245,23 @@ static void loadModules(void *arch)
     // puts("\033[2J\033[H");
     puts("All modules loaded!\n");
 
-    while (true)
+    if (cyw43_arch_async_context())
     {
-        // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
-        if (cyw43_arch_async_context())
+        while (true)
         {
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-            vTaskDelay(TASK_DELAY_MS(10));
+            // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+            vTaskDelay(TASK_DELAY_MS(100));
             // printf("1\n");
 
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-            vTaskDelay(TASK_DELAY_MS(990));
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+            // Sync blink the LED with GPS
+            vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
         }
-        else
+    }
+    else
+    {
+        while (true)
         {
             puts("Wifi module not enabled");
             vTaskDelay(TASK_DELAY_MS(5000));
@@ -281,7 +285,7 @@ void vLaunch(void)
     // + 1024 because we run the message bus in this task
     TaskHandle_t taskpublish_handle;
     UBaseType_t uxCoreAffinityMask;
-    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 2048 /* 96 */, NULL, tskIDLE_PRIORITY + 1, &(taskpublish_handle));
+    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 2048 /* 96 */, NULL, tskIDLE_PRIORITY, &(taskpublish_handle));
     uxCoreAffinityMask = ((1 << 0));
     vTaskCoreAffinitySet(taskpublish_handle, uxCoreAffinityMask);
 
@@ -326,8 +330,8 @@ int main()
 
     )=");
 
-      /* Configure the hardware ready to run the demo. */
-      const char *rtos_name;
+    /* Configure the hardware ready to run the demo. */
+    const char *rtos_name;
 #if (portSUPPORT_SMP == 1)
     rtos_name = "SMP";
 #else
