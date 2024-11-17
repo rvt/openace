@@ -106,6 +106,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
 
 void __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
 {
+    UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();
     // Handle the interrupt and call back over callback or task notification
     // printf("Pin %d event %d\n", pin, event);
     // Cannot wrap this in a mutex since when there is an interrupt we get an assert on suspend
@@ -125,6 +126,7 @@ void __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
     }
+    taskEXIT_CRITICAL_FROM_ISR( saved );
 }
 
 

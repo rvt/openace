@@ -239,7 +239,17 @@ public:
     virtual void write_array(uint8_t cs, uint8_t *data, uint8_t length, uint8_t delayMs) const = 0;
     virtual void write_byte(uint8_t cs, uint8_t data, uint8_t delayMs) const = 0;
 
+    /**
+     * Squire access to the SPI buss
+     * \sa acquireSlotSyncCb()
+     * \sa releaseSlotSync()
+     */
     virtual bool acquireSlotSync(uint8_t busFrequencyMhz) = 0;
+    /**
+     * Alternative to acquireSlotSync that will acquire access to the SPI bus, calls the delegate and release it in one function call
+     * \sa releaseSlotSync()
+     */
+    virtual bool acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()>& delegate) = 0;
     virtual void releaseSlotSync() = 0;
 };
 

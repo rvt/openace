@@ -199,7 +199,7 @@ int handle_captive(fs_file *file, const etl::ivector<OpenAce::Modulename> &path)
 
 int fs_open_custom(fs_file *file, const char *name)
 {
-    constexpr auto MAX_CONTENT_SIZE = 1025;
+    constexpr auto MAX_CONTENT_SIZE = 1024;
 
     auto pathString = OpenAce::ConfigPathString(name);
     auto path = CoreUtils::parsePath(pathString);
@@ -237,14 +237,14 @@ int fs_open_custom(fs_file *file, const char *name)
         etl::string_ext response((char *)file->pextension, MAX_CONTENT_SIZE);
         etl::string_stream stream(response);
         module->getData(stream, pathString);
-        int length = response.size();
 
         file->data = (const char *)file->pextension;
-        file->len = length;
+        file->len = response.size();
         file->index = file->len; // We set index to len to indicate that the complete file has been read and the server can send and close the response
-        // file->flags = FS_FILE_FLAGS_HEADER_INCLUDED | FS_FILE_FLAGS_HEADER_HTTPVER_1_1 | FS_FILE_FLAGS_HEADER_PERSISTENT;
-
+        // file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
         return 1;
+    } else {
+        webserver->statistics.memAllocErr++;
     }
     return 0;
 }
@@ -286,8 +286,8 @@ void Webserver::getData(etl::string_stream &stream, const etl::string_view path)
             stream << ",";
         }
     }
-
     stream << "}";
+    stream << ",\"memAllocErr\":" << statistics.memAllocErr;
     stream << "}\n";
 }
 

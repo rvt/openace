@@ -95,6 +95,18 @@ void AceSpi::resetDevices() const
     gpio_put(rst, 1);
 }
 
+bool AceSpi::acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()>& delegate) {
+    
+    if (acquireSlotSync(busFrequencyMhz))
+    {
+        delegate();
+        releaseSlotSync();
+        return true;
+    }
+
+    return false;
+}
+
 bool AceSpi::acquireSlotSync(uint8_t busFrequencyMhz)
 {
     if (xSemaphoreTake(mutex, TASK_DELAY_MS(10)) == pdTRUE)

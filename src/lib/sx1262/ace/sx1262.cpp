@@ -391,7 +391,7 @@ void Sx1262::sx1262Task(void *arg)
                 return;
             }
 
-            if (aceSpi->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
+            aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, notifyValue]() 
             {
 
                 // Read device status to validate if there is anything to do
@@ -406,17 +406,13 @@ void Sx1262::sx1262Task(void *arg)
                     sx1262->Listen();
                 }
 
-                if (notifyValue & TaskState::FAILSAVE_LISTEN_MODE && sx1262->lastRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
+                if ((notifyValue & TaskState::FAILSAVE_LISTEN_MODE) && (sx1262->lastRadioParameters.config.dataSource != OpenAce::DataSource::NONE))
                 {
                     sx1262->configureSx1262(sx1262->lastRadioParameters);
                     sx1262->Listen();
                     // printf("Radio %d FailSafe %d\n", sx1262->radioNo, CoreUtils::msInSecond());
                 }
-
-                // Always releasing the slot is sub-optmial, specially when sending is quickly followed by receiving
-                // TODO: design some way to keep the slot aquired for a short time after sending?
-                aceSpi->releaseSlotSync();
-            }
+            });
         }
         else
         {

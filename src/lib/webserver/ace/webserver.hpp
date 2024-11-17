@@ -14,6 +14,11 @@ class Webserver : public BaseModule, public etl::message_router<Webserver, OpenA
 {
     friend class message_router;
 public:
+    mutable struct
+    {
+        uint16_t memAllocErr = 0;
+    } statistics;
+
     static constexpr const etl::string_view NAME = "Webserver";
     Webserver(etl::imessage_bus& bus, const Configuration &config) : BaseModule(bus, NAME)
     {

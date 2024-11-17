@@ -70,6 +70,8 @@ public:
     virtual void write_byte(uint8_t cs, uint8_t data, uint8_t delayMs) const override;
 
     virtual bool acquireSlotSync(uint8_t busFrequencyMhz) override;
+    virtual bool acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()>& delegate) override;
+
     virtual void releaseSlotSync() override;
 
     /**
