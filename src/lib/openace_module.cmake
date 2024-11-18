@@ -19,7 +19,6 @@ set_source_files_properties(${MODULE_SOURCE_FILES} PROPERTIES
     COMPILE_FLAGS "-Wall -Wextra -Werror"
 )
 
-
 foreach(PIO_FILENAME ${MODULE_PIO_FILES})
     pico_generate_pio_header(${PROJECT_NAME} ${PIO_FILENAME})
 endforeach()

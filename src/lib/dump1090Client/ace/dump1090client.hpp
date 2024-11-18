@@ -15,10 +15,13 @@
 
 /**
  * Dump1090 Client for development purposes transform a NMEA String into a ADSB Message
+ * Note: This module is experimental
  */
 class Dump1090Client : public BaseModule,
-    public etl::message_router<Dump1090Client>
+                       public etl::message_router<Dump1090Client, OpenAce::IdleMsg>
 {
+    friend class message_router;
+
     struct
     {
         uint32_t totalReceived = 0;
@@ -26,11 +29,16 @@ class Dump1090Client : public BaseModule,
 
     etl::imessage_bus *bus;
 
-    TimerHandle_t timerHandle;
     uint8_t stoppedCounter;
+    bool wifiConnected;
     BinaryReceiver *receiver;
-    TaskHandle_t taskHandle;
     TcpClient<24> tcpClient;
+
+public:
+    void on_receive(const OpenAce::WifiConnectionStateMsg &wcs);
+    void on_receive_unknown(const etl::imessage &msg);
+    void on_receive(const OpenAce::IdleMsg &msg);
+
 public:
     static constexpr const char *NAME = "Dump1090Client";
 
@@ -40,11 +48,10 @@ public:
     //               getBus().receive(OpenAce::ADSBMessage{sentence}); })
 
     Dump1090Client(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-        timerHandle(nullptr),
-        stoppedCounter(0),
-        receiver(nullptr),
-        taskHandle(nullptr),
-        tcpClient(config.ipPortBypath(NAME), TcpClient<24>::CallBackFunction::create<Dump1090Client, &Dump1090Client::processNewSentence>(*this))
+                                                                          stoppedCounter(0),
+                                                                          wifiConnected(false),
+                                                                          receiver(nullptr),
+                                                                          tcpClient(config.ipPortBypath(NAME), TcpClient<24>::CallBackFunction::create<Dump1090Client, &Dump1090Client::processNewSentence>(*this))
     {
     }
 
@@ -58,27 +65,6 @@ public:
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-    void on_receive_unknown(const etl::imessage &msg)
-    {
-        (void)msg;
-    }
+    void processNewSentence(const char *sentence);
 
-    void processNewSentence(const char *sentence)
-    {
-        // Fast detection of msgType 17 and hexStrToByteArray to reduce resources
-        if (sentence != nullptr && sentence[1] == '8' && (sentence[2] == 'D' || sentence[2] == 'A' || sentence[2] == '0'))
-        {
-            uint8_t hexSize = strlen(sentence) - 2;
-            if (hexSize == 30) // 30 happens to be the size of message we are interested in
-            {
-                //puts(sentence);
-                OpenAce::ADSBMessageBin msg;
-                hexStrToByteArray(sentence + 1, (hexSize - 2), msg.data.data());
-                receiver->receiveBinary(msg.data.data(), msg.data.size());
-                statistics.totalReceived++;
-            }
-        }
-    }
-
-    static void dump1090Task(void *arg);
 };

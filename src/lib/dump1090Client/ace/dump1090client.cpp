@@ -21,36 +21,28 @@ OpenAce::PostConstruct Dump1090Client::postConstruct()
 
 void Dump1090Client::stop()
 {
-    if (taskHandle) {
-        xTaskNotify(taskHandle, 1, eSetBits);
-    }
     tcpClient.stop();
     getBus().unsubscribe(*this);
 };
 
 void Dump1090Client::start()
 {
-    xTaskCreate(dump1090Task, "Bmp280Task", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
-void Dump1090Client::dump1090Task(void *arg)
+void Dump1090Client::processNewSentence(const char *sentence)
 {
-    Dump1090Client *dump1090 = static_cast<Dump1090Client *>(arg);
-    while (true)
+    // Fast detection of msgType 17 and hexStrToByteArray to reduce resources
+    if (sentence != nullptr && sentence[1] == '8' && (sentence[2] == 'D' || sentence[2] == 'A' || sentence[2] == '0'))
     {
-
-        if (ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1'000)))
+        uint8_t hexSize = strlen(sentence) - 2;
+        if (hexSize == 30) // 30 happens to be the size of message we are interested in
         {
-            // TODO: Handle shutdown
-        }
-        else
-        {
-            if (dump1090->tcpClient.isStopped() && (dump1090->stoppedCounter++ == 2))
-            {
-                dump1090->stoppedCounter = 0;
-                dump1090->tcpClient.start();
-            }
+            // puts(sentence);
+            OpenAce::ADSBMessageBin msg;
+            hexStrToByteArray(sentence + 1, (hexSize - 2), msg.data.data());
+            receiver->receiveBinary(msg.data.data(), msg.data.size());
+            statistics.totalReceived++;
         }
     }
 }
@@ -61,4 +53,24 @@ void Dump1090Client::getData(etl::string_stream &stream, const etl::string_view 
     stream << "{";
     stream << "\"totalReceived\":" << statistics.totalReceived;
     stream << "}\n";
+}
+
+void Dump1090Client::on_receive_unknown(const etl::imessage &msg)
+{
+    (void)msg;
+}
+
+void Dump1090Client::on_receive(const OpenAce::IdleMsg &msg)
+{
+    (void)msg;
+    if (wifiConnected && (stoppedCounter++ == 2) && tcpClient.isStopped())
+    {
+        stoppedCounter = 0;
+        tcpClient.start();
+    }
+}
+
+void Dump1090Client::on_receive(const OpenAce::WifiConnectionStateMsg &wcs)
+{
+    wifiConnected = wcs.connected;
 }
