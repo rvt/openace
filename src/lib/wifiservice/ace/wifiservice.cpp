@@ -18,7 +18,7 @@ OpenAce::PostConstruct WifiService::postConstruct()
 
 void WifiService::start()
 {
-    xTaskCreate(wifiTask, "wifiTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 1, &taskHandle);
+    xTaskCreate(wifiTask, "wifiTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -34,7 +34,7 @@ void WifiService::on_receive_unknown(const etl::imessage &msg)
 
 void WifiService::wifiTask(void *arg)
 {
-    uint32_t startScan=0;
+    uint32_t startScan = 0;
 
     WifiService *wifiService = (WifiService *)arg;
     while (true)
@@ -76,12 +76,12 @@ void WifiService::wifiTask(void *arg)
                     wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
                 }
                 // If for whatever reason WIFI scan does not find any network, then stop scanning after OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS
-                if (CoreUtils::isUsReached(startScan)) 
+                if (CoreUtils::isUsReached(startScan))
                 {
                     wifiService->connectionState = ConnectionState::APMODESTART;
                     cyw43_wifi_leave(&cyw43_state, 0);
                     wifiService->disableSta();
-                    wifiService->connectionState = ConnectionState::APMODESTART;                
+                    wifiService->connectionState = ConnectionState::APMODESTART;
                 }
                 break;
 
@@ -94,7 +94,6 @@ void WifiService::wifiTask(void *arg)
                     {
                         wifiService->mDnsInit();
                         wifiService->connectionState = ConnectionState::CLIENTMODESTARTED;
-                        wifiService->getBus().receive(OpenAce::WifiConnectionState{true});
                     }
                     else
                     {
@@ -108,7 +107,7 @@ void WifiService::wifiTask(void *arg)
                 break;
 
             case ConnectionState::CLIENTMODESTARTED:
-                if (!wifiService->checkIfClientActive())
+                if (!wifiService->checkIfClientActive(CYW43_ITF_STA))
                 {
                     wifiService->mDnsDeinit();
                     wifiService->connectionState = ConnectionState::CLIENTMODESTOPPED;
@@ -123,7 +122,6 @@ void WifiService::wifiTask(void *arg)
                 wifiService->startAccessPoint();
                 wifiService->mDnsInit();
                 wifiService->connectionState = ConnectionState::APSTARTED;
-                wifiService->getBus().receive(OpenAce::WifiConnectionState{true});
                 break;
 
             case ConnectionState::APSTARTED:
@@ -139,7 +137,7 @@ void WifiService::wifiTask(void *arg)
 
             case ConnectionState::APSTOPPED:
                 wifiService->connectionState = ConnectionState::WIFISCAN;
-                wifiService->getBus().receive(OpenAce::WifiConnectionState{false});
+                wifiService->getBus().receive(OpenAce::WifiConnectionStateMsg{false});
                 break;
 
             default:
@@ -200,9 +198,9 @@ int WifiService::scanResultCb(void *env, const cyw43_ev_scan_result_t *result)
 
         auto it = etl::find_if(service->wifiData.clients.begin(), service->wifiData.clients.end(),
                                [&name](const OpenAce::Config::WifiNamePassword &client)
-        {
-            return client.ssid == name;
-        });
+                               {
+                                   return client.ssid == name;
+                               });
 
         if (it != service->wifiData.clients.end() && !service->scanResult.full())
         {
@@ -249,9 +247,9 @@ uint8_t WifiService::connectClient()
     auto nameIt = scanResult.begin();
     auto it = etl::find_if(wifiData.clients.begin(), wifiData.clients.end(),
                            [&nameIt](const OpenAce::Config::WifiNamePassword &client)
-    {
-        return client.ssid == *nameIt;
-    });
+                           {
+                               return client.ssid == *nameIt;
+                           });
 
     // Was this one found?
     if (it == wifiData.clients.end())
@@ -285,19 +283,17 @@ uint8_t WifiService::connectClient()
     }
 }
 
-bool WifiService::checkIfClientActive()
+bool WifiService::checkIfClientActive(int itf)
 {
     // Periodically check the Wi-Fi connection status
-    int status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+    int status = cyw43_tcpip_link_status(&cyw43_state, itf);
 
     switch (status)
     {
-    case CYW43_LINK_NONET:
-    case CYW43_LINK_DOWN:    // No matching SSID found (could be out of range, or down)
-    case CYW43_LINK_BADAUTH: // Some reason when the Hotspot stops, we get a BADAUTH instead of a LINK DOWN
-        return false;
-    default:
+    case CYW43_LINK_UP:
         return true;
+    default:
+        return false;
     }
 }
 
@@ -368,4 +364,18 @@ void WifiService::mDnsDeinit()
 #if LWIP_MDNS_RESPONDER == 1
     mdns_resp_remove_netif(&cyw43_state.netif[CYW43_ITF_STA]);
 #endif
+}
+
+void WifiService::on_receive(const OpenAce::IdleMsg &msg)
+{
+    (void)msg;
+
+    if (checkIfClientActive(CYW43_ITF_STA))
+    {
+        getBus().receive(OpenAce::WifiConnectionStateMsg{true});
+    }
+    else
+    {
+        getBus().receive(OpenAce::WifiConnectionStateMsg{false});
+    }
 }

@@ -1,29 +1,24 @@
 #ifndef _LWIPOPTS_H
 #define _LWIPOPTS_H
 
-// Generally you would define your own explicit list of lwIP options
-// (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html)
-//
+// Common settings used in most of the pico_w examples
 // (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html for details)
 
-// To enable socket, LWIP_NETCONN should be set to 1
+#define NO_SYS                      0
 #define LWIP_SOCKET                 0
 
-#define MEM_LIBC_MALLOC             0
-#define MEMP_MEM_MALLOC             0
 #define MEM_ALIGNMENT               4
-
-#define MEM_SIZE                    8192
+#define MEM_SIZE                    4000
 #define MEMP_NUM_TCP_SEG            32
 #define MEMP_NUM_ARP_QUEUE          10
-#define PBUF_POOL_SIZE              12
+#define PBUF_POOL_SIZE              24
 #define LWIP_ARP                    1
 #define LWIP_ETHERNET               1
 #define LWIP_ICMP                   1
 #define LWIP_RAW                    0
-#define TCP_WND                     (4 * TCP_MSS)
+#define TCP_WND                     (8 * TCP_MSS)
 #define TCP_MSS                     1460
-#define TCP_SND_BUF                 (4 * TCP_MSS)
+#define TCP_SND_BUF                 (8 * TCP_MSS)
 #define TCP_SND_QUEUELEN            ((4 * (TCP_SND_BUF) + (TCP_MSS - 1)) / (TCP_MSS))
 #define LWIP_NETIF_STATUS_CALLBACK  1
 #define LWIP_NETIF_LINK_CALLBACK    1
@@ -40,18 +35,18 @@
 #define LWIP_TCP                    1
 #define LWIP_UDP                    1
 #define LWIP_DNS                    1
-#define LWIP_TCP_KEEPALIVE          0
+#define LWIP_TCP_KEEPALIVE          1
 #define LWIP_NETIF_TX_SINGLE_PBUF   1
 #define DHCP_DOES_ARP_CHECK         0
 #define LWIP_DHCP_DOES_ACD_CHECK    0
 
-#if !defined(NDEBUG) && defined(OPENACE_LWIP_DEBUG)
+//#if !defined(NDEBUG) && OPENACE_LWIP_DEBUG
 #define LWIP_DEBUG                  1
 #define LWIP_STATS                  1
 #define LWIP_STATS_DISPLAY          1
 #define MEMP_SANITY_CHECK           1
 #define MEMP_OVERFLOW_CHECK         1
-#endif
+//#endif
 
 #define ETHARP_DEBUG                LWIP_DBG_OFF
 #define NETIF_DEBUG                 LWIP_DBG_OFF
@@ -82,14 +77,4 @@
 #define SLIP_DEBUG                  LWIP_DBG_OFF
 #define DHCP_DEBUG                  LWIP_DBG_OFF
 
-
-
-#define DEFAULT_THREAD_STACKSIZE    256
-#define DEFAULT_RAW_RECVMBOX_SIZE   4
-#define TCPIP_MBOX_SIZE             4
-#define LWIP_TIMEVAL_PRIVATE        0
-
-#define LWIP_TCPIP_CORE_LOCKING_INPUT 1
-
-
-#endif
+#endif /* __LWIPOPTS_H__ */

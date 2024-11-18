@@ -254,6 +254,8 @@ static void loadModules(void *arch)
             vTaskDelay(TASK_DELAY_MS(100));
             // printf("1\n");
 
+            bus.receive(OpenAce::IdleMsg());
+
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
             // Sync blink the LED with GPS
             vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));

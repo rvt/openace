@@ -30,7 +30,7 @@ void Dump1090Client::stop()
 
 void Dump1090Client::start()
 {
-    xTaskCreate(dump1090Task, "Bmp280Task", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 1, &taskHandle);
+    xTaskCreate(dump1090Task, "Bmp280Task", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 

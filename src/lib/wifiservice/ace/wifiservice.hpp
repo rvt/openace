@@ -40,7 +40,7 @@
  * 5) Scan the network for any devices (ping?? openPort??) and send GDL90 to these devices found?
  * 6) When in AP mode, restart client mode with a button
  */
-class WifiService : public BaseModule, public etl::message_router<WifiService>
+class WifiService : public BaseModule, public etl::message_router<WifiService, OpenAce::IdleMsg>
 {
 private:
     friend class message_router;
@@ -97,7 +97,7 @@ private:
     void startWifiScan();
     uint8_t connectClient();
     void stopClient();
-    bool checkIfClientActive();
+    bool checkIfClientActive(int itf);
 
     void mDnsInit();
     void mDnsDeinit();
@@ -129,4 +129,5 @@ public:
     virtual void stop() override;
 
     void on_receive_unknown(const etl::imessage &msg);
+    void on_receive(const OpenAce::IdleMsg &msg);
 };

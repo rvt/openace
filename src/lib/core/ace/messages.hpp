@@ -248,11 +248,19 @@ namespace OpenAce
     /**
      * Message send when WIFI connection state changes
      */
-    struct WifiConnectionState: public etl::message<24>
+    struct WifiConnectionStateMsg: public etl::message<24>
     {
         bool connected;
 
         // Default constructor
-        WifiConnectionState(bool connected_) : connected(connected_) {};
+        WifiConnectionStateMsg(bool connected_) : connected(connected_) {};
+    };
+
+    /**
+     * Idle Message send at intervals that allows to due small tasks without creating a new task
+     * Modules using this message should never block a task
+     */
+    struct IdleMsg: public etl::message<25>
+    {
     };
 }

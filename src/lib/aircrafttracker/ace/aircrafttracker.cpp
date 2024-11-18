@@ -24,8 +24,7 @@ OpenAce::PostConstruct AircraftTracker::postConstruct()
 
 void AircraftTracker::start()
 {
-    // taskHandle = xTaskCreateStatic(aircraftTrackerTask, "AircraftTracker", STACK_SIZE, this, tskIDLE_PRIORITY, xStack, &xTaskBuffer);
-    xTaskCreate(aircraftTrackerTask, "AircraftTracker", TASK_STACK_SIZE, this, tskIDLE_PRIORITY + 1, &taskHandle);
+    xTaskCreate(aircraftTrackerTask, "AircraftTracker", TASK_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
     xTimerStart(maintenanceTimerHandle, TASK_DELAY_MS(25));
     getBus().subscribe(*this);
 };

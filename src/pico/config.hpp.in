@@ -5,18 +5,30 @@
 #define NO_SYS 0 
 #define LWIP_HTTPD 1
 #define LWIP_HTTPD_SSI 0
-#define LWIP_HTTPD_CGI 1
+#define LWIP_HTTPD_CGI 0
 #define LWIP_HTTPD_SUPPORT_POST 1
 #define LWIP_HTTPD_FILE_EXTENSION 1
 #define LWIP_HTTPD_CUSTOM_FILES 1
-// Needed for mDNS
+
+// Required for the PICO and FreeRTOS
+#define TCPIP_THREAD_STACKSIZE 2048 // mDNS needs more stack
+#define DEFAULT_THREAD_STACKSIZE 1024
+#define DEFAULT_RAW_RECVMBOX_SIZE 8
+#define DEFAULT_UDP_RECVMBOX_SIZE 8
+#define DEFAULT_TCP_RECVMBOX_SIZE 8
+#define TCPIP_MBOX_SIZE 8
+#define LWIP_TIMEVAL_PRIVATE 0
+#define LWIP_TCPIP_CORE_LOCKING_INPUT 1
+
+// START: The following is needed to test mDns
 #define LWIP_MDNS_RESPONDER 1
 #define LWIP_IGMP 1
 #define LWIP_NUM_NETIF_CLIENT_DATA 1
 #define MDNS_RESP_USENETIF_EXTCALLBACK  1
-#define MEMP_NUM_SYS_TIMEOUT (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 3)
+// Increased to 8 ti prevent sys_timeout: timeout != NULL, pool MEMP_SYS_TIMEOUT is empty
+#define MEMP_NUM_SYS_TIMEOUT (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 8)
 #define MEMP_NUM_TCP_PCB 12
-#define TCPIP_THREAD_STACKSIZE 2048 // mDNS needs more stack
+// END: The following is needed to test mDns
 
 // Create dynamic headers based on the files extension
 #define LWIP_HTTPD_DYNAMIC_HEADERS 1

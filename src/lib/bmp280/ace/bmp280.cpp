@@ -3,14 +3,12 @@
 
 void Bmp280::start()
 {
-    xTaskCreate(bmp280Task, "Bmp280Task", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY, &taskHandle);
     getBus().subscribe(*this);
 };
 
 void Bmp280::stop()
 {
     getBus().unsubscribe(*this);
-    xTaskNotify(taskHandle, 1, eSetBits);
 };
 
 void Bmp280::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
@@ -19,11 +17,6 @@ void Bmp280::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
     {
         compensation = msg.config.valueByPath(0, NAME, "compensation");
     }
-}
-
-void Bmp280::on_receive_unknown(const etl::imessage &msg)
-{
-    (void)msg;
 }
 
 void Bmp280::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -132,38 +125,36 @@ OpenAce::PostConstruct Bmp280::postConstruct()
     return OpenAce::PostConstruct::OK;
 }
 
-void Bmp280::bmp280Task(void *arg)
+void Bmp280::on_receive_unknown(const etl::imessage &msg)
 {
-    Bmp280 *bmp280 = static_cast<Bmp280 *>(arg);
-    SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*bmp280, SpiModule::NAME));
-    while (true)
+    (void)msg;
+}
+
+void Bmp280::on_receive(const OpenAce::IdleMsg &msg)
+{
+    static uint8_t everyOnceAWhile = 0;
+    (void)msg;
+
+    if (everyOnceAWhile % 30 == 0)
     {
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(15'000)))
+        SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
+
+        uint8_t buffer[8]; // I think this can be buffer[6] (No humidity needed)
+        if (aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&aceSpi, &buffer, this]()
+                                      {
+                    aceSpi->read_registers_select(cs, 0xF7);
+                    aceSpi->read_registers_read(cs, buffer, sizeof(buffer)); }))
         {
-            if ((notifyValue & 1) == 1)
-            {
-                vTaskDelete(nullptr);
-                return;
-            }
+            int32_t pressure = ((uint32_t)buffer[0] << 12) | ((uint32_t)buffer[1] << 4) | (buffer[2] >> 4);
+            int32_t temperature = ((uint32_t)buffer[3] << 12) | ((uint32_t)buffer[4] << 4) | (buffer[5] >> 4);
 
-        } else {
+            temperature = compensate_temp(temperature);
+            pressure = compensate_pressure(pressure);
 
-            uint8_t buffer[8]; // I think this can be buffer[6] (No humidity needed)
-            if (aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&aceSpi, &bmp280, &buffer]()
-            {
-                aceSpi->read_registers_select(bmp280->cs, 0xF7);
-                aceSpi->read_registers_read(bmp280->cs, buffer, sizeof(buffer));
-            })) {
-                int32_t pressure = ((uint32_t)buffer[0] << 12) | ((uint32_t)buffer[1] << 4) | (buffer[2] >> 4);
-                int32_t temperature = ((uint32_t)buffer[3] << 12) | ((uint32_t)buffer[4] << 4) | (buffer[5] >> 4);
-
-                temperature = bmp280->compensate_temp(temperature);
-                pressure = bmp280->compensate_pressure(pressure);
-
-                auto value = (pressure + bmp280->compensation) / 100.0f;
-                bmp280->statistics.lastPressurehPa = value;
-                bmp280->getBus().receive(OpenAce::BarometricPressure{value, CoreUtils::timeUs32()});
-            };
-        }
+            auto value = (pressure + compensation) / 100.0f;
+            statistics.lastPressurehPa = value;
+            getBus().receive(OpenAce::BarometricPressure{value, CoreUtils::timeUs32()});
+        };
     }
+    everyOnceAWhile++;
 }

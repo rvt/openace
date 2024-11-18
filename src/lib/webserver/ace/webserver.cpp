@@ -62,12 +62,11 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
             *post_auto_wnd = 1; // Must be set to 1
 
             RequestContext =
-            {
-                .current_connection = connection,
-                .uri = uri,
-                .method = RequestContext_t::POST,
-                .response = false
-            };
+                {
+                    .current_connection = connection,
+                    .uri = uri,
+                    .method = RequestContext_t::POST,
+                    .response = false};
 
             //            etl::string_ext text(const_cast<char*>(http_request), http_request, http_request_len);
             auto method = strstr(http_request, X_OPENACE_METHOD);
@@ -104,7 +103,7 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
                 retval = ERR_OK;
             }
             else if (RequestContext.method == RequestContext_t::DELETE)
-                // Handle delete configuraiton requests
+            // Handle delete configuraiton requests
             {
                 RequestContext.response = configModule->deleteData(RequestContext.uri);
                 retval = ERR_OK;
@@ -116,11 +115,10 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
             {
                 auto pathParsed = CoreUtils::parsePath(RequestContext.uri);
                 configModule->getBus().receive(
-                    OpenAce::ConfigUpdatedMsg
-                {
-                    *configModule,
-                    pathParsed[2],
-                });
+                    OpenAce::ConfigUpdatedMsg{
+                        *configModule,
+                        pathParsed[2],
+                    });
             }
         }
     }
@@ -243,7 +241,9 @@ int fs_open_custom(fs_file *file, const char *name)
         file->index = file->len; // We set index to len to indicate that the complete file has been read and the server can send and close the response
         // file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
         return 1;
-    } else {
+    }
+    else
+    {
         webserver->statistics.memAllocErr++;
     }
     return 0;
@@ -254,6 +254,7 @@ void fs_close_custom(fs_file *file)
     if (file && file->pextension)
     {
         mem_free(file->pextension);
+        file->pextension = nullptr;
     }
 }
 
@@ -304,6 +305,7 @@ void Webserver::start()
 
 void Webserver::stop()
 {
+    // TODO: stop httpd??
     getBus().unsubscribe(*this);
 };
 
@@ -312,13 +314,19 @@ void Webserver::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void Webserver::on_receive(const OpenAce::WifiConnectionState &wcs) {
+void Webserver::on_receive(const OpenAce::WifiConnectionStateMsg &wcs)
+{
+    static bool once = false;
     // Only start the webserver after WIFI has been connected.
     // We have seen halts from the microcontroller when the website did a request to the webserver while WIFI was not fully up yet.
     // This runs in a general stack (properly of the message bus)
-    if (wcs.connected) {
+    if (wcs.connected && !once)
+    {
         httpd_init();
-    } else {
-        puts("Webserver does not handle yet disconnets");
+        once = true;
+    }
+    else if (wcs.connected == false)
+    {
+        // Disconnect not yet handled
     }
 }

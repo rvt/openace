@@ -101,7 +101,7 @@ OpenAce::PostConstruct Flarm2024::postConstruct()
 
 void Flarm2024::start()
 {
-    xTaskCreate(flarmReceiveTask, "flarmReceiveTask", configMINIMAL_STACK_SIZE + 2048, this, tskIDLE_PRIORITY + 1, &taskHandle);
+    xTaskCreate(flarmReceiveTask, "flarmReceiveTask", configMINIMAL_STACK_SIZE + 2048, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
