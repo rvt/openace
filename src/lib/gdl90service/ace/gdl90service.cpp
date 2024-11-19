@@ -37,8 +37,10 @@ void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "{";
     stream << "\"heartbeatTx\":" << statistics.heartbeatTx;
     stream << ",\"ownshipPosTx\":" << statistics.ownshipPosTx;
-    stream << ",\"otherPosTx\":" << statistics.otherPosTx;
-    stream << ",\"encodingFailureErr\":" << statistics.encodingFailureErr;
+    stream << ",\"trackingAircraftPosTx\":" << statistics.trackingAircraftPosTx;
+    stream << ",\"trackingFailureErr\":" << statistics.trackingFailureErr;
+    stream << ",\"ownEncodingFailureErr\":" << statistics.ownEncodingFailureErr;
+    stream << ",\"heartBeatEncodingFailureErr\":" << statistics.heartBeatEncodingFailureErr;    
     stream << "}\n";
 }
 
@@ -159,6 +161,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
         return;
     }
 
+
     GDL90::RawBytes unpacked;
     if (gdl90.ownership_or_traffic_report_encode(
                 unpacked,
@@ -176,7 +179,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
                 vert_velocity,
                 track_hdg,
                 aircraftTypeToEmitter(category),
-                icaoAddress.c_str(), // [0-9A-Z]
+                icaoAddress, // [0-9A-Z]
                 GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
@@ -184,7 +187,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     }
     else
     {
-        statistics.encodingFailureErr++;
+        statistics.ownEncodingFailureErr++;
     }
 
     // Send Geo Altitude
@@ -200,7 +203,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     }
     else
     {
-        statistics.encodingFailureErr++;
+        statistics.ownEncodingFailureErr++;
     }
 }
 
@@ -241,15 +244,15 @@ void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
             vert_velocity,
             track_hdg,
             aircraftTypeToEmitter(pos.aircraftType),
-            pos.icaoAddress.c_str(), /* // [0-9A-Z] TODO: Can we use DDB ?? */
+            pos.icaoAddress, /* // [0-9A-Z] TODO: Can we use DDB ?? */
             GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
-        statistics.otherPosTx++;
+        statistics.trackingAircraftPosTx++;
     }
     else
     {
-        statistics.encodingFailureErr++;
+        statistics.trackingFailureErr++;
     }
 }
 
@@ -277,22 +280,22 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
     if (gdl90Service.gdl90.heartbeat_encode(unpacked, status, CoreUtils::secondsSinceEpoch() % (24 * 3600), 0, 0))
     {
         gdl90Service.packAndSend(unpacked);
-        gdl90Service.statistics.encodingFailureErr++;
+        gdl90Service.statistics.heartbeatTx++;
     }
     else
     {
-        gdl90Service.statistics.encodingFailureErr++;
+        gdl90Service.statistics.heartBeatEncodingFailureErr++;
     }
 
     // Send ForeFLight heartbeat
     if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 12345, "OpenAce", "OpenAce Device", 1))
     {
         gdl90Service.packAndSend(unpacked);
-        gdl90Service.statistics.ownshipPosTx++;
+        gdl90Service.statistics.heartbeatTx++;
     }
     else
     {
-        gdl90Service.statistics.encodingFailureErr++;
+        gdl90Service.statistics.heartBeatEncodingFailureErr++;
     }
 }
 

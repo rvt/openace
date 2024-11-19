@@ -214,12 +214,13 @@ public:
         currentDataStatus->gnsAltitude = altitude;
     }
 
-    inline void updateIcaoAddress(const OpenAce::IcaoAddress &icaoAddress, uint8_t aircraft_type)
+    inline void updateIcaoAddress(const OpenAce::IcaoAddress &flight, uint8_t aircraft_type)
     {
+        (void)flight;
         if (!(currentDataStatus->messageStatus & CHECK_HAS_ICAOADDRESS))
         {
             currentDataStatus->messageStatus |= CHECK_HAS_ICAOADDRESS;
-            currentDataStatus->icaoAddress = icaoAddress;
+            currentDataStatus->icaoAddress = ""; // flight; For consistency current icao. When flight is needed, properly an exception for ADSB needs to be made in aircraftTracker
             currentDataStatus->category = aircraft_type;
         }
     }

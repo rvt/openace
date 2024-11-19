@@ -112,7 +112,7 @@ public:
         CoreUtils::offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1'000;
     }
 
-    static inline void setPPS() 
+    static inline void setPPS()
     {
         timeUs32Pps = time_us_32();
     }
@@ -128,7 +128,7 @@ public:
     /**
      * Returns the current ms within teh current second (based on epoch)
      * eg: a value of 119 means 119ms since PPS
-     * 
+     *
      */
     // [[deprecated]]
     static inline uint16_t msInSecondFromEpoch(uint64_t msSinceEpoch = CoreUtils::msSinceEpoch())
@@ -426,6 +426,20 @@ public:
 
     static uint32_t getTotalHeap(void);
     static uint32_t getFreeHeap(void);
+
+    /**
+     * Create an textual representation of the aircraftId. FOr the moment it will simply turn the aircraftID as received into a textual HEX representation
+     * Later the idea is that it will use DDB to get the registration based on aircraftID and addressType
+     *
+     */
+    static const OpenAce::IcaoAddress makeIcaoAddress(uint32_t aircraftID, OpenAce::AddressType addressType)
+    {
+        (void)addressType;
+        OpenAce::IcaoAddress icaoAddress;
+        etl::string_stream stream(icaoAddress);
+        stream << etl::hex << etl::uppercase << aircraftID;
+        return icaoAddress;
+    }
 };
 
 inline uint8_t getHexVal(char hex)

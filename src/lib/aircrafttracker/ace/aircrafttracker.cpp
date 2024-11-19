@@ -62,7 +62,7 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     stream << "{";
     stream << "\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"trackedFullErr\":" << statistics.trackedFullErr;
-    stream << ",\"numberofPlanesTracking\":" << statistics.numberofPlanesTracking;
+    stream << ",\"numberOfPlanesTracking\":" << statistics.numberOfPlanesTracking;
     stream << ",\"positionsProcessed\":" << statistics.positionsProcessed;
     stream << ",\"lastTrackPoint\":" << statistics.lastTrackPoint;
     stream << ",\"autoDistanceTrack\":" << autoDistanceTrack;
@@ -134,7 +134,7 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
             if (notifyValue & TaskState::TIMER)
             {
                 at->handleTimer();
-                at->statistics.numberofPlanesTracking = at->trackedAircraft.size();
+                at->statistics.numberOfPlanesTracking = at->trackedAircraft.size();
             }
 
             // Send new aircraft imediatly
@@ -160,7 +160,7 @@ void AircraftTracker::handleNew()
         OpenAce::AircraftAddress address;
     };
 
-    uint16_t spread = 0;
+    uint16_t timeSpread = 0; // Spread allows to put aircraft at slightly different timestamps in the queue for better processing.
     auto time = CoreUtils::timeUs32() + 1'000'000;
     OpenAce::AircraftPositionInfo position;
     while (queue.pop(position) && !trackedAircraft.full())
@@ -169,20 +169,27 @@ void AircraftTracker::handleNew()
         const auto &it = etl::find_if(trackedAircraft.cbegin(), trackedAircraft.cend(), FindByIcao(position));
         if (it != trackedAircraft.cend())
         {
+            // Copy the textual representation of the record in the tracked 
+            // aircraft into the new aircraft so it doesn't require any more lookups
+            position.icaoAddress = it->position.icaoAddress;
             trackedAircraft.erase(it);
         }
 
         // Put it at the back of the queue if within distance of aircraft that is beeing tracked
         if (position.distanceFromOwn < autoDistanceTrack)
         {
-            trackedAircraft.emplace_back(TrackInfo{time + spread, 0, position});
+            // Add the textual representation of the address if this was really new
+            if (position.icaoAddress.size() == 0) {
+                position.icaoAddress = CoreUtils::makeIcaoAddress(position.address, position.addressType);
+            }
+            trackedAircraft.emplace_back(TrackInfo{time + timeSpread, 0, position});
 
-            // Send
+            // Send immediately?
             // getBus().receive(
             //     OpenAce::TrackedAircraftPositionMsg(position));
 
             // Increase spread
-            spread += 10;
+            timeSpread += 10;
         }
     }
 
@@ -204,8 +211,7 @@ void AircraftTracker::handleTimer()
         trackedAircraft.splice(trackedAircraft.end(), trackedAircraft, next);
 
         // Send
-        getBus().receive(
-            OpenAce::TrackedAircraftPositionMsg(next->position));
+        getBus().receive(OpenAce::TrackedAircraftPositionMsg(next->position));
 
         statistics.positionsProcessed++;
 

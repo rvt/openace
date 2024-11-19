@@ -744,7 +744,7 @@ bool GDL90::ownership_or_traffic_report_encode( etl::ivector<uint8_t>& unpacked,
     if ( vert_velocity > 0xfff ) return error();
     if ( track_hdg > 0xff ) return error();
     if ( uint32_t(emitter) > uint32_t(EMITTER::__LAST) ) return error();
-    if ( !is_valid_call_sign( call_sign ) ) return error();
+    if ( !is_valid_call_sign( call_sign.cbegin() ) ) return error();
     if ( uint32_t(emergency_prio_code) > uint32_t(EMERGENCY_PRIO::__LAST) ) return error();
     unpacked.push_back( uint8_t( is_ownership ? MESSAGE_ID::OWNERSHIP_REPORT : MESSAGE_ID::TRAFFIC_REPORT ) );
     unpacked.push_back( (uint8_t(alert_status) << 4) | uint8_t(addr_type) );

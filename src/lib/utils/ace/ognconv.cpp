@@ -208,21 +208,6 @@ uint32_t DecodeGray(uint32_t Gray)
     return Gray;
 }
 
-// ==============================================================================================
-
-void XorShift32(uint32_t &Seed)      // simple random number generator
-{
-    Seed ^= Seed << 13;
-    Seed ^= Seed >> 17;
-    Seed ^= Seed << 5;
-}
-
-void XorShift64(uint64_t &Seed)
-{
-    Seed ^= Seed >> 12;
-    Seed ^= Seed << 25;
-    Seed ^= Seed >> 27;
-}
 
 // ==============================================================================================
 

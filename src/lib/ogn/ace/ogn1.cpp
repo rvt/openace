@@ -185,14 +185,10 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
     statistics.receivedAircraftPositions++;
     int16_t speed0d1ms = packet.DecodeSpeed();
 
-    OpenAce::IcaoAddress icaoAddress;
-    etl::string_stream stream(icaoAddress);
-    stream << etl::hex << packet.Header.Address;
-    
     OpenAce::AircraftPositionMsg aircraftPosition{
         OpenAce::AircraftPositionInfo{
             positionTs,
-            icaoAddress,
+            "",
             packet.Header.Address,
             addressTypeFromOgn(packet.Header.AddrType),
             OpenAce::DataSource::OGN1,

@@ -44,7 +44,7 @@ private:
         uint32_t queueFullErr = 0;
         uint32_t trackedFullErr = 0;
         uint32_t positionsProcessed = 0;
-        uint8_t numberofPlanesTracking = 0;
+        uint8_t numberOfPlanesTracking = 0;
         uint8_t lastTrackPoint = 0; // Need a better name for this.
     } statistics;
 
@@ -54,28 +54,18 @@ private:
         uint32_t nextSendTime;
         uint8_t numberOfTries;
         OpenAce::AircraftPositionInfo position;
-        //  TrackInfo( OpenAce::AircraftPositionInfo position_) : nextSendTime(0), position(position_) {}
-
         bool operator<(const TrackInfo &other) const
         {
             return nextSendTime < other.nextSendTime;
         }
     };
 
-    //    StaticTask_t xTaskBuffer;
-    //    StackType_t xStack[TASK_STACK_SIZE];
     TaskHandle_t taskHandle;
-
     TimerHandle_t timerHandle;
-    //    StaticTimer_t timerBuffer;
-
     TimerHandle_t maintenanceTimerHandle;
-    //    StaticTimer_t timerBuffer;
 
     SemaphoreHandle_t aircraftMutex;
-    //    StaticSemaphore_t aircraftMutexBuffer;
     SemaphoreHandle_t ownshipMutex;
-    //    StaticSemaphore_t ownshipMutexBuffer;
 
     using TrackedAircrafts = etl::list<TrackInfo, MAX_TRACKING_PLANES>;
     TrackedAircrafts trackedAircraft;

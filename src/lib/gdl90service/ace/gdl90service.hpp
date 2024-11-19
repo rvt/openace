@@ -33,8 +33,10 @@ private:
     {
         uint32_t heartbeatTx = 0;
         uint32_t ownshipPosTx = 0;
-        uint32_t otherPosTx = 0;
-        uint32_t encodingFailureErr = 0;
+        uint32_t trackingAircraftPosTx = 0;
+        uint32_t trackingFailureErr = 0;
+        uint32_t ownEncodingFailureErr = 0;
+        uint32_t heartBeatEncodingFailureErr = 0;
     } statistics;
 
     enum TaskState : uint8_t

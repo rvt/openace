@@ -1,8 +1,6 @@
 #include "utils.hpp"
 #include "stdio.h"
 
-constexpr char spinChars[] = {'\\','\\', '|', '/', '/', '|'};
-
 /**
  * Find a free pio and state machine and load the program into it.
  * Returns false if this fails
@@ -30,24 +28,6 @@ bool add_pio_program(const pio_program_t *program, PIO *pio_hw, int *sm, uint *o
     return true;
 }
 
-
-/**
- * Show a spinner on the terminal
- */
-void showSpinner()
-{
-    static uint8_t spinner = 0;
-    printf("\b%c", spinChars[spinner]);
-    spinner = (spinner +1 ) % sizeof(spinChars);
-}
-
-/**
- * Remove the spinner be printing a back character
- */
-void clearSpinner()
-{
-    printf("\b");
-}
 
 /**
  * Dump a buffer as a hexidecimal string for terminal output

@@ -280,14 +280,10 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
 //    printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
 //      packet.address, fLatitude, fLongitude, packet.getAltitudeWGS84(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
 
-    OpenAce::IcaoAddress icaoAddress;
-    etl::string_stream stream(icaoAddress);
-    stream << etl::hex << packet.address; // 5120  5330  
-
     OpenAce::AircraftPositionMsg aircraftPosition{
         OpenAce::AircraftPositionInfo{
             positionTs,
-            icaoAddress,
+            "",
             packet.address,
             addressMapToAddressType(packet.addressMapping),
             OpenAce::DataSource::ADSL,

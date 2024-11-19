@@ -80,13 +80,5 @@ uint16_t DecodeGray(uint16_t Gray);
 uint32_t EncodeGray(uint32_t Binary);
 uint32_t DecodeGray(uint32_t Gray);
 
-void XorShift32(uint32_t &Seed);      // simple random number generator
-void XorShift64(uint64_t &Seed);
-uint64_t inline XorShift64star(uint64_t &Seed)
-{
-    XorShift64(Seed);
-    return Seed*UINT64_C(0x2545f4914f6cdd1d);
-}
-
 uint8_t EncodeAscii85(    char *Ascii, uint32_t    Word );  // Encode 32-bit Word into 5-char Ascii-85 string
 uint8_t DecodeAscii85(uint32_t &Word,  const char *Ascii);  // Decode 5-char Ascii-85 to 32-bit Word
