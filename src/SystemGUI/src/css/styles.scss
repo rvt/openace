@@ -1,20 +1,35 @@
-$gaps: (
-  default: 0.25em,
-  md: 2em,
-  lg: 2.25em,
-) !default;
+// Include and Override Variables
+@use 'custom_variables';
 
-/* Importing of SASS started to fail */
-@use "spry.min.css";
+// Get Partials and exclude used
+@use '../../node_modules/@ggedde/spry-css/reset';
+@use '../../node_modules/@ggedde/spry-css/typography';
+@use '../../node_modules/@ggedde/spry-css/outline';
+@use '../../node_modules/@ggedde/spry-css/lists';
+@use '../../node_modules/@ggedde/spry-css/ui';
+@use '../../node_modules/@ggedde/spry-css/alert';
+@use '../../node_modules/@ggedde/spry-css/badge';
+@use '../../node_modules/@ggedde/spry-css/button';
+@use '../../node_modules/@ggedde/spry-css/toolbar';
+@use '../../node_modules/@ggedde/spry-css/cards';
+@use '../../node_modules/@ggedde/spry-css/forms';
+@use '../../node_modules/@ggedde/spry-css/tables';
+// @use '../../node_modules/@ggedde/spry-css/tooltips';
+// @use '../../node_modules/@ggedde/spry-css/sliders';
+@use '../../node_modules/@ggedde/spry-css/grid';
+// @use '../../node_modules/@ggedde/spry-css/tabs';
+@use '../../node_modules/@ggedde/spry-css/navs';
+@use '../../node_modules/@ggedde/spry-css/toggles';
+@use '../../node_modules/@ggedde/spry-css/modals';
+@use '../../node_modules/@ggedde/spry-css/comfort';
+@use '../../node_modules/@ggedde/spry-css/spacing';
+@use '../../node_modules/@ggedde/spry-css/borders';
+@use '../../node_modules/@ggedde/spry-css/icons';
+@use '../../node_modules/@ggedde/spry-css/utilities';
+@use '../../node_modules/@ggedde/spry-css/dark';
+@use '../../node_modules/@ggedde/spry-css/light';
+@use '../../node_modules/@ggedde/spry-css/colors';
+@use '../../node_modules/@ggedde/spry-css/loader';
 
-.section {
-  margin-top: 0.8em;
-}
-
-input::placeholder {
-  color: #c0c0c0;
-}
-
-n {
-  display: none;
-}
+// Include custom CSS
+@use 'custom_styles';

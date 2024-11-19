@@ -1,0 +1,13 @@
+@forward '../../node_modules/@ggedde/spry-css/variables' with (
+
+    $breakpoints: (
+        md: 40em,
+        lg: 74em,
+    ),
+
+    $gaps: (
+        default: .75em, // required
+        md: 1.5em,
+        lg: 1.75em,
+    ),
+);

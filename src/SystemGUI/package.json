@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@frameable/el": "0.7.3",
-    "@ggedde/spry-css": "2.3.23",
+    "@ggedde/spry-css": "3.0.0-rc.1",
     "just-validate": "4.3.0"
   },
   "overrides": {
