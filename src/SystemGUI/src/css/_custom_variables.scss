@@ -1,13 +1,15 @@
 @forward '../../node_modules/@ggedde/spry-css/variables' with (
 
-    $breakpoints: (
-        md: 40em,
-        lg: 74em,
+    $colors: (
+        "grey"      : (light: #808080),                  // The First Color in the array is your default color.
+        "text"      : (light: #555555, dark: #bbbbbb), // Variable Theme Color
+        "contrast"  : (light: #262626, dark: #efefef), // Variable Theme Color
+        "faint"     : (light: #efefef, dark: #282828), // Variable Theme Color
+        "dark"      : (light: #121212),
+        "light"     : (light: #efefef),
+        "primary"   : (light: #1494df),
+        "warning"   : (light: #1494df),
+        "secondary" : (light: #df8a22),
     ),
 
-    $gaps: (
-        default: .75em, // required
-        md: 1.5em,
-        lg: 1.75em,
-    ),
 );

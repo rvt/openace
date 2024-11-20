@@ -196,6 +196,14 @@ class AircraftConfig extends El {
 
       <!-- Buttons -->
       <div class="section grid md-columns-4 lg-columns-4">
+
+      <button class="btn">Default</button>
+<button class="btn btn-primary">Primary</button>
+<button class="btn btn-error">Error</button>
+<button class="btn btn-success">Success</button>
+<button class="btn btn-secondary">Warning</button>
+<button class="btn btn-light color-text">Light</button>
+
         <input class="btn" value="Help" onclick=${() => (this.state.showHelp = true)} />
         <input class="btn" value="Cancel" onclick=${this.close} />
         <input class="btn" value="Reset" onclick=${this._resetForm} />

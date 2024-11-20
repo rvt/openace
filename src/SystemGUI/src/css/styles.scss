@@ -1,7 +1,11 @@
 // Include and Override Variables
-@use 'custom_variables';
+// @use 'custom_variables';
 
 // Get Partials and exclude used
+
+@use '../../node_modules/@ggedde/spry-css/dark';
+@use '../../node_modules/@ggedde/spry-css/light';
+@use '../../node_modules/@ggedde/spry-css/colors';
 @use '../../node_modules/@ggedde/spry-css/reset';
 @use '../../node_modules/@ggedde/spry-css/typography';
 @use '../../node_modules/@ggedde/spry-css/outline';
@@ -26,10 +30,9 @@
 @use '../../node_modules/@ggedde/spry-css/borders';
 @use '../../node_modules/@ggedde/spry-css/icons';
 @use '../../node_modules/@ggedde/spry-css/utilities';
-@use '../../node_modules/@ggedde/spry-css/dark';
-@use '../../node_modules/@ggedde/spry-css/light';
-@use '../../node_modules/@ggedde/spry-css/colors';
 @use '../../node_modules/@ggedde/spry-css/loader';
 
+
+
 // Include custom CSS
-@use 'custom_styles';
+// @use 'custom_styles';
