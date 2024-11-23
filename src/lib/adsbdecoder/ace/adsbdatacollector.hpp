@@ -4,11 +4,6 @@
 #include "ace/constants.hpp"
 #include "ace/models.hpp"
 
-#include "etl/flat_set.h"
-#include "etl/vector.h"
-#include "etl/map.h"
-#include "etl/flat_map.h"
-#include "etl/flat_map.h"
 #include "etl/unordered_map.h"
 
 #include "cpr.hpp"
@@ -33,24 +28,13 @@ struct AdsbCombinedDataStatus
     float lat;                  // lat
     float lon;                  // lon
     uint8_t vert_rate_sign;     // Vert Rate Sign
-    int16_t vert_rate;          // Non decoded longitude
-    bool airborne;              // Non decoded longitude
-    bool evict;                 // When set to true, the aircraft needs to be removed from cache
-    bool operator<(const AdsbCombinedDataStatus &other) const
-    {
-        return icao < other.icao;
-    }
+    int16_t vert_rate;          // Vertical Rate
+    bool airborne;              // true when airplane is airborne
+    bool evict;                 // When set to true, the aircraft needs to be removed from cache in the next evict cycle
 
     ~AdsbCombinedDataStatus() = default;
 
-    // Constructor with icao and lastSeen parameters
-    AdsbCombinedDataStatus()
-        : icao(0), icaoAddress("-"), messageStatus(0), lastSeen(0),
-          velocity(0.0f), category(0), heading(0), gnsAltitude(0), raw_even_latitude(0),
-          raw_even_longitude(0), raw_odd_latitude(0), raw_odd_longitude(0), baro_gnss_diff(0),
-          lat(0.0f), lon(0.0f), vert_rate_sign(0), vert_rate(0.0f), airborne(false), evict(false)
-    {
-    }
+    AdsbCombinedDataStatus() = default;
 
     // Constructor with icao for search functions.
     AdsbCombinedDataStatus(uint32_t icao_)
@@ -68,6 +52,22 @@ struct AdsbCombinedDataStatus
           raw_even_longitude(0), raw_odd_latitude(0), raw_odd_longitude(0), baro_gnss_diff(0),
           lat(0.0f), lon(0.0f), vert_rate_sign(0), vert_rate(0.0f), airborne(false), evict(false)
     {
+    }
+
+    bool operator<(const AdsbCombinedDataStatus &other) const
+    {
+        return icao < other.icao;
+    }
+    bool operator()(uint32_t lhs, uint32_t rhs) const
+    {
+        return lhs == rhs;
+    }
+    size_t operator()(uint32_t e) const
+    {
+        e ^= (e >> 16);
+        e *= 0x85ebca6b;
+        e ^= (e >> 13);
+        return size_t(e);
     }
 };
 
@@ -92,29 +92,13 @@ class AdsbDataCollector
     static constexpr uint32_t CLEAR_UP_SIZE = (SIZE * 90) / 100;
 
 private:
-    struct AdsbCombinedDataStatusEq
-    {
-        bool operator()(uint32_t lhs, uint32_t rhs) const
-        {
-            return lhs == rhs;
-        }
-    };
-
-    struct AdsbCombinedDataStatusHash
-    {
-        size_t operator()(uint32_t e) const
-        {
-            return size_t(e);
-        }
-    };
-
-    etl::unordered_map<uint32_t, AdsbCombinedDataStatus, SIZE, 8, AdsbCombinedDataStatusHash, AdsbCombinedDataStatusEq> cache;
+    etl::unordered_map<uint32_t, AdsbCombinedDataStatus, SIZE, SIZE, AdsbCombinedDataStatus, AdsbCombinedDataStatus> cache;
     AdsbCombinedDataStatus defaultStatus;
 
     // Declare a reference to the defaultStatus
     AdsbCombinedDataStatus *currentDataStatus = &defaultStatus;
 
-    inline void decodePCR(bool fflag)
+    void decodePCR(bool fflag)
     {
         // only when all positions are in AND updated the decodeCPR is ran
         if ((currentDataStatus->messageStatus & (HAS_POSITION_ODD | HAS_POSITION_EVEN)) == (HAS_POSITION_ODD | HAS_POSITION_EVEN))
@@ -128,7 +112,8 @@ private:
     }
 
 public:
-    void clear() {
+    void clear()
+    {
         cache.clear();
     }
     bool start(uint32_t address, uint32_t usTime)
@@ -143,18 +128,16 @@ public:
 
         static uint8_t evictCycle = 0;
         evictCycle++;
-        if (evictCycle == 25 || cache.full())
+        if (evictCycle == (SIZE/4) || cache.full())
         {
             evictCycle = 0;
             evictOldEntries(usTime);
         }
 
-        if (!cache.full())
-        {
-            cache[address] = AdsbCombinedDataStatus{address, usTime};
-            auto it = cache.find(address);
+        if (!cache.full()) {
+            auto [it, inserted] = cache.insert({address, AdsbCombinedDataStatus{address, usTime}});
             currentDataStatus = &it->second;
-            return true;
+            return inserted;
         }
 
         currentDataStatus = &defaultStatus;
@@ -170,7 +153,8 @@ public:
             for (auto it = cache.cbegin(); it != cache.cend();)
             {
                 if (it->second.evict || (CoreUtils::usElapsed(it->second.lastSeen, usTime) > evictTime))
-                {
+                {                    
+                    // printf("Evict: icao:%06X lastSee:%ld usTime:%ld, diff:%ld\n", it->second.icao, it->second.lastSeen, usTime, CoreUtils::usElapsed(it->second.lastSeen, usTime));
                     it = cache.erase(it);
                 }
                 else
@@ -188,7 +172,7 @@ public:
         for (const auto &entry : cache)
         {
             const auto &data = entry.second; // Access the value part of the pair
-            printf("%06X %02X %06d %s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usElapsed(data.lastSeen, usTime), data.icaoAddress.c_str(), data.gnsAltitude);
+            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usElapsed(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.gnsAltitude);
         }
     }
 
@@ -202,59 +186,59 @@ public:
         return *currentDataStatus;
     }
 
-    inline void updateAltitude(int32_t altitude)
+    void updateAltitude(int32_t altitude)
     {
         currentDataStatus->messageStatus |= HAS_ALTITUDE;
         currentDataStatus->gnsAltitude = altitude + currentDataStatus->baro_gnss_diff;
     }
 
-    inline void updateGnssAltitude(int32_t altitude)
+    void updateGnssAltitude(int32_t altitude)
     {
         currentDataStatus->messageStatus |= HAS_ALTITUDE;
         currentDataStatus->gnsAltitude = altitude;
     }
 
-    inline void updateIcaoAddress(const OpenAce::IcaoAddress &flight, uint8_t aircraft_type)
+    void updateIcaoAddress(const OpenAce::IcaoAddress &flight, uint8_t aircraft_type)
     {
         (void)flight;
         if (!(currentDataStatus->messageStatus & CHECK_HAS_ICAOADDRESS))
         {
             currentDataStatus->messageStatus |= CHECK_HAS_ICAOADDRESS;
-            currentDataStatus->icaoAddress = ""; // flight; For consistency current icao. When flight is needed, properly an exception for ADSB needs to be made in aircraftTracker
+            // currentDataStatus->icaoAddress = ""; // flight; For consistency current icao. When flight is needed, properly an exception for ADSB needs to be made in aircraftTracker
             currentDataStatus->category = aircraft_type;
         }
     }
 
-    inline void updateRawOdd(uint32_t raw_latitude, uint32_t raw_longitude)
+    void updateRawOdd(uint32_t raw_latitude, uint32_t raw_longitude)
     {
-        currentDataStatus->messageStatus |= (HAS_POSITION_ODD);
+        currentDataStatus->messageStatus |= HAS_POSITION_ODD;
         currentDataStatus->raw_odd_latitude = raw_latitude;
         currentDataStatus->raw_odd_longitude = raw_longitude;
         decodePCR(true);
     }
 
-    inline void updateRawEven(uint32_t raw_latitude, uint32_t raw_longitude)
+    void updateRawEven(uint32_t raw_latitude, uint32_t raw_longitude)
     {
-        currentDataStatus->messageStatus |= (HAS_POSITION_EVEN);
+        currentDataStatus->messageStatus |= HAS_POSITION_EVEN;
         currentDataStatus->raw_even_latitude = raw_latitude;
         currentDataStatus->raw_even_longitude = raw_longitude;
         decodePCR(false);
     }
 
-    inline void updateAirborne(bool airborne)
+    void updateAirborne(bool airborne)
     {
         currentDataStatus->airborne = airborne;
     }
 
-    inline void updateHeading(int16_t heading)
+    void updateHeading(int16_t heading)
     {
         currentDataStatus->messageStatus |= HAS_HEADING;
         currentDataStatus->heading = heading;
     }
-    inline void updateVelocityHeadingBaroDiff(uint16_t velocity, int16_t vert_rate,uint8_t vert_rate_sign, int16_t heading, int16_t baro_gnss_diff)
+
+    void updateVelocityHeadingBaroDiff(uint16_t velocity, int16_t vert_rate, uint8_t vert_rate_sign, int16_t heading, int16_t baro_gnss_diff)
     {
-        currentDataStatus->messageStatus |= HAS_HEADING;
-        currentDataStatus->messageStatus |= HAS_VELOCITY;
+        currentDataStatus->messageStatus |= HAS_HEADING | HAS_VELOCITY;
         currentDataStatus->velocity = velocity;
         currentDataStatus->vert_rate = vert_rate;
         currentDataStatus->vert_rate_sign = vert_rate_sign;
@@ -262,7 +246,7 @@ public:
         currentDataStatus->baro_gnss_diff = baro_gnss_diff;
     }
 
-    inline bool positionUpdatedAndValid()
+    bool positionUpdatedAndValid()
     {
         if ((currentDataStatus->messageStatus & VALID_MASK) == VALID_MASK)
         {

@@ -24,10 +24,9 @@
  */
 class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, OpenAce::ADSBMessageBin, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg>
 {
-    static constexpr uint16_t PLANE_CACHE_SIZE = 49;
-    static constexpr uint32_t ADSBDECODER_MS_DELAY_SERIAL_AND_OVERHEAD = 5;
     static constexpr uint8_t MAX_PLANES_TRACKED = 42;
-    static constexpr uint8_t MAX_ADDRESS_CACHE_SIZE = 128;  // Address cache size for decryption
+    static constexpr uint8_t MAX_ADDRESS_CACHE_SIZE = 128;  // Address cache size for ignore planes that are to for/to high etc..
+    static constexpr uint32_t ADSBDECODER_MS_DELAY_SERIAL_AND_OVERHEAD = 20;
 
     friend class message_router;
 
