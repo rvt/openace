@@ -1,0 +1,16 @@
+{
+  "name": "timestamped-tcp-server",
+  "version": "1.0.0",
+  "description": "A simple Node.js TCP server that reads a file and sends lines at the specified intervals with timestamps.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "net": "^1.0.2",
+    "readline": "^1.3.0"
+  }
+}
