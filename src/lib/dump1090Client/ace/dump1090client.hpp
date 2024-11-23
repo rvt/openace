@@ -18,7 +18,7 @@
  * Note: This module is experimental
  */
 class Dump1090Client : public BaseModule,
-                       public etl::message_router<Dump1090Client, OpenAce::IdleMsg>
+                       public etl::message_router<Dump1090Client, OpenAce::IdleMsg, OpenAce::WifiConnectionStateMsg>
 {
     friend class message_router;
 

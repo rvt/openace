@@ -64,7 +64,6 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     mode_s_msg mm;
     // Two phase decoder to first decode the address.. when not in ignoredAirplanes continue decoding
     mode_s_decode_phase1(state, &mm, data);
-//    msgCount++;
 
     if (mm.msgtype != 17)
     {
@@ -78,7 +77,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     }
 
     auto usTime = CoreUtils::timeUs32();
-    if (ignoredAirplanes.contains(mm.aa, usTime))
+    if (ignoredAirplanes.containsAndUpdate(mm.aa, usTime))
     {
         statistics.totalMsgIgnored++;
         return;
@@ -93,7 +92,6 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
 
     /**
      * https://mode-s.org/decode/content/ads-b/1-basics.html
-     * Altitude
      */
     if (mm.msgtype == 17) /* Airborn position message*/
     {

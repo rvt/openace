@@ -39,7 +39,8 @@ endif()
 
 # These examples use the standard separate compilation
 set(SOURCES_IDIOMATIC_EXAMPLES # Tests
-    adsb_test.cpp)
+    adsb_test.cpp
+    addresscache_test.cpp)
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
                "${SOURCES_IDIOMATIC_EXAMPLES}")

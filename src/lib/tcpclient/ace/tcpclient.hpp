@@ -92,13 +92,12 @@ private:
     static err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
     {
         (void)tpcb;
-        // TcpClient *state = (TcpClient *)arg;
         if (err != ERR_OK)
         {
             tcp_client_close(arg);
             return err;
         }
-        puts("TcpClient: Connected\n");
+        // puts("TcpClient: Connected\n");
 
         return ERR_OK;
     }
@@ -108,7 +107,7 @@ private:
         if (arg == nullptr)
         {
             tcp_client_close(arg);
-            return ERR_ARG; // Return appropriate error code
+            return ERR_ARG;
         }
         TcpClient *tcpClient = (TcpClient *)arg;
 

@@ -6,66 +6,83 @@
 
 #include "etl/flat_set.h"
 
-template <size_t SIZE, uint32_t EVICT_TIME_US>
+template <size_t SIZE, int32_t EVICT_TIME_US>
 class AddressCache
 {
-    static constexpr uint32_t CLEAR_UP_SIZE = (SIZE * 90) / 100;
+    private:
+    // 80% means that when the cache is full, eviction will happen till the cache is 80% full
+    static constexpr int32_t CLEAR_UP_SIZE = (SIZE * 80) / 100;
+    static constexpr int32_t MIN_EVICT_TIME_US = 4'000'000;
+    static constexpr int32_t EVICT_STEP_US = 5'000'000;
 
-    struct AddressStatus
+    struct CacheEntry
     {
         OpenAce::AircraftAddress icao;
         uint32_t lastSeen;
-        AddressStatus(OpenAce::AircraftAddress icao_, uint32_t lastSeen_) : icao(icao_), lastSeen(lastSeen_)
-        {
-        }
-        AddressStatus(const AddressStatus &other)
-            : icao(other.icao), lastSeen(other.lastSeen)
-        {
-        }
-        // copy assignment operator
-        AddressStatus &operator=(const AddressStatus &other)
+
+        // Default constructor
+        CacheEntry() = default;
+
+        CacheEntry(OpenAce::AircraftAddress icao_, uint32_t lastSeen_)
+            : icao(icao_), lastSeen(lastSeen_) {}
+
+        CacheEntry(const CacheEntry &other)
+            : icao(other.icao), lastSeen(other.lastSeen) {}
+
+        CacheEntry &operator=(const CacheEntry &other)
         {
             icao = other.icao;
             lastSeen = other.lastSeen;
             return *this;
         }
-    };
 
-    struct AddressComparator
-    {
-        constexpr bool operator()(const AddressStatus &lhs, const AddressStatus &rhs) const
+        constexpr bool operator<(const CacheEntry &other) const
+        {
+            return icao < other.icao;
+        }
+
+        constexpr bool operator()(const CacheEntry &lhs, const CacheEntry &rhs) const
         {
             return lhs.icao < rhs.icao;
         }
     };
 
-    struct FindByIcao
+    /**
+     * This method remove all older entries trying to find entries on a best efford.
+     * It assumes that there is some form of distribution of airplanes coming in.
+     * 100 planes per second in a cache of 100 is never going to work nice
+     * THis could be done better to only evict olders entries. 
+     * TODO: Evict entries on the idle timer and only remove the oldest 25% of entries
+     */
+    void evictOldEntries(uint32_t usTime)
     {
-        FindByIcao(const OpenAce::AircraftAddress &icao) : icao(icao) {}
-        bool operator()(const AddressStatus &i)
+        // Always ensure there is room for new cache entries be reducing evictTime untill there is room again
+        int32_t evictTime = EVICT_TIME_US;
+        while ((cache.size() > CLEAR_UP_SIZE) && evictTime > MIN_EVICT_TIME_US)
         {
-            return i.icao == icao;
+            cache.erase(etl::remove_if(cache.begin(), cache.end(), [usTime, evictTime](const auto &it)
+                                       { return CoreUtils::usElapsed(it.lastSeen, usTime) > (uint32_t)evictTime; }),
+                        cache.end());
+            evictTime = etl::max((int32_t)0, evictTime - EVICT_STEP_US);
         }
+    }
 
-    private:
-        OpenAce::AircraftAddress icao;
-    };
-
-    etl::flat_set<AddressStatus, SIZE, AddressComparator> cache;
+    etl::flat_set<CacheEntry, SIZE, CacheEntry> cache;
 
 public:
-    void clear() {
+    void clear()
+    {
         cache.clear();
     }
+
     size_t size() const
     {
         return cache.size();
     }
 
-    bool contains(uint32_t icao, uint32_t usTime)
+    bool containsAndUpdate(uint32_t icao, uint32_t usTime)
     {
-        auto it = etl::find_if(cache.begin(), cache.end(), FindByIcao(icao));
-
+        auto it = cache.find(CacheEntry{icao, usTime});
         if (it != cache.end())
         {
             it->lastSeen = usTime;
@@ -78,26 +95,16 @@ public:
     bool insert(uint32_t address, uint32_t usTime)
     {
         if (cache.full())
-        {
+        {            
             evictOldEntries(usTime);
         }
 
-        cache.insert(AddressStatus{address, usTime});
+        if (cache.full()) {
+            return false;
+        }
+        cache.insert(CacheEntry{address, usTime});
+
         return true;
     }
 
-    void evictOldEntries(uint32_t usTime)
-    {
-        // Always ensure there is room for new cache entries be reducing evictTime untill there is room again
-        auto evictTime = EVICT_TIME_US;
-        while ((cache.size() > CLEAR_UP_SIZE) && evictTime > 2'000'000)
-        {
-            cache.erase(etl::remove_if(cache.begin(), cache.end(), [usTime, evictTime](const auto &it)
-            {
-                return CoreUtils::usElapsed(it.lastSeen, usTime) > evictTime;
-            }),
-            cache.end());
-            evictTime -= 5'000'000;
-        }
-    }
 };
