@@ -46,7 +46,6 @@ namespace OpenAce
     using TxPacketType = etl::array<uint8_t, OpenAce::RADIO_MAX_FRAME_LENGTH>;
     using TxFrameType = etl::array<uint8_t, OpenAce::RADIO_MAX_FRAME_LENGTH * MANCHESTER>;
     using SsidOrPasswdStr = etl::string<20>;
-    using positionTs = uint64_t; // OpenAce::positionTs represent a timestamp of the current ms of the position of the aircraft
 
     enum class PinType : uint8_t;
     using PinTypeMap = etl::map<PinType, uint8_t, 12>;

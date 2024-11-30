@@ -14,40 +14,35 @@
 
 class CoreUtils
 {
-    inline static uint64_t offsetTimeToAbsolute;
-    inline static uint32_t timeUs32Pps; // monotonic timestamp at which PPS happened
+    inline static uint64_t offsetTimeToAbsolute = 0;
+    inline static uint32_t timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
 
 public:
     /**
-     * Convert and timestamp to an OpenAce::positionTs which is synced with GPS time such that at PPS the ms should reppresents (somewhere close) to a ms
+     * Convert and timestamp to an uint32_t which is synced with GPS time such that at PPS the ms should reppresents (somewhere close) to a ms
      * eg: 45'453'010 = represents 10ms after PPS
      * \deprecated
      */
-    static inline OpenAce::positionTs timeToPositionTs(int8_t hours, int8_t minutes, int8_t seconds, int16_t microseconds)
+    static uint32_t timeToPositionTs(int8_t hours, int8_t minutes, int8_t seconds, int16_t microseconds)
     {
         return hours * 3600 + minutes * 60 + seconds + microseconds;
     }
 
     /**
-     * Return a position timestamp.
-     * Use this to keep track on traffic and when it was received.
-     * it currently uses it's own type but us currently driven from msSinceEpoch();
-     */
-    static inline OpenAce::positionTs getPositionTs()
-    {
-        return msSinceEpoch();
-    }
-
-    /**
-     * Get a timestamp in us
+     * Get a timestamp in us aligned on PPS so that for example45000 is at the exact pps
      * This timestamp monotonically increases from power up
      * this works together with isReached to measure time differences
      * Use this to measure short time differences of less then 71minutes
      * \sa isReached
      */
-    static inline uint32_t timeUs32()
+    static uint32_t timeUs32()
     {
-        return time_us_32();
+        return time_us_32() - timeUs32PpsOffset;
+    }
+    static uint32_t timeUs64()
+    {
+        // time_us_64 and time_us_32 use teh same hardware time, thus offset is also the same
+        return time_us_64() - timeUs32PpsOffset;
     }
     /**
      * Get a timestamp in ms
@@ -55,17 +50,17 @@ public:
      * Note: When measuring time differences up to 35 minutes, it's best to use timeUs32 for performance reasons
      * \sa timeUs32
      */
-    static inline uint32_t timeMs32()
+    static uint32_t timeMs32()
     {
-        return time_us_64() / 1'000;
+        return timeUs32() / 1'000;
     }
     /**
      * Get a timestamp in seconds
      * This timestamp monotonically increases from power up
      */
-    static inline uint32_t timeS32()
+    static uint32_t timeS32()
     {
-        return time_us_64() / 1'000'000;
+        return timeUs64() / 1'000'000;
     }
 
     /**
@@ -74,9 +69,9 @@ public:
      * It will properly handle wraparounds if the time is less than 35 minutes in difference
      * \sa timeUs32
      */
-    static inline bool isUsReached(uint32_t referenceUs)
+    static bool isUsReached(uint32_t referenceUs, uint32_t ms = timeUs32())
     {
-        return ((uint32_t)(timeUs32() - referenceUs)) < (uint32_t)(0x80000000);
+        return ((uint32_t)(ms - referenceUs)) < (uint32_t)(0x80000000);
     }
 
     /**
@@ -85,20 +80,9 @@ public:
      * It will properly handle wraparounds if the time is less than 35 minutes in difference
      * \sa timeMs32
      */
-    static inline bool isMsReached(uint32_t referenceMs)
+    static bool isMsReached(uint32_t referenceMs)
     {
         return ((uint32_t)(timeMs32() - referenceMs)) < (uint32_t)(0x80000000);
-    }
-
-    /**
-     * Calculate the number if us Elapsed from a reference
-     * Use this for timing short time differences
-     * \sa: referenceUs is the time taken
-     * \sa: Is the new, later time
-     */
-    static inline uint32_t usElapsed(uint32_t referenceUs, uint32_t usBoot = CoreUtils::timeUs32())
-    {
-        return usBoot - referenceUs;
     }
 
     /**
@@ -107,43 +91,35 @@ public:
      * and is given the exact epochoffset when received from PPS this will calibrate the epoch function to exact ms
      * See RTC::on_receive(const OpenAce::GpsTime& msg)
      */
-    static inline void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
+    static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
     {
         CoreUtils::offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1'000;
     }
 
-    static inline void setPPS()
+    /**
+     * Must be called at high priority to set the PPS offset.
+     * When offset is known, the correct time in us in reference to PPS can be calculated
+     */
+    static void setPPS()
     {
-        timeUs32Pps = time_us_32();
+        timeUs32PpsOffset = time_us_32() % 1'000'000;
     }
 
     /**
      * Returns the current time in ms since epoch
      */
-    static inline uint64_t msSinceEpoch()
+    static uint64_t msSinceEpoch()
     {
         return (time_us_64() / 1'000) + CoreUtils::offsetTimeToAbsolute;
     }
 
     /**
-     * Returns the current ms within teh current second (based on epoch)
-     * eg: a value of 119 means 119ms since PPS
-     *
-     */
-    // [[deprecated]]
-    static inline uint16_t msInSecondFromEpoch(uint64_t msSinceEpoch = CoreUtils::msSinceEpoch())
-    {
-        return msSinceEpoch % 1000;
-    }
-
-    /**
      * Returns the current ms within the current second (based on PPS)
      * eg: a value of 119 means 119ms since PPS
-     * THis version is slightly faster than msInSecondFromEpoch because it uses 32 bit operations
      */
-    static inline uint16_t msInSecond()
+    static uint16_t msInSecond()
     {
-        return ((time_us_32() - timeUs32Pps) / 1'000) % 1'000;
+        return (timeUs32() / 1'000) % 1'000;
     }
 
     /**
@@ -155,7 +131,7 @@ public:
      * ms needs to be 0..1000
      * refMsInSecond 0..n
      */
-    static inline uint16_t msDelayToReference(uint16_t refMsInSecond, uint16_t ms = msInSecond())
+    static uint16_t msDelayToReference(uint16_t refMsInSecond, uint16_t ms = msInSecond())
     {
         if (refMsInSecond > ms)
         {
@@ -168,18 +144,51 @@ public:
     }
 
     /**
+     * Calculates the time to a time in the future. Returns 0 for a negative time
+     * Must pass absolute times based on \sa timeUs32()
+     */
+    static uint32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
+    {
+        if (referenceUs > us)
+        {
+            return referenceUs - us;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    /**
+     * Calculate the number if us Elapsed from a reference
+     * \sa: referenceUs is the time taken
+     * \sa: Is the new, later time
+     */
+    static uint32_t usFromReference(uint32_t referenceUs, uint32_t ms = CoreUtils::timeUs32())
+    {
+        if (ms > referenceUs)
+        {
+            return ms - referenceUs;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    /**
      * Seconds since EPOCH, like unix time
      */
-    static inline uint32_t secondsSinceEpoch()
+    static uint32_t secondsSinceEpoch()
     {
         return msSinceEpoch() / 1000;
     }
 
-    static inline tm localTime()
+    static tm localTime()
     {
         return localTime(msSinceEpoch());
     }
-    static inline tm localTime(uint64_t msSinceEpoch)
+    static tm localTime(uint64_t msSinceEpoch)
     {
         time_t secondsSinceEpoch = msSinceEpoch / 1000;
         struct tm timeinfo = {};
@@ -197,7 +206,7 @@ public:
     /**
      * Get the current time in hours, minutes and seconds since mightnight UTC based on epoch
      */
-    static inline HourMinuteSeconds hourMinutesSeconds(uint32_t now = secondsSinceEpoch())
+    static HourMinuteSeconds hourMinutesSeconds(uint32_t now = secondsSinceEpoch())
     {
 
         uint8_t h = (uint8_t)((now / 3600) % 24);
@@ -306,12 +315,12 @@ public:
         float bearing;
     };
 
-    inline static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const OpenAce::AircraftPositionInfo &from, const OpenAce::AircraftPositionInfo &to)
+    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const OpenAce::AircraftPositionInfo &from, const OpenAce::AircraftPositionInfo &to)
     {
         return getDistanceRelNorthRelEastInt(from.lat, from.lon, to.lat, to.lon);
     }
 
-    inline static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const OpenAce::OwnshipPositionInfo &from, const OpenAce::AircraftPositionInfo &to)
+    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const OpenAce::OwnshipPositionInfo &from, const OpenAce::AircraftPositionInfo &to)
     {
         return getDistanceRelNorthRelEastInt(from.lat, from.lon, to.lat, to.lon);
     }

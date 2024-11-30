@@ -26,7 +26,7 @@ class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, Open
 {
     static constexpr uint8_t MAX_PLANES_TRACKED = 42;
     static constexpr uint8_t MAX_ADDRESS_CACHE_SIZE = 128;  // Address cache size for ignore planes that are to for/to high etc..
-    static constexpr uint32_t ADSBDECODER_MS_DELAY_SERIAL_AND_OVERHEAD = 20;
+    static constexpr uint32_t ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD = 20'000;
 
     friend class message_router;
 

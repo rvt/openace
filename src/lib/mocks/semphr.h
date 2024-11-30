@@ -36,3 +36,9 @@ inline SemaphoreHandle_t xSemaphoreCreateMutexStatic(StaticSemaphore_t *t)
     printf("xSemaphoreCreateMutexStatic\n");
     return NULL;
 }
+
+inline SemaphoreHandle_t xSemaphoreCreateMutex()
+{
+    printf("xSemaphoreCreateMutex\n");
+    return NULL;
+}

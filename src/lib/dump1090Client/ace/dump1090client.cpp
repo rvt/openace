@@ -63,6 +63,7 @@ void Dump1090Client::on_receive_unknown(const etl::imessage &msg)
 void Dump1090Client::on_receive(const OpenAce::IdleMsg &msg)
 {
     (void)msg;
+    // printf("%d %d %d \n", wifiConnected , tcpClient.isStopped() , (stoppedCounter % 4 == 0));
     if (wifiConnected && tcpClient.isStopped() && (stoppedCounter % 4 == 0))
     {
         stoppedCounter = 0;

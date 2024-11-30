@@ -539,6 +539,9 @@ class Dump1090ClientConfig extends ModuleConfig {
         This module enables reading ADS-B data in the format '*8D7C7181215D01A08208204D8BF1;' from an external system like Dump1090 into OpenAce (port
         &lt;IP&gt;:30002), processing them as traffic targets. Ensure that the ADSBDecoder is enabled and there is traffic within the filtered ranges above or
         below so you will actually see them.
+          <div class="alert alert-warning">
+          ${html.raw(icon.warning)} This modules requires restart after modification of the configuration.
+        </div>
       </p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="section grid md-columns-2 lg-columns-2">

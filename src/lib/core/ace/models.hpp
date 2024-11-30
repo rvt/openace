@@ -186,7 +186,7 @@ namespace OpenAce
      */
     struct AircraftPositionInfo
     {
-        OpenAce::positionTs timestamp; // DEPRECATED: We can just use relative times (to be added still) Timestamp when the position was received in ms Since Epoch
+        uint32_t timestamp; // DEPRECATED: We can just use relative times (to be added still) Timestamp when the position was received in ms Since Epoch
         OpenAce::IcaoAddress icaoAddress;
 
         AircraftAddress address;
@@ -210,7 +210,7 @@ namespace OpenAce
         int32_t relEastFromOwn;   // relEast to ownship in meters
         int16_t bearingFromOwn;   // Bearing to ownship in degrees
 
-        AircraftPositionInfo(OpenAce::positionTs timestamp_, OpenAce::IcaoAddress icaoAddress_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeWgs84_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, OpenAce::IcaoAddress icaoAddress_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeWgs84_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
             : timestamp(timestamp_), icaoAddress(icaoAddress_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), altitudeWgs84(altitudeWgs84_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_), bearingFromOwn(bearingFromOwn_)
         {
         }
@@ -222,7 +222,7 @@ namespace OpenAce
 
     struct OwnshipPositionInfo
     {
-        OpenAce::positionTs timestamp; // Timestamp when the position was received
+        uint32_t timestamp; // Timestamp when the position was received
         bool airborne;                 // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
         float lat;
         float lon;

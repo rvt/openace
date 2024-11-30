@@ -79,7 +79,6 @@ struct AdsbCombinedDataStatus
 template <size_t SIZE, uint32_t EVICT_TIME_US>
 class AdsbDataCollector
 {
-    static constexpr uint8_t ADSBDECODER_MS_DELAY_SERIAL_AND_OVERHEAD = 5; // Estimate time to send 24characters + some additional overhead
     static constexpr uint8_t HAS_POSITION_ODD = 1 << 0;                    //
     static constexpr uint8_t HAS_POSITION_EVEN = 1 << 1;                   //
     static constexpr uint8_t HAS_HEADING = 1 << 2;                         //
@@ -152,9 +151,9 @@ public:
         {
             for (auto it = cache.cbegin(); it != cache.cend();)
             {
-                if (it->second.evict || (CoreUtils::usElapsed(it->second.lastSeen, usTime) > evictTime))
+                if (it->second.evict || (CoreUtils::usFromReference(it->second.lastSeen, usTime) > evictTime))
                 {                    
-                    // printf("Evict: icao:%06X lastSee:%ld usTime:%ld, diff:%ld\n", it->second.icao, it->second.lastSeen, usTime, CoreUtils::usElapsed(it->second.lastSeen, usTime));
+                    // printf("Evict: icao:%06X lastSee:%ld usTime:%ld, diff:%ld\n", it->second.icao, it->second.lastSeen, usTime, CoreUtils::usFromReference(it->second.lastSeen, usTime));
                     it = cache.erase(it);
                 }
                 else
@@ -172,7 +171,7 @@ public:
         for (const auto &entry : cache)
         {
             const auto &data = entry.second; // Access the value part of the pair
-            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usElapsed(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.gnsAltitude);
+            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usFromReference(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.gnsAltitude);
         }
     }
 

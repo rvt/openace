@@ -81,7 +81,7 @@ public:
         openAceConfiguration(config.openAceConfig())
     {
         int32_t v = config.valueByPath(25000, "Ogn1", "distanceIgnore");
-        distanceIgnore = std::max((int32_t)0, etl::min(v, MAX_IGNORE_DISTANCE));
+        distanceIgnore = etl::max((int32_t)0, etl::min(v, MAX_IGNORE_DISTANCE));
     }
 
     virtual ~Ogn1() = default;

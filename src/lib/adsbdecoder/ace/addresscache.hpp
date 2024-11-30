@@ -9,7 +9,7 @@
 template <size_t SIZE, int32_t EVICT_TIME_US>
 class AddressCache
 {
-    private:
+private:
     // 80% means that when the cache is full, eviction will happen till the cache is 80% full
     static constexpr int32_t CLEAR_UP_SIZE = (SIZE * 80) / 100;
     static constexpr int32_t MIN_EVICT_TIME_US = 4'000'000;
@@ -51,19 +51,35 @@ class AddressCache
      * This method remove all older entries trying to find entries on a best efford.
      * It assumes that there is some form of distribution of airplanes coming in.
      * 100 planes per second in a cache of 100 is never going to work nice
-     * THis could be done better to only evict olders entries. 
+     * THis could be done better to only evict olders entries.
      * TODO: Evict entries on the idle timer and only remove the oldest 25% of entries
      */
     void evictOldEntries(uint32_t usTime)
     {
         // Always ensure there is room for new cache entries be reducing evictTime untill there is room again
-        int32_t evictTime = EVICT_TIME_US;
+        uint32_t evictTime = EVICT_TIME_US;
         while ((cache.size() > CLEAR_UP_SIZE) && evictTime > MIN_EVICT_TIME_US)
         {
-            cache.erase(etl::remove_if(cache.begin(), cache.end(), [usTime, evictTime](const auto &it)
-                                       { return CoreUtils::usElapsed(it.lastSeen, usTime) > (uint32_t)evictTime; }),
-                        cache.end());
-            evictTime = etl::max((int32_t)0, evictTime - EVICT_STEP_US);
+            for (auto it = cache.begin(); it != cache.end();)
+            {
+                if (CoreUtils::usFromReference(it->lastSeen, usTime) > evictTime)
+                {
+                    it = cache.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+
+            if (evictTime > EVICT_STEP_US)
+            {
+                evictTime -= EVICT_STEP_US;
+            }
+            else
+            {
+                evictTime = 0;
+            }
         }
     }
 
@@ -95,16 +111,16 @@ public:
     bool insert(uint32_t address, uint32_t usTime)
     {
         if (cache.full())
-        {            
+        {
             evictOldEntries(usTime);
         }
 
-        if (cache.full()) {
+        if (cache.full())
+        {
             return false;
         }
         cache.insert(CacheEntry{address, usTime});
 
         return true;
     }
-
 };

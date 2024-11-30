@@ -5,7 +5,8 @@
 
 OpenAce::PostConstruct ADSBDecoder::postConstruct()
 {
-    if (state == nullptr) {
+    if (state == nullptr)
+    {
         state = new mode_s_t;
     }
     if (state == nullptr)
@@ -114,12 +115,12 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             int32_t altitude = (mm.unit == MODE_S_UNIT_METERS ? mm.altitude : mm.altitude * FT_TO_M);
             if (mm.metype >= 20)
             {
-                //printf("%.6X GPS: %d\n", mm.aa, altitude);
+                // printf("%.6X GPS: %d\n", mm.aa, altitude);
                 adsbDataCollector.updateGnssAltitude(altitude); // GPS Altitude
             }
             else
             {
-                //printf("%.6X Barometric: %d offset: %d\n", mm.aa, altitude, mm.head);
+                // printf("%.6X Barometric: %d offset: %d\n", mm.aa, altitude, mm.head);
                 adsbDataCollector.updateAltitude(altitude); // Barometric Altitude
             }
         }
@@ -170,30 +171,27 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         }
 
         auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, current.lat, current.lon);
-        getBus().receive(OpenAce::AircraftPositionMsg
-        {
-            {
-                CoreUtils::getPositionTs() - ADSBDECODER_MS_DELAY_SERIAL_AND_OVERHEAD,
-                current.icaoAddress,
-                current.icao,
-                OpenAce::AddressType::ICAO,
-                OpenAce::DataSource::ADSB,
-                OpenAce::AircraftCategory::Unknown,            // ADSB does not have type
-                false,                                         // ADSB does not have privacy
-                false,                                         // Heading is always a known
-                current.airborne,
-                current.lat,
-                current.lon,
-                current.gnsAltitude > INT16_MAX ? INT16_MAX : static_cast<int16_t>(current.gnsAltitude),
-                (current.vert_rate-1) * (current.vert_rate_sign?-64.f * FTPMIN_TO_MS:64.f * FTPMIN_TO_MS), // https://mode-s.org/decode/content/ads-b/5-airborne-velocity.html,
-                (float)current.velocity * KN_TO_MS,
-                static_cast<int16_t>(current.heading),
-                0.0f,
-                fromOwn.distance,
-                fromOwn.relNorth,
-                fromOwn.relEast,
-                fromOwn.bearing
-            }});
+        getBus().receive(OpenAce::AircraftPositionMsg{
+            {CoreUtils::timeUs32() - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
+             current.icaoAddress,
+             current.icao,
+             OpenAce::AddressType::ICAO,
+             OpenAce::DataSource::ADSB,
+             OpenAce::AircraftCategory::Unknown, // ADSB does not have type
+             false,                              // ADSB does not have privacy
+             false,                              // Heading is always a known
+             current.airborne,
+             current.lat,
+             current.lon,
+             current.gnsAltitude > INT16_MAX ? INT16_MAX : static_cast<int16_t>(current.gnsAltitude),
+             (current.vert_rate - 1) * (current.vert_rate_sign ? -64.f * FTPMIN_TO_MS : 64.f * FTPMIN_TO_MS), // https://mode-s.org/decode/content/ads-b/5-airborne-velocity.html,
+             (float)current.velocity * KN_TO_MS,
+             static_cast<int16_t>(current.heading),
+             0.0f,
+             fromOwn.distance,
+             fromOwn.relNorth,
+             fromOwn.relEast,
+             fromOwn.bearing}});
     }
 }
 

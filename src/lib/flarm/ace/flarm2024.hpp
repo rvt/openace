@@ -111,7 +111,7 @@ public:
         deltaCourse(0.f)
     {
         int32_t di = config.valueByPath(25000, "Flarm", "distanceIgnore");
-        distanceIgnore = std::max((int32_t)0, etl::min(di, DEFAULT_IGNORE_DISTANCE));
+        distanceIgnore = etl::max((int32_t)0, etl::min(di, DEFAULT_IGNORE_DISTANCE));
         openAceConfiguration = config.openAceConfig();
     }
 

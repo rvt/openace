@@ -159,7 +159,7 @@ uint8_t Ogn1::addressTypeToOgn(OpenAce::AddressType addressType) const
 
 int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
 {
-    OpenAce::positionTs positionTs = CoreUtils::getPositionTs();
+    uint32_t timeUs32 = CoreUtils::timeUs32();
     if (packet.Header.NonPos)
     {
         statistics.nonPositional++;
@@ -187,7 +187,7 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
 
     OpenAce::AircraftPositionMsg aircraftPosition{
         OpenAce::AircraftPositionInfo{
-            positionTs,
+            timeUs32,
             "",
             packet.Header.Address,
             addressTypeFromOgn(packet.Header.AddrType),

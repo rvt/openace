@@ -11,7 +11,7 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
     stream << ",\"highElapseTime\":" << statistics.highElapseTime;
     stream << ",\"ppsEventsReceived\":" << statistics.ppsEventsReceived;
     stream << ",\"lastPpstime\":" << lastPpstime;
-    stream << ",\"positionTs\":" << CoreUtils::getPositionTs();
+    stream << ",\"timeUs32\":" << CoreUtils::timeUs32();
     stream << "}\n";
 
 }

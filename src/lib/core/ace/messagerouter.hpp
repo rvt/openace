@@ -54,7 +54,7 @@ namespace OpenAce
         uint16_t messagesPerSec()
         {
             auto usBoot = CoreUtils::timeUs32();
-            auto elapsed = CoreUtils::usElapsed(lastTime, usBoot);
+            auto elapsed = CoreUtils::usFromReference(lastTime, usBoot);
             if (elapsed > 100'000)
             {
                 // Calculate number of messages per second

@@ -91,8 +91,8 @@ void GDLoverUDP::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 
 void GDLoverUDP::on_receive(const OpenAce::GDLMsg &msg)
 {
-    // Send to the connect clients and the devined ports
-    if (xSemaphoreTake(configMutex, (TickType_t)10) == pdTRUE)
+    // Send to the connect clients and the defined ports
+    if (xSemaphoreTake(configMutex, (TickType_t)100) == pdTRUE)
     {
         for (auto ip : connectedClients)
         {
@@ -107,6 +107,8 @@ void GDLoverUDP::on_receive(const OpenAce::GDLMsg &msg)
             sendTo(msg, client.ip, client.port);
         }
         xSemaphoreGive(configMutex);
+    } else {
+        // puts("GDLoverUDP: Failed ");
     }
 }
 

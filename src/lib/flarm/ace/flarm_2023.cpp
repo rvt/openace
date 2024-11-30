@@ -149,7 +149,7 @@ int8_t Flarm::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rssiDb
 #endif
     flarmV7Packet_t *flarmPacket = (flarmV7Packet_t *)packet;
 
-    OpenAce::positionTs positionTs = CoreUtils::getPositionTs();
+    uint32_t positionTs = CoreUtils::timeUs32();
     // When this bit is zero, it's position data
     if ((flarmPacket->zero0 & 0x01) == 0x01)
     {

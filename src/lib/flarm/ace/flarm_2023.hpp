@@ -169,7 +169,7 @@ public:
         deltaCourse(0.f)
     {
         int32_t v = config.valueByPath(25000, "Flarm_2023", "distanceIgnore");
-        distanceIgnore = std::max((int32_t)0, std::min(v, MAX_IGNORE_DISTANCE));
+        distanceIgnore = etl::max((int32_t)0, etl::min(v, MAX_IGNORE_DISTANCE));
     }
 
     virtual ~Flarm_2023() = default;

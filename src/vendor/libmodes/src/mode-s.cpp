@@ -1,4 +1,5 @@
 #include "mode-s.hpp"
+#include <stdio.h>
 
 #define MODE_S_PREAMBLE_US 8 // microseconds
 #define MODE_S_LONG_MSG_BITS 112

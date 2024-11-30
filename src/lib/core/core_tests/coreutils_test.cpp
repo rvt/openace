@@ -22,17 +22,6 @@ TEST_CASE( "msSinceEpoch", "[single-file]" )
     REQUIRE( CoreUtils::msSinceEpoch() == 2510 );
 }
 
-
-TEST_CASE( "msInSecondFromEpoch", "[single-file]" )
-{
-    time_us_64Value = 0;
-    CoreUtils::setOffsetMsSinceEpoch(1698800584411);
-    REQUIRE( CoreUtils::msInSecondFromEpoch() == 411 );
-
-    CoreUtils::setOffsetMsSinceEpoch(1698800584000);
-    REQUIRE( CoreUtils::msInSecondFromEpoch() == 0 );
-}
-
 TEST_CASE( "msInSecond", "[single-file]" )
 {
     time_us_32Value = 23456623;
@@ -41,6 +30,27 @@ TEST_CASE( "msInSecond", "[single-file]" )
 
     time_us_32Value = time_us_32Value + 1758'000;
     REQUIRE( CoreUtils::msInSecond() == 758 );
+}
+
+TEST_CASE( "timeUs32 must be alliged with PPS", "[single-file]" )
+{
+    time_us_32Value = 23'456'623;
+    CoreUtils::setPPS();
+    time_us_32Value = time_us_32Value+216500;
+    REQUIRE( CoreUtils::timeUs32() == 23216500 );
+}
+
+TEST_CASE( "isUsReached", "[single-file]" )
+{
+    time_us_32Value = 0;
+    CoreUtils::setPPS();
+    REQUIRE( CoreUtils::isUsReached(10000) == false );
+
+    time_us_32Value = 10001;
+    REQUIRE( CoreUtils::isUsReached(10000) == true );
+
+    time_us_32Value = 1000000;
+    REQUIRE( CoreUtils::isUsReached(10000) == true );
 }
 
 TEST_CASE( "msDelayToReference", "[single-file]" )
@@ -105,8 +115,6 @@ TEST_CASE( "distanceFast", "[single-file]" )
         }
     }
 }
-
-
 
 TEST_CASE( "bearingFromInRad", "[single-file]" )
 {

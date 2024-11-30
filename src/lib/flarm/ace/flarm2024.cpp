@@ -239,7 +239,7 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
     statistics.receivedAircraftPositions++;
     OpenAce::AircraftPositionMsg aircraftPosition{
         OpenAce::AircraftPositionInfo{
-            CoreUtils::getPositionTs(),
+            CoreUtils::timeUs32(),
             "",
             radioPacket->aircraftID,
             addressTypeFromFlarm(radioPacket->addressType),

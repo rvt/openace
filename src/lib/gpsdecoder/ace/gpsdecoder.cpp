@@ -214,7 +214,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
             OpenAce::OwnshipPositionMsg
         {
             OpenAce::OwnshipPositionInfo{
-                .timestamp = CoreUtils::getPositionTs(),
+                .timestamp = CoreUtils::timeUs32(),
                 .airborne = groundSpeed() > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
                 .lat = latitude(),
                 .lon = longitude(),

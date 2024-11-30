@@ -265,7 +265,7 @@ void ADSL::on_receive(const OpenAce::RadioTxPositionRequest &msg)
 
 int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
 {
-    OpenAce::positionTs positionTs = CoreUtils::getPositionTs();
+    uint32_t positionTs = CoreUtils::timeUs32();
 
     float fLatitude = packet.getLatitude();
     float fLongitude = packet.getLongitude();
