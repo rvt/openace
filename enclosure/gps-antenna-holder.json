@@ -5,8 +5,9 @@
             "CAP_POSITION": "50",
             "CROP": "false",
             "DIAMETER": "42",
-            "SCREW_DIST": "21",
-            "SQUARE_ROUND": "14",
+            "NON_STRUCTURAL": "true",
+            "SCREW_DIST": "21.5",
+            "SQUARE_ROUND": "13",
             "THEIGHT": "10.5"
         },
         "cdebyte_E108_GN04": {
@@ -18,7 +19,8 @@
             "FRICTION_RING": "true",
             "HINGE_ANGLE": "86",
             "MODULE": "cdebyte_E108_GN04",
-            "SCREWS": "[45, 130, 230, 315]",
+            "NON_STRUCTURAL": "false",
+            "SCREWS": "[45, 135, 225, 315]",
             "SCREW_DIST": "17.5",
             "SQUARE_ROUND": "3",
             "THEIGHT": "7"

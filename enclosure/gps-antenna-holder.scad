@@ -32,7 +32,11 @@ ANTENNA_CLERARANCE=1; // [1,1.5,2,2.5,3]
 // Friction makes some extra room for a rubber ring to ensure the antenna will stay in position during vibrations
 FRICTION_RING=true;
 
-SCREWS=[47,135,225,313];
+// SHow any non structual design elements, like the HW of the GPS itself
+NON_STRUCTURAL=true;
+
+
+SCREWS=[45,135,225,315];
 SCREW_DIST=16; // [12:0.5:25]
 
 /** [Visualisation only] **/
@@ -72,31 +76,32 @@ module crop(c=100,t=[0,0,0],r=0)
       cube([c,c,c], anchor=LEFT);
   }
 
-
-
 //*** START Place here your visualisation modules
 module topGNSS() {
-  if ($preview) {
-    #cyl(d=38,l=0.6,  anchor=BOTTOM) {
-      position(TOP) cuboid([27,27,7],anchor=BOTTOM);
-      position(BOTTOM) cuboid([25.5,25.5,4],anchor=TOP);
+   {
+    if ($preview && NON_STRUCTURAL) {
+      #cyl(d=38,l=0.6,  anchor=BOTTOM) {
+        position(TOP) cuboid([27,27,7],anchor=BOTTOM);
+        position(BOTTOM) cuboid([25.5,25.5,4],anchor=TOP);
+      }
     }
-  }
 
-  SCREW_POS=33; // Distance between the holes
-  for(r = [0, 90, 180, 270]) {
-    zrot(r)
-    intersect("keep","fullkeep")
-    diff(keep="fullkeep keep")
-    cyl(d=DIAMETER,l=BHEIGHT,anchor=TOP){
-      tag("keep") left(DIAMETER-4) cube([DIAMETER,DIAMETER,DIAMETER], center=true);
-      tag("remove") left(33/2) cyl(d=2,l=15);
+    SCREW_POS=33; // Distance between the holes
+    diff(remove="remove3")
+    for(r = [0, 90, 180, 270]) {
+      zrot(r) {
+        intersect("bounds")
+        cyl(d=DIAMETER,l=BHEIGHT,anchor=TOP){
+          tag("bounds") left(25.5/2+30/2+1) cube([30,30,10], center=true);
+        }
+        tag("remove3") left(33/2) cyl(d=2,l=15);
+      }
     }
   }
 }
 
 module cdebyte_E108_GN04 () {
-  right(2) if ($preview) {
+  right(2) if ($preview && NON_STRUCTURAL) {
     #cuboid([21,20,0.6], anchor=BOTTOM) {
       position(TOP) cuboid([18,18,4.5],anchor=BOTTOM);
       position(BOTTOM) right(2.5) cuboid([18,15.5,3],anchor=TOP, spin=90);
@@ -113,77 +118,9 @@ module cdebyte_E108_GN04 () {
 //***STOP Place here your visualisation modules
 
 
-crop(c=(_CROP?300:0),t=[0,0,0],r=90)
-  {
-  //*** START Place here your visualisation
-  if (MODULE == "TOPGNSS") zrot(45) topGNSS();
-  if (MODULE == "cdebyte_E108_GN04") down(0) zrot(180) cdebyte_E108_GN04();
-  if (MODULE == "square20_20_5") %cuboid([20,20,5], anchor=TOP);
-  //***STOP Place here your visualisation
 
 
-  // Bottom
-  color([0.7,0.7,0.6])
-  diff()
-  rrect(rt=0.1, rs=SQUARE_ROUND, l=BHEIGHT, d=DIAMETER, anchor=TOP) {
-
-    diff("rem2",$tag="remove") {
-      attach(TOP) 
-      up(1) 
-       
-      rrect(rt=0.1, rs=SQUARE_ROUND-WALL, l=BHEIGHT, d=DIAMETER-WALL*2, anchor=TOP);
-
-      // Gap bottom for wire
-      position(BOTTOM+RIGHT) right(1) down(0.1) cube([10,3,WALL],anchor=BOTTOM+RIGHT);
-      
-      for (n = SCREWS) {
-        zrot(n)
-        left(SCREW_DIST) {
-          tag("rem2")
-          diff(remove="rem3")
-            position(BOTTOM) {
-              cyl(d=4,l=6, anchor=BOTTOM); // Support
-              cyl(d=SCREWHD+SCREWWALL*2, l=3, anchor=BOTTOM);
-            }
-
-          //position(BOTTOM) down(0.01)
-          //tag("remove") {
-          //  cyl(d=SCREWD+0.2,l=6*3, anchor=BOTTOM); 
-          //  cyl(d=SCREWHD,l=2, anchor=BOTTOM); 
-          //}
-        }
-      }
-    }
-
-
-    for (n = SCREWS) {
-      zrot(n)
-      left(SCREW_DIST) {
-        position(BOTTOM) {
-            cyl(d=4,l=6, anchor=BOTTOM); // Support
-            cyl(d=SCREWHD+0.4*4,l=3, anchor=BOTTOM) {
-            position(TOP) cyl(d1=SCREWHD+0.4*4,d2=4, l=1, anchor=BOTTOM);
-          }
-        }
-
-        position(BOTTOM) down(0.01)
-        tag("remove") {
-          cyl(d=SCREWD+0.2,l=6*3, anchor=BOTTOM); 
-          cyl(d=SCREWHD,l=2, anchor=BOTTOM); 
-        }
-      }
-    }
-    
-    position(RIGHT)
-      knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+0.5, 
-              arm_height=0,  anchor=BOT, orient=RIGHT, spin=90, inner=true, knuckle_diam=KNUNCKLE_DIAM);     
-
-              
-
-
-   }  
-
-   
+module cap() {
   // Cap
   color("#FFA0A0")
   up($preview?CAP_POSITION:THEIGHT)  
@@ -204,18 +141,87 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
     
     diff()
     for (n = SCREWS) {
-      zrot(n) left(SCREW_DIST) cyl(d=SCREWD+SCREWWALL*3, l=THEIGHT-2, anchor=BOTTOM) {
+      zrot(n) left(SCREW_DIST) cyl(d=SCREWD+0.4*5, l=THEIGHT-2, anchor=BOTTOM) { // d Should be the same as bottom case
         position(TOP) cyl(d1=SCREWD+SCREWWALL*3, d2=2, l=1.5, anchor=BOTTOM);
       }
       zrot(n) left(SCREW_DIST) tag("remove") up(0) screwStuff(struct=2, anchor=TOP, shaftd=2.4, shaftl=THEIGHT-2, orient=DOWN);
     }
 
   }
+}
+
+module base_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
+  attachable(anchor, spin, orient, size=[DIAMETER,DIAMETER,BHEIGHT], center) {  
+      union() {
+        diff("remove2", "keep2")
+          rrect(rt=0.1, rs=SQUARE_ROUND, l=BHEIGHT, d=DIAMETER) {
+            tag("remove2") attach(TOP) up(1) rrect(rt=0.1, rs=SQUARE_ROUND-WALL, l=BHEIGHT, d=DIAMETER-WALL*2, anchor=TOP);
+        }
+      }
+      children();
+   }
+}
+
+cap();
+left(50) bottom_plate();
+casing();
 
 
+module casing() {
+  crop(c=(_CROP?300:0),t=[0,0,0],r=90)
+  {
+
+    // Bottom
+    diff() {
+      base_casing() {
+
+        position(TOP) {
+        //*** START Place here your visualisation
+        if (MODULE == "TOPGNSS") zrot(45) topGNSS();
+        if (MODULE == "cdebyte_E108_GN04") down(0) zrot(180) cdebyte_E108_GN04();
+        if (MODULE == "square20_20_5") %cuboid([20,20,5], anchor=TOP);
+        //***STOP Place here your visualisation
+        }
+        
+        // Gap bottom for wire
+        tag("remove") position(BOTTOM+RIGHT) right(1) down(0.1) cube([10,3,WALL],anchor=BOTTOM+RIGHT);
+
+        // Hinge
+        position(RIGHT)
+          knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+0.5, 
+            arm_height=0,  anchor=BOT, orient=RIGHT, spin=90, inner=true, knuckle_diam=KNUNCKLE_DIAM);     
+        
+        // Screw + Support
+        color([1,1,1])
+        for (n = SCREWS) {
+          zrot(n)
+          left(SCREW_DIST) {
+            // Structure
+            position(BOTTOM) {
+              cyl(d=SCREWD+0.4*5,l=6, anchor=BOTTOM); // d Should be the same as top case
+              cyl(d=SCREWHD+0.4*4,l=3, anchor=BOTTOM) {
+                position(TOP) cyl(d1=SCREWHD+0.4*4,d2=4, l=1, anchor=BOTTOM);
+              }
+            }
+
+            // Removals
+            position(BOTTOM) down(0.01)
+            tag("remove") {
+              cyl(d=SCREWD+0.2,l=6*3, anchor=CENTER); 
+              cyl(d=SCREWHD,l=2, anchor=BOTTOM); 
+            }          
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+module bottom_plate() {
   // Bottom plate
   PLATE_DOWN=($preview?0:5);
-  left(50)
   diff()
   cuboid([HINGE_LENGTH*5+2, 25, 0.2*4], anchor=TOP, chamfer=0.2*4, edges=[TOP+LEFT, TOP+RIGHT, TOP+FRONT, TOP+BACK]) {
     
@@ -233,9 +239,10 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
     }
     
     position(TOP+BACK) tag("remove") fwd(KNUNCKLE_DIAM+2) cube([3.5, 7, 4], anchor=BACK);
-
-    
   }
+}
+
+
 
 
   // Hinge 
@@ -286,7 +293,7 @@ crop(c=(_CROP?300:0),t=[0,0,0],r=90)
 //        }
 //      }      
 //   }
-}
+//}
 
 module gpsSideAttach(w1=21.5, w2=9, d=3, h=18) {
   diff() {
