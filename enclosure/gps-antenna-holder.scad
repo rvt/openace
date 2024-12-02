@@ -119,32 +119,42 @@ module cdebyte_E108_GN04 () {
 
 
 
+module cap_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
+
+  attachable(anchor, spin, orient, size=[DIAMETER,DIAMETER,THEIGHT], center) {  
+    union() {
+    down(THEIGHT/2) 
+    diff("remove_cap") 
+    rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, d=DIAMETER, anchor=BOTTOM) {
+            
+      attach(TOP) down(0.5) {
+        {
+          cylinder(d=DIAMETER-10,h=ANTENNA_CLERARANCE, anchor=TOP);
+          tag("remove_cap") down(ANTENNA_CLERARANCE) rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, d=DIAMETER-WALL*2, anchor=TOP);
+        }
+      }
+    } 
+     }
+    children();
+   }
+}
+
 
 module cap() {
   // Cap
   color("#FFA0A0")
-  up($preview?CAP_POSITION:THEIGHT)  
   {
-    diff()
-    rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, d=DIAMETER, anchor=BOTTOM) {
-      
-      
-      attach(TOP) down(0.5) {
-        tag("remove")  {
-          cylinder(d=DIAMETER-10,h=ANTENNA_CLERARANCE, anchor=TOP);
-          down(ANTENNA_CLERARANCE) rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, d=DIAMETER-WALL*2, anchor=TOP);
-        }
-      }
+    diff()    
+    cap_casing(anchor=BOTTOM) {
       position(RIGHT+BOTTOM) cuboid([0.2, 6, 2], anchor=BOTTOM+LEFT, chamfer=0.2, edges=[RIGHT+TOP, RIGHT+BACK, RIGHT+FRONT]);
-    }
     
-    
-    diff()
-    for (n = SCREWS) {
-      zrot(n) left(SCREW_DIST) cyl(d=SCREWD+0.4*5, l=THEIGHT-2, anchor=BOTTOM) { // d Should be the same as bottom case
-        position(TOP) cyl(d1=SCREWD+SCREWWALL*3, d2=2, l=1.5, anchor=BOTTOM);
+      position(BOTTOM)
+      for (n = SCREWS) {
+          zrot(n) left(SCREW_DIST) cyl(d=SCREWD+0.4*5, l=THEIGHT-2, anchor=BOTTOM) { // d Should be the same as bottom case
+          position(TOP) cyl(d1=SCREWD+0.4*5, d2=SCREWD+0.4*5-2, l=1.5, anchor=BOTTOM);
+        }
+        zrot(n) left(SCREW_DIST) down(0.01) tag("remove") up(0) screwStuff(struct=2, anchor=TOP, shaftd=2.4, shaftl=THEIGHT-2, orient=DOWN);
       }
-      zrot(n) left(SCREW_DIST) tag("remove") up(0) screwStuff(struct=2, anchor=TOP, shaftd=2.4, shaftl=THEIGHT-2, orient=DOWN);
     }
 
   }
@@ -162,7 +172,7 @@ module base_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
    }
 }
 
-cap();
+up($preview?CAP_POSITION:50) cap();
 left(50) bottom_plate();
 casing();
 

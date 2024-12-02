@@ -7,7 +7,7 @@
             "DIAMETER": "42",
             "NON_STRUCTURAL": "true",
             "SCREW_DIST": "21.5",
-            "SQUARE_ROUND": "13",
+            "SQUARE_ROUND": "11",
             "THEIGHT": "10.5"
         },
         "cdebyte_E108_GN04": {
@@ -30,11 +30,12 @@
             "BHEIGHT": "5",
             "CAP_POSITION": "25",
             "CROP": "false",
-            "DIAMETER": "24",
+            "DIAMETER": "30",
             "FRICTION_RING": "true",
             "HINGE_ANGLE": "45",
             "MODULE": "No Module",
-            "SQUARE_ROUND": "11",
+            "SCREW_DIST": "18",
+            "SQUARE_ROUND": "6",
             "THEIGHT": "13"
         }
     }
