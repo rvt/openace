@@ -32,7 +32,8 @@ class Dump1090Client : public BaseModule,
     uint8_t stoppedCounter;
     bool wifiConnected;
     BinaryReceiver *receiver;
-    TcpClient<24> tcpClient;
+    using AdsbTcpClient = TcpClient<1024>;
+    AdsbTcpClient tcpClient;
 
 public:
     void on_receive(const OpenAce::WifiConnectionStateMsg &wcs);
@@ -51,7 +52,7 @@ public:
                                                                           stoppedCounter(0),
                                                                           wifiConnected(false),
                                                                           receiver(nullptr),
-                                                                          tcpClient(config.ipPortBypath(NAME), TcpClient<24>::CallBackFunction::create<Dump1090Client, &Dump1090Client::processNewSentence>(*this))
+                                                                          tcpClient(config.ipPortBypath(NAME), AdsbTcpClient::CallBackFunction::create<Dump1090Client, &Dump1090Client::processNewSentence>(*this))
     {
     }
 
