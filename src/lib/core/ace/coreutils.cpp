@@ -2,7 +2,7 @@
 #include "egm96_dem.hpp"
 
 #if defined(__MACH__)
-#include <stdlib.h>
+#include "pico/stdlib.h"
 #else
 #include <malloc.h>
 #endif

@@ -8,7 +8,7 @@
 
 #include <string.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include "pico/stdlib.h"
 
 #include "ace/ognconv.hpp"
 
@@ -16,6 +16,7 @@
 
 #include "ace/bitcount.hpp"
 #include "ace/encryption.hpp"
+#include "etl/absolute.h"
 // #include "nmea.h"
 // #include "mavlink.h"
 
@@ -188,15 +189,15 @@ public:
     int calcDistanceVector(int32_t &LatDist, int32_t &LonDist, int32_t RefLat, int32_t RefLon, uint16_t LatCos=3000, int32_t MaxDist=0x7FFF)
     {
         LatDist = DecodeLatitude()-RefLat;
-        if (abs(LatDist)>1080000) return -1; // to prevent overflow, corresponds to about 200km
+        if (etl::absolute(LatDist)>1080000) return -1; // to prevent overflow, corresponds to about 200km
         LatDist = (LatDist*1517+0x1000)>>13;              // convert from 1/600000deg to meters (40000000m = 360deg) => x 5/27 = 1517/(1<<13)
-        if (abs(LatDist)>MaxDist) return -1;
+        if (etl::absolute(LatDist)>MaxDist) return -1;
         LonDist = DecodeLongitude()-RefLon;
-        if (abs(LatDist)>1080000) return -1;
+        if (etl::absolute(LatDist)>1080000) return -1;
         LonDist = (LonDist*1517+0x1000)>>13;
-        if (abs(LonDist)>(4*MaxDist)) return -1;
+        if (etl::absolute(LonDist)>(4*MaxDist)) return -1;
         LonDist = (LonDist*LatCos+0x800)>>12;
-        if (abs(LonDist)>MaxDist) return -1;
+        if (etl::absolute(LonDist)>MaxDist) return -1;
         return 1;
     }
 
@@ -225,7 +226,7 @@ public:
         int32_t Radius = 14675*Speed;
         Radius /= TurnRate;
         Radius = (Radius+128)>>8;
-        if (abs(Radius)>MaxRadius) return 0;
+        if (etl::absolute(Radius)>MaxRadius) return 0;
         return Radius;
     }
     int16_t calcTurnRadius(int16_t MaxRadius=0x7FFF)

@@ -1,7 +1,7 @@
 #include <stdint.h>
-#include <stdlib.h>
-#include <cassert>
+#include "pico/stdlib.h"
 #include <src/lib_crc.hpp>
+#include <etl/absolute.h>
 
 #include "flarm_utils.hpp"
 
@@ -20,7 +20,7 @@ uint16_t lonDivisor(float latitude)
         299, 330, 362, 425, 489, 552, 616, 679, 743, 806, 806
     }; // 11
 
-    uint8_t ilat = abs((int)latitude); // TODO: decide if this needs rounding
+    uint8_t ilat = etl::absolute((int)latitude); // TODO: decide if this needs rounding
     if (ilat > 90)
     {
         ilat = 90;

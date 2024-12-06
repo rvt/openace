@@ -4,8 +4,7 @@
 // Common settings used in most of the pico_w examples
 // (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html for details)
 
-#define NO_SYS                      0
-#define LWIP_SOCKET                 0
+#define LWIP_SOCKET                 1
 
 #define MEM_ALIGNMENT               4
 #define MEM_SIZE                    4000
