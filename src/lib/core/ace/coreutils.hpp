@@ -11,6 +11,7 @@
 
 #include "etl/string.h"
 #include "etl/string_utilities.h"
+#include "etl/absolute.h"
 
 class CoreUtils
 {
@@ -39,9 +40,10 @@ public:
     {
         return time_us_32() - timeUs32PpsOffset;
     }
-    static uint32_t timeUs64()
+
+    static uint64_t timeUs64()
     {
-        // time_us_64 and time_us_32 use teh same hardware time, thus offset is also the same
+        // time_us_64 and time_us_32 use the same hardware time, thus offset is also the same
         return time_us_64() - timeUs32PpsOffset;
     }
     /**
@@ -69,20 +71,9 @@ public:
      * It will properly handle wraparounds if the time is less than 35 minutes in difference
      * \sa timeUs32
      */
-    static bool isUsReached(uint32_t referenceUs, uint32_t ms = timeUs32())
+    static bool isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
     {
-        return ((uint32_t)(ms - referenceUs)) < (uint32_t)(0x80000000);
-    }
-
-    /**
-     * Decide if the reference time is reached
-     * Use this to measure short time differences of less then 71minutes
-     * It will properly handle wraparounds if the time is less than 35 minutes in difference
-     * \sa timeMs32
-     */
-    static bool isMsReached(uint32_t referenceMs)
-    {
-        return ((uint32_t)(timeMs32() - referenceMs)) < (uint32_t)(0x80000000);
+        return usToReference(referenceUs, us) < 0;
     }
 
     /**
@@ -144,36 +135,18 @@ public:
     }
 
     /**
-     * Calculates the time to a time in the future. Returns 0 for a negative time
-     * Must pass absolute times based on \sa timeUs32()
+     * Calculate the time from referenceUs to us
+     * If referenceUs is in the past, the result is negative
+     *
      */
-    static uint32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
+    static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
     {
-        if (referenceUs > us)
-        {
-            return referenceUs - us;
-        }
-        else
-        {
-            return 0;
-        }
+        return referenceUs - us;
     }
 
-    /**
-     * Calculate the number if us Elapsed from a reference
-     * \sa: referenceUs is the time taken
-     * \sa: Is the new, later time
-     */
-    static uint32_t usFromReference(uint32_t referenceUs, uint32_t ms = CoreUtils::timeUs32())
+    static int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
     {
-        if (ms > referenceUs)
-        {
-            return ms - referenceUs;
-        }
-        else
-        {
-            return 0;
-        }
+        return etl::absolute(usToReference(referenceUs, us));
     }
 
     /**
@@ -465,17 +438,18 @@ inline uint8_t getHexVal(char hex)
 /**
  * Convert a hex string in the form of 0123FA... to a byte array
  */
-inline void hexStrToByteArray(const char hex[], uint8_t hexLength, uint8_t byteArray[])
+inline void hexStrToByteArray(const char hex[], uint8_t hexLength, uint8_t bytearray[])
 {
     for (uint8_t i = 0, j = 0; i < hexLength; i += 2, ++j)
     {
-        byteArray[j] = (getHexVal(hex[i]) << 4) | getHexVal(hex[i + 1]);
+        bytearray[j] = (getHexVal(hex[i]) << 4) | getHexVal(hex[i + 1]);
     }
 }
 
 inline void hexStrToByteArray(const char *hex, uint8_t byteArray[])
 {
-    hexStrToByteArray(hex, strlen(hex), byteArray);
+    auto hexLength = strlen(hex);
+    hexStrToByteArray(hex, hexLength, byteArray);
 }
 
 /**

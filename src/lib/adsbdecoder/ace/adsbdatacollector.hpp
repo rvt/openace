@@ -5,8 +5,10 @@
 #include "ace/models.hpp"
 
 #include "etl/unordered_map.h"
+#include "etl/hash.h"
 
 #include "cpr.hpp"
+#include "iaddresscache.hpp"
 
 struct AdsbCombinedDataStatus
 {
@@ -64,10 +66,8 @@ struct AdsbCombinedDataStatus
     }
     size_t operator()(uint32_t e) const
     {
-        e ^= (e >> 16);
-        e *= 0x85ebca6b;
-        e ^= (e >> 13);
-        return size_t(e);
+        static etl::hash<uint32_t> hasher;
+        return hasher(e);
     }
 };
 
@@ -75,8 +75,9 @@ struct AdsbCombinedDataStatus
  * Performance measurements calling the start method:
  * flat map took 16us
  * unordered_map takes 5us
+ * EVICT_TIME_US should not be below 2'000'000
  */
-template <size_t SIZE, uint32_t EVICT_TIME_US>
+template <size_t SIZE, int32_t EVICT_TIME_US>
 class AdsbDataCollector
 {
     static constexpr uint8_t HAS_POSITION_ODD = 1 << 0;                    //
@@ -92,10 +93,7 @@ class AdsbDataCollector
 
 private:
     etl::unordered_map<uint32_t, AdsbCombinedDataStatus, SIZE, SIZE, AdsbCombinedDataStatus, AdsbCombinedDataStatus> cache;
-    AdsbCombinedDataStatus defaultStatus;
 
-    // Declare a reference to the defaultStatus
-    AdsbCombinedDataStatus *currentDataStatus = &defaultStatus;
 
     void decodePCR(bool fflag)
     {
@@ -110,50 +108,50 @@ private:
         }
     }
 
+    AdsbCombinedDataStatus *currentDataStatus = nullptr;
+
 public:
+    AdsbDataCollector() : currentDataStatus(nullptr) {}
+
     void clear()
     {
         cache.clear();
     }
     bool start(uint32_t address, uint32_t usTime)
     {
-        auto it = cache.find(address);
-        if (it != cache.end())
+        auto itf = cache.find(address);
+        if (itf != cache.end())
         {
-            currentDataStatus = &it->second;
+            currentDataStatus = &itf->second;
             currentDataStatus->lastSeen = usTime;
             return true;
         }
 
-        static uint8_t evictCycle = 0;
-        evictCycle++;
-        if (evictCycle == (SIZE/4) || cache.full())
-        {
-            evictCycle = 0;
-            evictOldEntries(usTime);
-        }
-
         if (!cache.full()) {
-            auto [it, inserted] = cache.insert({address, AdsbCombinedDataStatus{address, usTime}});
-            currentDataStatus = &it->second;
+            auto [iti, inserted] = cache.insert({address, AdsbCombinedDataStatus{address, usTime}});
+            if (inserted)
+            {
+                currentDataStatus = &iti->second;
+            }
             return inserted;
         }
 
-        currentDataStatus = &defaultStatus;
         return false;
     }
 
     void evictOldEntries(uint32_t usTime)
     {
 
-        auto evictTime = EVICT_TIME_US;
-        while ((cache.size() > CLEAR_UP_SIZE) && evictTime > 2'000'000)
+        constexpr int32_t EVICT_TIME_MINIMUM = 2'000'000; // Expected to have at least every second an update from ADSB
+        int32_t evictTime = EVICT_TIME_US;
+        while ((cache.size() > CLEAR_UP_SIZE) && evictTime > EVICT_TIME_MINIMUM)
         {
             for (auto it = cache.cbegin(); it != cache.cend();)
             {
-                if (it->second.evict || (CoreUtils::usFromReference(it->second.lastSeen, usTime) > evictTime))
+                if (it->second.evict || (-CoreUtils::usToReference(it->second.lastSeen, usTime) > evictTime))
                 {                    
                     // printf("Evict: icao:%06X lastSee:%ld usTime:%ld, diff:%ld\n", it->second.icao, it->second.lastSeen, usTime, CoreUtils::usFromReference(it->second.lastSeen, usTime));
+              //      printf(".");
                     it = cache.erase(it);
                 }
                 else
@@ -161,7 +159,8 @@ public:
                     ++it;
                 }
             }
-            evictTime -= 5'000'000;
+            evictTime -= EVICT_TIME_US / 4;
+             //       printf(" %ld ", evictTime);
         }
     }
 
@@ -171,7 +170,7 @@ public:
         for (const auto &entry : cache)
         {
             const auto &data = entry.second; // Access the value part of the pair
-            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usFromReference(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.gnsAltitude);
+            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usToReference(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.gnsAltitude);
         }
     }
 

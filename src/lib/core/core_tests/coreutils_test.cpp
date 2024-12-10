@@ -40,6 +40,30 @@ TEST_CASE( "timeUs32 must be alliged with PPS", "[single-file]" )
     REQUIRE( CoreUtils::timeUs32() == 23216500 );
 }
 
+TEST_CASE( "usToReference must handle wraparounds", "[single-file]" )
+{
+    REQUIRE( CoreUtils::usToReference(1000, 750) == 250);
+    REQUIRE( CoreUtils::usToReference(750, 10000) ==  -9250);
+
+    REQUIRE( CoreUtils::usToReference(0xFFFFFF-250, 0xFFFFFF+500) == -750);
+    REQUIRE( CoreUtils::usToReference(0xFFFFFF+250, 0xFFFFFF-750) == 1000);
+
+    REQUIRE( CoreUtils::usToReference(0xFFFFFF-1000, 0xFFFFFF-750) == -250);
+    REQUIRE( CoreUtils::usToReference(0xFFFFFF-750, 0xFFFFFF-1000) == 250);
+}
+
+TEST_CASE( "usDiff must handle wraparounds", "[single-file]" )
+{
+    REQUIRE( CoreUtils::usDiff(1000, 750) ==  250);
+    REQUIRE( CoreUtils::usDiff(750, 10000) ==  9250);
+
+    REQUIRE( CoreUtils::usDiff(0xFFFFFF-250, 0xFFFFFF+500) == 750);
+    REQUIRE( CoreUtils::usDiff(0xFFFFFF+250, 0xFFFFFF-750) == 1000);
+
+    REQUIRE( CoreUtils::usDiff(0xFFFFFF-1000, 0xFFFFFF-750) == 250);
+    REQUIRE( CoreUtils::usDiff(0xFFFFFF-750, 0xFFFFFF-1000) == 250);
+}
+
 TEST_CASE( "isUsReached", "[single-file]" )
 {
     time_us_32Value = 0;

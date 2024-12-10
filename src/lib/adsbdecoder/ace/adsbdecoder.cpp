@@ -1,20 +1,18 @@
 #include <stdio.h>
 
+#include "ace/semaphoreguard.hpp"
 #include "adsbdecoder.hpp"
 #include <algorithm>
 
 OpenAce::PostConstruct ADSBDecoder::postConstruct()
 {
-    if (state == nullptr)
+    mutex = xSemaphoreCreateMutex();
+    if (mutex == nullptr)
     {
-        state = new mode_s_t;
+        return OpenAce::PostConstruct::MUTEX_ERROR;
     }
-    if (state == nullptr)
-    {
-        return OpenAce::PostConstruct::MEMORY;
-    }
-    state->fix_errors = false; // Not enough resources
-    mode_s_init(state);
+    state.fix_errors = false;
+    mode_s_init(&state);
     ignoredAirplanes.clear();
     adsbDataCollector.clear();
     return OpenAce::PostConstruct::OK;
@@ -56,7 +54,7 @@ void ADSBDecoder::receiveBinary(const uint8_t *data, uint8_t length)
 
 void ADSBDecoder::on_receive(const OpenAce::ADSBMessageBin &msg)
 {
-    processAdsbData(msg.data.data(), msg.data.size());
+    processAdsbData(msg.data, msg.length);
 }
 
 void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
@@ -64,7 +62,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     (void)length;
     mode_s_msg mm;
     // Two phase decoder to first decode the address.. when not in ignoredAirplanes continue decoding
-    mode_s_decode_phase1(state, &mm, data);
+    mode_s_decode_phase1(&state, &mm, data);
 
     if (mm.msgtype != 17)
     {
@@ -77,70 +75,76 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         return;
     }
 
+    SemaphoreGuard<100> guard(mutex);
+    if (!guard) {
+        return;
+    }
+
+    // DOES NOT CRASH WHEN ADDING RETURN HERE
+
     auto usTime = CoreUtils::timeUs32();
-    if (ignoredAirplanes.containsAndUpdate(mm.aa, usTime))
+    if (ignoredAirplanes.ifContainsThenUpdate(mm.aa, usTime))
     {
         statistics.totalMsgIgnored++;
         return;
     }
-    mode_s_decode_phase2(state, &mm);
-
+    // 3
+    mode_s_decode_phase2(&state, &mm);
+    // DOES NOT SEEM TO CRASH WHEN ADDING RETURN HERE
     if (!adsbDataCollector.start(mm.aa, usTime))
     {
         statistics.knownAircraftFull++;
         return;
     }
+    // CRASHES WHEN ADDING RETURN HERE
 
     /**
      * https://mode-s.org/decode/content/ads-b/1-basics.html
      */
-    if (mm.msgtype == 17) /* Airborn position message*/
+    adsbDataCollector.updateAirborne(true);
+    if (mm.metype >= 1 && mm.metype <= 4)
     {
-        adsbDataCollector.updateAirborne(true);
-        if (mm.metype >= 1 && mm.metype <= 4)
+        adsbDataCollector.updateIcaoAddress(mm.flight, mm.aircraft_type);
+    }
+    else if ((mm.metype >= 9 && mm.metype <= 18) || (mm.metype >= 20 && mm.metype <= 22))
+    {
+        if (mm.fflag)
         {
-            adsbDataCollector.updateIcaoAddress(mm.flight, mm.aircraft_type);
+            adsbDataCollector.updateRawOdd(mm.raw_latitude, mm.raw_longitude);
         }
-        else if ((mm.metype >= 9 && mm.metype <= 18) || (mm.metype >= 20 && mm.metype <= 22))
+        else
         {
-            if (mm.fflag)
-            {
-                adsbDataCollector.updateRawOdd(mm.raw_latitude, mm.raw_longitude);
-            }
-            else
-            {
-                adsbDataCollector.updateRawEven(mm.raw_latitude, mm.raw_longitude);
-            }
+            adsbDataCollector.updateRawEven(mm.raw_latitude, mm.raw_longitude);
+        }
 
-            int32_t altitude = (mm.unit == MODE_S_UNIT_METERS ? mm.altitude : mm.altitude * FT_TO_M);
-            if (mm.metype >= 20)
-            {
-                // printf("%.6X GPS: %d\n", mm.aa, altitude);
-                adsbDataCollector.updateGnssAltitude(altitude); // GPS Altitude
-            }
-            else
-            {
-                // printf("%.6X Barometric: %d offset: %d\n", mm.aa, altitude, mm.head);
-                adsbDataCollector.updateAltitude(altitude); // Barometric Altitude
-            }
-        }
-        else if (mm.metype == 19 && mm.mesub >= 1 && mm.mesub <= 4)
+        int32_t altitude = (mm.unit == MODE_S_UNIT_METERS ? mm.altitude : mm.altitude * FT_TO_M);
+        if (mm.metype >= 20)
         {
-            if (mm.mesub == 1 || mm.mesub == 2)
+            // printf("%.6X GPS: %d\n", mm.aa, altitude);
+            adsbDataCollector.updateGnssAltitude(altitude); // GPS Altitude
+        }
+        else
+        {
+            // printf("%.6X Barometric: %d offset: %d\n", mm.aa, altitude, mm.head);
+            adsbDataCollector.updateAltitude(altitude); // Barometric Altitude
+        }
+    }
+    else if (mm.metype == 19 && mm.mesub >= 1 && mm.mesub <= 4)
+    {
+        if (mm.mesub == 1 || mm.mesub == 2)
+        {
+            adsbDataCollector.updateVelocityHeadingBaroDiff(mm.velocity, mm.vert_rate, mm.vert_rate_sign, mm.heading, mm.head);
+        }
+        else if (mm.mesub == 3 || mm.mesub == 4)
+        {
+            if (mm.heading_is_valid)
             {
-                adsbDataCollector.updateVelocityHeadingBaroDiff(mm.velocity, mm.vert_rate, mm.vert_rate_sign, mm.heading, mm.head);
-            }
-            else if (mm.mesub == 3 || mm.mesub == 4)
-            {
-                if (mm.heading_is_valid)
-                {
-                    adsbDataCollector.updateHeading(mm.heading);
-                }
+                adsbDataCollector.updateHeading(mm.heading);
             }
         }
     }
 
-    // Used to take specific performance peasurements
+    // Used to take specific performance measurements
     // auto usDuration = CoreUtils::timeUs32();
     // const static int EVERY = 250;
     // static int count = 0;
@@ -154,23 +158,27 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     //     duration = 0;
     //     adsbDataCollector.dump();
     // }
-
     if (adsbDataCollector.positionUpdatedAndValid())
     {
         statistics.totalMsgReceived++;
         auto &current = adsbDataCollector.current();
 
-        // Altitude filtering to prevent flooding of the uc
-        if (outOfAltitudeRange(current.gnsAltitude))
+        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, current.lat, current.lon);
+
+        // Altitude filtering + Radius filtering 
+        // to prevent aircraft taking up resources that are not a factor.
+        if (outOfAltitudeRange(current.gnsAltitude) || fromOwn.distance > filterRadius)
         {
             statistics.totalMsgIgnored++;
-            ignoredAirplanes.insert(current.icao, usTime);
+            if (!ignoredAirplanes.insert(current.icao, usTime))
+            {
+                statistics.ignoredAircraftFull++;
+            }
+
             current.evict = true;
-            adsbDataCollector.evictOldEntries(usTime);
             return;
         }
 
-        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, current.lat, current.lon);
         getBus().receive(OpenAce::AircraftPositionMsg{
             {CoreUtils::timeUs32() - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
              current.icaoAddress,
@@ -195,18 +203,36 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     }
 }
 
+void ADSBDecoder::on_receive(const OpenAce::IdleMsg &msg)
+{
+    (void)msg;
+    SemaphoreGuard<5> guard(mutex);
+
+    if (guard)
+    {
+        auto usTime = CoreUtils::timeUs32();
+        ignoredAirplanes.evictOldEntries(usTime);
+        adsbDataCollector.evictOldEntries(usTime);
+    }
+}
+
+void ADSBDecoder::on_receive(const OpenAce::AdapativeRadiusMsg &msg) {
+    filterRadius = msg.radius;
+}
+
 void ADSBDecoder::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
     stream << "{";
     stream << "\"crcErrors\":" << statistics.crcErrors;
     stream << ",\"knownAircraftFull\":" << statistics.knownAircraftFull;
-    stream << ",\"IgnoredAircraftFull\":" << statistics.IgnoredAircraftFull;
+    stream << ",\"ignoredAircraftFull\":" << statistics.ignoredAircraftFull;
     stream << ",\"totalMsgReceived\":" << statistics.totalMsgReceived;
     stream << ",\"totalMsgIgnored\":" << statistics.totalMsgIgnored;
     stream << ",\"totalMsgDF11\":" << statistics.totalMsgDF11;
     stream << ",\"ignoredAircraft\":" << ignoredAirplanes.size();
     stream << ",\"currentTracking\":" << adsbDataCollector.size();
     stream << ",\"totalMsgDF11\":" << statistics.totalMsgDF11;
+    stream << ",\"filterRadius\":" << filterRadius;
     stream << "}\n";
 }

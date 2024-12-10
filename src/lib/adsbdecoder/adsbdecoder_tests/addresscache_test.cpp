@@ -23,7 +23,7 @@ TEST_CASE("Address Cache entry", "[single-file]")
     REQUIRE(cache.insert(0x123456, 10'000'000) == true);
     REQUIRE(cache.size() == 1);
 
-    REQUIRE(cache.containsAndUpdate(0x123456, 35'000'000) == true);
+    REQUIRE(cache.ifContainsThenUpdate(0x123456, 35'000'000) == true);
 
     REQUIRE(cache.insert(0x123456, 40'000'000) == true);
     REQUIRE(cache.size() == 1);
@@ -40,13 +40,15 @@ TEST_CASE("Address Cache entry and evict", "[single-file]")
     }
     REQUIRE(cache.size() == 100);
     // THis add's about 10 seconds of data
-    for (int i = 0; i < 100; i++)
+    int i = 0;
+    for (i = 0; i < 100; i++)
     {
-        REQUIRE(cache.containsAndUpdate(i, offset + spread * i) == true);
+        REQUIRE(cache.ifContainsThenUpdate(i, offset + spread * i) == true);
     }
 
     // So during cache evict, we end up with 50%
+    cache.evictOldEntries(offset + spread * i);    
     REQUIRE(cache.insert(200, offset + spread * 101) == true);
-    REQUIRE(cache.containsAndUpdate(200, offset + spread * 101) == true);
+    REQUIRE(cache.ifContainsThenUpdate(200, offset + spread * 101) == true);
     REQUIRE(cache.size() > 1);
 }

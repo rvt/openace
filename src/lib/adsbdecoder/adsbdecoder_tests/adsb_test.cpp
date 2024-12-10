@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "mockutils.h"
 #include "mockconfig.h"
+#include "semphr.h"
 #include "ace/coreutils.hpp"
 
 #define private public
@@ -44,10 +45,29 @@ public:
 OpenAce::ThreadSafeBus<50> bus;
 MockConfig mockConfig{bus};
 
+auto ownship = OpenAce::OwnshipPositionInfo{
+    CoreUtils::timeUs32(),
+    true,
+    52.2,
+    4.2,
+    1500, // Altitude above WGS84 ellipsoid in meters
+    0,    // in m/s
+    50,   // in m/s
+    0,    // 0..359
+    0,    // deg/s Turn rate in the horizontal plane
+    50,   // North velocity in m/s
+    0,    // East velocity in m/s
+    1500, // Height above egm96, eg MSL
+    1500  // Height of geoid above WGS84 ellipsoid
+};
+
 // This test needs a bit more validation
 TEST_CASE("Test filter below and above", "[single-file]")
 {
+    xSemaphoreTakeValue = pdTRUE;
     ADSBDecoder adsbDecoder{bus, mockConfig};
+    adsbDecoder.on_receive(OpenAce::AdapativeRadiusMsg{10'000'000});
+    adsbDecoder.on_receive(OpenAce::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
     uint8_t data[24];
     Test test{&bus};
@@ -122,18 +142,20 @@ TEST_CASE("Test filter below and above", "[single-file]")
     adsbDecoder.filterAbove = 1000;
     adsbDecoder.filterBelow = 1000;
     adsbDecoder.ownshipPosition.altitudeWgs84 = higestPlane;
-    get_absolute_timeValue += 10000000;
+    get_absolute_timeValue += 100'000'000;
     totalPlanes = 0;
     while (std::getline(infile, line))
     {
         test.received = false;
-        get_absolute_timeValue++;
+        get_absolute_timeValue += 10000;
+        time_us_32Value += 10000;
         hexStrToByteArray(line.c_str() + 1, data);
-        adsbDecoder.receiveBinary(data, 14);
+        adsbDecoder.receiveBinary(data, line.size() - 1);
         if (test.received)
         {
             totalPlanes++;
         }
+        adsbDecoder.on_receive(OpenAce::IdleMsg());
     }
     printf("Total Planes below: %d\n", totalPlanes);
     REQUIRE(totalPlanes == 379);
@@ -142,7 +164,10 @@ TEST_CASE("Test filter below and above", "[single-file]")
 
 TEST_CASE("Test heading and direction received aircraft", "[single-file]")
 {
+    xSemaphoreTakeValue = pdTRUE;
     ADSBDecoder adsbDecoder{bus, mockConfig};
+    adsbDecoder.on_receive(OpenAce::AdapativeRadiusMsg{1'000'000});
+    adsbDecoder.on_receive(OpenAce::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
     Test test{&bus};
     adsbDecoder.filterAbove = 50000;
@@ -181,7 +206,10 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
 
 TEST_CASE("Test descending aircraft", "[single-file]")
 {
+    xSemaphoreTakeValue = pdTRUE;
     ADSBDecoder adsbDecoder{bus, mockConfig};
+    adsbDecoder.on_receive(OpenAce::AdapativeRadiusMsg{1'000'000});
+    adsbDecoder.on_receive(OpenAce::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
     Test test{&bus};
     adsbDecoder.filterAbove = 50000;
