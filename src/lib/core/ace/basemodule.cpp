@@ -45,10 +45,10 @@ const char *postConstructToString(OpenAce::PostConstruct value)
 
 BaseModule::BaseModule(etl::imessage_bus &bus_, const etl::string_view name_) : bus(bus_), moduleName(name_)
 {
-// Tech Depth: For now disabled. However, Modules are only created single core during startup
-// This is for now because the Config module is initialised before everything else
-// This propely requires some (smallish) refactoring of the COnfig module
-//    if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
+    // Tech Depth: For now disabled. However, Modules are only created single core during startup
+    // This is for now because the Config module is initialised before everything else
+    // This propely requires some (smallish) refactoring of the COnfig module
+    //    if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
     {
         if (BaseModule::moduleLoaderMap.full())
         {
@@ -60,7 +60,7 @@ BaseModule::BaseModule(etl::imessage_bus &bus_, const etl::string_view name_) : 
             // printf("Registering: %p %s ", this, name);
             BaseModule::moduleLoaderMap[name_].module = this;
         }
-//        xSemaphoreGiveRecursive(BaseModule::xMutex);
+        //        xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 }
 
@@ -114,21 +114,22 @@ void __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
     if (pinInterruptHandlers.contains(pin) && pinInterruptHandlers[pin].enabled)
     {
         pinInterruptHandler &iHandler = pinInterruptHandlers[pin];
-        if (iHandler.callback != nullptr && ((iHandler.event & event) == iHandler.event))
+        if ((iHandler.event & event) == iHandler.event)
         {
-            iHandler.callback(event);
-        }
-        else if ((iHandler.event & event) == iHandler.event)
-        {
-            // Takes about 3ms to reach the RX function in SX1262
-            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-            xTaskNotifyFromISR(iHandler.handler, iHandler.notificationValue, eSetBits, &xHigherPriorityTaskWoken);
-            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            if (iHandler.callback != nullptr)
+            {
+                iHandler.callback(event);
+            }
+            else
+            {
+                BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+                xTaskNotifyFromISR(iHandler.handler, iHandler.notificationValue, eSetBits, &xHigherPriorityTaskWoken);
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            }
         }
     }
-    taskEXIT_CRITICAL_FROM_ISR( saved );
+    taskEXIT_CRITICAL_FROM_ISR(saved);
 }
-
 
 /**
  * Register a pin interrupt handler with task notification
@@ -164,13 +165,14 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallb
     }
 }
 
-
-void BaseModule::disablePinInterrupt(uint8_t pin) {
+void BaseModule::disablePinInterrupt(uint8_t pin)
+{
     pinInterruptHandlers[pin].enabled = false;
 }
 
-void BaseModule::enablePinInterrupt(uint8_t pin) {
-    pinInterruptHandlers[pin].enabled = true;    
+void BaseModule::enablePinInterrupt(uint8_t pin)
+{
+    pinInterruptHandlers[pin].enabled = true;
 }
 
 /**
