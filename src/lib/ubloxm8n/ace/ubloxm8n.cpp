@@ -61,7 +61,7 @@ inline constexpr uint8_t *UbloxM8N_m8nConfig[UbloxM8N_m8nConfig_size] = {
     (uint8_t[]){28, 0xB5, 0x62, 0x06, 0x17, 0x14, 0x00, 0x00, 0x21, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, // CFG NMEA 2.1, MAIN talker ID GP
                 0x00, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x57, 0x0C},
 
-    (uint8_t[]){14, 0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A} // CFG_RATE 200ms GPS time    
+    (uint8_t[]){14, 0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A} // CFG_RATE 200ms GPS time
 };
 // *INDENT-ON*
 
@@ -77,10 +77,11 @@ void __time_critical_func(UbloxM8N_pps_callback)(uint32_t events)
 
 void UbloxM8N::start()
 {
-    pioSerial.start();
     xTaskCreate(ubloxM8NTask, "UbloxM8N"
-                "Task",
-                configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 2, &taskHandle);
+                              "Task",
+                configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
+
+    pioSerial.start();
     // ublox uses rising pulse to trigger
     // https://portal.u-blox.com/s/question/0D52p0000D35wjlCQA/how-to-minimize-serial-output-time-variance
     // Note: when we really have a GPS without PPS, perhaps we can just call UbloxM8N_rtc->ppsEvent();
@@ -90,14 +91,9 @@ void UbloxM8N::start()
 
 void UbloxM8N::stop()
 {
-    unregisterPinInterrupt(ppsPin);
-    if (taskHandle != nullptr)
-    {
-        vTaskDelete(taskHandle);
-        taskHandle = nullptr;
-    }
-
     pioSerial.stop();
+    unregisterPinInterrupt(ppsPin);
+    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
 };
 
 void UbloxM8N::ubloxM8NTask(void *arg)
@@ -110,35 +106,27 @@ void UbloxM8N::ubloxM8NTask(void *arg)
         vTaskDelay(TASK_DELAY_MS(1000));
     }
 
-    QueueHandle_t xQueue = ubloxM8N->pioSerial.getHandle();
+    ubloxM8N->statistics.queueFullErr = 0;
+    OpenAce::NMEAString sentence;
     while (true)
     {
-        char receivedMessage[OpenAce::NMEA_MAX_LENGTH];
-        if (xQueueReceive(xQueue, &receivedMessage, portMAX_DELAY) == pdPASS)
+        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
         {
-            // @todo Harden by adding CRC checking instead of just looking for the *
-            const char *crcPos = strchr(receivedMessage, '*');
-            if (crcPos == nullptr)
+            if (notifyValue & TaskState::EXIT)
             {
-                ubloxM8N->statistics.crcErrors++;
-                continue;
+                vTaskDelete(nullptr);
+                return;
             }
-            ubloxM8N->statistics.totalReceived++;
 
-            // GPS should have been configured to turn Talkers into the Main Talker (GP)
-            // If that is not possible, we can turn on OPENACE_UBLOX_GNXXX_TO_GPXXX
-            // if (OPENACE_UBLOX_GNXXX_TO_GPXXX && receivedMessage[2] == 'N')
-            // {
-            //     // Turn GNXXX sentences into GPXXX sentences
-            //     // GNXXX messages are the combined receivers
-            //     receivedMessage[2] = 'P';
-            //     etl::string_ext sentence(receivedMessage, receivedMessage, OpenAce::NMEA_MAX_LENGTH);
-            //     CoreUtils::addChecksumToNMEA(sentence);
-            // }
-            // if (strchr(receivedMessage, 'V')) {
-            //     puts(receivedMessage);
-            // }
-            ubloxM8N->getBus().receive(OpenAce::GPSMessage{receivedMessage});
+            if (notifyValue & TaskState::NEW)
+            {
+                while (!ubloxM8N->queue.empty())
+                {
+                    ubloxM8N->queue.pop(sentence);
+                    ubloxM8N->statistics.totalReceived++;
+                    ubloxM8N->getBus().receive(OpenAce::GPSSentenceMsg{sentence});
+                }
+            }
         }
     }
 }
@@ -158,7 +146,7 @@ bool UbloxM8N::detectAndConfigureGPS()
     {
         statistics.status = "Found";
         // printf("GPS found at %ldBd setting to %ldBd, waiting for GPS to come back on... ", scanBaudRate, GPS_BAUDRATE);
-        if (!pioSerial.enableTx(scanBaudRate)) 
+        if (!pioSerial.enableTx(scanBaudRate))
         {
             puts("enableTx failed");
             return false;
@@ -193,7 +181,7 @@ bool UbloxM8N::detectAndConfigureGPS()
     }
 
     // Configure GPS
-    if (!pioSerial.enableTx(scanBaudRate)) 
+    if (!pioSerial.enableTx(scanBaudRate))
     {
         statistics.status = "Cfg err m8nCfg";
         return false;
@@ -223,9 +211,27 @@ void UbloxM8N::getData(etl::string_stream &stream, const etl::string_view path) 
 {
     (void)path;
     stream << "{";
-    stream << "\"crcErrors\":" << statistics.crcErrors;
-    stream << ",\"totalReceived\":" << statistics.totalReceived;
+    stream << "\"totalReceived\":" << statistics.totalReceived;
+    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"status\":\"" << statistics.status << "\"";
     stream << ",\"baudrate\":" << statistics.baudrate;
     stream << "}\n";
+}
+
+void __time_critical_func(UbloxM8N::processNewSentence)(const char *sentence)
+{
+    if (!queue.full())
+    {
+        queue.push(sentence);
+    }
+    else
+    {
+        statistics.queueFullErr++;
+    }
+    if (queue.size() > QUEUE_SIZE - 2)
+    {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }

@@ -18,9 +18,6 @@ OpenAce::PostConstruct PioSerial::postConstruct()
     }
     interruptHandlers[handlerIdx] = this;
 
-    xQueue = xQueueCreate(PIOSERIAL_MAX_QUEUE_LENGTH, OpenAce::NMEA_MAX_LENGTH);
-
-
     // Set tx to out to prevent it from floating. Attached devices might receive random data
     gpio_init(txPin);
     gpio_set_dir(txPin, GPIO_OUT);
@@ -58,15 +55,10 @@ OpenAce::PostConstruct PioSerial::postConstruct()
         handler = pio1_irq1_func_handler;
         break;
     default:
-        return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;;
+        return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;
+        ;
     }
     return OpenAce::PostConstruct::OK;
-}
-
-// TODO: CHange to a SPSC queue from etl::cpp
-QueueHandle_t PioSerial::getHandle() const
-{
-    return xQueue;
 }
 
 void PioSerial::start()
@@ -74,8 +66,8 @@ void PioSerial::start()
     // Enable interrupt
     uint8_t pio_irq = (rxPio == pio0) ? PIO0_IRQ_0 : PIO1_IRQ_0; // pio_irq will become 7,8,9,10
     uint8_t irq_index = pio_irq - ((rxPio == pio0) ? PIO0_IRQ_0 : PIO1_IRQ_0);
-    irq_add_shared_handler(pio_irq, handler, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY); // Add a shared IRQ handler
-    irq_set_enabled(pio_irq, true); // Enable the IRQ
+    irq_add_shared_handler(pio_irq, handler, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);                                     // Add a shared IRQ handler
+    irq_set_enabled(pio_irq, true);                                                                                               // Enable the IRQ
     pio_set_irqn_source_enabled(rxPio, irq_index, static_cast<pio_interrupt_source>(pis_sm0_rx_fifo_not_empty + rxSmIndx), true); // Set pio to tell us when the FIFO is NOT empty
 };
 
@@ -94,16 +86,14 @@ void PioSerial::stop()
 
     // Disable Tx
     disableTx();
-
-    vQueueDelete(xQueue);
-    xQueue = nullptr;
 };
 
+bool PioSerial::enableRx()
+{
 
-bool PioSerial::enableRx() {
-
-    if ( rxPio == nullptr) {
-    // Set up the state machine to use to use
+    if (rxPio == nullptr)
+    {
+        // Set up the state machine to use to use
         if (!add_pio_program(&uart_rx_program, &rxPio, &rxSmIndx, &rxOffset))
         {
             return false;
@@ -113,10 +103,11 @@ bool PioSerial::enableRx() {
     return true;
 }
 
+void PioSerial::disableRx()
+{
 
-void PioSerial::disableRx() {
-
-    if (rxPio != nullptr) {
+    if (rxPio != nullptr)
+    {
         // Cleanup Pio
         pio_sm_set_enabled(rxPio, rxSmIndx, false);
         pio_remove_program(rxPio, &uart_rx_program, rxOffset);
@@ -132,29 +123,39 @@ void PioSerial::disableRx() {
  * IRQ called when the pio fifo is not empty, i.e. there are some characters on the uart
  * When a NMEA string is found, it will send a message using FReeRTOS
  * The message is guaranteed to be zero terminated
-*/
-void PioSerial::pio_irq_func(uint8_t irqHandlerIndex)
+ */
+void __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex)
 {
-    PioSerial &pioSerial = *interruptHandlers[irqHandlerIndex];
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    UBaseType_t savedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 
+    PioSerial &pioSerial = *interruptHandlers[irqHandlerIndex];
     while (!pio_sm_is_rx_fifo_empty(pioSerial.rxPio, pioSerial.rxSmIndx))
     {
         char c = uart_rx_program_getc(pioSerial.rxPio, pioSerial.rxSmIndx);
-        if (c == '$' || pioSerial.charIndex >= OpenAce::NMEA_MAX_LENGTH)
+
+        if (c == '\n' || c == '\r')
+        {
+            if (pioSerial.charIndex > 8)
+            {
+                pioSerial.buffer[pioSerial.charIndex] = '\0';
+                            pioSerial.callback(pioSerial.buffer);
+            }
+            pioSerial.charIndex = 0;
+        }
+        else if (pioSerial.charIndex >= OpenAce::NMEA_MAX_LENGTH)
         {
             pioSerial.charIndex = 0;
         }
-        pioSerial.buffer[pioSerial.charIndex++] = c;
-
-        if (pioSerial.charIndex > 8 && (c == '\n' || c == '\r'))
+        else
         {
-            pioSerial.buffer[pioSerial.charIndex] = '\0';
-            xQueueSendFromISR(pioSerial.xQueue, &pioSerial.buffer, &xHigherPriorityTaskWoken);
-            pioSerial.charIndex = 0;
+            pioSerial.buffer[pioSerial.charIndex++] = c;
         }
     }
-    portYIELD_FROM_ISR (xHigherPriorityTaskWoken);
+
+    taskEXIT_CRITICAL_FROM_ISR(savedInterruptStatus);
+//    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+
 }
 
 void PioSerial::sendBlocking(const uint8_t *data, uint16_t length)
@@ -162,8 +163,9 @@ void PioSerial::sendBlocking(const uint8_t *data, uint16_t length)
     uart_tx_program_put(txPio, txSmIndx, data, length);
 }
 
-bool PioSerial::enableTx(uint32_t givenBaudRate) {
-    if (txPio == nullptr) 
+bool PioSerial::enableTx(uint32_t givenBaudRate)
+{
+    if (txPio == nullptr)
     {
         if (!add_pio_program(&uart_tx_program, &txPio, &txSmIndx, &txOffset))
         {
@@ -175,8 +177,9 @@ bool PioSerial::enableTx(uint32_t givenBaudRate) {
     return true;
 }
 
-void PioSerial::disableTx() {
-    if (txPio != nullptr) 
+void PioSerial::disableTx()
+{
+    if (txPio != nullptr)
     {
         pio_sm_set_enabled(txPio, txSmIndx, false);
         pio_remove_program(txPio, &uart_tx_program, txOffset);
@@ -190,7 +193,7 @@ void PioSerial::disableTx() {
 
 bool PioSerial::setBaudRate(uint32_t baudRate)
 {
-    if (rxPio!=nullptr)
+    if (rxPio != nullptr)
     {
         pio_sm_set_enabled(rxPio, rxSmIndx, false);
         uart_rx_program_init(rxPio, rxSmIndx, rxOffset, rxPin, baudRate);
@@ -201,10 +204,10 @@ bool PioSerial::setBaudRate(uint32_t baudRate)
 
 /**
  * Validate if the uart is receiving any valid data at the given baudrate
-*/
+ */
 bool PioSerial::testUartAtBaudrate(uint32_t testBaudRate, uint32_t maximumScanTimeMs, uint32_t ignoreFirstMs, uint16_t numcharsConsideringValid)
 {
-    if (rxPio!=nullptr)
+    if (rxPio != nullptr)
     {
         setBaudRate(testBaudRate);
         bool hasData = uart_rx_program_test(rxPio, rxSmIndx, 0x0a, 0x80, maximumScanTimeMs, ignoreFirstMs, numcharsConsideringValid);
@@ -216,7 +219,7 @@ bool PioSerial::testUartAtBaudrate(uint32_t testBaudRate, uint32_t maximumScanTi
 
 /**
  * Find a buadrate where the uart is sending data on
-*/
+ */
 uint32_t PioSerial::findBaudRate(uint32_t maxTimeOutMs)
 {
     for (uint32_t baudRate : commonBaudrates)
@@ -234,4 +237,3 @@ bool PioSerial::rxFlush(uint32_t timeOutMs)
 {
     return uart_rx_flush(rxPio, rxSmIndx, timeOutMs);
 }
-

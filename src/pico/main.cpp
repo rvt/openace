@@ -273,7 +273,6 @@ static void loadModules(void *arch)
 
 void vLaunch(void)
 {
-
     // Bootstap
     BaseModule::initBase();
     registerModules();
@@ -284,14 +283,14 @@ void vLaunch(void)
     config.start();
     // Bootstap
 
-    // + 1024 because we run the message bus in this task
     TaskHandle_t taskpublish_handle;
     UBaseType_t uxCoreAffinityMask;
-    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 2048 /* 96 */, NULL, tskIDLE_PRIORITY, &(taskpublish_handle));
+    // + 1024 because we run the message bus in this task
+    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 256 /* 96 */, NULL, tskIDLE_PRIORITY, &(taskpublish_handle));
     uxCoreAffinityMask = ((1 << 0));
     vTaskCoreAffinitySet(taskpublish_handle, uxCoreAffinityMask);
 
-#if NO_SYS && configUSE_CORE_AFFINITY && configNUM_CORES > 1
+#if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1
     // we must bind the main task to one core (well at least while the init is called)
     // (note we only do this in NO_SYS mode, because cyw43_arch_freertos
     // takes care of it otherwise)
@@ -314,11 +313,7 @@ void overflowTest()
 
 int main()
 {
-    overflowTest();
     stdio_init_all();
-#ifndef NDEBUG
-    etl::error_handler::set_callback<etlcpp_receive_error>();
-#endif
 
     printf(
         R"=(
@@ -330,7 +325,12 @@ int main()
         ╚██████╔╝██║     ███████╗██║ ╚████║██║  ██║╚██████╗███████╗
          ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝╚══════╝
 
-    )=");
+)=");
+
+    overflowTest();
+#ifndef NDEBUG
+    etl::error_handler::set_callback<etlcpp_receive_error>();
+#endif
 
     /* Configure the hardware ready to run the demo. */
     const char *rtos_name;
@@ -340,10 +340,10 @@ int main()
     rtos_name = "Single Core";
 #endif
 
-#if (portSUPPORT_SMP == 1) && (configNUM_CORES == 2)
+#if (portSUPPORT_SMP == 1) && (configNUMBER_OF_CORES > 1)
     printf("Starting %s\n\n", rtos_name);
     vLaunch();
-#elif (RUN_FREERTOS_ON_CORE == 1)
+#elif (RUN_FREE_RTOS_ON_CORE == 1)
     printf("Starting %s on core 1:\n\n", rtos_name);
     multicore_launch_core1(vLaunch);
     while (true)

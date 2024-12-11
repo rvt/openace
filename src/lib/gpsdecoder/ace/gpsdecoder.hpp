@@ -19,7 +19,7 @@
  * This decoder requires that both GGA and GMC sentences are received from the GPS and that each sentences us correct ms resolution
  * When both coralated sentences are sned. It will send out a ownship position message
 */
-class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, OpenAce::GPSMessage>
+class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, OpenAce::GPSSentenceMsg>
 {
     friend class message_router;
     struct
@@ -49,7 +49,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, Ope
     minmea_time lastRMCTimestamp;
     minmea_time lastGGATimestamp;
 private:
-    void on_receive(const OpenAce::GPSMessage& msg);
+    void on_receive(const OpenAce::GPSSentenceMsg& msg);
 
     /**
      * Convert an minmea_float with altitude/height information in meters

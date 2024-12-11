@@ -17,17 +17,15 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
-
-
 void SerialADSB::start()
 {
     pioSerial.start();
-    xTaskCreate(serialADSBTask, "serialADSBTask", configMINIMAL_STACK_SIZE+512, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(serialADSBTask, "serialADSBTask", configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 2, &taskHandle);
 };
 
 void SerialADSB::stop()
 {
-    if (taskHandle!=nullptr)
+    if (taskHandle != nullptr)
     {
         vTaskDelete(taskHandle);
         taskHandle = nullptr;
@@ -37,22 +35,16 @@ void SerialADSB::stop()
 };
 
 void SerialADSB::serialADSBTask(void *arg)
-{
-    SerialADSB *serialADSB = static_cast<SerialADSB*>(arg);
-    // @techdebt: THis does not look feel safe setting message handler after started
-    QueueHandle_t xQueue = serialADSB->pioSerial.getHandle();
-
+{ 
+    (void)arg;
+   // SerialADSB *serialADSB = static_cast<SerialADSB *>(arg);
     while (true)
     {
-        char receivedMessage[33];
-        if (xQueueReceive(xQueue, &receivedMessage, portMAX_DELAY) == pdPASS)
-        {
-            serialADSB->statistics.totalReceived++;
-//            serialADSB->getBus().receive(OpenAce::ADSBMessageBin{receivedMessage});
-        }
+        // char receivedMessage[33];
+        //     serialADSB->statistics.totalReceived++;
+            //            serialADSB->getBus().receive(OpenAce::ADSBMessageBin{receivedMessage});
     }
 }
-
 
 OpenAce::PostConstruct SerialADSB::postConstruct()
 {
@@ -76,4 +68,9 @@ void SerialADSB::getData(etl::string_stream &stream, const etl::string_view path
     stream << "{";
     stream << "\"totalReceived\":" << statistics.totalReceived;
     stream << "}\n";
+}
+
+void SerialADSB::processNewSentence(const char *sentence)
+{
+    (void)sentence;
 }

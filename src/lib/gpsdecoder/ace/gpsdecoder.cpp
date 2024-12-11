@@ -49,7 +49,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << "}\n";
 }
 
-void GpsDecoder::on_receive(const OpenAce::GPSMessage &msg)
+void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 {
     // printf("GpsDecoder: %s\n", msg.sentence.c_str());
     static Every<int8_t, 30, 60> sendGpsTime{0};
@@ -205,6 +205,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
     // It's required that both GGA and GMC sentences have the same timestamp in these cases
     // If this in practise is not happening, due to newer GPS systems position should be taken from latest RMC
     // so we take position acuracy over altitude/course
+    // TODO: Reconsider
     auto alt = altitudeWgs84();
     auto height = heightGeoidWGS84();
     if (lastGGATimestamp.microseconds == lastRMCTimestamp.microseconds && lastGGATimestamp.seconds == lastRMCTimestamp.seconds)

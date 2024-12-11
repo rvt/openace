@@ -6,7 +6,6 @@
 /* FreeRTOS. */
 #include "FreeRTOS.h"
 #include "task.h"
-#include "queue.h"
 
 /* PICO. */
 #include "pico/stdlib.h"
@@ -19,12 +18,15 @@
 #include "ace/constants.hpp"
 #include "ace/models.hpp"
 
-// #include "etl/vector.h"
 #include "etl/array.h"
-
+#include "etl/delegate.h"
 
 class PioSerial
 {
+    public:
+    using CallBackFunction = etl::delegate<void(const char *)>;
+
+private:
     static constexpr uint8_t PIOSERIAL_MAX_QUEUE_LENGTH = 2;
     static constexpr etl::array commonBaudrates{ 115200, 9600, 19200, 38400, 57600 };
 
@@ -75,13 +77,13 @@ class PioSerial
     uint txOffset;
 
     irq_handler_t handler;
-    QueueHandle_t xQueue;
-    char buffer[OpenAce::NMEA_MAX_LENGTH];
+    char buffer[OpenAce::NMEA_MAX_LENGTH + 1]; // Plus 1 for any potential null termination
+    CallBackFunction callback;
 
     bool enableRx();
     void disableRx();
 public:
-    PioSerial(const OpenAce::PinTypeMap &pins, uint32_t baudrate_) :
+    PioSerial(const OpenAce::PinTypeMap &pins, uint32_t baudrate_, CallBackFunction callback_) :
         rxPin(pins.at(OpenAce::PinType::RX)),
         txPin(pins.at(OpenAce::PinType::TX)),
         baudrate(baudrate_),
@@ -93,15 +95,13 @@ public:
         txSmIndx(-1),
         txOffset(0),
         handler(nullptr),
-        xQueue(nullptr)
+        callback(callback_)
     {
     }
 
     virtual ~PioSerial() = default;
 
     OpenAce::PostConstruct postConstruct();
-
-    QueueHandle_t getHandle() const;
 
     void start() ;
     void stop() ;

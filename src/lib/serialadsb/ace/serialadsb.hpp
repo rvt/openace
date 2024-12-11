@@ -36,7 +36,7 @@ public:
     static constexpr const etl::string_view NAME = "SerialADSB";
     SerialADSB(etl::imessage_bus& bus, const OpenAce::PinTypeMap& pins) :
         BaseModule(bus, NAME),
-        pioSerial{pins, SERIAL_BAUDRATE},
+        pioSerial{pins, SERIAL_BAUDRATE, PioSerial::CallBackFunction::create<SerialADSB, &SerialADSB::processNewSentence>(*this)},
         taskHandle(nullptr)
     {
     }
@@ -55,7 +55,7 @@ public:
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-
+    void processNewSentence(const char *sentence);
 };
 
 

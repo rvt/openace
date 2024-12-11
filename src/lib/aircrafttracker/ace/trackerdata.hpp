@@ -30,7 +30,7 @@ template <size_t SIZE, uint8_t TIMESLICES>
 class TrackerData
 {
 private:
-    static constexpr int32_t SLICE_SIZE_MS = 1'000 / TIMESLICES;            // How much tiome for each slic, use to calculate delay
+    static constexpr int32_t SLICE_SIZE_MS = 1'000 / TIMESLICES;            // How much time for each slic, use to calculate delay
     static constexpr int32_t MAX_POSITION_INTERPOLATIONS_USEC = 10'000'000; // Maximum number of times we interpolate position of a aircraft when it was not received, after that we removed it from the tracker
     static constexpr int32_t TIME_SEND_HYSTERESIS = 100'000;                // How much time before/after the current ms new entries will be send
     static constexpr uint8_t ADAPTIVE_RADIUS_MIN_FREE = 4;                  // Do adaptive calculations when queuesize is > (SIZE - ADAPTIVE_RADIUS_MIN_FREE)
