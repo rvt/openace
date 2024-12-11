@@ -13,7 +13,7 @@ OpenAce::PostConstruct AircraftTracker::postConstruct()
 
 void AircraftTracker::start()
 {
-    xTaskCreate(aircraftTrackerTask, "AircraftTracker", TASK_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(aircraftTrackerTask, "AircraftTracker", configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -45,6 +45,8 @@ void AircraftTracker::on_receive(const OpenAce::IdleMsg &msg)
 {
     (void)msg;
     xTaskNotify(taskHandle, TaskState::MAINTAIN, eSetBits);
+
+    getBus().receive(OpenAce::AdapativeRadiusMsg(trackedAircraft.radius()));
 }
 
 void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -127,15 +129,13 @@ void AircraftTracker::handleNew()
 
 void AircraftTracker::sendEligibleAircraft()
 {
-    //    puts("\033[2J\033[H");
-    //    trackedAircraft.dump();
+//    puts("\033[2J\033[H");
+    //       trackedAircraft.dump();
     auto delay = trackedAircraft.next([this](const OpenAce::AircraftPositionInfo &position)
-                                      { getBus().receive(OpenAce::TrackedAircraftPositionMsg(position)); });
-    if (delay == 0)
-    {
-        delay = 1;
-    }
-    xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay), TASK_DELAY_MS(25));
+                                      {
+                                          getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
+                                      });
+    xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay == 0 ? 1 : delay), portMAX_DELAY);
 }
 
 void AircraftTracker::maintenance()

@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "radiotunerrx_test",
+            "name": "(lldb) Launch radiotunerrx_test",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/radiotunerrx_test",
@@ -17,7 +17,7 @@
             "MIMode": "lldb"
         },
         {
-            "name": "radiotunertx_test",
+            "name": "(lldb) Launch radiotunertx_test",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/radiotunertx_test",
@@ -29,7 +29,7 @@
             "MIMode": "lldb"
         },
         {
-            "name": "countryregulations_test",
+            "name": "(lldb) Launch countryregulations_test",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/countryregulations_test",

@@ -63,7 +63,7 @@ void RadioTunerRx::addRadioTasks(uint8_t numRadios)
             continue;
         }
 
-        xTaskCreate(radioTuneTask, "rxTask", configMINIMAL_STACK_SIZE + 64, &ref, tskIDLE_PRIORITY + 3, &ref.taskHandle);
+        xTaskCreate(radioTuneTask, "rxTask", configMINIMAL_STACK_SIZE, &ref, tskIDLE_PRIORITY + 3, &ref.taskHandle);
         if (ref.taskHandle == nullptr)
         {
             radioTasks.pop_back();

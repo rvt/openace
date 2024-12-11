@@ -41,7 +41,8 @@ endif()
 set(SOURCES_IDIOMATIC_EXAMPLES # Tests
     adsb_test.cpp
     addresscache_test.cpp
-    adsbdatacollector_test.cpp)
+    adsbdatacollector_test.cpp
+)
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
                "${SOURCES_IDIOMATIC_EXAMPLES}")
@@ -52,8 +53,6 @@ set(ACE_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/constants.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/utils.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/encryption.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/ognconv.cpp
     ../ace/adsbdecoder.cpp
     ../ace/cpr.cpp)
 

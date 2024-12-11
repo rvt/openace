@@ -206,7 +206,7 @@ customElements.define("wifiservice-config", WifiServiceConfig);
 
 class ADSBDecoderConfig extends ModuleConfig {
   created() {
-    this.filterAltitudes = [0, 500, 1000, 1500, 2000, 2500, 3000, 5000, 10000, 40000];
+    this.filterAltitudes = [0, 500, 1000, 1500, 2000, 2500, 3000, 5000, 10000, 15000, 50000];
     this._initForm(store.getModuleData("ADSBDecoder"));
   }
 

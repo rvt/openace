@@ -61,9 +61,10 @@
 #define OPENACE_LWIP_DEBUG ( 1 )
 #define OPENACE_FREERTOS_DEBUG ( 1 )
 #define PICO_ENTER_USB_BOOT_ON_EXIT ( 1 )
+
 // Other's that could help debugging problems
 // #define HTTPD_DEBUG LWIP_DBG_ON
-// #define RUN_FREERTOS_ON_CORE ( 1 )
+// #define RUN_FREE_RTOS_ON_CORE ( 1 )
 #endif
 // END: ***** Debugging PICO items
 

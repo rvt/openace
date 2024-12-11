@@ -19,10 +19,10 @@ inline SemaphoreHandle_t xSemaphoreCreateRecursiveMutex()
 
 #define xSemaphoreGiveRecursive(xMutex) xQueueGiveMutexRecursive((QueueHandle_t)(xMutex))
 
-inline uint32_t xSemaphoreTakeReturn = pdFALSE;
+inline uint32_t xSemaphoreTakeValue = pdFALSE;
 inline uint32_t xSemaphoreTake(SemaphoreHandle_t, uint32_t)
 {
-    return xSemaphoreTakeReturn;
+    return xSemaphoreTakeValue;
 }
 
 inline bool xSemaphoreGiveCalled = pdFALSE;
@@ -31,14 +31,16 @@ inline void xSemaphoreGive(SemaphoreHandle_t)
     xSemaphoreGiveCalled = pdTRUE;
 }
 
+inline SemaphoreHandle_t xSemaphoreCreateMutexStaticValue=(SemaphoreHandle_t)(0x1);
 inline SemaphoreHandle_t xSemaphoreCreateMutexStatic(StaticSemaphore_t *t)
 {
     printf("xSemaphoreCreateMutexStatic\n");
-    return NULL;
+    return xSemaphoreCreateMutexStaticValue;
 }
 
+inline SemaphoreHandle_t xSemaphoreCreateMutexValue=(SemaphoreHandle_t)(0x1);
 inline SemaphoreHandle_t xSemaphoreCreateMutex()
 {
     printf("xSemaphoreCreateMutex\n");
-    return NULL;
+    return xSemaphoreCreateMutexValue;
 }

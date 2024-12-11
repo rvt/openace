@@ -107,7 +107,9 @@ void GDLoverUDP::on_receive(const OpenAce::GDLMsg &msg)
             sendTo(msg, client.ip, client.port);
         }
         xSemaphoreGive(configMutex);
-    } else {
+    }
+    else
+    {
         // puts("GDLoverUDP: Failed ");
     }
 }

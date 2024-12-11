@@ -54,7 +54,7 @@ OpenAce::PostConstruct Sx1262::postConstruct()
 
     radioInit();
 
-    if (xTaskCreate(sx1262Task, "sx1262Task", configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
+    if (xTaskCreate(sx1262Task, "sx1262Task", configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
     {
         return OpenAce::PostConstruct::TASK_ERROR;
     }

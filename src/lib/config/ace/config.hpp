@@ -147,7 +147,7 @@ private:
 
 private:
     friend class message_router;
-    JsonDocument doc; // There is properly some room for optimalisation if we store the doc itself in volatile memory  eg __uninitialized_ram
+    JsonDocument doc;
     ConfigStore &volatileStore;
     ConfigStore &permanentStore;
     const uint8_t *defaultConfig;

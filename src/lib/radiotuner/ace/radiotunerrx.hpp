@@ -16,7 +16,6 @@
 #include "etl/list.h"
 #include "etl/array.h"
 #include "etl/algorithm.h"
-#include <etl/array_view.h>
 #include "etl/string.h"
 #include "etl/bitset.h"
 #include "etl/circular_iterator.h"

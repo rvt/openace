@@ -154,7 +154,7 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
                 serializeToVolatile();
                 serializeToPersistent();
             }
-            // TODO: See if its possible to make something that these two are not in the config            
+            // TODO: See if its possible to make something that these two are not in the config
             else if (path.back() == "Restart")
             {
                 watchdog_reboot(0, 0, 0);
@@ -326,8 +326,7 @@ const OpenAce::Config::OpenAceConfiguration Config::openAceConfig() const
     etl::vector<OpenAce::DataSource, static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS)> protocols;
     if (aircraftConfig.isNull())
     {
-        return
-        {
+        return {
             .category = OpenAce::AircraftCategory::ReciprocatingEngine,
             .addressType = OpenAce::AddressType::ADSL,
             .address = 0,
@@ -341,8 +340,7 @@ const OpenAce::Config::OpenAceConfiguration Config::openAceConfig() const
         protocols.push_back(OpenAce::stringToDataSource(protocol.as<const char *>()));
     }
 
-    return
-    {
+    return {
         .category = OpenAce::stringToAircraftCategory((ccharptr)aircraftConfig["category"]),
         .addressType = OpenAce::stringToAddressType((ccharptr)aircraftConfig["addressType"]),
         .address = aircraftConfig["address"],
@@ -429,8 +427,7 @@ const OpenAce::Config::IpPort Config::ipPortBypath(const etl::string_view pathTo
     {
         auto ip = src["ip"].as<const char *>();
         auto port = src["port"].as<uint16_t>();
-        return OpenAce::Config::IpPort
-        {
+        return OpenAce::Config::IpPort{
             inet_addr(ip),
             port};
     }

@@ -47,7 +47,7 @@
 #define configUSE_TICK_HOOK                     0
 #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES                    15
-#define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 256
+#define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 512
 #define configUSE_16_BIT_TICKS                  0
 
 #define configIDLE_SHOULD_YIELD                 1
@@ -60,7 +60,7 @@
 #define configQUEUE_REGISTRY_SIZE               8
 #define configUSE_QUEUE_SETS                    1
 #define configUSE_TIME_SLICING                  1
-#define configUSE_NEWLIB_REENTRANT              1 // Necessary if any floating point printfs are used!
+#define configUSE_NEWLIB_REENTRANT              0
 // todo need this for lwip FreeRTOS sys_arch to compile
 #define configENABLE_BACKWARD_COMPATIBILITY     1
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
@@ -74,24 +74,31 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 /* OpenACE: Changed from 128 to 115 to 112*/
 /* ArduinoJson is memory hunry, need to change that for something else, but for now just lowered memory */
-#define configTOTAL_HEAP_SIZE                   (90*1024)
+#define configTOTAL_HEAP_SIZE                   (83*1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */
 #if OPENACE_FREERTOS_DEBUG == 1
+/* Hook function related definitions. */
 #define configCHECK_FOR_STACK_OVERFLOW          1
 #define configUSE_MALLOC_FAILED_HOOK            1
+#define configUSE_DAEMON_TASK_STARTUP_HOOK      0
+
 /* Run time and task stats gathering related definitions. */
 #define configGENERATE_RUN_TIME_STATS           0
 #define configUSE_TRACE_FACILITY                0
 #define configUSE_STATS_FORMATTING_FUNCTIONS    0
 #else
 /* Run time and task stats gathering related definitions. */
+/* Hook function related definitions. */
+#define configCHECK_FOR_STACK_OVERFLOW          0
+#define configUSE_MALLOC_FAILED_HOOK            0
+#define configUSE_DAEMON_TASK_STARTUP_HOOK      0
+
+/* Run time and task stats gathering related definitions. */
 #define configGENERATE_RUN_TIME_STATS           0
 #define configUSE_TRACE_FACILITY                0
 #define configUSE_STATS_FORMATTING_FUNCTIONS    0
-#define configCHECK_FOR_STACK_OVERFLOW          0
-#define configUSE_MALLOC_FAILED_HOOK            0
 #endif
 
 /* Co-routine related definitions. */
@@ -111,17 +118,28 @@
 #define configMAX_API_CALL_INTERRUPT_PRIORITY   [dependent on processor and application]
 */
 
-#if FREE_RTOS_KERNEL_SMP // set by the RP2040 SMP port of FreeRTOS
-/* SMP port only */
-#define configNUM_CORES                         2
-// RVT Added because my version of pico_sdk still uses configNUM_CORES
-#define configNUMBER_OF_CORES                         configNUM_CORES
+#define configNUMBER_OF_CORES                   2
+/* SMP (configNUMBER_OF_CORES > 1) only */
 #define configTICK_CORE                         0
 #define configRUN_MULTIPLE_PRIORITIES           1
+#if configNUMBER_OF_CORES > 1
 #define configUSE_CORE_AFFINITY                 1
 #endif
+#define configUSE_PASSIVE_IDLE_HOOK             0
 
-/* RP2040 specific */
+/* Armv8-M */
+
+/* Not currently supported */
+#define configENABLE_MPU                        0
+//#define configSYSTEM_CALL_STACK_SIZE            ( configSTACK_DEPTH_TYPE ) 512
+#define configENABLE_FPU                        1
+/* Not currently supported */
+#define configENABLE_TRUSTZONE                  0
+#define configRUN_FREERTOS_SECURE_ONLY          1
+// see https://www.freertos.org/RTOS-Cortex-M3-M4.html
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY    16
+
+/* RP2xxx specific */
 #define configSUPPORT_PICO_SYNC_INTEROP         1
 #define configSUPPORT_PICO_TIME_INTEROP         1
 
@@ -149,8 +167,6 @@ to exclude the API function. */
 #define INCLUDE_xQueueGetMutexHolder            1
 
 /* A header file that defines trace macro can be included here. */
-
-#define configUSE_PASSIVE_IDLE_HOOK             0
 
 #define pdMS_TO_TICKS( x )     ( ( x ) / portTICK_PERIOD_MS )
 #define TASK_DELAY_MS( x )     ( ( x ) / portTICK_PERIOD_MS )

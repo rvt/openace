@@ -78,8 +78,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../lib globalLib)
 
 target_include_directories(OpenAce PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
-target_link_libraries(${PROJECT_NAME} 
-  PRIVATE FreeRTOS-Kernel-Heap4
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+          FreeRTOS-Kernel-Heap4
           pico_cyw43_arch_lwip_sys_freertos
           pico_stdlib
           hardware_spi

@@ -25,6 +25,7 @@ public:
     using CallBackFunction = etl::delegate<void(const char *)>;
 
 private:
+
     bool tcp_client_open()
     {
         // puts("TcpClient: tcp_client_open");
@@ -118,7 +119,8 @@ private:
                 uint16_t maxCopySize = RECEIVE_BUFFER_SIZE - tcpClient->bufferPosition;
 
                 // Recover from full buffer
-                if (maxCopySize == 0) {
+                if (maxCopySize == 0)
+                {
                     tcpClient->bufferPosition = 0;
                     maxCopySize = RECEIVE_BUFFER_SIZE;
                 }
@@ -219,6 +221,7 @@ public:
 
     void start()
     {
+        bufferPosition = 0;
         tcp_client_open();
     };
 

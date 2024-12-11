@@ -434,15 +434,16 @@ void mode_s_decode_phase2(mode_s_t *self, struct mode_s_msg *mm)
     // Check if we can check the checksum for the Downlink Formats where
     // the checksum is xored with the aircraft ICAO address. We try to
     // brute force it using a list of recently seen aircraft addresses.
-    if (brute_force_ap(self, msg, mm))
-    {
-      // We recovered the message, mark the checksum as valid.
-      mm->crcok = 1;
-    }
-    else
-    {
-      mm->crcok = 0;
-    }
+
+    // OPENACE: if (brute_force_ap(self, msg, mm))
+    // {
+    //   // We recovered the message, mark the checksum as valid.
+    //   mm->crcok = 1;
+    // }
+    // else
+    // {
+    //   mm->crcok = 0;
+    // }
   }
   else
   {
@@ -450,7 +451,7 @@ void mode_s_decode_phase2(mode_s_t *self, struct mode_s_msg *mm)
     // address to the list of recently seen addresses.
     if (mm->crcok && mm->errorbit == -1)
     {
-      add_recently_seen_icao_addr(self, mm->aa);
+      // OPENACE: add_recently_seen_icao_addr(self, mm->aa);
     }
   }
 

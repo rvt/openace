@@ -17,7 +17,7 @@ OpenAce::PostConstruct Gdl90Service::postConstruct()
 
 void Gdl90Service::start()
 {
-    xTaskCreate(gdl90ServiceTask, "gdl90ServiceTask", configMINIMAL_STACK_SIZE + 1024, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(gdl90ServiceTask, "gdl90ServiceTask", configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 

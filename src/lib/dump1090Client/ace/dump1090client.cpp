@@ -36,12 +36,14 @@ void Dump1090Client::processNewSentence(const char *sentence)
     if (sentence != nullptr && sentence[1] == '8' && (sentence[2] == 'D' || sentence[2] == 'A' || sentence[2] == '0'))
     {
         uint8_t hexSize = strlen(sentence) - 2;
-        if (hexSize == 28) // 28 happens to be the size of message we are interested in
+        // [*]8D4CADC458BF02B09CCB3E499B92[;] <- 28 chars without * and ;
+        if (hexSize == 28)
         {
+            auto halfSize = hexSize / 2;
             // puts(sentence);
             OpenAce::ADSBMessageBin msg;
-            hexStrToByteArray(sentence + 1, hexSize, msg.data.data());
-            receiver->receiveBinary(msg.data.data(), msg.data.size());
+            hexStrToByteArray(sentence + 1, OpenAce::ADSBMessageBin::MAX_BINARY_LENGTH*2, msg.data);
+            receiver->receiveBinary(msg.data, halfSize);
             statistics.totalReceived++;
         }
     }

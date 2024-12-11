@@ -30,7 +30,6 @@ private:
     friend class message_router;
 
     static constexpr uint8_t MAX_TRACKING_PLANES = 32;
-    static constexpr uint16_t TASK_STACK_SIZE = configMINIMAL_STACK_SIZE + 256;
     static constexpr uint32_t CLEAR_UP_SIZE = (MAX_TRACKING_PLANES * 95) / 100;
     static constexpr uint32_t AUTO_DISTANCE_TRACK_UPPER = (MAX_TRACKING_PLANES * 90) / 100;
     static constexpr uint32_t AUTO_DISTANCE_TRACK_LOWER = (MAX_TRACKING_PLANES * 80) / 100;

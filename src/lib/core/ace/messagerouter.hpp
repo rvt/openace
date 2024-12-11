@@ -38,7 +38,7 @@ namespace OpenAce
 
         ThreadSafeBus(etl::imessage_router &successor) : etl::imessage_bus(router_list, successor), xMutex(nullptr), lastMessages(0), lastTime(0)
         {
-            xMutex = xSemaphoreCreateRecursiveMutex();            
+            xMutex = xSemaphoreCreateRecursiveMutex();
         }
 
         virtual ~ThreadSafeBus()
@@ -54,8 +54,8 @@ namespace OpenAce
         uint16_t messagesPerSec()
         {
             auto usBoot = CoreUtils::timeUs32();
-            auto elapsed = CoreUtils::usFromReference(lastTime, usBoot);
-            if (elapsed > 100'000)
+            auto elapsed = CoreUtils::usToReference(lastTime, usBoot);
+            if (elapsed < -100'000)
             {
                 // Calculate number of messages per second
                 lastMessages = statistics.totalMessages;
@@ -75,16 +75,16 @@ namespace OpenAce
 
             // When updating configurations the mutex did not work, Not sure yet why this was
             // So it's now hacked to not use a mutex
-            // auto skipMutex = message.get_message_id() == 20;
-            // if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
-            // {
-            //     statistics.totalMessages++;
+            auto skipMutex = message.get_message_id() == 20;
+            if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
+            {
+                statistics.totalMessages++;
                 etl::imessage_bus::receive(etl::imessage_router::ALL_MESSAGE_ROUTERS, message);
-                // if (!skipMutex)
-                // {
-                //     xSemaphoreGiveRecursive(xMutex);
-                // }
-            //}
+                if (!skipMutex)
+                {
+                    xSemaphoreGiveRecursive(xMutex);
+                }
+            }
         }
 
         //*******************************************
@@ -100,11 +100,11 @@ namespace OpenAce
             // if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
             // {
             //     statistics.totalMessages++;
-                etl::imessage_bus::receive(etl::imessage_router::ALL_MESSAGE_ROUTERS, shared_msg);
-                // if (!skipMutex)
-                // {
-                //     xSemaphoreGiveRecursive(xMutex);
-                // }
+            etl::imessage_bus::receive(etl::imessage_router::ALL_MESSAGE_ROUTERS, shared_msg);
+            // if (!skipMutex)
+            // {
+            //     xSemaphoreGiveRecursive(xMutex);
+            // }
             //}
         }
     };
