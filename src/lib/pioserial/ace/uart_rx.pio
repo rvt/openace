@@ -11,23 +11,24 @@
 ; IN pin 0 and JMP pin are both mapped to the GPIO used as UART RX.
 
 start:
-    wait 0 pin 0        ; Stall until start bit is asserted
-    set x, 7    [10]    ; Preload bit counter, then delay until halfway through
-bitloop:                ; the first data bit (12 cycles incl wait, set).
-    in pins, 1          ; Shift data bit into ISR
-    jmp x-- bitloop [6] ; Loop 8 times, each loop iteration is 8 cycles
-    jmp pin good_stop   ; Check stop bit (should be high)
-
-    irq 4 rel           ; Either a framing error or a break. Set a sticky flag,
-    wait 1 pin 0        ; and wait for line to return to idle state.
-    jmp start           ; Don't push data if we didn't see good framing.
-
-good_stop:              ; No delay before returning to start; a little slack is
-    push                ; important in case the TX clock is slightly too fast.
+    set y, 3              ; Number of bytes to read (4 bytes total = 32 bits)
+byte_start:
+    wait 0 pin 0          ; Wait for start bit (line goes from 1 to 0)
+    set x, 7     [10]     ; Load 8-bit counter, wait for 12 cycles to sample center of first data bit
+bitloop:
+    in pins, 1            ; Shift 1 bit from the UART line into the ISR
+    jmp x-- bitloop [6]   ; Loop 8 times, 8-bit loop, 8 cycles per loop (aligned with baud)
+    jmp pin good_stop     ; Check stop bit (should be high, if low it's a frame error)
+    irq 4 rel             ; If we didn't see a good stop bit, signal frame error
+    wait 1 pin 0          ; Wait for the line to return to idle (wait for next start bit)
+    jmp start             ; Restart from beginning (abort this 32-bit sequence)
+good_stop:
+    jmp y-- byte_start    ; Read 4 bytes total (32 bits), check if we've read 4 bytes
+    push                  ; Push 32 bits (4 bytes) to FIFO
+    jmp start             ; Restart to read the next 32 bits
 
 
 % c-sdk {
-#include <string.h>
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 
@@ -51,37 +52,9 @@ static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin,
     pio_sm_set_enabled(pio, sm, true);
 }
 
-// Read single characters from uart blocking
-static inline char uart_rx_program_getc(PIO pio, uint sm) {
-    // 8-bit read from the uppermost byte of the FIFO, as data is left-justified
-    io_rw_8 *rxfifo_shift = (io_rw_8*)&pio->rxf[sm] + 3;
-    while (pio_sm_is_rx_fifo_empty(pio, sm))
-        tight_loop_contents();
-    return (char)*rxfifo_shift;
-}
-
-// Read UART blocking with timeout
-static inline char uart_rx_program_getc_wait(PIO pio, uint sm, char *buffer, uint16_t length, uint32_t timeout) {
-    // 8-bit read from the uppermost byte of the FIFO, as data is left-justified
-    memset(buffer, 0, length);    
-    io_rw_8 *rxfifo_shift = (io_rw_8*)&pio->rxf[sm] + 3;
-    uint32_t start = time_us_32();
-            *buffer = '\0';
-            length--;
-    while (true) {
-        if (!pio_sm_is_rx_fifo_empty(pio, sm)) {
-            *buffer = (char)*rxfifo_shift;
-            buffer++;
-            *buffer = '\0';
-            length--;
-        }
-        if (length == 0) {
-            return true;
-        }
-        if ((time_us_32() - start) > timeout*1000) {
-            return false;
-        }
-    }
+// Read single characters from uart
+static inline uint32_t uart_rx_program_get32(PIO pio, uint sm) {
+    return pio->rxf[sm];
 }
 
 /**
@@ -91,45 +64,56 @@ static inline char uart_rx_program_getc_wait(PIO pio, uint sm, char *buffer, uin
  * numcharsConsideringValid        if this many characters are within rangeStart and rangeEnd then return true
  * ignoreFirstMs                   Ignore the first few bytes to ensure the uart is stable, we might get one or two bad bytes (5ms is aprox 6 bytes at 9600 baud)
 */
-static inline char uart_rx_program_test(PIO pio, uint sm, char rangeStart, char rangeEnd, uint32_t maximumScanTimeMs, uint32_t ignoreFirstMs=5, uint16_t numcharsConsideringValid=64) {
-    // 8-bit read from the uppermost byte of the FIFO, as data is left-justified
-    io_rw_8 *rxfifo_shift = (io_rw_8*)&pio->rxf[sm] + 3;
+
+static inline char uart_rx_program_test(
+    PIO pio, 
+    uint sm, 
+    char rangeStart, 
+    char rangeEnd, 
+    uint32_t maximumScanTimeMs, 
+    uint32_t ignoreFirstMs = 5, 
+    uint16_t numcharsConsideringValid = 64
+) {
     uint16_t validCharCounter = 0;
-    bool allWithin = false;
     uint32_t start = time_us_32();
+    uint32_t ignoreUntil = start + (ignoreFirstMs * 1000);
+    uint32_t endTime = start + (maximumScanTimeMs * 1000);
+
     while (true) {
-
-        char receivedChar=0x00;
-        if (!pio_sm_is_rx_fifo_empty(pio, sm)) {
-            receivedChar = (char)*rxfifo_shift;
+        uint32_t currentTime = time_us_32();
+        if (currentTime > endTime) {
+            return false;
         }
 
-        uint32_t elapsed = time_us_32() - start;
-        if (elapsed > ignoreFirstMs*1000) {
-            if (receivedChar) {
-                if (receivedChar < rangeStart || receivedChar > rangeEnd) {
-                    return false;
-                } 
-                allWithin = true;
-                validCharCounter++;
-            }
-
-            if (validCharCounter >= numcharsConsideringValid || elapsed > maximumScanTimeMs*1000) {
-                return allWithin;
+        // Only process if FIFO is not empty
+        while (!pio_sm_is_rx_fifo_empty(pio, sm)) {
+            uint32_t data = pio_sm_get_blocking(pio, sm);
+            char *bytePtr = (char*)&data;
+            for (uint8_t i = 0; i < 4; i++) {
+                char receivedChar = bytePtr[i];
+                if (currentTime > ignoreUntil) {
+                    if (receivedChar < rangeStart || receivedChar > rangeEnd) {
+                        return false;
+                    }
+                    validCharCounter++;
+                }
+                if (validCharCounter >= numcharsConsideringValid) {
+                    return true;
+                }
             }
         }
-        taskYIELD();
+
+        vTaskDelay(1);
     }
 }
 
 // Flush the RX buffer
 static inline bool uart_rx_flush(PIO pio, uint sm, uint32_t timeoutMs) {
     // 8-bit read from the uppermost byte of the FIFO, as data is left-justified
-    io_rw_8 *rxfifo_shift = (io_rw_8*)&pio->rxf[sm] + 3;
     uint32_t start = time_us_32();
     while (true) {
         if (!pio_sm_is_rx_fifo_empty(pio, sm)) {
-            (char)*rxfifo_shift;
+            pio_sm_get(pio, sm);
         }
         if ((time_us_32() - start) > (timeoutMs*1000)) {
             return true;
