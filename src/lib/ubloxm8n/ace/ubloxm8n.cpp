@@ -94,7 +94,7 @@ void UbloxM8N::ubloxM8NTask(void *arg)
 {
     UbloxM8N *ubloxM8N = static_cast<UbloxM8N *>(arg);
 
-    // Initialise and find the GPS
+    //    Initialise and find the GPS
     while (!ubloxM8N->detectAndConfigureGPS())
     {
         vTaskDelay(TASK_DELAY_MS(1000));
@@ -117,6 +117,7 @@ void UbloxM8N::ubloxM8NTask(void *arg)
                 while (!ubloxM8N->queue.empty())
                 {
                     ubloxM8N->queue.pop(sentence);
+                    // puts(sentence.c_str());
                     ubloxM8N->statistics.totalReceived++;
                     ubloxM8N->getBus().receive(OpenAce::GPSSentenceMsg{sentence});
                 }

@@ -131,23 +131,28 @@ void __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex)
     PioSerial &pioSerial = *interruptHandlers[irqHandlerIndex];
     while (!pio_sm_is_rx_fifo_empty(pioSerial.rxPio, pioSerial.rxSmIndx))
     {
-        char c = uart_rx_program_getc(pioSerial.rxPio, pioSerial.rxSmIndx);
-        if (c == '\n' || c == '\r')
+        uint32_t data = uart_rx_program_get32(pioSerial.rxPio, pioSerial.rxSmIndx);
+        char *bytePtr = (char*)&data;
+        for (int i = 0; i < 4; i++)
         {
-            if (pioSerial.charIndex > 1)
+            char c = bytePtr[i];
+            if (c == '\n' || c == '\r')
             {
-                pioSerial.buffer[pioSerial.charIndex] = '\0';
-                pioSerial.callback(pioSerial.buffer);
+                if (pioSerial.charIndex > 1)
+                {
+                    pioSerial.buffer[pioSerial.charIndex] = '\0';
+                    pioSerial.callback(pioSerial.buffer);
+                }
+                pioSerial.charIndex = 0;
             }
-            pioSerial.charIndex = 0;
-        }
-        else if (pioSerial.charIndex >= OpenAce::NMEA_MAX_LENGTH)
-        {
-            pioSerial.charIndex = 0;
-        }
-        else
-        {
-            pioSerial.buffer[pioSerial.charIndex++] = c;
+            else if (pioSerial.charIndex >= OpenAce::NMEA_MAX_LENGTH)
+            {
+                pioSerial.charIndex = 0;
+            }
+            else
+            {
+                pioSerial.buffer[pioSerial.charIndex++] = c;
+            }
         }
     }
 
@@ -220,7 +225,7 @@ uint32_t PioSerial::findBaudRate(uint32_t maxTimeOutMs)
 {
     for (uint32_t baudRate : commonBaudrates)
     {
-        // printf("Scanning %ldBd\n", commonBaudrates[i]);
+        // printf("Scanning %ldBd\n", baudRate);
         if (testUartAtBaudrate(baudRate, maxTimeOutMs))
         {
             return baudRate;
