@@ -10,18 +10,26 @@
 
 #include "etl/map.h"
 #include "etl/message_bus.h"
-
+#include "etl/queue_spsc_atomic.h"
 
 class SerialADSB : public BaseModule, public etl::message_router<SerialADSB>
 {
+    static constexpr uint8_t QUEUE_SIZE = 6;
+
 private:
     friend class message_router;
+        enum TaskState : uint32_t
+    {
+        EXIT = 1 << 0,
+        NEW = 1 << 2,
+    };
     struct
     {
-        uint32_t totalReceived=0;
+        uint32_t totalReceived = 0;
+        uint32_t queueFullErr = 0;
     } statistics;
 
-    void on_receive_unknown(const etl::imessage& msg)
+    void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
     }
@@ -32,16 +40,17 @@ private:
 
     PioSerial pioSerial;
     TaskHandle_t taskHandle;
+    etl::queue_spsc_atomic<OpenAce::ADSBString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
+
 public:
     static constexpr const etl::string_view NAME = "SerialADSB";
-    SerialADSB(etl::imessage_bus& bus, const OpenAce::PinTypeMap& pins) :
-        BaseModule(bus, NAME),
-        pioSerial{pins, SERIAL_BAUDRATE, PioSerial::CallBackFunction::create<SerialADSB, &SerialADSB::processNewSentence>(*this)},
-        taskHandle(nullptr)
+    SerialADSB(etl::imessage_bus &bus, const OpenAce::PinTypeMap &pins) : BaseModule(bus, NAME),
+                                                                          pioSerial{pins, SERIAL_BAUDRATE, PioSerial::CallBackFunction::create<SerialADSB, &SerialADSB::processNewSentence>(*this)},
+                                                                          taskHandle(nullptr)
     {
     }
 
-    SerialADSB(etl::imessage_bus& bus, const Configuration &config)  : SerialADSB(bus, config.pinMap(NAME))
+    SerialADSB(etl::imessage_bus &bus, const Configuration &config) : SerialADSB(bus, config.pinMap(NAME))
     {
     }
 
@@ -57,5 +66,3 @@ public:
 
     void processNewSentence(const char *sentence);
 };
-
-

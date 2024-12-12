@@ -1,22 +1,16 @@
 #include <stdio.h>
 
-#include "ubloxm8n.hpp"
-#include "message_buffer.h"
+#include "etl/string.h"
+#include "pico/stdlib.h"
+#include "pico/binary_info.h"
 
-#include "string.h"
+#include "ubloxm8n.hpp"
 
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/constants.hpp"
-#include "ace/utils.hpp"
-
-#include "etl/map.h"
-#include "etl/string.h"
-#include "pico/stdlib.h"
-#include "pico/binary_info.h"
-
 #include "ace/utils.hpp"
 
 // *INDENT-OFF*
@@ -228,6 +222,9 @@ void __time_critical_func(UbloxM8N::processNewSentence)(const char *sentence)
     {
         statistics.queueFullErr++;
     }
+
+    // To reduce some FreeRTOS switches only send when queue is nearly full
+    // Since this is a continues streem, this should be fine
     if (queue.size() > QUEUE_SIZE - 2)
     {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;

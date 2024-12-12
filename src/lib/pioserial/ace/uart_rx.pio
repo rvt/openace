@@ -4,43 +4,6 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ;
 
-.program uart_rx_mini
-
-; Minimum viable 8n1 UART receiver. Wait for the start bit, then sample 8 bits
-; with the correct timing.
-; IN pin 0 is mapped to the GPIO used as UART RX.
-; Autopush must be enabled, with a threshold of 8.
-
-    wait 0 pin 0        ; Wait for start bit
-    set x, 7 [10]       ; Preload bit counter, delay until eye of first data bit
-bitloop:                ; Loop 8 times
-    in pins, 1          ; Sample data
-    jmp x-- bitloop [6] ; Each iteration is 8 cycles
-
-% c-sdk {
-#include "hardware/clocks.h"
-#include "hardware/gpio.h"
-#include "string.h"
-
-static inline void uart_rx_mini_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
-    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
-    pio_gpio_init(pio, pin);
-    gpio_pull_up(pin);
-
-    pio_sm_config c = uart_rx_mini_program_get_default_config(offset);
-    sm_config_set_in_pins(&c, pin); // for WAIT, IN
-    // Shift to right, autopush enabled
-    sm_config_set_in_shift(&c, true, true, 8);
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
-    // SM transmits 1 bit per 8 execution cycles.
-    float div = (float)clock_get_hz(clk_sys) / (8 * baud);
-    sm_config_set_clkdiv(&c, div);
-    
-    pio_sm_init(pio, sm, offset, &c);
-    pio_sm_set_enabled(pio, sm, true);
-}
-%}
-
 .program uart_rx
 
 ; Slightly more fleshed-out 8n1 UART receiver which handles framing errors and
@@ -64,6 +27,10 @@ good_stop:              ; No delay before returning to start; a little slack is
 
 
 % c-sdk {
+#include <string.h>
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
 static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baudRate) {
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
     pio_gpio_init(pio, pin);

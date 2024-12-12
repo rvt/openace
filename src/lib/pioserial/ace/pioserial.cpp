@@ -126,20 +126,18 @@ void PioSerial::disableRx()
  */
 void __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex)
 {
-//    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     UBaseType_t savedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 
     PioSerial &pioSerial = *interruptHandlers[irqHandlerIndex];
     while (!pio_sm_is_rx_fifo_empty(pioSerial.rxPio, pioSerial.rxSmIndx))
     {
         char c = uart_rx_program_getc(pioSerial.rxPio, pioSerial.rxSmIndx);
-
         if (c == '\n' || c == '\r')
         {
-            if (pioSerial.charIndex > 8)
+            if (pioSerial.charIndex > 1)
             {
                 pioSerial.buffer[pioSerial.charIndex] = '\0';
-                            pioSerial.callback(pioSerial.buffer);
+                pioSerial.callback(pioSerial.buffer);
             }
             pioSerial.charIndex = 0;
         }
@@ -154,8 +152,6 @@ void __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex)
     }
 
     taskEXIT_CRITICAL_FROM_ISR(savedInterruptStatus);
-//    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-
 }
 
 void PioSerial::sendBlocking(const uint8_t *data, uint16_t length)

@@ -1,10 +1,8 @@
 #include <stdio.h>
 
+#include "pico/stdlib.h"
+
 #include "serialadsb.hpp"
-
-#include "message_buffer.h"
-
-#include "string.h"
 
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -12,54 +10,52 @@
 #include "ace/coreutils.hpp"
 #include "ace/constants.hpp"
 
-#include "etl/map.h"
-#include "etl/string.h"
-#include "pico/stdlib.h"
-#include "pico/binary_info.h"
 
 void SerialADSB::start()
 {
     pioSerial.start();
-    xTaskCreate(serialADSBTask, "serialADSBTask", configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(serialADSBTask, "serialADSBTask", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
 };
 
 void SerialADSB::stop()
 {
-    if (taskHandle != nullptr)
-    {
-        vTaskDelete(taskHandle);
-        taskHandle = nullptr;
-    }
-
     pioSerial.stop();
+    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
 };
-
-void SerialADSB::serialADSBTask(void *arg)
-{ 
-    (void)arg;
-   // SerialADSB *serialADSB = static_cast<SerialADSB *>(arg);
-    while (true)
-    {
-        // char receivedMessage[33];
-        //     serialADSB->statistics.totalReceived++;
-            //            serialADSB->getBus().receive(OpenAce::ADSBMessageBin{receivedMessage});
-    }
-}
 
 OpenAce::PostConstruct SerialADSB::postConstruct()
 {
     pioSerial.postConstruct();
-
-    // Initialise the GPS hardware
-    puts("Looking for ADSB... ");
-    uint32_t scanBaudRate = pioSerial.findBaudRate(1500);
-    if (!scanBaudRate)
-    {
-        puts("No Serial ADSB");
-        return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;
-    }
-
     return OpenAce::PostConstruct::OK;
+}
+
+void SerialADSB::serialADSBTask(void *arg)
+{
+    SerialADSB *serialAdsb = static_cast<SerialADSB *>(arg);
+    serialAdsb->statistics.queueFullErr = 0;
+    OpenAce::ADSBString sentence;
+    while (true)
+    {
+        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
+        {
+            if (notifyValue & TaskState::EXIT)
+            {
+                vTaskDelete(nullptr);
+                return;
+            }
+
+            if (notifyValue & TaskState::NEW)
+            {
+                while (!serialAdsb->queue.empty())
+                {
+                    serialAdsb->queue.pop(sentence);
+                    serialAdsb->statistics.totalReceived++;
+                    // Finalise implementation to create the binary message here and send
+//                    serialAdsb->getBus().receive(OpenAce::ADSBMessageBin{sentence});
+                }
+            }
+        }
+    }
 }
 
 void SerialADSB::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -67,10 +63,27 @@ void SerialADSB::getData(etl::string_stream &stream, const etl::string_view path
     (void)path;
     stream << "{";
     stream << "\"totalReceived\":" << statistics.totalReceived;
+    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << "}\n";
 }
 
-void SerialADSB::processNewSentence(const char *sentence)
+void __time_critical_func(SerialADSB::processNewSentence)(const char *sentence)
 {
-    (void)sentence;
+    if (!queue.full())
+    {
+        queue.push(sentence);
+    }
+    else
+    {
+        statistics.queueFullErr++;
+    }
+
+    // To reduce some FreeRTOS switches only send when queue is nearly full
+    // Since this is a continues streem, this should be fine
+    if (queue.size() > QUEUE_SIZE - 2)
+    {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }

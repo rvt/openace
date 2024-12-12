@@ -20,7 +20,13 @@ class UbloxM8N : public BaseModule, public etl::message_router<UbloxM8N>
 private:
     static constexpr uint8_t QUEUE_SIZE = 6;
     friend class message_router;
-    struct
+    
+    enum TaskState : uint32_t
+    {
+        EXIT = 1 << 0,
+        NEW = 1 << 2,
+    };
+        struct
     {
         uint32_t totalReceived=0;
         uint32_t baudrate = 0;
@@ -28,11 +34,7 @@ private:
         etl::string<16> status;
     } statistics;
 
-    enum TaskState : uint32_t
-    {
-        EXIT = 1 << 0,
-        NEW = 1 << 2,
-    };
+
     void on_receive_unknown(const etl::imessage& msg)
     {
         (void)msg;
