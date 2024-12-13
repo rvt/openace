@@ -15,8 +15,8 @@
 
 class CoreUtils
 {
-    inline static uint64_t offsetTimeToAbsolute = 0;
-    inline static uint32_t timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
+    inline static uint64_t __scratch_y("OpenAceMem") offsetTimeToAbsolute = 0;
+    inline static uint32_t __scratch_y("OpenAceMem") timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
 
 public:
     /**
@@ -36,12 +36,12 @@ public:
      * Use this to measure short time differences of less then 71minutes
      * \sa isReached
      */
-    static uint32_t timeUs32()
+    static uint32_t __force_inline timeUs32()
     {
         return time_us_32() - timeUs32PpsOffset;
     }
 
-    static uint64_t timeUs64()
+    static uint64_t __force_inline timeUs64()
     {
         // time_us_64 and time_us_32 use the same hardware time, thus offset is also the same
         return time_us_64() - timeUs32PpsOffset;
@@ -71,7 +71,7 @@ public:
      * It will properly handle wraparounds if the time is less than 35 minutes in difference
      * \sa timeUs32
      */
-    static bool isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
+    static bool __force_inline isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
     {
         return usToReference(referenceUs, us) < 0;
     }
@@ -91,7 +91,7 @@ public:
      * Must be called at high priority to set the PPS offset.
      * When offset is known, the correct time in us in reference to PPS can be calculated
      */
-    static void setPPS()
+    static void __force_inline setPPS()
     {
         timeUs32PpsOffset = time_us_32() % 1'000'000;
     }
@@ -139,7 +139,7 @@ public:
      * If referenceUs is in the past, the result is negative
      *
      */
-    static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
+    static int32_t __force_inline usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
     {
         return referenceUs - us;
     }
