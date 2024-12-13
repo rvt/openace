@@ -53,7 +53,7 @@ private:
 
     // We have PIO's and each PIO has 8 state machine
     // Note: We properly need to put these in a struct or something
-    inline static PioSerial* interruptHandlers[] =
+    inline static PioSerial*  __scratch_y("OpenAceMem") interruptHandlers[] =
     {
         {nullptr},
         {nullptr},

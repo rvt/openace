@@ -74,7 +74,7 @@ FEET_HEIGHT=4.5;
 // Z roitation of the switch in the lid
 SWITCH_LID_ZROT=0;  
 // Position X/Y relative to the back left corner
-SWITCH_LID_POS=[40,-20, 0];  
+SWITCH_LID_POS=[40,-15, 0];  
 // 'Cube' size (even though cylinder shape
 SWITCH_LID_CUBE_SIZE=[22,20];
 // Switch bore diam
@@ -97,6 +97,7 @@ SWITCH_LID_Z_OFFSET=5.5;
 
 
 // up(25) right(45) fwd(72) zrot(90) import("gps-antenna-holder.stl", convexity=2);
+
 
 
     // Switch    
@@ -262,10 +263,10 @@ diff("removeBox")
           up(0.001) tag("removeBox") bottom_half() back(0.5) cyl(d=SWITCH_LID_CUBE_SIZE.x-1.5,l=SWITCH_LID_CUBE_SIZE.y-3, orient=FWD) {
 
 
-          left(SWITCH_LID_CUBE_SIZE.x/2) position(BOTTOM) down(4) fwd(TEXT_LENGTH/2) xrot(-90) linear_extrude(TEXT_LENGTH) zrot(0) 
+          left(5) position(LEFT) down(4) fwd(TEXT_LENGTH/2) xrot(-90) linear_extrude(TEXT_LENGTH) zrot(-90) 
              text("OFF", halign="center", valign="center", font = "Arial Black", size = 5);
 
-          right(SWITCH_LID_CUBE_SIZE.x/2) position(BOTTOM) down(4) fwd(TEXT_LENGTH/2) xrot(-90) linear_extrude(TEXT_LENGTH) zrot(0) 
+          right(5) position(RIGHT) down(4) fwd(TEXT_LENGTH/2) xrot(-90) linear_extrude(TEXT_LENGTH) zrot(-90) 
              text("ON", halign="center", valign="center", font = "Arial Black", size = 5);
 
 

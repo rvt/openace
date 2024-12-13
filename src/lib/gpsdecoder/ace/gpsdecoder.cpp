@@ -33,7 +33,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"receivedOther\":" << statistics.receivedOther;
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude();
     stream << ",\"longitude\":" << longitude() << etl::format_spec{}.precision(1);
-    stream << ",\"altitudeWgs96\":" << altitudeWgs84();
+    stream << ",\"altitudeWgs84\":" << altitudeWgs84();
     stream << ",\"heightGeoidWGS84\":" << heightGeoidWGS84();
     stream << ",\"groundspeed\":" << groundSpeed();
     stream << ",\"track\":" << course();

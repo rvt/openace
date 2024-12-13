@@ -52,10 +52,6 @@ static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin,
     pio_sm_set_enabled(pio, sm, true);
 }
 
-// Read single characters from uart
-static inline uint32_t uart_rx_program_get32(PIO pio, uint sm) {
-    return pio->rxf[sm];
-}
 
 /**
  * Test for characters on the uart. 

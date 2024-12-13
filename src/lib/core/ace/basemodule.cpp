@@ -1,5 +1,5 @@
 #include "basemodule.hpp"
-
+#include "semaphoreguard.hpp"
 /* FreeRTOS. */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -104,7 +104,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
     return nullptr;
 }
 
-void __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
+void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
 {
     UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();
     // Handle the interrupt and call back over callback or task notification
@@ -165,25 +165,32 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallb
     }
 }
 
+/**
+ * Disable the interrupt callback. The interrupt itself will not be disabled
+ */
 void BaseModule::disablePinInterrupt(uint8_t pin)
 {
     pinInterruptHandlers[pin].enabled = false;
 }
 
+/**
+ * Re-Enable the interrupt that was previously disabled with \sa disablePinInterrupt()
+ */
 void BaseModule::enablePinInterrupt(uint8_t pin)
 {
     pinInterruptHandlers[pin].enabled = true;
 }
 
 /**
- * Unregister a pin interrupt handler
+ * Unregister a pin interrupt handler.
+ * THis will remove the interrupt from the callbacks
  */
 void BaseModule::unregisterPinInterrupt(uint8_t pin)
 {
-    if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
+    SemaphoreGuard<portMAX_DELAY> guard(BaseModule::xMutex);
+    if (guard)
     {
         gpio_set_irq_enabled(pin, 0x00, false);
         pinInterruptHandlers.erase(pin);
-        xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 }

@@ -124,14 +124,14 @@ void PioSerial::disableRx()
  * When a NMEA string is found, it will send a message using FReeRTOS
  * The message is guaranteed to be zero terminated
  */
-void __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex)
+void __isr __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex)
 {
     UBaseType_t savedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 
     PioSerial &pioSerial = *interruptHandlers[irqHandlerIndex];
     while (!pio_sm_is_rx_fifo_empty(pioSerial.rxPio, pioSerial.rxSmIndx))
     {
-        uint32_t data = uart_rx_program_get32(pioSerial.rxPio, pioSerial.rxSmIndx);
+        uint32_t data =  pioSerial.rxPio->rxf[pioSerial.rxSmIndx];
         char *bytePtr = (char*)&data;
         for (int i = 0; i < 4; i++)
         {
