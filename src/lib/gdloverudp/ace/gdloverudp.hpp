@@ -26,7 +26,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * TODO: de-Couple UDP from the GDL90 so this service send GDL Message over the messagebus which can then be send over UDP or Serial or BlueToolh
 */
-class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, OpenAce::GDLMsg, OpenAce::AccessPointClientsMsg, OpenAce::ConfigUpdatedMsg>
+class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, OpenAce::GdlMsg, OpenAce::AccessPointClientsMsg, OpenAce::ConfigUpdatedMsg>
 {
     static constexpr uint16_t GDL90OVERUDP_DEFAULT_PORT = 4000; // Default port
     static constexpr uint8_t GDL90OVERUDP_MAX_PORTS = 4;        // Maximum number of customer UDP ports to send on
@@ -48,10 +48,9 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, Ope
     };
 
     udp_pcb *pcb;
-    etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::list<ClientConfig, GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
+    etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts= {};
-    SemaphoreHandle_t configMutex;
 private:
     void getConfiguration(const Configuration &config);
     void getConfigurationNoMutex(const Configuration &config);
@@ -79,17 +78,16 @@ public:
     virtual void stop() override
     {
         getBus().unsubscribe(*this);
-        vSemaphoreDelete(configMutex);
     };
 
     void on_receive_unknown(const etl::imessage& msg);
 
     void on_receive(const OpenAce::AccessPointClientsMsg& msg);
 
-    void on_receive(const OpenAce::GDLMsg& msg);
+    void on_receive(const OpenAce::GdlMsg& msg);
 
     void on_receive(const OpenAce::ConfigUpdatedMsg& msg);
 
-    void sendTo(const OpenAce::GDLMsg& msg, uint32_t ip, int16_t port );
+    void sendTo(const OpenAce::GdlMsg& msg, uint32_t ip, int16_t port );
 };
 

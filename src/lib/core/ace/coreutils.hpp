@@ -80,7 +80,7 @@ public:
      * Set's the offset to the current time in ms since epoch.
      * THis function should be called to sync GPS time to the PICO's time using the PPS from the GPS
      * and is given the exact epochoffset when received from PPS this will calibrate the epoch function to exact ms
-     * See RTC::on_receive(const OpenAce::GpsTime& msg)
+     * See RTC::on_receive(const OpenAce::GpsTimeMsg& msg)
      */
     static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
     {
@@ -380,10 +380,10 @@ public:
 
     /**
      * Add's the checksum and postfix characters to a NMEA string. It may contain an existing checksum that will be overwritten
-     * @param nmea example '$PFEC,GPint,RMC05*XX'
-     * @return example '$PFEC,GPint,RMC05*2D\r\n'
+     * @param nmea example '$PFEC,GPint,RMC05'
+     * @return             '$PFEC,GPint,RMC05*2D\r\n'
      */
-    static void addChecksumToNMEA(etl::istring &nmea)
+    static void __force_inline addChecksumToNMEA(etl::istring &nmea)
     {
         const char hexChars[] = "0123456789ABCDEF";
         uint16_t chk = 0, i = 1;

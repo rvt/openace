@@ -30,6 +30,9 @@ class BaseModule
     static constexpr uint8_t MAX_MODULES = 30;
     inline static SemaphoreHandle_t xMutex;
 
+protected:
+    inline static SemaphoreHandle_t configMutex;
+
 private:
     struct pinInterruptHandler
     {
@@ -50,7 +53,12 @@ public:
         xMutex = xSemaphoreCreateRecursiveMutex();
         if (xMutex == nullptr)
         {
-            panic("Failed to create Mutex");
+            panic("Failed to create xMutex");
+        }
+        configMutex = xSemaphoreCreateMutex();
+        if (configMutex == nullptr)
+        {
+            panic("Failed to create configMutex");
         }
     }
     using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
@@ -117,7 +125,7 @@ public:
         return moduleName;
     }
 
-    inline etl::imessage_bus &getBus()
+    etl::imessage_bus __force_inline &getBus() const
     {
         return bus;
     }
@@ -249,7 +257,7 @@ public:
      * Alternative to acquireSlotSync that will acquire access to the SPI bus, calls the delegate and release it in one function call
      * \sa releaseSlotSync()
      */
-    virtual bool acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()>& delegate) = 0;
+    virtual bool acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()> &delegate) = 0;
     virtual void releaseSlotSync() = 0;
 };
 
@@ -311,7 +319,7 @@ public:
 
         constexpr RadioParameters(const Radio::ProtocolConfig &_config, uint32_t _frequency, int8_t _powerdBm) : config(_config), frequency(_frequency), powerdBm(_powerdBm) {}
         constexpr RadioParameters(const Radio::RadioParameters &_params) : config(_params.config), frequency(_params.frequency), powerdBm(_params.powerdBm) {}
-        RadioParameters& operator=(const RadioParameters& other) = default;
+        RadioParameters &operator=(const RadioParameters &other) = default;
     };
 
     struct TxPacket
@@ -321,7 +329,8 @@ public:
         OpenAce::TxPacketType data;
         TxPacket(const RadioParameters &radioParameters_, uint8_t length_, const void *data_) : radioParameters(radioParameters_), length(length_)
         {
-            if (length_ > data.size()) {
+            if (length_ > data.size())
+            {
                 panic("TxPacket: Frame length to large for this packet");
             }
             memcpy(data.data(), data_, length < data.size() ? length : data.size());

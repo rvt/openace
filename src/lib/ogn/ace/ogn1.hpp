@@ -34,8 +34,8 @@
 
 #include "ognpacket.hpp"
 
-class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioRxFrame, OpenAce::OwnshipPositionMsg,
-    OpenAce::RadioTxPositionRequest, OpenAce::BarometricPressure, OpenAce::GpsStatsMsg, OpenAce::ConfigUpdatedMsg>
+class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioRxFrameMsg, OpenAce::OwnshipPositionMsg,
+    OpenAce::RadioTxPositionRequestMsg, OpenAce::BarometricPressureMsg, OpenAce::GpsStatsMsg, OpenAce::ConfigUpdatedMsg>
 {
     static constexpr int32_t DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int32_t MAX_IGNORE_DISTANCE = 50000;
@@ -64,7 +64,7 @@ class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioR
     TaskHandle_t taskHandle;
     QueueHandle_t frameConsumerQueue;
     OpenAce::OwnshipPositionInfo ownshipPosition;
-    OpenAce::BarometricPressure lastBarometricPressure;
+    OpenAce::BarometricPressureMsg lastBarometricPressureMsg;
     OpenAce::GpsStatsMsg gpsStats;
     OpenAce::Config::OpenAceConfiguration openAceConfiguration;
     uint16_t distanceIgnore;
@@ -76,7 +76,7 @@ public:
         taskHandle(nullptr),
         frameConsumerQueue(nullptr),
         ownshipPosition(),
-        lastBarometricPressure(),
+        lastBarometricPressureMsg(),
         gpsStats(),
         openAceConfiguration(config.openAceConfig())
     {
@@ -96,11 +96,11 @@ private:
      * Send a FreeRTOS message when a OgnFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxFrame &msg);
+    void on_receive(const OpenAce::RadioRxFrameMsg &msg);
     void on_receive(const OpenAce::OwnshipPositionMsg &msg);
-    void on_receive(const OpenAce::BarometricPressure &msg);
+    void on_receive(const OpenAce::BarometricPressureMsg &msg);
     void on_receive(const OpenAce::GpsStatsMsg &msg);
-    void on_receive(const OpenAce::RadioTxPositionRequest &msg);
+    void on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
     void on_receive_unknown(const etl::imessage& msg);
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
 

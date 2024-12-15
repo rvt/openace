@@ -32,7 +32,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTxFrame, OpenAce::ConfigUpdatedMsg>
+class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTxFrameMsg, OpenAce::ConfigUpdatedMsg>
 {
     static constexpr uint32_t MAX_LISTEN_TIMEOUT = 150000; // maximum time we listen for packages before we timeout and reset the Sx1262
     static constexpr uint8_t MANCHESTER = 2;               // Used to just clarify why we sometime multiply by 2
@@ -178,7 +178,7 @@ public:
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-    inline void sendToBus(OpenAce::RadioRxFrame &frame)
+    inline void sendToBus(OpenAce::RadioRxFrameMsg &frame)
     {
         getBus().receive(frame);
     };
@@ -188,7 +188,7 @@ public:
         (void)msg;
     }
 
-    void on_receive(const OpenAce::RadioTxFrame &msg);
+    void on_receive(const OpenAce::RadioTxFrameMsg &msg);
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
 
     void radioInit();

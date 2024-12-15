@@ -84,7 +84,7 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << "}\n";
 }
 
-void Sx1262::on_receive(const OpenAce::RadioTxFrame &msg)
+void Sx1262::on_receive(const OpenAce::RadioTxFrameMsg &msg)
 {
     if (msg.radioNo == radioNo && txEnabled)
     {
@@ -313,12 +313,12 @@ void Sx1262::receiveGFSKPacket(Radio::RadioParameters const &parameters)
             uint8_t data[maxFrameLength];
             sx126x_read_buffer(this, 0x80, data, receivedFrameLength);
 
-            OpenAce::RadioRxFrame RadioRxFrame{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), (int8_t)(-pkt_status.rssi_sync / 2), parameters.frequency, parameters.config.dataSource};
+            OpenAce::RadioRxFrameMsg RadioRxFrameMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), (int8_t)(-pkt_status.rssi_sync / 2), parameters.frequency, parameters.config.dataSource};
 
             // Seems like all GFSK packets are Manchester encoded, so we just decode here directly
-            manchesterDecode((uint8_t *)RadioRxFrame.frame, (uint8_t *)RadioRxFrame.err, data, receivedFrameLength);
-            sendToBus(RadioRxFrame);
-            // dumpBuffer((uint8_t *)RadioRxFrame.frame, RadioRxFrame.length);
+            manchesterDecode((uint8_t *)RadioRxFrameMsg.frame, (uint8_t *)RadioRxFrameMsg.err, data, receivedFrameLength);
+            sendToBus(RadioRxFrameMsg);
+            // dumpBuffer((uint8_t *)RadioRxFrameMsg.frame, RadioRxFrameMsg.length);
         }
         else
         {

@@ -47,6 +47,8 @@
 #include "ace/adsl.hpp"
 #include "ace/gdl90service.hpp"
 #include "ace/gdloverudp.hpp"
+#include "ace/dataport.hpp"
+#include "ace/airconnect.hpp"
 
 const char *buildTime = BUILD_TIMESTAMP;
 
@@ -146,6 +148,10 @@ void registerModules()
                                { return new ModuleManager(bus, config); });
     BaseModule::registerModule(AircraftTracker::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
                                { return new AircraftTracker(bus, config); });
+    BaseModule::registerModule(DataPort::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
+                               { return new DataPort(bus, config); });
+    BaseModule::registerModule(AirConnect::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
+                               { return new AirConnect(bus, config); });
     // // *INDENT-ON*
 
     for (auto a : BaseModule::registeredModules())
@@ -238,10 +244,12 @@ static void loadModules(void *arch)
     load(GDLoverUDP::NAME, bus, config);
     load(GpsDecoder::NAME, bus, config);
     load(UbloxM8N::NAME, bus, config);
+    load(DataPort::NAME, bus, config);
+    load(AirConnect::NAME, bus, config);
+    load(Dump1090Client::NAME, bus, config);
 
     // SerialADSB messes up the serial terminal, but it will load beyond this point
     // load(SerialADSB::NAME, bus, config);
-    load(Dump1090Client::NAME, bus, config);
     // puts("\033[2J\033[H");
     puts("All modules loaded!\n");
 
@@ -266,7 +274,7 @@ static void loadModules(void *arch)
         while (true)
         {
             puts("Wifi module not enabled");
-            vTaskDelay(TASK_DELAY_MS(5000));
+            vTaskDelay(5000);
         }
     }
 }

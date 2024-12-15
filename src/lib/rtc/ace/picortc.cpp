@@ -16,7 +16,7 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
 
 }
 
-// This method is not protected with a mutex since it's called from hardware interrupt well before OpenAce::GpsTime& event is end
+// This method is not protected with a mutex since it's called from hardware interrupt well before OpenAce::GpsTimeMsg& event is end
 void __force_inline PicoRtc::ppsEvent()
 {
     CoreUtils::setPPS();
@@ -41,7 +41,7 @@ void PicoRtc::stop()
 };
 
 
-void PicoRtc::on_receive(const OpenAce::GpsTime& msg)
+void PicoRtc::on_receive(const OpenAce::GpsTimeMsg& msg)
 {
     // printf("$RMC Time: %02d:%02d:%02d:%02d date: %04d:%02d:%02d\n",
     //     msg.hour, msg.minute, msg.second, msg.millisecond,

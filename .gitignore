@@ -1,15 +1,19 @@
 ./default_config.hpp
 ./config.hpp
+./build_time.hpp
 .pio
 wip/
 build/
+build_test/
 docker_build/
 release_build/
 private.data/
+*-backups/
 .parcel-cache
 node_modules/
 .DS_Store
 .venv
+.vscode/settings.json
 
 dist/
 # Experimental, but did not work

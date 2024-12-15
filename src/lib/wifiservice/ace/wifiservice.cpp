@@ -368,14 +368,12 @@ void WifiService::mDnsDeinit()
 
 void WifiService::on_receive(const OpenAce::IdleMsg &msg)
 {
+    static bool previous = false;
     (void)msg;
+    bool active = checkIfClientActive(CYW43_ITF_STA) || checkIfClientActive(CYW43_ITF_AP);
 
-    if (checkIfClientActive(CYW43_ITF_STA))
-    {
-        getBus().receive(OpenAce::WifiConnectionStateMsg{true});
-    }
-    else
-    {
-        getBus().receive(OpenAce::WifiConnectionStateMsg{false});
+    if (active != previous) {
+        getBus().receive(OpenAce::WifiConnectionStateMsg{active});
+        previous = active;
     }
 }

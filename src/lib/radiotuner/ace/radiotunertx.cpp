@@ -119,7 +119,7 @@ void RadioTunerTx::radioTxTask(void *arg)
 //                lastTx = CoreUtils::msSinceEpoch();
 
                 taskCtx->controller->getBus().receive(
-                    OpenAce::RadioTxPositionRequest
+                    OpenAce::RadioTxPositionRequestMsg
                 {
                     Radio::RadioParameters{
                         protocolTimeSlot.radioConfig,

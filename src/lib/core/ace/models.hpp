@@ -276,6 +276,7 @@ namespace OpenAce
         struct WifiServiceData
         {
             WifiNamePassword ap;
+            bool apDisabled;
             etl::vector<WifiNamePassword, 4> clients;
         };
 

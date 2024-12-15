@@ -13,7 +13,7 @@
 
 void GDLoverUDP::getConfiguration(const Configuration &config)
 {
-    if (xSemaphoreTake(configMutex, (TickType_t)10) == pdTRUE)
+    if (xSemaphoreTake(configMutex, portMAX_DELAY) == pdTRUE)
     {
         getConfigurationNoMutex(config);
         xSemaphoreGive(configMutex);
@@ -89,10 +89,10 @@ void GDLoverUDP::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
     getConfiguration(msg.config);
 }
 
-void GDLoverUDP::on_receive(const OpenAce::GDLMsg &msg)
+void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
 {
     // Send to the connect clients and the defined ports
-    if (xSemaphoreTake(configMutex, (TickType_t)100) == pdTRUE)
+    if (xSemaphoreTake(configMutex, (TickType_t)1) == pdTRUE)
     {
         for (auto ip : connectedClients)
         {
@@ -114,7 +114,7 @@ void GDLoverUDP::on_receive(const OpenAce::GDLMsg &msg)
     }
 }
 
-void GDLoverUDP::sendTo(const OpenAce::GDLMsg &msg, uint32_t ip, int16_t port)
+void GDLoverUDP::sendTo(const OpenAce::GdlMsg &msg, uint32_t ip, int16_t port)
 {
     ip_addr_t addr;
     ip4_addr_set_u32(&addr, ip);

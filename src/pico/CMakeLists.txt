@@ -112,14 +112,16 @@ target_link_libraries(
           gdl90service
           gdloverudp
           utils
-          aircrafttracker)
+          aircrafttracker
+          dataport
+          airconnect)
 
 target_compile_definitions(
   OpenAce
   PRIVATE FREE_RTOS_KERNEL_SMP=1 portSUPPORT_SMP=1
           OPENACE_UART_OVER_USB=${OPENACE_UART_OVER_USB}
           PICO_USE_STACK_GUARDS=1)
-          
+
 # Enable debugging over PICO Debugger
 if(OPENACE_UART_OVER_USB)
   pico_enable_stdio_usb(OpenAce 1)

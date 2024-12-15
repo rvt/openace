@@ -23,6 +23,8 @@ add_subdirectory(adsl)
 add_subdirectory(radiotuner)
 add_subdirectory(gdl90service)
 add_subdirectory(gdloverudp)
+add_subdirectory(dataport)
+add_subdirectory(airconnect)
 
 
 if (PICO_SDK_VERSION_STRING)

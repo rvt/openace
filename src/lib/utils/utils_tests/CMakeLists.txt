@@ -37,6 +37,8 @@ set( SOURCES_IDIOMATIC_EXAMPLES
    
    # Tests
    utils_test.cpp
+   circularbuffer_test.cpp
+   moreutils_test.cpp
 )
 
 string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAMPLES}" )
@@ -54,6 +56,8 @@ set( ACE_SOURCE_FILES
       ../ace/encryption.cpp
       ../ace/EMA.cpp
       ../ace/utils.cpp
+      ../ace/moreutils.cpp
+      ../ace/manchester.cpp
 )
 
 

@@ -34,9 +34,9 @@
 
 
 class ADSL : public BaseModule, public etl::message_router<ADSL,
-    OpenAce::RadioRxFrame,
+    OpenAce::RadioRxFrameMsg,
     OpenAce::OwnshipPositionMsg,
-    OpenAce::RadioTxPositionRequest,
+    OpenAce::RadioTxPositionRequestMsg,
     OpenAce::GpsStatsMsg,
     OpenAce::ConfigUpdatedMsg>
 {
@@ -93,9 +93,9 @@ private:
      * Send a FreeRTOS message when a ADSL is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxFrame &msg);
+    void on_receive(const OpenAce::RadioRxFrameMsg &msg);
     void on_receive(const OpenAce::OwnshipPositionMsg &msg);
-    void on_receive(const OpenAce::RadioTxPositionRequest &msg);
+    void on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
     void on_receive(const OpenAce::GpsStatsMsg &msg);
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
     void on_receive_unknown(const etl::imessage& msg)

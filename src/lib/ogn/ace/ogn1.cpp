@@ -10,7 +10,7 @@ constexpr float POSITION_ENDECODE = 1.f / POSITION_DECODE;
 
 OpenAce::PostConstruct Ogn1::postConstruct()
 {
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrame));
+    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrameMsg));
     if (frameConsumerQueue == nullptr)
     {
         return OpenAce::PostConstruct::XQUEUE_ERROR;
@@ -212,7 +212,7 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
     return 0;
 }
 
-void Ogn1::on_receive(const OpenAce::RadioTxPositionRequest &msg)
+void Ogn1::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
 {
     if (msg.radioParameters.config.dataSource == OpenAce::DataSource::OGN1)
     {
@@ -241,13 +241,13 @@ void Ogn1::on_receive(const OpenAce::RadioTxPositionRequest &msg)
 
         // TODO: Understand how baro Altitude really works in OGN
         packet.clrBaro();
-        // if (CoreUtils::msElapsed(lastBarometricPressure.msSinceBoot) > 4'000)
+        // if (CoreUtils::msElapsed(lastBarometricPressureMsg.msSinceBoot) > 4'000)
         // {
         //     packet.clrBaro();
         // }
         // else
         // {
-        //     packet.EncodeStdAltitude(lastBarometricPressure.pressurehPa);
+        //     packet.EncodeStdAltitude(lastBarometricPressureMsg.pressurehPa);
         // }
 
         packet.Position.FixQuality = gpsStats.fixQuality < 3 ? gpsStats.fixQuality : 0;
@@ -271,7 +271,7 @@ void Ogn1::on_receive(const OpenAce::RadioTxPositionRequest &msg)
         LDPC_Encode(packet.Word());
         statistics.transmittedAircraftPositions++;
 
-        getBus().receive(OpenAce::RadioTxFrame{
+        getBus().receive(OpenAce::RadioTxFrameMsg{
             Radio::TxPacket{
                 msg.radioParameters,
                 OGN_PACKET_LENGTH_FEC,
@@ -287,7 +287,7 @@ void Ogn1::ognReceiveTask(void *arg)
     while (true)
     {
         OGN1_Packet packet;
-        OpenAce::RadioRxFrame msg;
+        OpenAce::RadioRxFrameMsg msg;
         // msg length expected to be 0x1a == 26byte
         if (xQueueReceive(ogn1->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
@@ -317,11 +317,11 @@ void Ogn1::ognReceiveTask(void *arg)
     }
 }
 
-void Ogn1::on_receive(const OpenAce::RadioRxFrame &msg)
+void Ogn1::on_receive(const OpenAce::RadioRxFrameMsg &msg)
 {
     if (msg.dataSource == OpenAce::DataSource::OGN1)
     {
-        const OpenAce::RadioRxFrame cpy = msg;
+        const OpenAce::RadioRxFrameMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;
@@ -334,9 +334,9 @@ void Ogn1::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     ownshipPosition = msg.position;
 }
 
-void Ogn1::on_receive(const OpenAce::BarometricPressure &msg)
+void Ogn1::on_receive(const OpenAce::BarometricPressureMsg &msg)
 {
-    lastBarometricPressure = msg;
+    lastBarometricPressureMsg = msg;
 }
 
 void Ogn1::on_receive(const OpenAce::GpsStatsMsg &msg)

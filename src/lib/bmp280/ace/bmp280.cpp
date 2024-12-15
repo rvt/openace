@@ -153,7 +153,7 @@ void Bmp280::on_receive(const OpenAce::IdleMsg &msg)
 
             auto value = (pressure + compensation) / 100.0f;
             statistics.lastPressurehPa = value;
-            getBus().receive(OpenAce::BarometricPressure{value, CoreUtils::timeUs32()});
+            getBus().receive(OpenAce::BarometricPressureMsg{value, CoreUtils::timeUs32()});
         };
     }
     everyOnceAWhile++;

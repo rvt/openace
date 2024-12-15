@@ -32,6 +32,8 @@ class OpenAceModules extends El {
       "Config",
       "AircraftTracker",
       "WifiService",
+      "DataPort",
+      "AirConnect",
     ];
     this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "AircraftTracker"];
     this.enablers = [
@@ -49,16 +51,20 @@ class OpenAceModules extends El {
       "UbloxM8N",
       "RadioTunerRx",
       "RadioTunerTx",
+      "DataPort",
+      "AirConnect",
     ];
     this.info = {
       WifiService: (html) =>
-        html`An AccessPoint and Client taht will alow OpenAce to connect to a network, or setup a network. It can connect to multiple network depending which
+        html`An AccessPoint and Client that will alow OpenAce to connect to a network, or setup a network. It can connect to multiple network depending which
         network is reachable.`,
       AircraftTracker: (html) =>
         html`Tracker modules keeps track of all aircraft received and updates their position when no data has been received. It will send on e 1 second
         heartbeat the updated positions for each aircraft for up to a configurable number of seconds. Some protocols like GDL90 need 1 second heartbeat for all
         aircraft,`,
       Webserver: (html) => html`The Webserver displays this page and allows for configuration changes.`,
+      DataPort: (html) => html`A module that sends that creates NMEA sentences that are compatible with Dataport. This will enable EFB's like SkyDeamon to  receive traffic and ownship information of BlueTooth or AirConnect.`,
+      AirConnect: (html) => html`A module that sends all DataPort messages over TCP. It will listen on port 2000 and after connection from a service it will send out all data. Note on ForeFlight, it \'should\' work but ForeFlight decided to add a proprietary way to negotiate the port number. `,
       Gdl90Service: (html) => html`Generates GDL90 messages. A module like GDLoverUDP is needed to receive them on external devices.`,
       GDLoverUDP: (html) => html`A module that sends GDL90 messages over the UDP protocol to external devices.`,
       Flarm: (html) => html`A module that sends and receives Flarm (2024) protocol messages.`,
@@ -74,8 +80,8 @@ class OpenAceModules extends El {
       GpsDecoder: (html) => html`A core module to decode GPS NMEA messages.`,
       UbloxM8N: (html) => html`A core module that configures a uBlox8 or similar hardware devices.`,
       PicoRtc: (html) => html`A core module that reads GPS messages and handles accurate time tracking needed for various protocols.`,
-      Sx1262_0: (html) => html`Radio module 1. You can have a maximum of 2 radios for receiving different protocols.`,
-      Sx1262_1: (html) => html`Radio module 2. You can have a maximum of 2 radios for receiving different protocols.`,
+      Sx1262_0: (html) => html`Radio module 1. Can send and receive ADS-L, OGN, Flarm protocols`,
+      Sx1262_1: (html) => html`Radio module 2. Can send and receive ADS-L, OGN, Flarm protocols`,
       RadioTunerRx: (html) => html`A module that takes care of timings when receiving multiple protocols over one or more radios Flarm, OGN, and ADS-L.`,
       RadioTunerTx: (html) => html`A module that takes care of sending regular position messages over the different protocols like Flarm, OGN, and ADS-L.`,
     };

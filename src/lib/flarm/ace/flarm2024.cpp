@@ -91,7 +91,7 @@ void Flarm2024::scramble(uint32_t *data, uint32_t timestamp) const
 
 OpenAce::PostConstruct Flarm2024::postConstruct()
 {
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrame));
+    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrameMsg));
     if (frameConsumerQueue == nullptr)
     {
         return OpenAce::PostConstruct::XQUEUE_ERROR;
@@ -270,7 +270,7 @@ void Flarm2024::flarmReceiveTask(void *arg)
     Flarm2024 *flarm = static_cast<Flarm2024 *>(arg);
     while (true)
     {
-        OpenAce::RadioRxFrame msg;
+        OpenAce::RadioRxFrameMsg msg;
         if (xQueueReceive(flarm->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
             // Validate checksum
@@ -295,11 +295,11 @@ void Flarm2024::flarmReceiveTask(void *arg)
     }
 }
 
-void Flarm2024::on_receive(const OpenAce::RadioRxFrame &msg)
+void Flarm2024::on_receive(const OpenAce::RadioRxFrameMsg &msg)
 {
     if (msg.dataSource == OpenAce::DataSource::FLARM)
     {
-        const OpenAce::RadioRxFrame cpy = msg;
+        const OpenAce::RadioRxFrameMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;
@@ -320,7 +320,7 @@ void Flarm2024::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
     }
 }
 
-void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequest &msg)
+void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
 {
     if (msg.radioParameters.config.dataSource == OpenAce::DataSource::FLARM)
     {
@@ -392,7 +392,7 @@ void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequest &msg)
 
         statistics.transmittedAircraftPositions++;
 
-        getBus().receive(OpenAce::RadioTxFrame{
+        getBus().receive(OpenAce::RadioTxFrameMsg{
             Radio::TxPacket{
                 msg.radioParameters,
                 RadioPacket::totalLengthWCRC,

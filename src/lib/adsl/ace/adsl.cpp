@@ -10,7 +10,7 @@ OpenAce::PostConstruct ADSL::postConstruct()
 {
     //    BaseModule::moduleByName(*this, Tuner::NAME);
 
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrame));
+    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrameMsg));
     if (frameConsumerQueue == nullptr)
     {
         return OpenAce::PostConstruct::XQUEUE_ERROR;
@@ -76,11 +76,11 @@ void ADSL::addReceiveStat(uint32_t frequency)
         dataSourceTimeStats.back().timeTenthMs.set(msInSec);
     }
 }
-void ADSL::on_receive(const OpenAce::RadioRxFrame &msg)
+void ADSL::on_receive(const OpenAce::RadioRxFrameMsg &msg)
 {
     if (msg.dataSource == OpenAce::DataSource::ADSL)
     {
-        const OpenAce::RadioRxFrame cpy = msg;
+        const OpenAce::RadioRxFrameMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;
@@ -220,7 +220,7 @@ ADSL_Packet::AircraftCategory ADSL::mapAircraftCategory(OpenAce::AircraftCategor
     }
 }
 
-void ADSL::on_receive(const OpenAce::RadioTxPositionRequest &msg)
+void ADSL::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
 {
 
     if (msg.radioParameters.config.dataSource == OpenAce::DataSource::ADSL)
@@ -253,7 +253,7 @@ void ADSL::on_receive(const OpenAce::RadioTxPositionRequest &msg)
         packet.setCRC();
 
         // Takes about 4ms from the request to end up here
-        getBus().receive(OpenAce::RadioTxFrame{
+        getBus().receive(OpenAce::RadioTxFrameMsg{
             Radio::TxPacket{
                 msg.radioParameters,
                 ADSL_Packet::TotalTxBytes,
@@ -312,7 +312,7 @@ void ADSL::adslReceiveTask(void *arg)
 {
     ADSL *adsl = static_cast<ADSL *>(arg);
     ADSL_Packet packet;
-    OpenAce::RadioRxFrame msg;
+    OpenAce::RadioRxFrameMsg msg;
     while (true)
     {
         // msg length expected to be 0x1b == 25byte

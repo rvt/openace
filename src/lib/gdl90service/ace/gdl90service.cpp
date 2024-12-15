@@ -4,14 +4,10 @@
 
 /* OpenACE */
 #include "ace/coreutils.hpp"
+#include "ace/semaphoreguard.hpp"
 
 OpenAce::PostConstruct Gdl90Service::postConstruct()
 {
-    configMutex = xSemaphoreCreateMutex();
-    if (configMutex == nullptr)
-    {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
-    }
     return OpenAce::PostConstruct::OK;
 }
 
@@ -25,10 +21,6 @@ void Gdl90Service::stop()
 {
     getBus().unsubscribe(*this);
     xTaskNotify(taskHandle, TaskState::SHUTDOWN, eSetBits);
-    while (eTaskGetState(taskHandle) != eDeleted)
-    {
-        vTaskDelay(TASK_DELAY_MS(50));
-    }
 }
 
 void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -40,7 +32,7 @@ void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"trackingAircraftPosTx\":" << statistics.trackingAircraftPosTx;
     stream << ",\"trackingFailureErr\":" << statistics.trackingFailureErr;
     stream << ",\"ownEncodingFailureErr\":" << statistics.ownEncodingFailureErr;
-    stream << ",\"heartBeatEncodingFailureErr\":" << statistics.heartBeatEncodingFailureErr;    
+    stream << ",\"heartBeatEncodingFailureErr\":" << statistics.heartBeatEncodingFailureErr;
     stream << "}\n";
 }
 
@@ -119,11 +111,18 @@ GDL90::EMITTER aircraftTypeToEmitter(OpenAce::AircraftCategory at)
 
 void Gdl90Service::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-
-    if (msg.moduleName == Gdl90Service::NAME && xSemaphoreTake(configMutex, (TickType_t)10) == pdTRUE)
+    if (msg.moduleName != Gdl90Service::NAME)
     {
-        openAceConfiguration = msg.config.openAceConfig();
-        xSemaphoreGive(configMutex);
+        return;
+    }
+
+    SemaphoreGuard<portMAX_DELAY> guard(BaseModule::configMutex);
+    if (guard)
+    {
+        auto openAceConfiguration = msg.config.openAceConfig();
+        type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+        address = openAceConfiguration.address;
+        category = openAceConfiguration.category;
     }
 }
 
@@ -142,45 +141,29 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
     gdl90.altitude_encode(altitude, pos.altitudeWgs84 * M_TO_FT);
-    gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN );
+    gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
 
-    GDL90::ADDR_TYPE type;
-    OpenAce::AircraftAddress address;
-    OpenAce::AircraftCategory category;
-    if (xSemaphoreTake(configMutex, (TickType_t)10) == pdTRUE)
-    {
-        type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
-        address = openAceConfiguration.address;
-        category = openAceConfiguration.category;
-        xSemaphoreGive(configMutex);
-    }
-    else
-    {
-        return;
-    }
-
-
     GDL90::RawBytes unpacked;
     if (gdl90.ownership_or_traffic_report_encode(
-                unpacked,
-                true,
-                GDL90::ALERT_STATUS::INACTIVE,
-                type,
-                address,
-                latitude,
-                longitude,
-                altitude,
-                GDL90::MISC_TT_HEADING_TRUE_MASK | (pos.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
-                GDL90::NIC::HPL_LT_25_VPL_LT_37_5,
-                GDL90::NACP::HFOM_LT_30_VFOM_LT_45, /* Integrity | Accuracy We do not really have this information from the GPS */
-                horiz_velocity,
-                vert_velocity,
-                track_hdg,
-                aircraftTypeToEmitter(category),
-                icaoAddress, // [0-9A-Z]
-                GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
+            unpacked,
+            true,
+            GDL90::ALERT_STATUS::INACTIVE,
+            type,
+            address,
+            latitude,
+            longitude,
+            altitude,
+            GDL90::MISC_TT_HEADING_TRUE_MASK | (pos.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
+            GDL90::NIC::HPL_LT_25_VPL_LT_37_5,
+            GDL90::NACP::HFOM_LT_30_VFOM_LT_45, /* Integrity | Accuracy We do not really have this information from the GPS */
+            horiz_velocity,
+            vert_velocity,
+            track_hdg,
+            aircraftTypeToEmitter(category),
+            icaoAddress, // [0-9A-Z]
+            GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
         statistics.ownshipPosTx++;
@@ -230,22 +213,22 @@ void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
 
     GDL90::RawBytes unpacked;
     if (gdl90.ownership_or_traffic_report_encode(unpacked,
-            false,
-            GDL90::ALERT_STATUS::ACTIVE,
-            type,
-            pos.address,
-            latitude,
-            longitude,
-            altitude,
-            GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_REPORT_UPDATED_MASK | (pos.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
-            GDL90::NIC::HPL_LT_25_VPL_LT_37_5,
-            GDL90::NACP::HFOM_LT_30_VFOM_LT_45, /* Integrity | Accuracy We do not really have this information from the GPS */
-            horiz_velocity,
-            vert_velocity,
-            track_hdg,
-            aircraftTypeToEmitter(pos.aircraftType),
-            pos.icaoAddress, /* // [0-9A-Z] TODO: Can we use DDB ?? */
-            GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
+                                                 false,
+                                                 GDL90::ALERT_STATUS::ACTIVE,
+                                                 type,
+                                                 pos.address,
+                                                 latitude,
+                                                 longitude,
+                                                 altitude,
+                                                 GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_REPORT_UPDATED_MASK | (pos.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
+                                                 GDL90::NIC::HPL_LT_25_VPL_LT_37_5,
+                                                 GDL90::NACP::HFOM_LT_30_VFOM_LT_45, /* Integrity | Accuracy We do not really have this information from the GPS */
+                                                 horiz_velocity,
+                                                 vert_velocity,
+                                                 track_hdg,
+                                                 aircraftTypeToEmitter(pos.aircraftType),
+                                                 pos.icaoAddress, /* // [0-9A-Z] TODO: Can we use DDB ?? */
+                                                 GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
         statistics.trackingAircraftPosTx++;
@@ -301,7 +284,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
 
 void Gdl90Service::packAndSend(const GDL90::RawBytes &unpacked)
 {
-    OpenAce::GDLMsg gdlMsg{};
-    gdl90.pack(gdlMsg.msg, unpacked);
-    getBus().receive(gdlMsg);
+    OpenAce::GdlMsg GdlMsg{};
+    gdl90.pack(GdlMsg.msg, unpacked);
+    getBus().receive(GdlMsg);
 }

@@ -20,3 +20,9 @@ inline void panic(const char *msg)
 }
 
 #define __time_critical_func(func_name) func_name
+
+#define __scratch_y(func_name) 
+
+#define __force_inline 
+
+#define __isr 

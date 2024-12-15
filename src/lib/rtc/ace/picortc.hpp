@@ -18,7 +18,7 @@
 // When set, also set's the PICO's rtc
 
 
-class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, OpenAce::GpsTime>
+class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, OpenAce::GpsTimeMsg>
 {
     friend class message_router;
 
@@ -31,7 +31,7 @@ class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, OpenAce::G
     } statistics;
 
 private:
-    void on_receive(const OpenAce::GpsTime& msg);
+    void on_receive(const OpenAce::GpsTimeMsg& msg);
 
     void on_receive_unknown(const etl::imessage& msg);
 

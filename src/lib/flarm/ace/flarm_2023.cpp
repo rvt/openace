@@ -68,7 +68,7 @@ OpenAce::PostConstruct Flarm::postConstruct()
         return OpenAce::PostConstruct::FAILED;
     }
 
-    frameConsumerQueue = xQueueCreate( 4, sizeof( OpenAce::RadioRxFrame ) );
+    frameConsumerQueue = xQueueCreate( 4, sizeof( OpenAce::RadioRxFrameMsg ) );
     if (frameConsumerQueue == nullptr)
     {
         panic("Failed to create frameConsumerQueue");
@@ -238,7 +238,7 @@ void Flarm::flarmReceiveTask(void *arg)
     Flarm *flarm = static_cast<Flarm*>(arg);
     while (true)
     {
-        OpenAce::RadioRxFrame msg;
+        OpenAce::RadioRxFrameMsg msg;
         if (xQueueReceive(flarm->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
             // Validate checksum
@@ -256,7 +256,7 @@ void Flarm::flarmReceiveTask(void *arg)
     }
 }
 
-const flarmV7Packet_t Flarm::on_receive(const OpenAce::RadioTxPositionRequest &msg)
+const flarmV7Packet_t Flarm::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
 {
     flarmV7Packet_t packet;
     if (msg.radioParameters.config.dataSource == OpenAce::DataSource::FLARM)
@@ -315,7 +315,7 @@ const flarmV7Packet_t Flarm::on_receive(const OpenAce::RadioTxPositionRequest &m
         packet.checksum = swapBytes16(calculatedChecksum);
 
         statistics.transmittedAircraftPositions++;
-        getBus().receive(OpenAce::RadioTxFrame
+        getBus().receive(OpenAce::RadioTxFrameMsg
         {
             Radio::TxPacket{
                 msg.radioParameters,

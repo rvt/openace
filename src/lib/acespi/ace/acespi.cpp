@@ -114,7 +114,7 @@ bool AceSpi::acquireSlotSync(uint8_t busFrequencyMhz)
         if (lastBusFrequency != busFrequencyMhz)
         {
             lastBusFrequency = busFrequencyMhz;
-            spi_init(OPENACE_SPI_DEFAULT, lastBusFrequency * 1000'000);
+            spi_init(OPENACE_SPI_DEFAULT, lastBusFrequency * 1'000'000);
         }
         return true;
     }

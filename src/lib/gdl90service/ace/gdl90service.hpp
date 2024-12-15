@@ -48,9 +48,10 @@ private:
 
     TaskHandle_t taskHandle;
     GDL90 gdl90;
-    OpenAce::Config::OpenAceConfiguration openAceConfiguration;
-    SemaphoreHandle_t configMutex;
 
+    GDL90::ADDR_TYPE type;
+    OpenAce::AircraftAddress address;
+    OpenAce::AircraftCategory category;
 private:
     void static heartbeatTimerCallBack(TimerHandle_t xTimer);
 
@@ -75,7 +76,10 @@ public:
     static constexpr const etl::string_view NAME = "Gdl90Service";
     Gdl90Service(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr)
     {
-        openAceConfiguration = config.openAceConfig();
+        auto openAceConfiguration = config.openAceConfig();
+                type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+        address = openAceConfiguration.address;
+        category = openAceConfiguration.category;
     }
 
     virtual ~Gdl90Service() = default;

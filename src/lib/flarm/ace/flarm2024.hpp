@@ -32,7 +32,7 @@
 
 
 class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, OpenAce::ConfigUpdatedMsg, 
-OpenAce::RadioRxFrame, OpenAce::OwnshipPositionMsg, OpenAce::RadioTxPositionRequest>
+OpenAce::RadioRxFrameMsg, OpenAce::OwnshipPositionMsg, OpenAce::RadioTxPositionRequestMsg>
 {
     friend class message_router;
 
@@ -128,10 +128,10 @@ private:
      * Send a FreeRTOS message when a FlarmFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxFrame &msg);
+    void on_receive(const OpenAce::RadioRxFrameMsg &msg);
     void on_receive(const OpenAce::OwnshipPositionMsg &msg);
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
-    void on_receive(const OpenAce::RadioTxPositionRequest &msg);
+    void on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
 
     void on_receive_unknown(const etl::imessage& msg)
     {

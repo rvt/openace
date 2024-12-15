@@ -39,10 +39,10 @@ namespace OpenAce
      * NMEA Compatible message of length 83 chars including null term
      * Send to attached devices
      */
-    struct NMEASentence : public etl::message<4>
+    struct DataPortMsg : public etl::message<4>
     {
         const NMEAString sentence; // Received NMEA sentence
-        NMEASentence(const NMEAString &sentence_) : sentence(sentence_) {}
+        DataPortMsg(const NMEAString &sentence_) : sentence(sentence_) {}
     };
 
     /**
@@ -135,7 +135,7 @@ namespace OpenAce
     //     bool noTrack;           // Privacy option see dataport of explanation
     // };
 
-    struct GpsTime : public etl::message<12>
+    struct GpsTimeMsg : public etl::message<12>
     {
         int16_t year;        // Set with full year, e.g. 2021
         int8_t month;        // 1..12
@@ -145,17 +145,10 @@ namespace OpenAce
         int8_t second;       // 0..59
         int16_t millisecond; // 0..999
         // Constructor
-        GpsTime(int16_t year_, int8_t month_, int8_t day_, int8_t hour_, int8_t minute_, int8_t second_, int16_t millisecond_) : year(year_), month(month_), day(day_), hour(hour_), minute(minute_), second(second_), millisecond(millisecond_) {};
+        GpsTimeMsg(int16_t year_, int8_t month_, int8_t day_, int8_t hour_, int8_t minute_, int8_t second_, int16_t millisecond_) : year(year_), month(month_), day(day_), hour(hour_), minute(minute_), second(second_), millisecond(millisecond_) {};
 
         // Default constructor
-        GpsTime() : year(0), month(0), day(0), hour(0), minute(0), second(0), millisecond(0) {};
-    };
-
-    struct GpsStatus : public etl::message<13>
-    {
-        bool valid;
-        // Constructor
-        GpsStatus(bool valid_) : valid(valid_) {};
+        GpsTimeMsg() : year(0), month(0), day(0), hour(0), minute(0), second(0), millisecond(0) {};
     };
 
     struct GpsStatsMsg : public etl::message<14>
@@ -173,15 +166,15 @@ namespace OpenAce
         GpsStatsMsg() : fixQuality(0), satellitesTracked(0), pDop(255), hDop(255), pDopInt(floatToDOPInterpretation(255)) {};
     };
 
-    struct BarometricPressure : public etl::message<15>
+    struct BarometricPressureMsg : public etl::message<15>
     {
         float pressurehPa;    // Preasure in hPa (hectopascal)
         uint32_t usSinceBoot; // Time since boot
-        BarometricPressure(float pressurehPa_, uint32_t usSinceBoot_) : pressurehPa(pressurehPa_), usSinceBoot(usSinceBoot_) {};
-        BarometricPressure() : pressurehPa(0), usSinceBoot(0) {};
+        BarometricPressureMsg(float pressurehPa_, uint32_t usSinceBoot_) : pressurehPa(pressurehPa_), usSinceBoot(usSinceBoot_) {};
+        BarometricPressureMsg() : pressurehPa(0), usSinceBoot(0) {};
     };
 
-    struct RadioRxFrame : public etl::message<16>
+    struct RadioRxFrameMsg : public etl::message<16>
     {
         uint32_t frame[OpenAce::RADIO_MAX_FRAME_WORD_LENGTH];
         uint32_t err[OpenAce::RADIO_MAX_FRAME_WORD_LENGTH];
@@ -190,31 +183,31 @@ namespace OpenAce
         int8_t rssidBm;
         uint32_t frequency;
         OpenAce::DataSource dataSource;
-        RadioRxFrame(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, OpenAce::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
+        RadioRxFrameMsg(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, OpenAce::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
         {
             // TODO: Decide if we need to do this
             memset(frame, 0, sizeof(frame));
             memset(err, 0, sizeof(frame));
         };
-        RadioRxFrame() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(OpenAce::DataSource::NONE)
+        RadioRxFrameMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(OpenAce::DataSource::NONE)
         {
             memset(frame, 0, sizeof(frame));
             memset(err, 0, sizeof(frame));
         };
     };
 
-    struct RadioTxPositionRequest : public etl::message<2>
+    struct RadioTxPositionRequestMsg : public etl::message<2>
     {
         const Radio::RadioParameters radioParameters;
         uint8_t radioNo;
-        RadioTxPositionRequest(const Radio::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
+        RadioTxPositionRequestMsg(const Radio::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
     };
 
-    struct RadioTxFrame : public etl::message<18>
+    struct RadioTxFrameMsg : public etl::message<18>
     {
         const Radio::TxPacket txPacket;
         uint8_t radioNo;
-        RadioTxFrame(const Radio::TxPacket &txPacket_, uint8_t radioNo_) : txPacket(txPacket_), radioNo(radioNo_) {}
+        RadioTxFrameMsg(const Radio::TxPacket &txPacket_, uint8_t radioNo_) : txPacket(txPacket_), radioNo(radioNo_) {}
     };
 
     struct ConfigUpdatedMsg : public etl::message<20> /* Don't change from 20!!!! They are used in MessageRouter*/
@@ -238,13 +231,13 @@ namespace OpenAce
     /**
      * Send to inform receivers of the current connected clients over TCP.
      */
-    struct GDLMsg : public etl::message<22>
+    struct GdlMsg : public etl::message<22>
     {
         GDLData msg;
         // Constructor
-        GDLMsg(GDLData msg_) : msg(msg_) {};
+        GdlMsg(GDLData msg_) : msg(msg_) {};
         // Default constructor
-        GDLMsg() {};
+        GdlMsg() {};
     };
 
     /**

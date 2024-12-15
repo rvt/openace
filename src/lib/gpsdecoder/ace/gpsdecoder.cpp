@@ -42,7 +42,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"fixQuality\":\"" << fixQuality << "\"";
     stream << ",\"satellitesTracked\":" << satellitesTracked;
     stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
-    stream << ",\"gpstime\":" << "\""
+    stream << ",\"GpsTimeMsg\":" << "\""
            << width2fill0 << lastGGATimestamp.hours << OpenAce::RESET_FORMAT << ":"
            << width2fill0 << lastGGATimestamp.minutes << OpenAce::RESET_FORMAT << ":"
            << width2fill0 << lastGGATimestamp.seconds << OpenAce::RESET_FORMAT << "\"";
@@ -52,8 +52,9 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
 void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 {
     // printf("GpsDecoder: %s\n", msg.sentence.c_str());
-    static Every<int8_t, 30, 60> sendGpsTime{0};
-    static Every<int8_t, 5, 60> sendValidGps{0};
+    static Every<uint32_t, 0, 1'000'000> sendGpsTimeMsg{0};
+    static Every<uint32_t, 10'000'000, 30'000'000> gpsStatsMsg{0};
+
     switch (minmea_sentence_id(msg.sentence.c_str(), false))
     {
     case MINMEA_SENTENCE_RMC:
@@ -64,10 +65,10 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
         {
             uint16_t millis = frame.time.microseconds / 1000;
             // TODO: Be more intelligent on when sending time messages so a 'fix' is quicker known after (re)start of the whole system
-            if (millis == 0 && sendGpsTime.isItTime(frame.time.seconds))
+            if (millis == 0 && sendGpsTimeMsg.isItTime(CoreUtils::timeUs32()))
             {
                 getBus().receive(
-                    OpenAce::GpsTime
+                    OpenAce::GpsTimeMsg
                 {
                     static_cast<int16_t>(frame.date.year + 2000),
                     static_cast<int8_t>(frame.date.month),
@@ -99,13 +100,6 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
                 }
                 lastRMCTimestamp = frame.time;
                 sendMessageWhenGGAisRMC();
-            }
-
-            // Send a frame valid message
-            if (sendValidGps.isItTime(frame.time.seconds))
-            {
-                getBus().receive(
-                    OpenAce::GpsStatus{frame.valid});
             }
         }
     }
@@ -152,19 +146,23 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
     case MINMEA_SENTENCE_GSA:
     {
         statistics.receivedGSA++;
-        struct minmea_sentence_gsa frame;
-        if (minmea_parse_gsa(&frame, msg.sentence.c_str()))
-        {
-            pDop = minmea_tofloat(&frame.pdop);
-            getBus().receive(
-                OpenAce::GpsStatsMsg
+
+        if (gpsStatsMsg.isItTime(CoreUtils::timeUs32())) {
+            struct minmea_sentence_gsa frame;
+            if (minmea_parse_gsa(&frame, msg.sentence.c_str()))
             {
-                fixQuality,
-                (uint8_t)frame.fix_type,
-                satellitesTracked,
-                pDop,
-                minmea_tofloat(&frame.hdop)});
+                pDop = minmea_tofloat(&frame.pdop);
+                getBus().receive(
+                    OpenAce::GpsStatsMsg
+                {
+                    fixQuality,
+                    (uint8_t)frame.fix_type,
+                    satellitesTracked,
+                    pDop,
+                    minmea_tofloat(&frame.hdop)});
+            }
         }
+
     }
     break;
 

@@ -11,6 +11,7 @@
 #include "encryption.hpp"
 #include "utils.hpp"
 #include "mockutils.h"
+#include "manchester.hpp"
 
 constexpr float MS_TO_FTPMIN     = 196.850394f;         // meter/sec to feet/min
 constexpr float DEG_TO_RADS      = M_PI / 180.f;        // degrees to radians
