@@ -43,6 +43,9 @@
 class WifiService : public BaseModule, public etl::message_router<WifiService, OpenAce::IdleMsg>
 {
 private:
+static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 3; // Number of times connection to the same network is attempted before trying an other network
+static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 3; // Number is scans done and if no known network is found, create the AP
+
     friend class message_router;
     OpenAce::Config::WifiServiceData wifiData;
 
@@ -75,9 +78,10 @@ private:
     TaskHandle_t taskHandle;
     TimerHandle_t timerHandle;
 
-    uint8_t connectionAttempt; 
+    uint8_t networkConnectionAttempt; 
+    uint8_t totalScanAttempt; 
 
-    // Producer Consumer queue to handle data between this task and the send task
+    // set of all known networks found during scan
     etl::set<OpenAce::SsidOrPasswdStr, 4> scanResult;
 
     static void wifiTask(void *arg);
@@ -116,7 +120,8 @@ public:
         connectionState(ConnectionState::START),
         taskHandle(nullptr),
         timerHandle(nullptr),
-        connectionAttempt(1)
+        networkConnectionAttempt(0),
+        totalScanAttempt(0)
     {
     }
 

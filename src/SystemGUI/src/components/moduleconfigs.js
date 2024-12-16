@@ -117,6 +117,8 @@ class WifiServiceConfig extends ModuleConfig {
       this.$refs.appassword.value = data.ap.password;
     }
 
+    this.$refs.apDisabled.checked = data.ap.disabled;
+    
     // Get Clients
     if (data != null && data.clients != null) {
       data.clients.forEach((client, idx) => {
@@ -140,6 +142,7 @@ class WifiServiceConfig extends ModuleConfig {
       ap: {
         ssid: this.$refs.apssid.value,
         password: this.$refs.appassword.value,
+        disabled: this.$refs.apDisabled.checked
       },
       clients: clients,
     };
@@ -186,13 +189,17 @@ class WifiServiceConfig extends ModuleConfig {
         </p>
         <div class="row g-0">
             <div class="col-10">
+            <label for="apDisabled">
+              When disabled, only attempts to an Access point will be done
+              <input type="checkbox" id="" id="apDisabled" ref="apDisabled" placeholder="1" />
+            </label>
           <label for="ssid">
             SSID:
-            <input type="text" id="apssid" ref="apssid" placeholder="SSID" } />
+            <input type="text" id="apssid" ref="apssid" placeholder="SSID" />
           </label>
           <label for="ssid">
             Password:
-            <input type="text" id="appassword" ref="appassword" placeholder="Password" } />
+            <input type="text" id="appassword" ref="appassword" placeholder="Password" />
           </label>
         </div>
         </div>
@@ -633,7 +640,7 @@ class SX1262 extends ModuleConfig {
               </p> </label
             >:
             <br />
-            <input type="checkbox" id="txEnabled" ref="txEnabled" placeholder="1" } />
+            <input type="checkbox" id="txEnabled" ref="txEnabled" placeholder="1" />
           </label>
         </div>
         <br />
