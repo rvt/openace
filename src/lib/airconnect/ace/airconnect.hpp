@@ -96,7 +96,7 @@ private:
 
     bool tcp_server_start();
     void tcp_server_close();
-    void removeClientByPCB(tcp_pcb *target_pcb);
+    void removeEmptyPCB();
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
     // static void airConnectTask(void *arg);

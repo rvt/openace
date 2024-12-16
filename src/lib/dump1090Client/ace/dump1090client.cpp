@@ -66,7 +66,7 @@ void Dump1090Client::on_receive(const OpenAce::IdleMsg &msg)
 {
     (void)msg;
     // printf("%d %d %d \n", wifiConnected , tcpClient.isStopped() , (stoppedCounter % 4 == 0));
-    if (wifiConnected && tcpClient.isStopped() && (stoppedCounter % 4 == 0))
+    if (wifiConnected && tcpClient.isStopped() && (stoppedCounter % 4 == 0) && ((tcpClient.ip() & 0xFFFFFF) == networkAddress))
     {
         stoppedCounter = 0;
         tcpClient.start();
@@ -77,4 +77,5 @@ void Dump1090Client::on_receive(const OpenAce::IdleMsg &msg)
 void Dump1090Client::on_receive(const OpenAce::WifiConnectionStateMsg &wcs)
 {
     wifiConnected = wcs.connected;
+    networkAddress = wcs.networkAddress;
 }

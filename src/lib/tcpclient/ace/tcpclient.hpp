@@ -206,8 +206,7 @@ public:
     {
     }
 
-    virtual ~TcpClient() {
-    };
+    virtual ~TcpClient() = default;
 
     OpenAce::PostConstruct postConstruct()
     {
@@ -233,5 +232,9 @@ public:
     bool isStopped() const
     {
         return tcp_pcb == nullptr;
+    }
+
+    uint32_t ip() const {
+        return ipPort.ip;
     }
 };

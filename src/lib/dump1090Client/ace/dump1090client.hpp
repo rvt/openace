@@ -31,6 +31,7 @@ class Dump1090Client : public BaseModule,
 
     uint8_t stoppedCounter;
     bool wifiConnected;
+    uint32_t networkAddress;
     BinaryReceiver *receiver;
     using AdsbTcpClient = TcpClient<1024>;
     AdsbTcpClient tcpClient;
@@ -51,6 +52,7 @@ public:
     Dump1090Client(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                           stoppedCounter(0),
                                                                           wifiConnected(false),
+                                                                          networkAddress(0),
                                                                           receiver(nullptr),
                                                                           tcpClient(config.ipPortBypath(NAME), AdsbTcpClient::CallBackFunction::create<Dump1090Client, &Dump1090Client::processNewSentence>(*this))
     {

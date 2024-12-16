@@ -123,7 +123,7 @@ void WifiService::wifiTask(void *arg)
                             }
                             else
                             {
-8                                wifiService->connectionState = ConnectionState::APMODESTART;
+                                wifiService->connectionState = ConnectionState::APMODESTART;
                             }
                         }
                     }
@@ -346,22 +346,19 @@ void WifiService::disableSta()
 
 void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password, bool ap) const
 {
-    extern cyw43_t cyw43_state;
-    uint32_t ip_addr;
     const char *mode;
     if (ap)
     {
-        ip_addr = cyw43_state.netif[CYW43_ITF_AP].ip_addr.addr;
         mode = "Access Point";
     }
     else
     {
-        ip_addr = cyw43_state.netif[CYW43_ITF_STA].ip_addr.addr;
         mode = "Client";
     }
 
+    ip4_addr_t ip=getIpAddr();
     puts("###################################");
-    printf("## Mode: %s\n## SSID: %s    Password: %s    IP: %lu.%lu.%lu.%lu\n", mode, ssid.begin(), password.begin(), ip_addr & 0xFF, (ip_addr >> 8) & 0xFF, (ip_addr >> 16) & 0xFF, ip_addr >> 24);
+    printf("## Mode: %s\n## SSID: %s Password: %s IP: %s\n", mode, ssid.begin(), password.begin(), ip4addr_ntoa(&ip));
     puts("###################################");
 }
 
@@ -402,15 +399,24 @@ void WifiService::mDnsDeinit()
 #endif
 }
 
+
+ip4_addr_t WifiService::getIpAddr() {
+    struct netif *netif = netif_list;
+    if (netif != NULL) {
+         return netif->ip_addr;
+    }
+    return { 0 };
+}
+
 void WifiService::on_receive(const OpenAce::IdleMsg &msg)
 {
-    static bool previous = false;
     (void)msg;
+    static bool previous = false;
     bool active = checkIfClientActive(CYW43_ITF_STA) || checkIfClientActive(CYW43_ITF_AP);
 
     if (active != previous)
     {
-        getBus().receive(OpenAce::WifiConnectionStateMsg{active});
+        getBus().receive(OpenAce::WifiConnectionStateMsg{active, getIpAddr().addr & 0xFFFFFF});
         previous = active;
     }
 }

@@ -207,7 +207,6 @@ void ADSBDecoder::on_receive(const OpenAce::IdleMsg &msg)
 {
     (void)msg;
     SemaphoreGuard<5> guard(mutex);
-
     if (guard)
     {
         auto usTime = CoreUtils::timeUs32();

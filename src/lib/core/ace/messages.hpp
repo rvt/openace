@@ -246,9 +246,11 @@ namespace OpenAce
     struct WifiConnectionStateMsg : public etl::message<24>
     {
         bool connected;
-
+        uint32_t networkAddress;
+        
         // Default constructor
-        WifiConnectionStateMsg(bool connected_) : connected(connected_) {};
+        WifiConnectionStateMsg(bool connected_) : connected(connected_), networkAddress(0) {};
+        WifiConnectionStateMsg(bool connected_, uint32_t networkAddress_) : connected(connected_), networkAddress(networkAddress_) {};
     };
 
     /**

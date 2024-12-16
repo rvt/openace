@@ -106,6 +106,8 @@ static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 3; // Number is scans done an
     void mDnsInit();
     void mDnsDeinit();
     void showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password, bool ap) const;
+    void on_receive_unknown(const etl::imessage &msg);
+    void on_receive(const OpenAce::IdleMsg &msg);
 
 public:
     static constexpr const etl::string_view NAME = "WifiService";
@@ -133,6 +135,10 @@ public:
 
     virtual void stop() override;
 
-    void on_receive_unknown(const etl::imessage &msg);
-    void on_receive(const OpenAce::IdleMsg &msg);
+
+   /**
+     * Get's the current local IP address
+     */
+    static ip4_addr_t getIpAddr();
+
 };

@@ -26,7 +26,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * TODO: de-Couple UDP from the GDL90 so this service send GDL Message over the messagebus which can then be send over UDP or Serial or BlueToolh
 */
-class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, OpenAce::GdlMsg, OpenAce::AccessPointClientsMsg, OpenAce::ConfigUpdatedMsg>
+class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, OpenAce::GdlMsg, OpenAce::AccessPointClientsMsg, OpenAce::ConfigUpdatedMsg, OpenAce::WifiConnectionStateMsg>
 {
     static constexpr uint16_t GDL90OVERUDP_DEFAULT_PORT = 4000; // Default port
     static constexpr uint8_t GDL90OVERUDP_MAX_PORTS = 4;        // Maximum number of customer UDP ports to send on
@@ -48,9 +48,10 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, Ope
     };
 
     udp_pcb *pcb;
+    uint32_t networkAddress;
     etl::list<ClientConfig, GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
     etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> connectedClients;
-    etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts= {};
+    etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts= {};    
 private:
     void getConfiguration(const Configuration &config);
     void getConfigurationNoMutex(const Configuration &config);
@@ -59,7 +60,8 @@ public:
     static constexpr const etl::string_view NAME = "GDLoverUDP";
     GDLoverUDP(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
-        pcb(nullptr)
+        pcb(nullptr),
+        networkAddress(0)
     {
         getConfigurationNoMutex(config);
     }
@@ -83,6 +85,8 @@ public:
     void on_receive_unknown(const etl::imessage& msg);
 
     void on_receive(const OpenAce::AccessPointClientsMsg& msg);
+
+    void on_receive(const OpenAce::WifiConnectionStateMsg& msg);
 
     void on_receive(const OpenAce::GdlMsg& msg);
 

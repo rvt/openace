@@ -4,6 +4,7 @@
 
 /* OpenACE */
 #include "ace/coreutils.hpp"
+#include "ace/semaphoreguard.hpp"
 
 /* LwIP */
 #include "lwip/ip_addr.h"
@@ -13,10 +14,9 @@
 
 void GDLoverUDP::getConfiguration(const Configuration &config)
 {
-    if (xSemaphoreTake(configMutex, portMAX_DELAY) == pdTRUE)
-    {
+    SemaphoreGuard<portMAX_DELAY> guard(configMutex);
+    if (guard) {
         getConfigurationNoMutex(config);
-        xSemaphoreGive(configMutex);
     }
 }
 
@@ -92,10 +92,13 @@ void GDLoverUDP::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
 {
     // Send to the connect clients and the defined ports
-    if (xSemaphoreTake(configMutex, (TickType_t)1) == pdTRUE)
-    {
+
+    SemaphoreGuard<TASK_DELAY_MS(1)> guard(configMutex);
+    if (guard) {
         for (auto ip : connectedClients)
         {
+            // Connected clients are always on the accesspoint, 
+            // thus we don't need to test for the networkAddress            
             for (auto port : udpPorts)
             {
                 sendTo(msg, ip, port);
@@ -104,13 +107,12 @@ void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
 
         for (const auto &client : customClients)
         {
-            sendTo(msg, client.ip, client.port);
+            // Custom clients can have any netmask and thus need to be tested if they are on the local net            
+            if ((client.ip & 0xFFFFFF) == networkAddress)
+            {
+                sendTo(msg, client.ip, client.port); 
+            }
         }
-        xSemaphoreGive(configMutex);
-    }
-    else
-    {
-        // puts("GDLoverUDP: Failed ");
     }
 }
 
@@ -141,4 +143,9 @@ void GDLoverUDP::sendTo(const OpenAce::GdlMsg &msg, uint32_t ip, int16_t port)
     {
         statistics.bufferAllocErr++;
     }
+}
+
+void GDLoverUDP::on_receive(const OpenAce::WifiConnectionStateMsg &msg)
+{
+    networkAddress = msg.networkAddress;
 }
