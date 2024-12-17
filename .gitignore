@@ -1,22 +1,29 @@
+# Others
+wip/
+private.data/
+.DS_Store
+.idea
+*.sh
+
+# KiAD
+*-backups/
+
+# Builds
+release_build/
+release/
+docker_build/
+build/
+build_test/
 ./default_config.hpp
 ./config.hpp
 ./build_time.hpp
-.pio
-wip/
-build/
-build_test/
-docker_build/
-release_build/
-private.data/
-*-backups/
+
+# VSCode + Python
+.vscode/settings.json
+.venv
+
+# GUI
+dist/
+package-lock.json
 .parcel-cache
 node_modules/
-.DS_Store
-.venv
-.vscode/settings.json
-
-dist/
-# Experimental, but did not work
-package-lock.json
-.idea
-*.sh
