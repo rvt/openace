@@ -49,6 +49,7 @@
 #include "ace/gdloverudp.hpp"
 #include "ace/dataport.hpp"
 #include "ace/airconnect.hpp"
+#include "ace/bluetooth.hpp"
 
 const char *buildTime = BUILD_TIMESTAMP;
 
@@ -152,6 +153,8 @@ void registerModules()
                                { return new DataPort(bus, config); });
     BaseModule::registerModule(AirConnect::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
                                { return new AirConnect(bus, config); });
+    BaseModule::registerModule(Bluetooth::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
+                               { return new Bluetooth(bus, config); });
     // // *INDENT-ON*
 
     for (auto a : BaseModule::registeredModules())
@@ -247,6 +250,7 @@ static void loadModules(void *arch)
     load(DataPort::NAME, bus, config);
     load(AirConnect::NAME, bus, config);
     load(Dump1090Client::NAME, bus, config);
+    load(Bluetooth::NAME, bus, config);
 
     // SerialADSB messes up the serial terminal, but it will load beyond this point
     // load(SerialADSB::NAME, bus, config);

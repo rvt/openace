@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 
 template <size_t BufferSize>
@@ -13,6 +15,10 @@ public:
     size_t available() const
     {
         return BufferSize - count;
+    }
+
+    size_t length() const {
+        return count;
     }
 
     bool empty() const

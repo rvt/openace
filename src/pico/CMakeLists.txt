@@ -114,7 +114,8 @@ target_link_libraries(
           utils
           aircrafttracker
           dataport
-          airconnect)
+          airconnect
+          bluetooth)
 
 target_compile_definitions(
   OpenAce

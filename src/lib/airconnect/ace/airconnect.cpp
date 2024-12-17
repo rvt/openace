@@ -39,17 +39,13 @@ void AirConnect::on_receive(const OpenAce::DataPortMsg &msg)
     cyw43_arch_lwip_begin();
     for (auto &it : connectedClients)
     {
-        if (it.buffer.empty() && it.pcb != nullptr) // The PCB can become null without it beeing directly removed from the list
+        if (it.buffer.empty())
         {
             it.buffer.push(msg.sentence.c_str(), msg.sentence.size());
             err_t err = tcp_write(it.pcb, msg.sentence.c_str(), msg.sentence.size(), TCP_WRITE_FLAG_COPY);
-            if (err == ERR_MEM || err == ERR_BUF)
+            if (err != ERR_OK)
             {
                 statistics.tcpWriteErr++;
-            }
-            else
-            {
-                tcp_output(it.pcb);
             }
         }
         else if (msg.sentence.size() <= it.buffer.available())
@@ -89,7 +85,10 @@ err_t AirConnect::tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
     if (peekLen)
     {
         err = tcp_write(pcb, part, peekLen, TCP_WRITE_FLAG_COPY);
-        err = tcp_output(pcb);
+        // Direct flush at larger packages to ensure EFB is updated on time
+        if (peekLen > 400) {
+            tcp_output(pcb);
+        }
     }
 
     return err;
@@ -111,7 +110,10 @@ err_t AirConnect::tcp_server_poll(void *arg, struct tcp_pcb *pcb)
     if (len)
     {
         err = tcp_write(pcb, part, len, TCP_WRITE_FLAG_COPY);
-        tcp_output(pcb);
+        // Direct flush at larger packages to ensure EFB is updated on time
+        if (len > 400) {
+            tcp_output(pcb);
+        }
     }
     return err;
 }
@@ -305,8 +307,11 @@ void AirConnect::tcp_server_close()
     cyw43_arch_lwip_begin();
 
     // Stop the server and this accepting any connections
-    tcp_arg(serverPcb, nullptr);
-    tcp_close(serverPcb);
+    if (serverPcb) {
+        tcp_arg(serverPcb, nullptr);
+        tcp_close(serverPcb);    
+        serverPcb = nullptr;
+    }
 
     // Close and stop all clients
     for (auto &it : connectedClients)
@@ -314,7 +319,6 @@ void AirConnect::tcp_server_close()
         tcp_close_client_connection(it, ERR_OK);
     }
 
-    serverPcb = nullptr;
     cyw43_arch_lwip_end();
 }
 

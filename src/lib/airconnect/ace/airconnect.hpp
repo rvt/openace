@@ -5,8 +5,6 @@
 /* FreeRTOS */
 #include "FreeRTOS.h"
 #include "task.h"
-#include "queue.h"
-#include "semphr.h"
 
 /* LwIP */
 #include "lwip/pbuf.h"
@@ -14,7 +12,6 @@
 #include "pico/cyw43_arch.h"
 
 /* ETLCPP */
-#include "etl/map.h"
 #include "etl/message_bus.h"
 #include "etl/list.h"
 #include "etl/string.h"
@@ -34,6 +31,7 @@ class AirConnect : public BaseModule, public etl::message_router<AirConnect, Ope
 {
     friend class message_router;
     static constexpr uint16_t AIRCONNECT_PORT = 2000;
+    static constexpr uint16_t BUFFER_SIZE = 1024;
     struct
     {
         uint32_t toManyClients = 0;
@@ -46,7 +44,7 @@ class AirConnect : public BaseModule, public etl::message_router<AirConnect, Ope
         tcp_pcb *pcb;
         AirConnect *airConnect;
         uint16_t bufferOverrunErr;
-        CircularBuffer<1024> buffer;
+        CircularBuffer<BUFFER_SIZE> buffer;
 
         // Constructor
         TcpClientState() = default;
@@ -68,7 +66,6 @@ class AirConnect : public BaseModule, public etl::message_router<AirConnect, Ope
     using ConnectedClients = etl::list<TcpClientState, OPENACE_MAXIMUM_TCP_CLIENTS>;
     ConnectedClients connectedClients;
     tcp_pcb *serverPcb;
-//    SemaphoreHandle_t connectionListMutex;
     bool wifiConnected;
 
 private:

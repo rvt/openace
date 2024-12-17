@@ -23,6 +23,11 @@ void DataPort::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
     static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
     if (sendValidGps.isItTime(CoreUtils::timeUs32())) {
+
+        // sendGPRMC(message.position);
+        // sendGPGSA(ownshipPosition);
+        // sendGPGGA(ownshipPosition);
+
         sendPGRMZ(msg.position);
         sendPFLAU(msg.position);
     }
@@ -36,10 +41,6 @@ void DataPort::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
 
 void DataPort::on_receive(const OpenAce::GPSSentenceMsg &msg)
 {
-    // OpenAce::NMEAString sentence{message.sentence};
-    // sentence[2] = 'P';
-    // CoreUtils::addChecksumToNMEA(sentence);
-
     OpenAce::NMEAString sentence = msg.sentence;
     sentence.append("\r\n");
     getBus().receive(OpenAce::DataPortMsg{sentence});
