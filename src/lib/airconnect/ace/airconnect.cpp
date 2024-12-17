@@ -5,11 +5,6 @@
 
 OpenAce::PostConstruct AirConnect::postConstruct()
 {
-    connectionListMutex = xSemaphoreCreateMutex();
-    if (connectionListMutex == nullptr)
-    {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
-    }
     return OpenAce::PostConstruct::OK;
 }
 
@@ -22,7 +17,6 @@ void AirConnect::stop()
 {
     getBus().unsubscribe(*this);
     tcp_server_close();
-    vSemaphoreDelete(connectionListMutex);
 };
 
 void AirConnect::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -42,36 +36,32 @@ void AirConnect::getData(etl::string_stream &stream, const etl::string_view path
  */
 void AirConnect::on_receive(const OpenAce::DataPortMsg &msg)
 {
-    SemaphoreGuard<portMAX_DELAY> cGuard(connectionListMutex);
-    if (cGuard)
+    cyw43_arch_lwip_begin();
+    for (auto &it : connectedClients)
     {
-        cyw43_arch_lwip_begin();
-        for (auto &it : connectedClients)
+        if (it.buffer.empty() && it.pcb != nullptr) // The PCB can become null without it beeing directly removed from the list
         {
-            if (it.buffer.empty())
+            it.buffer.push(msg.sentence.c_str(), msg.sentence.size());
+            err_t err = tcp_write(it.pcb, msg.sentence.c_str(), msg.sentence.size(), TCP_WRITE_FLAG_COPY);
+            if (err == ERR_MEM || err == ERR_BUF)
             {
-                it.buffer.push(msg.sentence.c_str(), msg.sentence.size());
-                err_t err = tcp_write(it.pcb, msg.sentence.c_str(), msg.sentence.size(), TCP_WRITE_FLAG_COPY);
-                if (err == ERR_MEM || err == ERR_BUF)
-                {
-                    statistics.tcpWriteErr++;
-                }
-                else
-                {
-                    tcp_output(it.pcb);
-                }
-            }
-            else if (msg.sentence.size() <= it.buffer.available())
-            {
-                it.buffer.push(msg.sentence.c_str(), msg.sentence.size());
+                statistics.tcpWriteErr++;
             }
             else
             {
-                it.bufferOverrunErr++;
+                tcp_output(it.pcb);
             }
         }
-        cyw43_arch_lwip_end();
+        else if (msg.sentence.size() <= it.buffer.available())
+        {
+            it.buffer.push(msg.sentence.c_str(), msg.sentence.size());
+        }
+        else
+        {
+            it.bufferOverrunErr++;
+        }
     }
+    cyw43_arch_lwip_end();
 }
 
 void AirConnect::on_receive_unknown(const etl::imessage &msg)
@@ -82,7 +72,7 @@ void AirConnect::on_receive_unknown(const etl::imessage &msg)
 /**
  * Handle the sent callback, will advance the buffer by calling accepted and
  * send more data if in the buffer
- * 
+ *
  *  No need for a mutex here because lwip_begin() / lwip_end() ensures sent is not called
  */
 err_t AirConnect::tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
@@ -95,8 +85,8 @@ err_t AirConnect::tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
 
     const char *part;
     size_t peekLen;
-    con_state->buffer.peek(part, peekLen); 
-    if (len)
+    con_state->buffer.peek(part, peekLen);
+    if (peekLen)
     {
         err = tcp_write(pcb, part, peekLen, TCP_WRITE_FLAG_COPY);
         err = tcp_output(pcb);
@@ -177,6 +167,7 @@ err_t AirConnect::tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p
     if (!p)
     {
         tcp_close_client_connection(*con_state, ERR_OK);
+        con_state->airConnect->removeEmptyPCB();
         return ERR_OK;
     }
 
@@ -196,6 +187,7 @@ err_t AirConnect::tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p
             {
                 // printf("failed to write AOK %d\n", err);
                 tcp_close_client_connection(*con_state, ERR_VAL);
+                con_state->airConnect->removeEmptyPCB();
                 return ERR_VAL;
             }
         }
@@ -215,6 +207,7 @@ void AirConnect::tcp_server_err(void *arg, err_t err)
     {
         TcpClientState *con_state = (TcpClientState *)arg;
         tcp_close_client_connection(*con_state, err);
+        con_state->airConnect->removeEmptyPCB();
     }
 }
 
@@ -231,34 +224,25 @@ err_t AirConnect::tcp_server_accept(void *arg, tcp_pcb *client_pcb, err_t aerr)
     AirConnect *airConnect = static_cast<AirConnect *>(arg);
     err_t err;
 
-    SemaphoreGuard<portMAX_DELAY> cGuard(airConnect->connectionListMutex);
-    if (cGuard)
+    if (airConnect->connectedClients.full())
     {
-        airConnect->removeEmptyPCB();
-        if (airConnect->connectedClients.full())
-        {
-            airConnect->statistics.toManyClients++;
-            err = ERR_MEM;
-        }
-        else
-        {
-            airConnect->statistics.newClientConnection++;
-            // printf("New Client %d\n", airConnect->connectedClients.size());
-
-            TcpClientState *newConnection = &airConnect->connectedClients.emplace_back(client_pcb, airConnect);
-            tcp_arg(client_pcb, newConnection);
-
-            tcp_recv(client_pcb, tcp_server_recv);
-            tcp_err(client_pcb, tcp_server_err);
-            tcp_sent(client_pcb, tcp_server_sent);    // Called when data was successfully received by remote host
-            tcp_poll(client_pcb, tcp_server_poll, 1); // Call back poll once a second (1 would be twice a second) for more data
-            tcp_set_flags(client_pcb, TF_ACK_NOW);    // <-- seems to be a must?
-            err = ERR_OK;
-        }
+        airConnect->statistics.toManyClients++;
+        err = ERR_MEM;
     }
     else
     {
-        err = ERR_VAL;
+        airConnect->statistics.newClientConnection++;
+        // printf("New Client %d\n", airConnect->connectedClients.size());
+
+        TcpClientState *newConnection = &airConnect->connectedClients.emplace_back(client_pcb, airConnect);
+        tcp_arg(client_pcb, newConnection);
+
+        tcp_recv(client_pcb, tcp_server_recv);
+        tcp_err(client_pcb, tcp_server_err);
+        tcp_sent(client_pcb, tcp_server_sent);    // Called when data was successfully received by remote host
+        tcp_poll(client_pcb, tcp_server_poll, 1); // Call back poll once a second (1 would be twice a second) for more data
+        tcp_set_flags(client_pcb, TF_ACK_NOW);    // <-- seems to be a must?
+        err = ERR_OK;
     }
 
     return err;
@@ -325,16 +309,11 @@ void AirConnect::tcp_server_close()
     tcp_close(serverPcb);
 
     // Close and stop all clients
-    SemaphoreGuard<portMAX_DELAY> cGuard(connectionListMutex);
-    if (cGuard)
+    for (auto &it : connectedClients)
     {
-        for (auto &it : connectedClients)
-        {
-            tcp_close_client_connection(it, ERR_OK);
-        }
-        removeEmptyPCB();
+        tcp_close_client_connection(it, ERR_OK);
     }
-    
+
     serverPcb = nullptr;
     cyw43_arch_lwip_end();
 }

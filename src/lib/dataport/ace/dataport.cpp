@@ -98,7 +98,6 @@ void DataPort::on_receive(const OpenAce::GPSSentenceMsg &msg)
  */
 void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
 {
-    return;
     OpenAce::NMEAString pflaa;
     etl::string_stream stream(pflaa);
 
