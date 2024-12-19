@@ -13,7 +13,7 @@ runs:
       uses: actions/checkout@v4
       with:
         repository: raspberrypi/pico-sdk
-        ref: '2.0.0'
+        ref: '2.1.0'
         path: pico-sdk
         submodules: true
 
