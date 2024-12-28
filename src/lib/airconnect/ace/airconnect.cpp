@@ -103,7 +103,7 @@ err_t AirConnect::tcp_server_poll(void *arg, struct tcp_pcb *pcb)
     err_t err = ERR_OK;
 
     auto [part, peekLength] = con_state->buffer.peek();
-    if (len)
+    if (peekLength)
     {
         err = tcp_write(pcb, part, peekLength, TCP_WRITE_FLAG_COPY);
         // Direct flush at larger packages to ensure EFB is updated on time
