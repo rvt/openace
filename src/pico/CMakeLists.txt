@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
 
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+
 set(OPTMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
                    openace_default_config.json default_config.hpp)
 execute_process(
@@ -28,19 +31,25 @@ add_custom_command(
 set(PICO_BOARD pico_w)
 
 # pico_sdk_import.cmake is a single file copied from this SDK note: this must
-# happen before project() include(cmake/pico_sdk_import.cmake)
+# happen before project() include(cmake/pico_sdk_import.cmake)7s
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
 include(cmake/FreeRTOS_Kernel_import.cmake)
 
+if(PICO_SDK_VERSION_STRING VERSION_LESS "2.1.0")
+  message(
+    FATAL_ERROR
+      "Raspberry Pi Pico SDK version 2.1.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}"
+  )
+endif()
+
 project(OpenAce C CXX ASM)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
 
 # Enable this to use picotool, and beable to receive UART data over picotool
 set(OPENACE_UART_OVER_USB 0)
 
-add_compile_options(-Wall -fsingle-precision-constant -ffast-math)
+add_compile_options(-Wall -fsingle-precision-constant -ffast-math
+                    -Wno-stringop-overflow)
 add_link_options(-Wl,--print-memory-usage)
 
 # Collect all .c/cpp/hpp/h files from the specified directory and its
@@ -79,11 +88,17 @@ target_include_directories(OpenAce PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(
   ${PROJECT_NAME}
   PRIVATE FreeRTOS-Kernel-Heap4
+          pico_btstack_ble
+          pico_btstack_classic
+          pico_btstack_cyw43
           pico_cyw43_arch_lwip_sys_freertos
           pico_stdlib
+          hardware_gpio
           hardware_spi
           hardware_rtc
-          pioserial
+          hardware_irq
+          hardware_uart
+          hardware_pio
           # Vendor
           GDL90
           minmea
@@ -92,6 +107,7 @@ target_link_libraries(
           # /lib
           core
           tcpclient
+          pioserial
           serialadsb
           config
           ubloxm8n

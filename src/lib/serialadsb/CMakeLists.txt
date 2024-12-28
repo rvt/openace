@@ -12,7 +12,11 @@ set(MODULE_TARGET_LINK
     utils
     pioserial
 
+)
+
+set(PICO_EXTRA_LIBS
     hardware_pio
 )
+
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../openace_module.cmake)

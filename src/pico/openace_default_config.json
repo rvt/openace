@@ -32,14 +32,18 @@
     "AceSpi": {
         "port": "port1"
     },
-    "WifiService": {
+    "Bluetooth": {
         "_comment_client": "The standard SSD and password when OpenACE is in Access Point mode",
+        "name": "OpenAce"
+    },
+    "WifiService": {
+        "_comment_ap": "The standard SSD and password when OpenACE is in Access Point mode",
         "ap": {
             "ssid": "OpenACE",
             "password": "12345678",
             "disabled": false
         },
-        "_comment_ap": "A list of Access Points OpenACE will be trying to to connect to.",
+        "_comment_client": "A list of Access Points OpenACE will be trying to to connect to.",
         "clients": [
             {
                 "ssid": "Your Device",

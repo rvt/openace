@@ -11,8 +11,7 @@ void DataPort::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
         return;
     }
 
-    SemaphoreGuard<portMAX_DELAY> guard(BaseModule::configMutex);
-    if (guard)
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::configMutex))
     {
         address = openAceConfiguration.address;
         category = openAceConfiguration.category;
@@ -45,52 +44,6 @@ void DataPort::on_receive(const OpenAce::GPSSentenceMsg &msg)
     sentence.append("\r\n");
     getBus().receive(OpenAce::DataPortMsg{sentence});
 }
-
-// void DataPort::receive(const etl::imessage &msg)
-// {
-//    (void)msg;
-//     if (msg.get_message_id() == OpenAce::AircraftPositionMsg::ID)
-//     {
-//         OpenAce::AircraftPositionMsg message = static_cast<const OpenAce::AircraftPositionMsg&>(msg);
-//         sendPFLAA(message.position);
-//     }
-//     else if (msg.get_message_id() == OpenAce::OwnshipPositionMsg::ID)
-//     {
-//         OpenAce::OwnshipPositionMsg message = static_cast<const OpenAce::OwnshipPositionMsg&>(msg);
-//         ownshipPosition = message.position;
-
-//         // // Send GPS Info
-
-//         // Send by GPS :: sendGPRMC(message.position);
-//         // Send by GPS :: sendGPGSA(ownshipPosition);
-//         // Send by GPS :: sendGPGGA(ownshipPosition);
-//         sendPGRMZ(ownshipPosition);
-//         sendPFLAU(ownshipPosition);
-//     }
-//     else if (msg.get_message_id() == OpenAce::GPSSentenceMsg::ID)
-//     {
-//         if (OPENACE_DATAPORT_GNXXX_TO_GPXXX)
-//         {
-//             // Trun GNXXX sentences into GPXXX sentences
-//             // GNXXX messages are the combined receivers
-//             // @todo I think we can configure the uBlox to send GPS messages as a combined.
-//             // If this is possible, then it's not needed to turn GNxxx into GPxxx
-//             OpenAce::GPSSentenceMsg message = static_cast<const OpenAce::GPSSentenceMsg&>(msg);
-//             if (message.sentence.size()>2 && message.sentence[2] == 'N')
-//             {
-//                 OpenAce::NMEAString sentence{message.sentence};
-//                 sentence[2] = 'P';
-//                 CoreUtils::addChecksumToNMEA(sentence);
-//                 getBus().receive(OpenAce::GPSSentenceMsg{sentence});
-//             }
-//         }
-//     }
-//     else
-//     {
-//         //  printf("GpsPreprocessor received(Message%d) just  \n", msg.get_message_id());
-//         //      etl::message_broker::receive(msg);
-//     }
-//}
 
 /**
  * PFLAA – Data on other proximate aircraft

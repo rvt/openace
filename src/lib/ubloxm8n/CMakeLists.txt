@@ -8,9 +8,12 @@ set(MODULE_SOURCE_FILES
 )
 
 set(MODULE_TARGET_LINK
-    hardware_pio
     pioserial
     utils
+)
+
+set(PICO_EXTRA_LIBS
+    hardware_pio
 )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../openace_module.cmake)

@@ -1,7 +1,6 @@
 #include "aircrafttracker.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/coreutils.hpp"
-#include "ace/semaphoreguard.hpp"
 
 #include "etl/algorithm.h"
 

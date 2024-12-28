@@ -2,7 +2,6 @@
 
 #include "ace/semaphoreguard.hpp"
 #include "adsbdecoder.hpp"
-#include <algorithm>
 
 OpenAce::PostConstruct ADSBDecoder::postConstruct()
 {
@@ -75,8 +74,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         return;
     }
 
-    SemaphoreGuard<100> guard(mutex);
-    if (!guard) {
+    if (auto guard = SemaphoreGuard<100>(mutex)) {
         return;
     }
 
@@ -206,8 +204,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
 void ADSBDecoder::on_receive(const OpenAce::IdleMsg &msg)
 {
     (void)msg;
-    SemaphoreGuard<5> guard(mutex);
-    if (guard)
+    if (auto guard = SemaphoreGuard<5>(mutex))
     {
         auto usTime = CoreUtils::timeUs32();
         ignoredAirplanes.evictOldEntries(usTime);

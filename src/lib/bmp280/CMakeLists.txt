@@ -8,8 +8,11 @@ set(MODULE_SOURCE_FILES
 )
 
 set(MODULE_TARGET_LINK
-    hardware_spi
     acespi
+)
+
+set(PICO_EXTRA_LIBS
+    hardware_spi
 )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../openace_module.cmake)

@@ -34,6 +34,7 @@ class OpenAceModules extends El {
       "WifiService",
       "DataPort",
       "AirConnect",
+      "Bluetooth"
     ];
     this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "AircraftTracker"];
     this.enablers = [
@@ -53,37 +54,36 @@ class OpenAceModules extends El {
       "RadioTunerTx",
       "DataPort",
       "AirConnect",
+      "Bluetooth"
     ];
     this.info = {
       WifiService: (html) =>
-        html`An AccessPoint and Client that will alow OpenAce to connect to a network, or setup a network. It can connect to multiple network depending which
-        network is reachable.`,
+      html`Provides both Access Point and Client modes, allowing OpenAce to connect to or create a network. It can connect to multiple networks based on availability.`,
       AircraftTracker: (html) =>
-        html`Tracker modules keeps track of all aircraft received and updates their position when no data has been received. It will send on e 1 second
-        heartbeat the updated positions for each aircraft for up to a configurable number of seconds. Some protocols like GDL90 need 1 second heartbeat for all
-        aircraft,`,
-      Webserver: (html) => html`The Webserver displays this page and allows for configuration changes.`,
-      DataPort: (html) => html`A module that sends that creates NMEA sentences that are compatible with Dataport. This will enable EFB's like SkyDeamon to  receive traffic and ownship information of BlueTooth or AirConnect.`,
-      AirConnect: (html) => html`A module that sends all DataPort messages over TCP. It will listen on port 2000 and after connection from a service it will send out all data. Note on ForeFlight, it \'should\' work but ForeFlight decided to add a proprietary way to negotiate the port number. `,
-      Gdl90Service: (html) => html`Generates GDL90 messages. A module like GDLoverUDP is needed to receive them on external devices.`,
-      GDLoverUDP: (html) => html`A module that sends GDL90 messages over the UDP protocol to external devices.`,
-      Flarm: (html) => html`A module that sends and receives Flarm (2024) protocol messages.`,
-      Ogn1: (html) => html`A module that sends and receives OGN protocol messages.`,
-      ADSL: (html) => html`A module that sends and receives ADS-L protocol messages.`,
+      html`Tracks all received aircraft and updates their positions when no new data is received. Sends a 1-second heartbeat with updated positions for each aircraft for a configurable duration.`,
+      Webserver: (html) => html`Hosts this page and facilitates configuration changes.`,
+      DataPort: (html) => html`Generates NMEA sentences compatible with DataPort, enabling EFBs like SkyDemon to receive traffic and ownship information via Bluetooth or AirConnect.`,
+      AirConnect: (html) => html`Sends all DataPort messages over TCP. Prefer Bluetooth if supported by your EFB. Listens on port 2000 and sends data upon connection. Note: ForeFlight may require proprietary port negotiation.`,
+      Bluetooth: (html) => html`Transmits all DataPort messages over Bluetooth, providing NMEA datastreams to external devices. EFBs like SkyDemon can connect to OpenAce via Bluetooth.`,
+      Gdl90Service: (html) => html`Generates GDL90 messages. Requires a module like GDLoverUDP to receive them on external devices.`,
+      GDLoverUDP: (html) => html`Transmits GDL90 messages over UDP to external devices.`,
+      Flarm: (html) => html`Sends and receives Flarm protocol messages.`,
+      Ogn1: (html) => html`Sends and receives OGN protocol messages.`,
+      ADSL: (html) => html`Sends and receives ADS-L protocol messages.`,
       ADSBDecoder: (html) =>
-        html`A module that receives ADS-B (extended squitter) messages. A module like SerialADSB or Dump1090Client is needed as an input for this module.`,
-      SerialADSB: (html) => html`A module that receives ADS-B messages from hardware like the GNS5892. An ADSB Decoder is required to process the messages.`,
-      Dump1090Client: (html) => html`A module that receives ADS-B messages from Dump1090. An ADSB Decoder is required to process the messages.`,
-      Bmp280: (html) => html`A module that uses the Bmp280 hardware to read atmospheric pressure.`,
-      AceSpi: (html) => html`A core module to control SPI access between different modules.`,
-      Config: (html) => html`A core module to handle receiving and storing configurations.`,
-      GpsDecoder: (html) => html`A core module to decode GPS NMEA messages.`,
-      UbloxM8N: (html) => html`A core module that configures a uBlox8 or similar hardware devices.`,
-      PicoRtc: (html) => html`A core module that reads GPS messages and handles accurate time tracking needed for various protocols.`,
-      Sx1262_0: (html) => html`Radio module 1. Can send and receive ADS-L, OGN, Flarm protocols`,
-      Sx1262_1: (html) => html`Radio module 2. Can send and receive ADS-L, OGN, Flarm protocols`,
-      RadioTunerRx: (html) => html`A module that takes care of timings when receiving multiple protocols over one or more radios Flarm, OGN, and ADS-L.`,
-      RadioTunerTx: (html) => html`A module that takes care of sending regular position messages over the different protocols like Flarm, OGN, and ADS-L.`,
+      html`Receives ADS-B (extended squitter) messages. Requires an input module like SerialADSB or Dump1090Client.`,
+      SerialADSB: (html) => html`Receives ADS-B messages from hardware like the GNS5892. Requires an ADSB Decoder to process messages.`,
+      Dump1090Client: (html) => html`Receives ADS-B messages from Dump1090. Requires an ADSB Decoder to process messages.`,
+      Bmp280: (html) => html`Reads atmospheric pressure using the Bmp280 hardware.`,
+      AceSpi: (html) => html`Core module for controlling SPI access between different modules.`,
+      Config: (html) => html`Core module for receiving and storing configurations.`,
+      GpsDecoder: (html) => html`Core module for decoding GPS NMEA messages.`,
+      UbloxM8N: (html) => html`Configures uBlox8 or similar hardware devices.`,
+      PicoRtc: (html) => html`Reads GPS messages and handles accurate time tracking for various protocols.`,
+      Sx1262_0: (html) => html`Radio module 1. Sends and receives ADS-L, OGN, and Flarm protocols.`,
+      Sx1262_1: (html) => html`Radio module 2. Sends and receives ADS-L, OGN, and Flarm protocols.`,
+      RadioTunerRx: (html) => html`Manages timings for receiving multiple protocols over one or more radios (Flarm, OGN, and ADS-L).`,
+      RadioTunerTx: (html) => html`Manages sending regular position messages over different protocols like Flarm, OGN, and ADS-L.`,
     };
   }
 

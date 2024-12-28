@@ -8,9 +8,7 @@
 
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
-#include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
-#include "ace/constants.hpp"
 #include "ace/utils.hpp"
 
 // *INDENT-OFF*
@@ -73,7 +71,7 @@ void UbloxM8N::start()
 {
     xTaskCreate(ubloxM8NTask, "UbloxM8N"
                               "Task",
-                configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
+                configMINIMAL_STACK_SIZE + 320, this, tskIDLE_PRIORITY + 2, &taskHandle);
 
     pioSerial.start();
     // ublox uses rising pulse to trigger
@@ -120,6 +118,7 @@ void UbloxM8N::ubloxM8NTask(void *arg)
                     // GPGS[AV] message are not needed
                     // Note: if in case this get's removed because the messages are needed,
                     // then this filter needs to be added in DataPort that passes through GPS messages
+                    // Otherwise it create indeed traffic over TCP/IP or Bluetooth
                     if (sentence.find("$GPGS") == OpenAce::NMEAString::npos)
                     {
                         ubloxM8N->statistics.totalReceived++;

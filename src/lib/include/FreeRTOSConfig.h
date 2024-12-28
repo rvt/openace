@@ -46,8 +46,8 @@
 #define configUSE_IDLE_HOOK                     0
 #define configUSE_TICK_HOOK                     0
 #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
-#define configMAX_PRIORITIES                    15
-#define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 512
+#define configMAX_PRIORITIES                    32
+#define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 256
 #define configUSE_16_BIT_TICKS                  0
 
 #define configIDLE_SHOULD_YIELD                 1
@@ -73,8 +73,8 @@
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 /* OpenACE: Changed from 128 to 115 to 112*/
-/* ArduinoJson is memory hunry, need to change that for something else, but for now just lowered memory */
-#define configTOTAL_HEAP_SIZE                   (83*1024)
+/* ArduinoJson is memory hungry, need to change that for something else, but for now just lowered memory */
+#define configTOTAL_HEAP_SIZE                   (80*1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */
@@ -97,7 +97,7 @@
 
 /* Run time and task stats gathering related definitions. */
 #define configGENERATE_RUN_TIME_STATS           0
-#define configUSE_TRACE_FACILITY                0
+// ##define configUSE_TRACE_FACILITY                0
 #define configUSE_STATS_FORMATTING_FUNCTIONS    0
 #endif
 

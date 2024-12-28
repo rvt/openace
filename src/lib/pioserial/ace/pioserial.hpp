@@ -11,7 +11,9 @@
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "uart_rx.pio.h"
+#include "uart_rx_f.h"
 #include "uart_tx.pio.h"
+
 #include "hardware/irq.h"
 
 /* OpenACE. */

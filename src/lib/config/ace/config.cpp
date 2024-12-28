@@ -179,8 +179,8 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
 
                 if (src == nullptr)
                 {
-                    // When key does not exist, create it firsat
-                    auto const &key = path.back();
+                    // When key does not exist, create it firs at
+                    auto const key = path.back();
                     path.pop_back();
                     // TODO: Move check for epty path and return doc to configValueBypath
                     if (path.size() == 0)

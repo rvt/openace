@@ -8,7 +8,7 @@ struct SemaphoreGuard
 {
     SemaphoreHandle_t &sem;
     bool acquired;
-    SemaphoreGuard(SemaphoreHandle_t &sem) : sem(sem), acquired(xSemaphoreTake(sem, TASK_DELAY_MS(TIMEMS)) == pdTRUE) {}
+    SemaphoreGuard(SemaphoreHandle_t &sem_) : sem(sem_), acquired(xSemaphoreTake(sem, TASK_DELAY_MS(TIMEMS)) == pdTRUE) {}
     ~SemaphoreGuard()
     {
         if (acquired)
@@ -19,11 +19,6 @@ struct SemaphoreGuard
 
     SemaphoreGuard(const SemaphoreGuard &) = delete;
     SemaphoreGuard &operator=(const SemaphoreGuard &) = delete;
-
-    void release()
-    {
-        xSemaphoreGive(sem);
-    }
 
     operator bool() const
     {

@@ -219,7 +219,7 @@ bool PioSerial::testUartAtBaudrate(uint32_t testBaudRate, uint32_t maximumScanTi
 }
 
 /**
- * Find a buadrate where the uart is sending data on
+ * Find a baudrate where the uart is sending data on
  */
 uint32_t PioSerial::findBaudRate(uint32_t maxTimeOutMs)
 {

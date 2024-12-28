@@ -116,8 +116,7 @@ void Gdl90Service::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
         return;
     }
 
-    SemaphoreGuard<portMAX_DELAY> guard(BaseModule::configMutex);
-    if (guard)
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::configMutex))
     {
         auto openAceConfiguration = msg.config.openAceConfig();
         type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;

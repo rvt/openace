@@ -18,7 +18,7 @@ OpenAce::PostConstruct WifiService::postConstruct()
 
 void WifiService::start()
 {
-    xTaskCreate(wifiTask, "wifiTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 1, &taskHandle);
+    xTaskCreate(wifiTask, "wifiTask", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 1, &taskHandle);
     getBus().subscribe(*this);
 };
 

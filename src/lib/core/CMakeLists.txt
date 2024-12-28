@@ -11,10 +11,13 @@ set(MODULE_SOURCE_FILES
 )
 
 set(MODULE_TARGET_LINK
-    pico_cyw43_arch_lwip_sys_freertos
     ArduinoJson
-    hardware_flash
+)
+
+set(PICO_EXTRA_LIBS
     pico_flash
+    pico_cyw43_arch_lwip_sys_freertos
+    hardware_flash
 )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../openace_module.cmake)

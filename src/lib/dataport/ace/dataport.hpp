@@ -3,8 +3,6 @@
 #include <stdint.h>
 #include <sys/time.h>
 
-#include "FreeRTOS.h"
-
 #include "ace/constants.hpp"
 #include "ace/models.hpp"
 #include "ace/messagerouter.hpp"

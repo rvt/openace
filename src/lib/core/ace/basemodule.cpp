@@ -68,7 +68,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
 {
     // printf("Looking %s depends on %s\n", that.name(), requesting);
     // Look for it's direct name ex:AceSpi
-    if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex)) 
     {
 
         if (BaseModule::moduleLoaderMap.contains(requesting))
@@ -76,7 +76,6 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
             auto module = BaseModule::moduleLoaderMap[requesting];
             if (module.result == OpenAce::PostConstruct::OK)
             {
-                xSemaphoreGiveRecursive(BaseModule::xMutex);
                 return module.module;
             }
         }
@@ -85,8 +84,6 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
         {
             if (strcmp(it->second.module->name().cbegin(), requesting.cbegin()) == 0)
             {
-
-                xSemaphoreGiveRecursive(BaseModule::xMutex);
                 return it->second.module;
                 // if (it->second.result == OpenAce::PostConstruct::OK) {
                 //     return it->second.module;
@@ -98,7 +95,6 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
             printf("Module %s depends on %s but it is not registered\n", that.name().cbegin(), requesting.cbegin());
             panic("Module not found but required");
         }
-        xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 
     return nullptr;
@@ -136,7 +132,7 @@ void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t ev
  */
 void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t handler, uint32_t notificationValue)
 {
-    if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex)) 
     {
         if (pinInterruptHandlers.full())
         {
@@ -144,7 +140,6 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t
         }
         gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
         pinInterruptHandlers[pin] = {events, handler, notificationValue};
-        xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 }
 
@@ -153,15 +148,15 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t
  */
 void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallback_t callback)
 {
-    if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex)) 
     {
         if (pinInterruptHandlers.full())
         {
             panic("pinInterruptHandlers is full");
         }
+        puts("Registering2 pin interrupt");
         gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
         pinInterruptHandlers[pin] = {events, callback};
-        xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 }
 
@@ -187,8 +182,7 @@ void BaseModule::enablePinInterrupt(uint8_t pin)
  */
 void BaseModule::unregisterPinInterrupt(uint8_t pin)
 {
-    SemaphoreGuard<portMAX_DELAY> guard(BaseModule::xMutex);
-    if (guard)
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex))
     {
         gpio_set_irq_enabled(pin, 0x00, false);
         pinInterruptHandlers.erase(pin);

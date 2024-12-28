@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include "airconnect.hpp"
-#include "ace/semaphoreguard.hpp"
 
 OpenAce::PostConstruct AirConnect::postConstruct()
 {
@@ -79,14 +78,13 @@ err_t AirConnect::tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
     err_t err = ERR_OK;
     con_state->buffer.accepted(len);
 
-    const char *part;
-    size_t peekLen;
-    con_state->buffer.peek(part, peekLen);
-    if (peekLen)
+    auto [part, peekLength] = con_state->buffer.peek();
+    if (peekLength > 0)
     {
-        err = tcp_write(pcb, part, peekLen, TCP_WRITE_FLAG_COPY);
+        err = tcp_write(pcb, part, peekLength, TCP_WRITE_FLAG_COPY);
         // Direct flush at larger packages to ensure EFB is updated on time
-        if (peekLen > 400) {
+        if (peekLength > 400)
+        {
             tcp_output(pcb);
         }
     }
@@ -103,15 +101,14 @@ err_t AirConnect::tcp_server_poll(void *arg, struct tcp_pcb *pcb)
 
     TcpClientState *con_state = (TcpClientState *)arg;
     err_t err = ERR_OK;
-    const char *part;
-    size_t len;
 
-    con_state->buffer.peek(part, len);
+    auto [part, peekLength] = con_state->buffer.peek();
     if (len)
     {
-        err = tcp_write(pcb, part, len, TCP_WRITE_FLAG_COPY);
+        err = tcp_write(pcb, part, peekLength, TCP_WRITE_FLAG_COPY);
         // Direct flush at larger packages to ensure EFB is updated on time
-        if (len > 400) {
+        if (peekLength > 400)
+        {
             tcp_output(pcb);
         }
     }
@@ -307,9 +304,10 @@ void AirConnect::tcp_server_close()
     cyw43_arch_lwip_begin();
 
     // Stop the server and this accepting any connections
-    if (serverPcb) {
+    if (serverPcb)
+    {
         tcp_arg(serverPcb, nullptr);
-        tcp_close(serverPcb);    
+        tcp_close(serverPcb);
         serverPcb = nullptr;
     }
 

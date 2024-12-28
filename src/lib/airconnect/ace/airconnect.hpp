@@ -24,14 +24,14 @@
 #include "ace/circularbuffer.hpp"
 
 /**
- * AirCOnnect protocll for EFB's that only support AirCOnnect.
- * THis protocol is currently not recommende if you can also use GDL90
+ * AirConnect protocol for EFB's that only support AirConnect.
+ * THis protocol is currently not recommende if you can also use GDL90, if you need to use NMEA and have BLE, use that
  */
 class AirConnect : public BaseModule, public etl::message_router<AirConnect, OpenAce::DataPortMsg, OpenAce::WifiConnectionStateMsg, OpenAce::IdleMsg>
 {
     friend class message_router;
     static constexpr uint16_t AIRCONNECT_PORT = 2000;
-    static constexpr uint16_t BUFFER_SIZE = 1024;
+    static constexpr uint16_t BUFFER_SIZE = 1024; // TODO: Tune buffer
     struct
     {
         uint32_t toManyClients = 0;

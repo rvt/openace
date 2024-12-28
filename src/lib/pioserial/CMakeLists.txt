@@ -13,11 +13,14 @@ set(MODULE_PIO_FILES
 )
 
 set(MODULE_TARGET_LINK
+    utils
+)
+
+set(PICO_EXTRA_LIBS
     hardware_gpio
     hardware_irq
     hardware_uart
     hardware_pio
-    utils
 )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../openace_module.cmake)

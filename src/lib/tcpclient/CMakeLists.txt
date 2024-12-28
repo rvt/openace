@@ -6,7 +6,7 @@ set(MSG_PREFIX "${PROJECT_NAME} |")
 set(MODULE_SOURCE_FILES
 )
 
-set(MODULE_TARGET_LINK
+set(PICO_EXTRA_LIBS
     pico_cyw43_arch_lwip_sys_freertos
 )
 

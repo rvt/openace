@@ -5,16 +5,12 @@
 #include "serialadsb.hpp"
 
 #include "ace/messagerouter.hpp"
-#include "ace/basemodule.hpp"
-#include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
-#include "ace/constants.hpp"
-
 
 void SerialADSB::start()
 {
     pioSerial.start();
-    xTaskCreate(serialADSBTask, "serialADSBTask", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(serialADSBTask, "serialADSBTask", configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
 };
 
 void SerialADSB::stop()

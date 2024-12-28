@@ -27,7 +27,7 @@ const char *postConstructToString(OpenAce::PostConstruct reason);
 class Configuration;
 class BaseModule
 {
-    static constexpr uint8_t MAX_MODULES = 30;
+    static constexpr uint8_t MAX_MODULES = 40;
     inline static SemaphoreHandle_t xMutex;
 
 protected:
@@ -64,6 +64,8 @@ public:
     using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
     struct ModuleStatus
     {
+        // NOTE: The reason why it's currently done by delegate is that it's possible to have module A depending on module B loads Module B automatically
+        // In insight, may be this can easer with a simple switch structure.
         ModuleLoadFunction loadFunction;
         OpenAce::PostConstruct result;
         BaseModule *module;

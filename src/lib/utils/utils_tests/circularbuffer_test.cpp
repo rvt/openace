@@ -12,9 +12,7 @@ using namespace Catch::Matchers;
 
 TEST_CASE("CircularBuffer", "[single-file]")
 {
-    const char *part;
     char test[128];
-    size_t len;
 
     CircularBuffer<16> buffer;
     buffer.push("abcdefghijkl", 12);
@@ -27,7 +25,7 @@ TEST_CASE("CircularBuffer", "[single-file]")
 
         SECTION("Buffer intact")
         {
-            buffer.peek(part, len);
+            auto [part, len] = buffer.buffer.peek();
             strncpy(test, part, len);
             test[len] = '\0';
             REQUIRE_THAT(test, Equals("abcdefghijkl"));
@@ -39,7 +37,7 @@ TEST_CASE("CircularBuffer", "[single-file]")
         buffer.accepted(4);
         REQUIRE(buffer.available() == 8);
 
-        buffer.peek(part, len);
+        auto [part, len] = buffer.buffer.peek();
         strncpy(test, part, len);
         test[len] = '\0';
         REQUIRE_THAT(test, Equals("efghijkl"));
@@ -49,7 +47,7 @@ TEST_CASE("CircularBuffer", "[single-file]")
             buffer.push("12345678", 8);
             REQUIRE(buffer.available() == 0);
 
-            buffer.peek(part, len);
+            auto [part, len] = buffer.buffer.peek();
             strncpy(test, part, len);
             test[len] = '\0';
             REQUIRE_THAT(test, Equals("efghijkl1234"));
@@ -57,7 +55,7 @@ TEST_CASE("CircularBuffer", "[single-file]")
             SECTION("Accept 4 chars, push 8, untill end")
             {
                 buffer.accepted(len);
-                buffer.peek(part, len);
+                auto [part, len] = buffer.buffer.peek();
                 strncpy(test, part, len);
                 test[len] = '\0';
                 REQUIRE_THAT(test, Equals("5678"));
@@ -70,15 +68,13 @@ TEST_CASE("CircularBuffer", "[single-file]")
 
 TEST_CASE("CircularBuffer push full", "[single-file]")
 {
-    const char *part;
     char test[128];
-    size_t len;
 
     CircularBuffer<16> buffer;
     buffer.push("abcdefghijklmnop", 16);
     REQUIRE(buffer.available() == 0);
 
-    buffer.peek(part, len);
+    auto [part, len] = buffer.buffer.peek();
     strncpy(test, part, len);
     test[len] = '\0';
     REQUIRE_THAT(test, Equals("abcdefghijklmnop"));
@@ -89,7 +85,7 @@ TEST_CASE("CircularBuffer push full", "[single-file]")
         buffer.push("abcdefghijklmnop", 16);
         REQUIRE(buffer.available() == 0);
     
-        buffer.peek(part, len);
+        auto [part, len] = buffer.buffer.peek();
         strncpy(test, part, len);
         test[len] = '\0';
         REQUIRE_THAT(test, Equals("abcdefghijklmnop"));

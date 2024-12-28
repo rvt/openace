@@ -19,7 +19,8 @@ build_test/
 ./build_time.hpp
 
 # VSCode + Python
-.vscode/settings.json
+**/.vscode/settings.json
+**/.vscode/tasks.json
 .venv
 
 # GUI

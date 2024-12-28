@@ -14,8 +14,8 @@
 
 void GDLoverUDP::getConfiguration(const Configuration &config)
 {
-    SemaphoreGuard<portMAX_DELAY> guard(configMutex);
-    if (guard) {
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::configMutex))
+    {
         getConfigurationNoMutex(config);
     }
 }
@@ -92,9 +92,8 @@ void GDLoverUDP::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
 {
     // Send to the connect clients and the defined ports
-
-    SemaphoreGuard<TASK_DELAY_MS(1)> guard(configMutex);
-    if (guard) {
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::configMutex))
+    {
         for (auto ip : connectedClients)
         {
             // Connected clients are always on the accesspoint, 

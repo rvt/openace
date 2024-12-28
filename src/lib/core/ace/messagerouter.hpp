@@ -44,7 +44,7 @@ namespace OpenAce
         virtual ~ThreadSafeBus()
         {
             // MessageBus will be active for a lifetime
-            // vSemaphoreDelete(xMutex);
+            vSemaphoreDelete(xMutex);
         }
 
         /**
@@ -96,16 +96,16 @@ namespace OpenAce
              */
             // When updating configurations the mutex did not work, Not sure yet why this was
             // So it's now hacked to not use a mutex
-            // auto skipMutex = shared_msg.get_message().get_message_id() == 20;
-            // if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
-            // {
-            //     statistics.totalMessages++;
-            etl::imessage_bus::receive(etl::imessage_router::ALL_MESSAGE_ROUTERS, shared_msg);
-            // if (!skipMutex)
-            // {
-            //     xSemaphoreGiveRecursive(xMutex);
-            // }
-            //}
+            auto skipMutex = shared_msg.get_message().get_message_id() == 20;
+            if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
+            {
+                statistics.totalMessages++;
+                etl::imessage_bus::receive(etl::imessage_router::ALL_MESSAGE_ROUTERS, shared_msg);
+                if (!skipMutex)
+                {
+                    xSemaphoreGiveRecursive(xMutex);
+                }
+            }
         }
     };
 };

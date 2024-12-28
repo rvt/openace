@@ -25,7 +25,7 @@ endforeach()
 
 # Since core our own project that uses this, we don't add it when it'c core
 if (NOT "${PROJECT_NAME}" STREQUAL "core")
-    set(EXTRA_LIBS core)
+    set(TARGET_CORE core)
 endif()
 
 # Link libraries
@@ -33,7 +33,9 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
     FreeRTOS-Kernel-Heap4
     pico_stdlib
+
+    ${PICO_EXTRA_LIBS}
     etl::etl
-    ${EXTRA_LIBS}
+    ${TARGET_CORE}
     ${MODULE_TARGET_LINK}
 )

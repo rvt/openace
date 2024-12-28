@@ -10,7 +10,9 @@ set(MODULE_SOURCE_FILES
 set(MODULE_TARGET_LINK
     libcrc
     utils
+)
 
+set(PICO_EXTRA_LIBS
     pico_time
     hardware_rtc
 )

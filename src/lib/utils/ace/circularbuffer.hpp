@@ -79,17 +79,37 @@ public:
     // }
 
     // 3️⃣ Returns a direct pointer to the internal buffer and the length of contiguous data
-    void peek(const char *&part, size_t &len) const
+    auto peek() const
     {
+        struct PeekResult {
+            const char* part;
+            size_t size;
+        };
+
         if (count == 0)
         {
-            part = nullptr;
-            len = 0;
-            return;
+            PeekResult{nullptr, 0};
         }
 
-        part = &buffer[tail];
-        len = std::min(count, BufferSize - tail); // Return contiguous region before wraparound
+        return PeekResult{&buffer[tail], std::min(count, BufferSize - tail)};
+    }
+
+    // Similar to peek, but will directly accepted the data
+    auto get() 
+    {
+        struct PeekResult {
+            const char* part;
+            size_t size;
+        };
+
+        if (count == 0)
+        {
+            PeekResult{nullptr, 0};
+        }
+
+        auto size = std::min(count, BufferSize - tail);
+        accepted(size);
+        return PeekResult{&buffer[tail], size};
     }
 
     // 4️⃣ Advances the "read pointer" by `len` bytes

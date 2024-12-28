@@ -14,7 +14,7 @@ set(MODULE_SOURCE_FILES
     ace/manchester.cpp
 )
 
-set(MODULE_TARGET_LINK
+set(PICO_EXTRA_LIBS
     hardware_pio
 )
 

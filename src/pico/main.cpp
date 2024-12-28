@@ -14,6 +14,7 @@
 /* pico */
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
+#include "pico/btstack_cyw43.h"
 
 /* Vendor. */
 #include "etl/list.h"
@@ -51,7 +52,7 @@
 #include "ace/airconnect.hpp"
 #include "ace/bluetooth.hpp"
 
-const char *buildTime = BUILD_TIMESTAMP;
+const char *OpenAce_buildTime = BUILD_TIMESTAMP;
 
 /* Prototypes for the standard FreeRTOS callback/hook functions implemented
 within this file. */
@@ -105,7 +106,7 @@ public:
 
 void registerModules()
 {
-    // // *INDENT-OFF*
+    // *INDENT-OFF*
     BaseModule::registerModule(AceSpi::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
                                { return new AceSpi(bus, config); });
     BaseModule::registerModule(Bmp280::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
@@ -155,7 +156,7 @@ void registerModules()
                                { return new AirConnect(bus, config); });
     BaseModule::registerModule(Bluetooth::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
                                { return new Bluetooth(bus, config); });
-    // // *INDENT-ON*
+    // *INDENT-ON*
 
     for (auto a : BaseModule::registeredModules())
     {
@@ -225,6 +226,7 @@ static void loadModules(void *arch)
     {
         load(Webserver::NAME, bus, config, true);
     }
+    load(Bluetooth::NAME, bus, config);
     load(AircraftTracker::NAME, bus, config, true);
     load(AceSpi::NAME, bus, config, true);
     load(PicoRtc::NAME, bus, config, true);
@@ -250,7 +252,6 @@ static void loadModules(void *arch)
     load(DataPort::NAME, bus, config);
     load(AirConnect::NAME, bus, config);
     load(Dump1090Client::NAME, bus, config);
-    load(Bluetooth::NAME, bus, config);
 
     // SerialADSB messes up the serial terminal, but it will load beyond this point
     // load(SerialADSB::NAME, bus, config);
@@ -297,8 +298,7 @@ void vLaunch(void)
 
     TaskHandle_t taskpublish_handle;
     UBaseType_t uxCoreAffinityMask;
-    // + 1024 because we run the message bus in this task
-    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 256 /* 96 */, NULL, tskIDLE_PRIORITY, &(taskpublish_handle));
+    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 1024, NULL, tskIDLE_PRIORITY, &(taskpublish_handle));
     uxCoreAffinityMask = ((1 << 0));
     vTaskCoreAffinitySet(taskpublish_handle, uxCoreAffinityMask);
 
@@ -326,7 +326,6 @@ void overflowTest()
 int main()
 {
     stdio_init_all();
-
     printf(
         R"=(
 
@@ -344,18 +343,21 @@ int main()
     etl::error_handler::set_callback<etlcpp_receive_error>();
 #endif
 
-    /* Configure the hardware ready to run the demo. */
-    const char *rtos_name;
-#if (portSUPPORT_SMP == 1)
-    rtos_name = "SMP";
-#else
-    rtos_name = "Single Core";
+#if FREE_RTOS_KERNEL_SMP
+    puts("FreeRTOS SMP Kernel");
 #endif
 
-#if (portSUPPORT_SMP == 1) && (configNUMBER_OF_CORES > 1)
-    printf("Starting %s\n\n", rtos_name);
+    const char *rtos_name;
+#if (configNUMBER_OF_CORES > 1)
+    rtos_name = "OpenAce SMP";
+#else
+    rtos_name = "OpenAce";
+#endif
+
+#if (configNUMBER_OF_CORES > 2)
+    printf("Starting %s on both cores:\n\n", rtos_name);
     vLaunch();
-#elif (RUN_FREE_RTOS_ON_CORE == 1)
+#elif (RUN_FREERTOS_ON_CORE == 1)
     printf("Starting %s on core 1:\n\n", rtos_name);
     multicore_launch_core1(vLaunch);
     while (true)
