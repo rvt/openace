@@ -35,6 +35,9 @@
  */
 class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenAce::DataPortMsg, OpenAce::IdleMsg>
 {
+    static constexpr uint8_t RFCOM_READYSTATE = 0b101;
+    static constexpr uint8_t ATT_READYSTATE = 0b011;
+
     static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 512; // TODO: Tune buffer
     friend class message_router;
     struct
@@ -60,8 +63,7 @@ private:
 
     // START: methods within this block as running within the BLE task
     static void packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
-    static void rfcommSendPacket(uint16_t channelId);
-    static void sendNotify(hci_con_handle_t handle);
+    static void sendPackage(hci_con_handle_t handle);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
     static bool createNewConnection(hci_con_handle_t handle, uint16_t mtu);

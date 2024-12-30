@@ -10,8 +10,10 @@
 // BTstack features that can be enabled
 #define ENABLE_LOG_INFO
 #define ENABLE_LOG_ERROR
-#define ENABLE_PRINTF_HEXDUMP
 #endif
+
+// TODO: How to remove this from a non debug?
+#define ENABLE_PRINTF_HEXDUMP
 
 #define ENABLE_LE_PERIPHERAL
 

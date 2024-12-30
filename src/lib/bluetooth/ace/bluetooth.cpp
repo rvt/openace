@@ -268,45 +268,19 @@ void Bluetooth::pushQueueIntoConnectionBuffers(void *arg)
     {
         for (auto &it : Bluetooth::connections)
         {
-            if (it.requiresNotification && (it.readyState & 0b011) == 0b011)
+            if (it.requiresNotification)
             {
-                it.requiresNotification = false;
-                att_server_request_can_send_now_event(it.handle);
-            }
-            else if ((it.readyState & 0b101) == 0b101)
-            {
-                rfcomm_request_can_send_now_event(it.rfcommChannelId);
+                if ((it.readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+                {
+                    rfcomm_request_can_send_now_event(it.rfcommChannelId);
+                }
+                else if ((it.readyState & ATT_READYSTATE) == ATT_READYSTATE)
+                {
+                    att_server_request_can_send_now_event(it.handle);
+                }
             }
         }
     }
-}
-
-void Bluetooth::sendNotify(hci_con_handle_t handle)
-{
-    pushQueueIntoConnectionBuffers((void *)1);
-
-    auto it = Bluetooth::ctxByHandle(handle);
-    if (it == connections.end() || ((it->readyState & 0b11) != 0b11))
-    {
-        return;
-    }
-
-    auto [part, peekLength] = it->buffer.peek();
-    peekLength = etl::min(peekLength, static_cast<size_t>(it->mtu));
-    if (peekLength > 0)
-    {
-        att_server_notify(handle, it->attrHandle, reinterpret_cast<const uint8_t *>(part), peekLength);
-        it->buffer.accepted(peekLength);
-
-        // As long as there is data in the connections buffer, immediately request for sending for more data,
-        // otherwise request set requireForNotification so the request will be done as soon as new data will be available
-        if (!it->buffer.empty())
-        {
-            att_server_request_can_send_now_event(handle);
-            return;
-        }
-    }
-    it->requiresNotification = true;
 }
 
 void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
@@ -320,23 +294,23 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
         switch (hci_event_packet_get_type(packet))
         {
         /********************* Just Works *********************/
-        case SM_EVENT_JUST_WORKS_REQUEST:
-        {
-            printf("Just Works requested\n");
-            sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
-        }
-        break;
-        case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-        {
-            printf("Confirming numeric comparison: %lu\n", sm_event_numeric_comparison_request_get_passkey(packet));
-            sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
-        }
-        break;
-        case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
-        {
-            printf("Display Passkey: %lu\n", sm_event_passkey_display_number_get_passkey(packet));
-        }
-        break;
+        // case SM_EVENT_JUST_WORKS_REQUEST:
+        // {
+        //     printf("Just Works requested\n");
+        //     sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
+        // }
+        // break;
+        // case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
+        // {
+        //     printf("Confirming numeric comparison: %lu\n", sm_event_numeric_comparison_request_get_passkey(packet));
+        //     sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+        // }
+        // break;
+        // case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
+        // {
+        //     printf("Display Passkey: %lu\n", sm_event_passkey_display_number_get_passkey(packet));
+        // }
+        // break;
 
         /********************* HCI *********************/
         case HCI_EVENT_PIN_CODE_REQUEST:
@@ -404,7 +378,7 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
                     if (mtu > 12)
                     {
                         ctx.mtu = static_cast<uint16_t>(mtu - 12);
-                        ctx.readyState |= 0b10;
+                        ctx.readyState |= 0b010;
                     }
                     else
                     {
@@ -422,7 +396,7 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
         {
             for (const auto &it : Bluetooth::connections)
             {
-                sendNotify(it.handle);
+                sendPackage(it.handle);
             }
         }
         break;
@@ -433,7 +407,7 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
             Bluetooth::withHandle(att_event_disconnected_get_handle(packet),
                 etl::delegate<void(BtContext &)>::create([](BtContext &ctx)
                 { 
-                    ctx.readyState = 0; 
+                    ctx.readyState = 0b000; 
                     ctx.handle = HCI_CON_HANDLE_INVALID; 
                 }
             ));
@@ -488,7 +462,7 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
 
         case RFCOMM_EVENT_CAN_SEND_NOW:
         {
-            rfcommSendPacket(rfcomm_event_can_send_now_get_rfcomm_cid(packet));
+            sendPackage(rfcomm_event_can_send_now_get_rfcomm_cid(packet));
         }
         break;
 
@@ -542,7 +516,7 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
         Bluetooth::withHandle(con_handle, 
             etl::delegate<void(BtContext &)>::create([buffer](BtContext &ctx)
             {
-                ctx.readyState |= little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION ? 0b01 : 0b00;
+                ctx.readyState |= little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION ? 0b001 : 0b000;
                 ctx.attrHandle = ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE;
             }
         ));
@@ -561,12 +535,12 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     return 0;
 }
 
-void Bluetooth::rfcommSendPacket(uint16_t channelId)
+void Bluetooth::sendPackage(uint16_t handle)
 {
     pushQueueIntoConnectionBuffers((void *)1);
 
-    auto it = Bluetooth::ctxByHandle(channelId);
-    if (it == connections.end() || ((it->readyState & 0b101) != 0b101))
+    auto it = Bluetooth::ctxByHandle(handle);
+    if (it == connections.end())
     {
         return;
     }
@@ -575,14 +549,31 @@ void Bluetooth::rfcommSendPacket(uint16_t channelId)
     peekLength = etl::min(peekLength, static_cast<size_t>(it->mtu));
     if (peekLength > 0)
     {
-        rfcomm_send(it->rfcommChannelId, (uint8_t *)part, peekLength);
+        if ((it->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+        {
+            rfcomm_send(handle, (uint8_t *)part, peekLength);
+        }
+        else if ((it->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+        {
+            att_server_notify(handle, it->attrHandle, reinterpret_cast<const uint8_t *>(part), peekLength);
+        }
         it->buffer.accepted(peekLength);
 
         // As long as there is data in the connections buffer, immediately request for sending for more data,
         // otherwise request set requireForNotification so the request will be done as soon as new data will be available
         if (!it->buffer.empty())
         {
-            rfcomm_request_can_send_now_event(channelId);
+            if ((it->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+            {
+                it->requiresNotification = false;
+                rfcomm_request_can_send_now_event(handle);
+            }
+            else if ((it->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+            {
+                it->requiresNotification = false;
+                att_server_request_can_send_now_event(handle);
+            }
+
             return;
         }
     }
