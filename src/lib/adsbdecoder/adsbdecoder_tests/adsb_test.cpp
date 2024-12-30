@@ -77,11 +77,8 @@ TEST_CASE("Test filter below and above", "[single-file]")
     auto path = fs::current_path();
     printf("->-> Path: %s\n", path.c_str());
     std::ifstream infile(filename);
-    if (!infile.is_open())
-    {
-        printf("File not found %s\n", filename.c_str());
-        REQUIRE((false));
-    }
+
+    REQUIRE (infile.is_open());
 
     int higestPlane = 0;
     int lowestPlane = 50000;
