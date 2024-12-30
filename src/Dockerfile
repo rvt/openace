@@ -1,25 +1,36 @@
 # Fetch ubuntu image
-FROM ubuntu:22.04
+FROM ubuntu:24.10
 
 # Install prerequisites
 RUN \
     apt update && \
-    apt install -y git python3 ninja-build cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev
+    apt install -y git python3 ninja-build cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev gnutls-bin
 
 # Install Pico SDK
 RUN \
     cd /opt/ && \
-    git clone https://github.com/raspberrypi/pico-sdk.git --branch master && \
+    git clone --depth 1 https://github.com/raspberrypi/pico-sdk.git --branch 2.1.0 && \
     cd pico-sdk/ && \
-    git submodule update --init && \
+    git config fetch.recurseSubmodules on-demand && \
+    git submodule update --init --depth 1 && \
     cd /
 
 RUN \
+    git config --global http.version HTTP/1.1 && \
+    git config --global http.postBuffer 1048576000 && \
+    git config --global https.postBuffer 1048576000 
+
+RUN \
     cd /opt/ && \
-    git clone https://github.com/FreeRTOS/FreeRTOS.git --branch main && \
-    cd FreeRTOS/ && \
-    git submodule update --init && \
+    git clone --depth 1 https://github.com/FreeRTOS/FreeRTOS.git --branch 202411.00 && \
+    cd FreeRTOS && \
+    git config fetch.recurseSubmodules on-demand && \
+    git submodule update --init --depth 1 && \
     cd /
+    
+# Used for gatt compilation
+RUN \
+    pip3 install pycryptodomex    
 
 RUN \
     mkdir -p /opt/src/
@@ -32,9 +43,9 @@ ENV FREERTOS_KERNEL_PATH=/opt/FreeRTOS/FreeRTOS/Source
 # # Create entrypoint script that will be used at container start
 RUN echo '#!/bin/bash\n\
   echo "Using ninja"\n\
-  mkdir -p /opt/src/pico/docker_build\n\
+  mkdir -p /opt/src/pico/release_build_docker\n\
   cd /opt/src/pico\n\
-  cmake -B docker_build -G Ninja && ninja -C docker_build $1\n\
+  cmake -B docker_build -G Ninja && ninja -C release_build_docker $1\n\
   exit' > /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
