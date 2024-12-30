@@ -30,7 +30,7 @@ RUN \
     
 # Used for gatt compilation
 RUN \
-    pip3 install pycryptodomex    
+    pip install pycryptodomex
 
 RUN \
     mkdir -p /opt/src/
