@@ -6,8 +6,10 @@
 
 #include "ble/gatt-service/battery_service_server.h"
 #include "ble/gatt-service/device_information_service_server.h"
+#include "pico/btstack_flash_bank.h"
 
-// #include "btstack_run_loop_freertos.h"
+#include "hci_event_builder.h"
+
 #include "etl/algorithm.h"
 #include "etl/set.h"
 
@@ -22,27 +24,23 @@ extern const char *OpenAce_buildTime;
  */
 
 // clang-format off
+// advertisement data, MAX 31 byte!
 const uint8_t adv_data[] = {
     // Flags general discoverable, BR/EDR not supported
     2, BLUETOOTH_DATA_TYPE_FLAGS, 0x06,
-    // 17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS, 0x9e, 0xca, 0xdc, 0x24, 0x0e, 0xe5, 0xa9, 0xe0, 0x93, 0xf3, 0xa3, 0xb5, 0x01, 0x00, 0x40, 0x6e,
-    // 0x05, BLUETOOTH_DATA_TYPE_SLAVE_CONNECTION_INTERVAL_RANGE, 0x0c, 0x00, 0x0c, 0x00,
-};
-
-const uint8_t adv_response_data[] = {
-    // Name
     8, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'O', 'p', 'e','n', 'A', 'c', 'e',
     17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS, 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00,
 };
+
 // clang-format on
 
 static btstack_context_callback_registration_t callback_registration;
-static btstack_packet_callback_registration_t hci_event_callback_registration;
+static btstack_packet_callback_registration_t sm_event_callback_registration;
 
 // SPP
-static uint8_t spp_service_buffer[150];
+// static uint8_t spp_service_buffer[100]; // SHowed as length to 91
 // #ifdef ENABLE_GATT_OVER_CLASSIC
-static uint8_t gatt_service_buffer[70];
+// static uint8_t gatt_service_buffer[70]; // SHowed as length to 58
 // #endif
 
 OpenAce::PostConstruct Bluetooth::postConstruct()
@@ -74,61 +72,24 @@ void Bluetooth::stop()
     mutex = nullptr;
 };
 
+void Bluetooth::eraseBonding()
+{
+    gap_delete_all_link_keys();
+    printf("Bonding data erased successfully.\n");
+}
+
 void Bluetooth::start()
 {
     l2cap_init();
-
-    rfcomm_init();
-    rfcomm_register_service(packetHandler, RFCOMM_SERVER_CHANNEL, 0xffff);
-
-    // init SDP, create record for SPP and register with SDP
-    sdp_init();
-    memset(spp_service_buffer, 0, sizeof(spp_service_buffer));
-    spp_create_sdp_record(spp_service_buffer, sdp_create_service_record_handle(), RFCOMM_SERVER_CHANNEL, "OpenAce");
-    sdp_register_service(spp_service_buffer);
-
-    // #ifdef ENABLE_GATT_OVER_CLASSIC
-    memset(gatt_service_buffer, 0, sizeof(gatt_service_buffer));
-    gatt_create_sdp_record(gatt_service_buffer, sdp_create_service_record_handle(), ATT_SERVICE_GATT_SERVICE_START_HANDLE, ATT_SERVICE_GATT_SERVICE_END_HANDLE);
-    sdp_register_service(gatt_service_buffer);
-    // #endif
-
-    gap_set_local_name("OpenAce"); // Should be classic, but I think this will also appear as ib BLE advertisements?
-    gap_ssp_set_io_capability(SSP_IO_CAPABILITY_DISPLAY_YES_NO);
-
-    // https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/Assigned_Numbers/out/en/Assigned_Numbers.pdf?v=1735400416371 2.8 Class of Device
-    //    gap_set_class_of_device(0b1'0000'0001'0001'0000); // bit starts counting from 0
-    gap_set_class_of_device(0);
-
-    gap_discoverable_control(1);
 
     // setup SM: Display only
     sm_init();
 
     // setup ATT server
-    att_server_init(profile_data, nullptr, attWriteCallback);
+    att_server_init(profile_data, NULL, NULL);
 
-    // register for HCI events
-    hci_event_callback_registration.callback = &packetHandler;
-    hci_add_event_handler(&hci_event_callback_registration);
-
-    // register for ATT events
-    att_server_register_packet_handler(packetHandler);
-
-    // setup battery service
-    battery_service_server_init(100);
-
-    // setup device information service
-    device_information_service_server_init();
-    device_information_service_server_set_manufacturer_name("OpenAce");
-    // device_information_service_server_set_model_number("model_number");
-    // device_information_service_server_set_serial_number("serial_number");
-    // device_information_service_server_set_hardware_revision("hardware_revision");
-    // device_information_service_server_set_firmware_revision("firmware_revision");
-    device_information_service_server_set_software_revision(OpenAce_buildTime);
-    // device_information_service_server_set_system_id(0x01, 0x02);
-    // device_information_service_server_set_ieee_regulatory_certification(0x03, 0x04);
-    // device_information_service_server_set_pnp_id(0x05, 0x06, 0x07, 0x08);
+    // setup GATT Client
+    gatt_client_init();
 
     // setup advertisements
     uint16_t adv_int_min = 0x0030;
@@ -137,17 +98,67 @@ void Bluetooth::start()
     bd_addr_t null_addr;
     memset(null_addr, 0, 6);
     gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
-    gap_scan_response_set_data(sizeof(adv_response_data), (uint8_t *)adv_response_data);
     gap_advertisements_set_data(sizeof(adv_data), (uint8_t *)adv_data);
     gap_advertisements_enable(1);
 
-    // Registration for cb into bluetooth task
+    sm_event_callback_registration.callback = &smPacketHandler;
+    sm_add_event_handler(&sm_event_callback_registration);
+
+    // Configuration
+
+    // Enable mandatory authentication for GATT Client
+    // - if un-encrypted connections are not supported, e.g. when connecting to own device, this enforces authentication
+    // gatt_client_set_required_security_level(LEVEL_2);
+
+    /**
+     * Choose ONE of the following configurations
+     * Bonding is disabled to allow for repeated testing. It can be enabled by or'ing
+     * SM_AUTHREQ_BONDING to the authentication requirements like this:
+     * sm_set_authentication_requirements( X | SM_AUTHREQ_BONDING)
+     */
+
+    // LE Legacy Pairing, Just Works
+    sm_set_io_capabilities(IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
+    sm_set_authentication_requirements(0 | SM_AUTHREQ_BONDING);
+
+    // LE Legacy Pairing, Passkey entry initiator enter, responder (us) displays
+    // sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_ONLY);
+    // sm_set_authentication_requirements(SM_AUTHREQ_MITM_PROTECTION);
+    // sm_use_fixed_passkey_in_display_role(123456);
+
+#ifdef ENABLE_LE_SECURE_CONNECTIONS
+
+    // enable LE Secure Connections Only mode - disables Legacy pairing
+    // sm_set_secure_connections_only_mode(true);
+
+    // LE Secure Connections, Just Works
+    // sm_set_io_capabilities(IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
+    // sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION);
+
+    // LE Secure Connections, Numeric Comparison
+    // sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_YES_NO);
+    // sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);
+
+    // LE Secure Pairing, Passkey entry initiator enter, responder (us) displays
+    // sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_ONLY);
+    // sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);
+    // sm_use_fixed_passkey_in_display_role(123456);
+
+    // LE Secure Pairing, Passkey entry initiator displays, responder (us) enter
+    // sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
+    // sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);
+#endif
+
+    // setup ATT server
+    att_server_init(profile_data, nullptr, attWriteCallback);
+
+    // register for ATT events
+    att_server_register_packet_handler(attPacketHandler);
+
+    // Registration for callback into bluetooth task
     callback_registration.callback = &pushQueueIntoConnectionBuffers;
     callback_registration.context = nullptr;
 
-    // hci_dump_init(hci_dump_embedded_stdout_get_instance());
-
-    // turn on!
     hci_power_control(HCI_POWER_ON);
 
     getBus().subscribe(*this);
@@ -177,6 +188,8 @@ void Bluetooth::on_receive(const OpenAce::IdleMsg &msg)
 
 /**
  * Receive dataport messages and send it to all clients
+ * Only process data if there are any actual clients and when all client
+ * buffers are empty, send a trigger to the BT thread to process the data.
  */
 void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
 {
@@ -210,13 +223,13 @@ void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
     }
 }
 
-bool Bluetooth::createNewConnection(hci_con_handle_t handle, uint16_t mtu)
+bool Bluetooth::createNewConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
 {
     if (auto guard = SemaphoreGuard<portMAX_DELAY>(Bluetooth::mutex))
     {
         if (!Bluetooth::connections.full())
         {
-            Bluetooth::connections.emplace_back(BtContext{handle, mtu});
+            Bluetooth::connections.emplace_back(BtContext{handle, mtu, readyState});
             return true;
         }
     }
@@ -227,7 +240,6 @@ void Bluetooth::cleanupConnections()
 {
     if (auto guard = SemaphoreGuard<portMAX_DELAY>(Bluetooth::mutex))
     {
-
         Bluetooth::connections.erase(
             etl::remove_if(
                 Bluetooth::connections.begin(),
@@ -283,7 +295,133 @@ void Bluetooth::pushQueueIntoConnectionBuffers(void *arg)
     }
 }
 
-void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+/*
+ * @section Security Manager Packet Handler
+ *
+ * @text The packet handler is used to handle Security Manager events
+ */
+
+/* LISTING_START(packetHandler): Security Manager Packet Handler */
+void Bluetooth::smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+{
+    UNUSED(channel);
+    UNUSED(size);
+
+    if (packet_type != HCI_EVENT_PACKET)
+        return;
+
+    bd_addr_t addr;
+    bd_addr_type_t addr_type;
+    uint8_t status;
+
+    switch (hci_event_packet_get_type(packet))
+    {
+    case SM_EVENT_JUST_WORKS_REQUEST:
+        printf("Just Works requested\n");
+        sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
+        break;
+    case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
+        printf("Confirming numeric comparison: %lu\n", sm_event_numeric_comparison_request_get_passkey(packet));
+        sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+        break;
+    case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
+        printf("Display Passkey: %lu\n", sm_event_passkey_display_number_get_passkey(packet));
+        break;
+    case SM_EVENT_IDENTITY_CREATED:
+        sm_event_identity_created_get_identity_address(packet, addr);
+        printf("Identity created: type %u address %s\n", sm_event_identity_created_get_identity_addr_type(packet), bd_addr_to_str(addr));
+        break;
+    case SM_EVENT_IDENTITY_RESOLVING_SUCCEEDED:
+        sm_event_identity_resolving_succeeded_get_identity_address(packet, addr);
+        printf("Identity resolved: type %u address %s\n", sm_event_identity_resolving_succeeded_get_identity_addr_type(packet), bd_addr_to_str(addr));
+        break;
+    case SM_EVENT_IDENTITY_RESOLVING_FAILED:
+        sm_event_identity_created_get_address(packet, addr);
+        printf("Identity resolving failed\n");
+        break;
+    case SM_EVENT_PAIRING_STARTED:
+        printf("Pairing started\n");
+        break;
+    case SM_EVENT_PAIRING_COMPLETE:
+        switch (sm_event_pairing_complete_get_status(packet))
+        {
+        case ERROR_CODE_SUCCESS:
+            printf("Pairing complete, success\n");
+            break;
+        case ERROR_CODE_CONNECTION_TIMEOUT:
+            printf("Pairing failed, timeout\n");
+            break;
+        case ERROR_CODE_REMOTE_USER_TERMINATED_CONNECTION:
+            printf("Pairing failed, disconnected\n");
+            break;
+        case ERROR_CODE_AUTHENTICATION_FAILURE:
+            printf("Pairing failed, authentication failure with reason = %u\n", sm_event_pairing_complete_get_reason(packet));
+            break;
+        default:
+            break;
+        }
+        break;
+    case SM_EVENT_REENCRYPTION_STARTED:
+        sm_event_reencryption_complete_get_address(packet, addr);
+        printf("Bonding information exists for addr type %u, identity addr %s -> re-encryption started\n",
+               sm_event_reencryption_started_get_addr_type(packet), bd_addr_to_str(addr));
+        break;
+    case SM_EVENT_REENCRYPTION_COMPLETE:
+        switch (sm_event_reencryption_complete_get_status(packet))
+        {
+        case ERROR_CODE_SUCCESS:
+            printf("Re-encryption complete, success\n");
+            break;
+        case ERROR_CODE_CONNECTION_TIMEOUT:
+            printf("Re-encryption failed, timeout\n");
+            break;
+        case ERROR_CODE_REMOTE_USER_TERMINATED_CONNECTION:
+            printf("Re-encryption failed, disconnected\n");
+            break;
+        case ERROR_CODE_PIN_OR_KEY_MISSING:
+            printf("Re-encryption failed, bonding information missing\n\n");
+            printf("Assuming remote lost bonding information\n");
+            printf("Deleting local bonding information to allow for new pairing...\n");
+            sm_event_reencryption_complete_get_address(packet, addr);
+            addr_type = (bd_addr_type_t)(sm_event_reencryption_started_get_addr_type(packet));
+            gap_delete_bonding(addr_type, addr);
+            break;
+        default:
+            break;
+        }
+        break;
+    case GATT_EVENT_QUERY_COMPLETE:
+        status = gatt_event_query_complete_get_att_status(packet);
+        switch (status)
+        {
+        case ATT_ERROR_INSUFFICIENT_ENCRYPTION:
+            printf("GATT Query failed, Insufficient Encryption\n");
+            break;
+        case ATT_ERROR_INSUFFICIENT_AUTHENTICATION:
+            printf("GATT Query failed, Insufficient Authentication\n");
+            break;
+        case ATT_ERROR_BONDING_INFORMATION_MISSING:
+            printf("GATT Query failed, Bonding Information Missing\n");
+            break;
+        case ATT_ERROR_SUCCESS:
+            printf("GATT Query successful\n");
+            break;
+        default:
+            printf("GATT Query failed, status 0x%02x\n", gatt_event_query_complete_get_att_status(packet));
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+/*
+ * @section HCI Packet Handler
+ *
+ * @text The packet handler is used to handle new connections, can trigger Security Request
+ */
+void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
 {
     UNUSED(channel);
     UNUSED(size);
@@ -293,107 +431,34 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
     case HCI_EVENT_PACKET:
         switch (hci_event_packet_get_type(packet))
         {
-        /********************* Just Works *********************/
-        // case SM_EVENT_JUST_WORKS_REQUEST:
-        // {
-        //     printf("Just Works requested\n");
-        //     sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
-        // }
-        // break;
-        // case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-        // {
-        //     printf("Confirming numeric comparison: %lu\n", sm_event_numeric_comparison_request_get_passkey(packet));
-        //     sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
-        // }
-        // break;
-        // case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
-        // {
-        //     printf("Display Passkey: %lu\n", sm_event_passkey_display_number_get_passkey(packet));
-        // }
-        // break;
-
-        /********************* HCI *********************/
-        case HCI_EVENT_PIN_CODE_REQUEST:
-        {
-            bd_addr_t event_address;
-            // inform about pin code request
-            // printf("Pin code request - using '0000'\n");
-            hci_event_pin_code_request_get_bd_addr(packet, event_address);
-            gap_pin_code_response(event_address, "0000");
-        }
-        break;
-
-        case HCI_EVENT_USER_CONFIRMATION_REQUEST:
-        {
-            // inform about user confirmation request
-            // printf("SSP User Confirmation Request with numeric value '%06" PRIu32 "'\n", little_endian_read_32(packet, 8));
-            // printf("SSP User Confirmation Auto accept\n");
-        }
-        break;
-
-        case HCI_EVENT_DISCONNECTION_COMPLETE:
-        {
-            // puts("HCI_EVENT_DISCONNECTION_COMPLETE");
-            cleanupConnections();
-            break;
-        }
-        case HCI_EVENT_LE_META:
-        {
-            switch (hci_event_le_meta_get_subevent_code(packet))
-            {
-            case HCI_SUBEVENT_LE_CONNECTION_COMPLETE:
-            {
-                auto con_handle = hci_subevent_le_connection_complete_get_connection_handle(packet);
-                gap_request_connection_parameter_update(con_handle, 12, 12, 4, 0x0048);
-            }
-            break;
-            }
-        }
-        break;
-
-        /********************* ATT *********************/
         case ATT_EVENT_CONNECTED:
         {
-            auto handle = att_event_connected_get_handle(packet);
-            auto mtu = att_server_get_mtu(handle);
-            if (mtu > 12)
+            // puts("ATT_EVENT_CONNECTED");
+        }
+        break;
+        case ATT_EVENT_MTU_EXCHANGE_COMPLETE:
+        {
+            auto handle = att_event_mtu_exchange_complete_get_handle(packet);
+            auto mtu = att_event_mtu_exchange_complete_get_MTU(packet);
+            if (mtu > 24)
             {
-                if (!createNewConnection(handle, mtu - 12))
+                if (!createNewConnection(handle, mtu, 0b010))
                 {
+                    puts("ATT_EVENT_MTU_EXCHANGE_COMPLETE: Too many connections, disconnecting");
                     gap_disconnect(handle);
                 }
             }
-            // Reenable advertising
-            hci_send_cmd(&hci_le_set_advertise_enable, 1);
-        }
-        break;
-
-        case ATT_EVENT_MTU_EXCHANGE_COMPLETE:
-        {
-            // clang-format off
-            Bluetooth::withHandle(att_event_disconnected_get_handle(packet),
-                etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
-                {
-                    auto mtu = att_event_mtu_exchange_complete_get_MTU(packet);
-                    if (mtu > 12)
-                    {
-                        ctx.mtu = static_cast<uint16_t>(mtu - 12);
-                        ctx.readyState |= 0b010;
-                    }
-                    else
-                    {
-                        printf("ATT_EVENT_MTU_EXCHANGE_COMPLETE: Very small MTU detected, disconnecting\n");
-                        gap_disconnect(ctx.handle);
-                        ctx.handle = HCI_CON_HANDLE_INVALID;
-                    }
-                }
-            ));
-            // clang-format off
+            else
+            {
+                puts("ATT_EVENT_MTU_EXCHANGE_COMPLETE: Very small MTU detected, disconnecting");
+                gap_disconnect(handle);
+            }
         }
         break;
 
         case ATT_EVENT_CAN_SEND_NOW:
         {
+            // puts("ATT_EVENT_CAN_SEND_NOW");
             for (const auto &it : Bluetooth::connections)
             {
                 sendPackage(it.handle);
@@ -403,6 +468,7 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
 
         case ATT_EVENT_DISCONNECTED:
         {
+            // puts("ATT_EVENT_DISCONNECTED");
             // clang-format off
             Bluetooth::withHandle(att_event_disconnected_get_handle(packet),
                 etl::delegate<void(BtContext &)>::create([](BtContext &ctx)
@@ -410,71 +476,9 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
                     ctx.readyState = 0b000; 
                     ctx.handle = HCI_CON_HANDLE_INVALID; 
                 }
-            ));
+            ));            
             // clang-format off
-        }
-        break;
-
-        /********************* RFCOMM *********************/
-        case RFCOMM_EVENT_INCOMING_CONNECTION:
-        {
-            auto channelId = rfcomm_event_incoming_connection_get_rfcomm_cid(packet);
-            if (createNewConnection(channelId, 24))
-            {
-                rfcomm_accept_connection(channelId);
-            }
-            else
-            {
-                rfcomm_decline_connection(channelId);
-            }
-        }
-        break;
-
-        case RFCOMM_EVENT_CHANNEL_OPENED:
-        {
-            auto channelId = rfcomm_event_channel_opened_get_rfcomm_cid(packet);
-            if (rfcomm_event_channel_opened_get_status(packet))
-            {
-                // clang-format off
-                Bluetooth::withHandle(channelId,
-                    etl::delegate<void(BtContext &)>::create([](BtContext &ctx)
-                    { 
-                        ctx.handle = HCI_CON_HANDLE_INVALID; 
-                    }));
-                // clang-format on
-            }
-            else
-            {
-                // clang-format off
-                Bluetooth::withHandle(channelId,
-                    etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
-                    {
-                auto rfcomm_mtu = rfcomm_event_channel_opened_get_max_frame_size(packet);
-                        ctx.mtu = static_cast<uint16_t>(rfcomm_mtu);
-                        ctx.readyState |= 0b101;
-                        rfcomm_request_can_send_now_event(ctx.rfcommChannelId); 
-                    }
-                ));
-                // clang-format on
-            }
-        }
-        break;
-
-        case RFCOMM_EVENT_CAN_SEND_NOW:
-        {
-            sendPackage(rfcomm_event_can_send_now_get_rfcomm_cid(packet));
-        }
-        break;
-
-        case RFCOMM_EVENT_CHANNEL_CLOSED:
-        {
-            // clang-format off
-            Bluetooth::withHandle(rfcomm_event_channel_closed_get_rfcomm_cid(packet),
-                etl::delegate<void(BtContext &)>::create([](BtContext &ctx)
-                { 
-                    ctx.handle = HCI_CON_HANDLE_INVALID;
-                }));
-            // clang-format on
+            Bluetooth::cleanupConnections();
         }
         break;
 
@@ -482,18 +486,6 @@ void Bluetooth::packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *pa
             break;
         }
         break;
-
-    case RFCOMM_DATA_PACKET:
-    {
-        // printf("RCV: '");
-        // for (int i = 0; i < size; i++)
-        // {
-        //     putchar(packet[i]);
-        // }
-        // printf("'\n");
-    }
-    break;
-
     default:
         break;
     }
@@ -516,7 +508,7 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
         Bluetooth::withHandle(con_handle, 
             etl::delegate<void(BtContext &)>::create([buffer](BtContext &ctx)
             {
-                ctx.readyState |= little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION ? 0b001 : 0b000;
+                ctx.readyState |= little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION ? Bluetooth::CONN_READY : 0b000;
                 ctx.attrHandle = ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE;
             }
         ));

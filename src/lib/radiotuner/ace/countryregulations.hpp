@@ -97,7 +97,7 @@ public:
     // - Timeslots may have one gap (see FLARM has a gap of 200ms between 200 and 400ms in the second)
     // - nextSlotId must contain the index of 'the other' timeslot
 
-    static constexpr etl::array<const ProtocolTimeSlot, 10> timings{
+    static constexpr __in_flash() etl::array<const ProtocolTimeSlot, 10> timings{
         NONE_DATASOURCE,
 
         // FLARM packages are send/rceived 400..1200ms after PPS channel is based on FLARM_TIME_BASED_2SLOTS. Minimum 600ms between packages, maximum of 1400ms between packages
@@ -121,9 +121,8 @@ public:
     };
 
 private:
+    CountryRegulations() = delete;
 public:
-    // Constructor
-    CountryRegulations();
 
     /**
      * Based on current lat/long get the current regulation zone

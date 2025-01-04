@@ -38,7 +38,7 @@ size_t FlashStore::write(uint8_t c)
 }
 
 /**
- * Flashing must be run out of memory to avoid flash access during writing
+ * Flashing must be run out of memory, hence using __not_in_flash_func
  */
 void __not_in_flash_func(pico_flash_bank_perform_flash_mutation_operation)(void *param)
 {

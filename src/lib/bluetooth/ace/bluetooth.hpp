@@ -37,13 +37,15 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
 {
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
+    static constexpr uint8_t CONN_READY = 0b001;
 
-    static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 512; // TODO: Tune buffer
+    static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 512; // TODO: Tune buffer, should be > MTU which seems to be 255
     friend class message_router;
     struct
     {
         uint32_t toManyClients = 0;
         uint32_t bufferOverrunErr = 0;
+        uint16_t lastMtu = 0;
     } statistics;
 
 private:
@@ -62,15 +64,17 @@ private:
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
     // START: methods within this block as running within the BLE task
-    static void packetHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
+    static void smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
+    static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void sendPackage(hci_con_handle_t handle);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
-    static bool createNewConnection(hci_con_handle_t handle, uint16_t mtu);
+    static bool createNewConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState);
     // Remove any old connections
     static void cleanupConnections();
     static void pushQueueIntoConnectionBuffers(void *arg);
     // END: methods within this block as running within the BLE task
+    static void eraseBonding();
 
     struct BtContext
     {
@@ -83,8 +87,8 @@ private:
         uint16_t mtu;
         uint16_t attrHandle;                // Used for ATT connections only
         CircularBuffer<CONNECTIONS_BUFFER_SIZE> buffer; // connection private data
-        BtContext(hci_con_handle_t handle_, uint16_t mtu_) : handle(handle_),
-                                                             readyState(0),
+        BtContext(hci_con_handle_t handle_, uint16_t mtu_, uint8_t readyState_) : handle(handle_),
+                                                             readyState(readyState_),
                                                              requiresNotification(true),
                                                              mtu(mtu_),
                                                              attrHandle(0) {};
@@ -152,12 +156,12 @@ private:
     // Semaphore to ensure checking data and is synchronized with the BT thread. 
     // TODO: Perhaps this can be optimized by using a atomic (allBufferEmpty), all we use it for is to validate if all buffers ar empty
     inline static SemaphoreHandle_t mutex = nullptr;
-
+    OpenAce::SsidOrPasswdStr localName;
 public:
     static constexpr const char *NAME = "Bluetooth";
     Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
-        (void)config;
+        localName = config.strValueByPath("OpenAce", NAME, "localName");
     }
 
     virtual ~Bluetooth() = default;

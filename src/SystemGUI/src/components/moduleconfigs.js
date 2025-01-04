@@ -118,12 +118,10 @@ class WifiServiceConfig extends ModuleConfig {
     }
 
     this.$refs.apDisabled.checked = data.ap.disabled;
-    
+
     // Get Clients
     if (data != null && data.clients != null) {
       data.clients.forEach((client, idx) => {
-        console.log(idx);
-        console.log(JSON.stringify(client));
         this.$refs[`apssid_${idx}`].value = client.ssid;
         this.$refs[`appassword_${idx}`].value = client.password;
       });
@@ -142,7 +140,7 @@ class WifiServiceConfig extends ModuleConfig {
       ap: {
         ssid: this.$refs.apssid.value,
         password: this.$refs.appassword.value,
-        disabled: this.$refs.apDisabled.checked
+        disabled: this.$refs.apDisabled.checked,
       },
       clients: clients,
     };
@@ -661,3 +659,64 @@ class Sx1262_1 extends SX1262 {
 
 customElements.define("sx1262_0-config", Sx1262_0);
 customElements.define("sx1262_1-config", Sx1262_1);
+
+class BluetoothConfig extends ModuleConfig {
+  created() {
+    this._initForm(store.getModuleData("Bluetooth"));
+  }
+
+  mounted() {
+    const validator = new JustValidate(this.$refs.form);
+
+    validator
+      .addField(this.$refs.localName, [
+        {
+          rule: "required",
+        },
+        ...ssidValidation,
+      ])
+      .onSuccess((event) => {
+        const data = this._getFormData();
+        store.updateModuleData("Bluetooth", { ...this.copyOfData, ...data }).then(() => {
+          this.close();
+        });
+      });
+  }
+
+  _setFormData(data) {
+    // Get Access Point
+    if (data == null || data.localName == null) {
+      this.$refs.localName.value = "OpenAce";
+    } else {
+      this.$refs.localName.value = data.localName;
+    }
+  }
+
+  _getFormData() {
+    return {
+        localName: this.$refs.localName.value,
+    };
+  }
+
+  render(html) {
+    return html`
+      <h4>Configuration of the Bluetooth Service</h4>
+      <p>
+        This module connects allows for a classic bluetooth service and BlueTooth LE:<br />
+        Data send will be Dataport, thus NMEA which is the exact same data as when connecting to Air Connect.
+      </p>
+
+      <form ref="form" autocomplete="off" novalidate="novalidate">
+        <div class="row g-0">
+          <label for="localName">
+            Device Name:
+            <input type="text" id="localName" ref="localName" placeholder="OpenAce" />
+          </label>
+        </div>
+
+        ${this.buttonArray(html)}
+      </form>
+    `;
+  }
+}
+customElements.define("bluetooth-config", BluetoothConfig);

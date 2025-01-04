@@ -36,7 +36,7 @@ class OpenAceModules extends El {
       "AirConnect",
       "Bluetooth"
     ];
-    this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "AircraftTracker"];
+    this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "AircraftTracker", "Bluetooth"];
     this.enablers = [
       "ADSBDecoder",
       "Ogn1",

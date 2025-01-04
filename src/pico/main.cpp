@@ -107,55 +107,33 @@ public:
 void registerModules()
 {
     // *INDENT-OFF*
-    BaseModule::registerModule(AceSpi::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new AceSpi(bus, config); });
-    BaseModule::registerModule(Bmp280::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Bmp280(bus, config); });
+    // clang-format off
+    BaseModule::registerModule(AceSpi::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new AceSpi(bus, config); });
+    BaseModule::registerModule(Bmp280::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Bmp280(bus, config); });
     // BaseModule::registerModule(Config::NAME, [] (etl::imessage_bus &bus, const Configuration &config) -> BaseModule* { return new Config(bus, FlashStore, DEFAULT_OPENACE_CONFIG);});
-    BaseModule::registerModule(Gdl90Service::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Gdl90Service(bus, config); });
-    BaseModule::registerModule(WifiService::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new WifiService(bus, config); });
-    BaseModule::registerModule(Webserver::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Webserver(bus, config); });
-    BaseModule::registerModule(PicoRtc::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new PicoRtc(bus, config); });
-    BaseModule::registerModule(Sx1262::NAMES[0], [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Sx1262(bus, config, 0); });
-    BaseModule::registerModule(Sx1262::NAMES[1], [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Sx1262(bus, config, 1); });
-    BaseModule::registerModule(RadioTunerTx::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new RadioTunerTx(bus, config); });
-    BaseModule::registerModule(RadioTunerRx::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new RadioTunerRx(bus, config); });
-    BaseModule::registerModule(ADSBDecoder::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new ADSBDecoder(bus, config); });
-    BaseModule::registerModule(Flarm2024::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Flarm2024(bus, config); });
-    BaseModule::registerModule(Ogn1::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Ogn1(bus, config); });
-    BaseModule::registerModule(ADSL::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new ADSL(bus, config); });
-    BaseModule::registerModule(GDLoverUDP::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new GDLoverUDP(bus, config); });
-    BaseModule::registerModule(GpsDecoder::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new GpsDecoder(bus, config); });
-    BaseModule::registerModule(UbloxM8N::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new UbloxM8N(bus, config); });
-    BaseModule::registerModule(SerialADSB::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new SerialADSB(bus, config); });
-    BaseModule::registerModule(Dump1090Client::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Dump1090Client(bus, config); });
-    BaseModule::registerModule(ModuleManager::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new ModuleManager(bus, config); });
-    BaseModule::registerModule(AircraftTracker::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new AircraftTracker(bus, config); });
-    BaseModule::registerModule(DataPort::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new DataPort(bus, config); });
-    BaseModule::registerModule(AirConnect::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new AirConnect(bus, config); });
-    BaseModule::registerModule(Bluetooth::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *
-                               { return new Bluetooth(bus, config); });
+    BaseModule::registerModule(Gdl90Service::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Gdl90Service(bus, config); });
+    BaseModule::registerModule(WifiService::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new WifiService(bus, config); });
+    BaseModule::registerModule(Webserver::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Webserver(bus, config); });
+    BaseModule::registerModule(PicoRtc::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *  { return new PicoRtc(bus, config); });
+    BaseModule::registerModule(Sx1262::NAMES[0], [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Sx1262(bus, config, 0); });
+    BaseModule::registerModule(Sx1262::NAMES[1], [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Sx1262(bus, config, 1); });
+    BaseModule::registerModule(RadioTunerTx::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new RadioTunerTx(bus, config); });
+    BaseModule::registerModule(RadioTunerRx::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new RadioTunerRx(bus, config); });
+    BaseModule::registerModule(ADSBDecoder::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new ADSBDecoder(bus, config); });
+    BaseModule::registerModule(Flarm2024::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Flarm2024(bus, config); });
+    BaseModule::registerModule(Ogn1::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Ogn1(bus, config); });
+    BaseModule::registerModule(ADSL::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new ADSL(bus, config); });
+    BaseModule::registerModule(GDLoverUDP::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new GDLoverUDP(bus, config); });
+    BaseModule::registerModule(GpsDecoder::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new GpsDecoder(bus, config); });
+    BaseModule::registerModule(UbloxM8N::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new UbloxM8N(bus, config); });
+    BaseModule::registerModule(SerialADSB::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new SerialADSB(bus, config); });
+    BaseModule::registerModule(Dump1090Client::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Dump1090Client(bus, config); });
+    BaseModule::registerModule(ModuleManager::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new ModuleManager(bus, config); });
+    BaseModule::registerModule(AircraftTracker::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new AircraftTracker(bus, config); });
+    BaseModule::registerModule(DataPort::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new DataPort(bus, config); });
+    BaseModule::registerModule(AirConnect::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new AirConnect(bus, config); });
+    BaseModule::registerModule(Bluetooth::NAME, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Bluetooth(bus, config); });
+    // clang-format on
     // *INDENT-ON*
 
     for (auto a : BaseModule::registeredModules())
@@ -165,7 +143,8 @@ void registerModules()
 }
 
 static InMemoryStore volatileStore;
-static FlashStore permanentStore{4096, 0};
+// Bluetooth stores bonding information at the last sector
+static FlashStore permanentStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 2};
 static OpenAce::ThreadSafeBus<25> bus;
 static Config config(bus, volatileStore, permanentStore, DEFAULT_OPENACE_CONFIG);
 

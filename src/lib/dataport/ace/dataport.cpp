@@ -362,3 +362,13 @@ void DataPort::sendGPGSA()
     CoreUtils::addChecksumToNMEA(gpgsa);
     getBus().receive(OpenAce::DataPortMsg{gpgsa});
 }
+
+
+void DataPort::sendLK8EX1() {
+    OpenAce::NMEAString gpgsa;
+    etl::string_stream stream(gpgsa);
+    stream << "$LK8EX1,999999,999999,9999,999,999";
+    CoreUtils::addChecksumToNMEA(gpgsa);
+    getBus().receive(OpenAce::DataPortMsg{gpgsa});
+
+}

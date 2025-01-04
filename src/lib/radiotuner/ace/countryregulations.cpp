@@ -4,10 +4,6 @@
 
 #include "pico/rand.h"
 
-CountryRegulations::CountryRegulations()
-{
-}
-
 CountryRegulations::Zone CountryRegulations::zone(float lat, float lon)
 {
     if (34.0f <= lon && lon <= 54.0f && 29.25f <= lat && lat <= 33.5f)

@@ -53,7 +53,7 @@ public:
     void on_receive(const OpenAce::GPSSentenceMsg &msg);
 
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
-
+    
     void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
@@ -149,4 +149,7 @@ public:
      * We seem to need this to get altitude in SkyDemon
      */
     void sendGPGSA();
+
+    void sendLK8EX1();
+
 };

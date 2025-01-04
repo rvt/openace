@@ -34,7 +34,7 @@
     },
     "Bluetooth": {
         "_comment_client": "The standard SSD and password when OpenACE is in Access Point mode",
-        "name": "OpenAce"
+        "localName": "OpenAce"
     },
     "WifiService": {
         "_comment_ap": "The standard SSD and password when OpenACE is in Access Point mode",
