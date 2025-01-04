@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.13)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
-set(OPTMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
+set(OPTIMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
                    openace_default_config.json default_config.hpp)
 execute_process(
-  COMMAND ${OPTMIZE_SCRIPT}
+  COMMAND ${OPTIMIZE_SCRIPT}
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} ECHO_OUTPUT_VARIABLE
                     ECHO_ERROR_VARIABLE)
 
@@ -32,7 +32,7 @@ set(PICO_BOARD pico_w)
 
 # pico_sdk_import.cmake is a single file copied from this SDK note: this must
 # happen before project() include(cmake/pico_sdk_import.cmake)7s
-include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
+include(cmake/pico_sdk_import.cmake)
 include(cmake/FreeRTOS_Kernel_import.cmake)
 
 if(PICO_SDK_VERSION_STRING VERSION_LESS "2.1.0")
