@@ -69,9 +69,12 @@ void __time_critical_func(UbloxM8N_pps_callback)(uint32_t events)
 
 void UbloxM8N::start()
 {
+    // TODO: Check if there is a better way to reduce stack size.
+    // THis seem to have because the ublox is the beginning of messages through the complete system?
+    // Can we use a reference to strings instead of copy?
     xTaskCreate(ubloxM8NTask, "UbloxM8N"
                               "Task",
-                configMINIMAL_STACK_SIZE + 320, this, tskIDLE_PRIORITY + 2, &taskHandle);
+                configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 2, &taskHandle);
 
     pioSerial.start();
     // ublox uses rising pulse to trigger
