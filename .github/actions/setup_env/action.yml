@@ -34,7 +34,7 @@ runs:
         git fetch --unshallow
         git checkout 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c
         cd ${{github.workspace}}/pico-sdk
-        git apply ${{github.workspace}}/pico-sdk.patch
+        git apply ${{github.workspace}}/src/pico-sdk.patch
 
     - name: Show workspace
       shell: bash
