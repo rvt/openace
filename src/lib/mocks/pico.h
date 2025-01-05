@@ -26,3 +26,5 @@ inline void panic(const char *msg)
 #define __force_inline 
 
 #define __isr 
+
+#define __in_flash() 
