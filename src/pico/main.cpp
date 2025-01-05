@@ -56,11 +56,11 @@ const char *OpenAce_buildTime = BUILD_TIMESTAMP;
 
 /* Prototypes for the standard FreeRTOS callback/hook functions implemented
 within this file. */
-void vApplicationMallocFailedHook(void);
-void vApplicationIdleHook(void);
-void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName);
-void vApplicationTickHook(void);
-void vAssertCalled(const char *pcFile, uint32_t ulLine);
+// void vApplicationMallocFailedHook(void);
+// void vApplicationIdleHook(void);
+// void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName);
+// void vApplicationTickHook(void);
+// void vAssertCalled(const char *pcFile, uint32_t ulLine);
 
 void etlcpp_receive_error(const etl::exception &e)
 {
@@ -237,32 +237,34 @@ static void loadModules(void *arch)
     // puts("\033[2J\033[H");
     puts("All modules loaded!\n");
 
-    if (cyw43_arch_async_context())
-    {
-        while (true)
-        {
-            // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-            vTaskDelay(TASK_DELAY_MS(100));
-            // printf("1\n");
+    vTaskDelete(nullptr);
+}
 
-            bus.receive(OpenAce::IdleMsg());
-
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-            // Sync blink the LED with GPS
-            vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
-        }
-    }
-    else
+static void idleTask(void *arch)
+{
+    (void)arch;
+    while (true)
     {
-        while (true)
+        if (cyw43_arch_async_context())
         {
-            puts("Wifi module not enabled");
+                // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
+                cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+                vTaskDelay(TASK_DELAY_MS(100));
+                // printf("1\n");
+
+                bus.receive(OpenAce::IdleMsg());
+
+                cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+                // Sync blink the LED with GPS
+                vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
+            }
+        else
+        {
             vTaskDelay(5000);
+            puts("Wifi module not enabled");
         }
     }
 }
-
 void vLaunch(void)
 {
     // Bootstap
@@ -273,13 +275,12 @@ void vLaunch(void)
     BaseModule::setModuleStatus(Configuration::NAME, &config, status);
     BaseModule::setModuleStatus(Config::NAME, &config, status);
     config.start();
-    // Bootstap
 
-    TaskHandle_t taskpublish_handle;
-    UBaseType_t uxCoreAffinityMask;
-    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 1024, NULL, tskIDLE_PRIORITY, &(taskpublish_handle));
-    uxCoreAffinityMask = ((1 << 0));
-    vTaskCoreAffinitySet(taskpublish_handle, uxCoreAffinityMask);
+    // Load all the modules
+    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 768, NULL, tskIDLE_PRIORITY, nullptr);
+
+    // Run a Idle Task
+    xTaskCreate(idleTask, "idleTask", configMINIMAL_STACK_SIZE + 512, NULL, tskIDLE_PRIORITY, nullptr);
 
 #if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1
     // we must bind the main task to one core (well at least while the init is called)
