@@ -15,8 +15,8 @@
 
 class CoreUtils
 {
-    inline static uint64_t __scratch_y("OpenAceMem") offsetTimeToAbsolute = 0;
-    inline static uint32_t __scratch_y("OpenAceMem") timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
+    inline static uint64_t offsetTimeToAbsolute = 0;
+    inline static uint32_t timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
 
 public:
     /**
