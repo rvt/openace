@@ -27,6 +27,7 @@ runs:
 
     - name:
       shell: bash
+      run: |
         cd ${{github.workspace}}/pico-sdk/lib/btstack
         git pull
         git checkout 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c
