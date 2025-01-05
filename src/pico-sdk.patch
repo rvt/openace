@@ -1,0 +1,54 @@
+diff --git a/.gitmodules b/.gitmodules
+index 7c382da..004d2d9 100644
+--- a/.gitmodules
++++ b/.gitmodules
+@@ -13,3 +13,4 @@
+ [submodule "lib/btstack"]
+ 	path = lib/btstack
+ 	url = https://github.com/bluekitchen/btstack.git
++	branch = v1.6.2
+diff --git a/lib/btstack b/lib/btstack
+index 565100c..5d4d8cc 160000
+--- a/lib/btstack
++++ b/lib/btstack
+@@ -1 +1 @@
+-Subproject commit 565100c1cae73dc1c5f9b239953dbdd14ae283d3
++Subproject commit 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c-dirty
+diff --git a/src/rp2_common/pico_async_context/async_context_freertos.c b/src/rp2_common/pico_async_context/async_context_freertos.c
+index 3cffcbb..9ae72b3 100644
+--- a/src/rp2_common/pico_async_context/async_context_freertos.c
++++ b/src/rp2_common/pico_async_context/async_context_freertos.c
+@@ -193,7 +193,7 @@ static void handle_sync_func_call(async_context_t *context, async_when_pending_w
+ uint32_t async_context_freertos_execute_sync(async_context_t *self_base, uint32_t (*func)(void *param), void *param) {
+     async_context_freertos_t *self = (async_context_freertos_t*)self_base;
+     hard_assert(xSemaphoreGetMutexHolder(self->lock_mutex) != xTaskGetCurrentTaskHandle());
+-    sync_func_call_t call;
++    sync_func_call_t call = {0};
+     call.worker.do_work = handle_sync_func_call;
+     call.func = func;
+     call.param = param;
+diff --git a/src/rp2_common/pico_async_context/async_context_threadsafe_background.c b/src/rp2_common/pico_async_context/async_context_threadsafe_background.c
+index 33f3d45..730d8a5 100644
+--- a/src/rp2_common/pico_async_context/async_context_threadsafe_background.c
++++ b/src/rp2_common/pico_async_context/async_context_threadsafe_background.c
+@@ -140,7 +140,7 @@ uint32_t async_context_threadsafe_background_execute_sync(async_context_t *self_
+ #if ASYNC_CONTEXT_THREADSAFE_BACKGROUND_MULTI_CORE
+     if (self_base->core_num != get_core_num()) {
+         hard_assert(!recursive_mutex_enter_count(&self->lock_mutex));
+-        sync_func_call_t call;
++        sync_func_call_t call = {0};
+         call.worker.do_work = handle_sync_func_call;
+         call.func = func;
+         call.param = param;
+diff --git a/src/rp2_common/pico_btstack/CMakeLists.txt b/src/rp2_common/pico_btstack/CMakeLists.txt
+index c622cac..7556db2 100644
+--- a/src/rp2_common/pico_btstack/CMakeLists.txt
++++ b/src/rp2_common/pico_btstack/CMakeLists.txt
+@@ -53,6 +53,7 @@ if (EXISTS ${PICO_BTSTACK_PATH}/${BTSTACK_TEST_PATH})
+         ${PICO_BTSTACK_PATH}/src/hci_cmd.c
+         ${PICO_BTSTACK_PATH}/src/hci_dump.c
+         ${PICO_BTSTACK_PATH}/src/hci_event.c
++        ${PICO_BTSTACK_PATH}/src/hci_event_builder.c
+         ${PICO_BTSTACK_PATH}/src/l2cap.c
+         ${PICO_BTSTACK_PATH}/src/l2cap_signaling.c
+         ${PICO_BTSTACK_PATH}/3rd-party/md5/md5.c
