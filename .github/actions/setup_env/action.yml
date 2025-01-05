@@ -25,6 +25,14 @@ runs:
         path: FreeRTOS-Kernel
         submodules: true
 
+    - name:
+      shell: bash
+        cd ${{github.workspace}}/pico-sdk/lib/btstack
+        git pull
+        git checkout 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c
+        cd ${{github.workspace}}/pico-sdk
+        git apply ${{github.workspace}}/pico-sdk.patch
+
     - name: Show workspace
       shell: bash
       run: |
