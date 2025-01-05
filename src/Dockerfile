@@ -43,7 +43,6 @@ RUN ls -l /opt
 RUN \
     cd ${PICO_SDK_PATH}lib/btstack && \
     git fetch --unshallow && \
-    git pull && \
     git checkout 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c && \
     cd ${PICO_SDK_PATH} && \
     git apply /opt/pico-sdk.patch
