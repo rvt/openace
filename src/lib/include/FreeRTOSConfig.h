@@ -60,7 +60,7 @@
 #define configQUEUE_REGISTRY_SIZE               8
 #define configUSE_QUEUE_SETS                    1
 #define configUSE_TIME_SLICING                  1
-#define configUSE_NEWLIB_REENTRANT              0
+#define configUSE_NEWLIB_REENTRANT              1
 // todo need this for lwip FreeRTOS sys_arch to compile
 #define configENABLE_BACKWARD_COMPATIBILITY     1
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
@@ -74,7 +74,7 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 /* OpenACE: Changed from 128 to 115 to 112*/
 /* ArduinoJson is memory hungry, need to change that for something else, but for now just lowered memory */
-#define configTOTAL_HEAP_SIZE                   (80*1024)
+#define configTOTAL_HEAP_SIZE                   (60*1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */

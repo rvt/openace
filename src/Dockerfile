@@ -2,9 +2,10 @@
 FROM ubuntu:24.10
 
 # Install prerequisites
+# pycryptodome is used for gatt compilation 
 RUN \
     apt update && \
-    apt install -y git python3 ninja-build cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev gnutls-bin
+    apt install -y git python3 ninja-build cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev gnutls-bin python3-pycryptodome
 
 # Install Pico SDK
 RUN \
@@ -27,25 +28,35 @@ RUN \
     git config fetch.recurseSubmodules on-demand && \
     git submodule update --init --depth 1 && \
     cd /
-    
-# Used for gatt compilation
-RUN \
-    pip install pycryptodomex
 
-RUN \
-    mkdir -p /opt/src/
 
 # Set Environments
 ENV PICO_SDK_PATH=/opt/pico-sdk/
 ENV FREERTOS_KERNEL_PATH=/opt/FreeRTOS/FreeRTOS/Source
+ENV BUILD_DIR_NAME=release_build_docker
 
-#
-# # Create entrypoint script that will be used at container start
+# Patch pico SDK and update btstack to dev branch
+COPY ./pico-sdk.patch /opt/pico-sdk.patch
+
+RUN ls -l /opt
+
+RUN \
+    cd ${PICO_SDK_PATH}lib/btstack && \
+    git fetch --unshallow && \
+    git pull && \
+    git checkout 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c && \
+    cd ${PICO_SDK_PATH} && \
+    git apply /opt/pico-sdk.patch
+
+RUN \
+    mkdir -p /opt/src/
+
+# Create entrypoint script that will be used at container start
 RUN echo '#!/bin/bash\n\
   echo "Using ninja"\n\
-  mkdir -p /opt/src/pico/release_build_docker\n\
+  mkdir -p /opt/src/pico/$BUILD_DIR_NAME\n\
   cd /opt/src/pico\n\
-  cmake -B docker_build -G Ninja && ninja -C release_build_docker $1\n\
+  cmake -B $BUILD_DIR_NAME -G Ninja && ninja -C $BUILD_DIR_NAME $1\n\
   exit' > /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh

@@ -446,6 +446,8 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
                 {
                     puts("ATT_EVENT_MTU_EXCHANGE_COMPLETE: Too many connections, disconnecting");
                     gap_disconnect(handle);
+                } else {
+                    hci_send_cmd(&hci_le_set_advertise_enable, 1);
                 }
             }
             else
