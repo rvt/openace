@@ -23,25 +23,27 @@ extern const char *OpenAce_buildTime;
  * @text The Flags attribute in the Advertisement Data indicates if a device is dual-mode or le-only.
  */
 
+#if ( OPENACE_ENABLE_CLASSIC == 1 )
+#define APP_AD_FLAGS 0x02
+#else
+#define APP_AD_FLAGS 0x06
+#endif
+
 // clang-format off
 // advertisement data, MAX 31 byte!
 const uint8_t adv_data[] = {
-    // Flags general discoverable, BR/EDR not supported
-    2, BLUETOOTH_DATA_TYPE_FLAGS, 0x06,
-    8, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'O', 'p', 'e','n', 'A', 'c', 'e',
+    2, BLUETOOTH_DATA_TYPE_FLAGS, APP_AD_FLAGS, // Use 0x02 for Classic and LE. Use 0x06 for LE only
     17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS, 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00,
 };
-
 // clang-format on
 
 static btstack_context_callback_registration_t callback_registration;
 static btstack_packet_callback_registration_t sm_event_callback_registration;
 
 // SPP
-// static uint8_t spp_service_buffer[100]; // SHowed as length to 91
-// #ifdef ENABLE_GATT_OVER_CLASSIC
-// static uint8_t gatt_service_buffer[70]; // SHowed as length to 58
-// #endif
+#if (OPENACE_ENABLE_CLASSIC == 1)
+static uint8_t spp_service_buffer[100]; // Showed as length to 91
+#endif
 
 OpenAce::PostConstruct Bluetooth::postConstruct()
 {
@@ -91,6 +93,20 @@ void Bluetooth::start()
     // setup GATT Client
     gatt_client_init();
 
+    // RFCOMM
+#if (OPENACE_ENABLE_CLASSIC == 1)
+    rfcomm_init();
+    rfcomm_register_service(rfcommPacketHandler, RFCOMM_SERVER_CHANNEL, 0xffff);
+
+    // init SDP, create record for SPP (Serial Port Profile) and register with SDP
+    sdp_init();
+    memset(spp_service_buffer, 0, sizeof(spp_service_buffer));
+    spp_create_sdp_record(spp_service_buffer, sdp_create_service_record_handle(), RFCOMM_SERVER_CHANNEL, localName.c_str());
+    btstack_assert(de_get_len(spp_service_buffer) <= sizeof(spp_service_buffer));
+    sdp_register_service(spp_service_buffer);
+    // RFCOMM
+#endif
+
     // setup advertisements
     uint16_t adv_int_min = 0x0030;
     uint16_t adv_int_max = 0x0030;
@@ -100,6 +116,8 @@ void Bluetooth::start()
     gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
     gap_advertisements_set_data(sizeof(adv_data), (uint8_t *)adv_data);
     gap_advertisements_enable(1);
+
+    gap_set_local_name(localName.c_str());
 
     sm_event_callback_registration.callback = &smPacketHandler;
     sm_add_event_handler(&sm_event_callback_registration);
@@ -446,7 +464,9 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
                 {
                     puts("ATT_EVENT_MTU_EXCHANGE_COMPLETE: Too many connections, disconnecting");
                     gap_disconnect(handle);
-                } else {
+                }
+                else
+                {
                     hci_send_cmd(&hci_le_set_advertise_enable, 1);
                 }
             }
@@ -492,6 +512,95 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
         break;
     }
 }
+
+/*
+ * @section HCI Packet Handler
+ *
+ * @text The packet handler is used to handle new connections, can trigger Security Request
+ */
+#if (OPENACE_ENABLE_CLASSIC == 1)
+void Bluetooth::rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+{
+    UNUSED(channel);
+    UNUSED(size);
+
+    switch (packet_type)
+    {
+    case HCI_EVENT_PACKET:
+        switch (hci_event_packet_get_type(packet))
+        {
+        case RFCOMM_EVENT_INCOMING_CONNECTION:
+        {
+            auto channelId = rfcomm_event_incoming_connection_get_rfcomm_cid(packet);
+            if (createNewConnection(channelId, 24, 0b100))
+            {
+                rfcomm_accept_connection(channelId);
+            }
+            else
+            {
+                rfcomm_decline_connection(channelId);
+            }
+        }
+        break;
+
+        case RFCOMM_EVENT_CHANNEL_OPENED:
+        {
+            auto channelId = rfcomm_event_channel_opened_get_rfcomm_cid(packet);
+            if (rfcomm_event_channel_opened_get_status(packet))
+            {
+                // clang-format off
+                Bluetooth::withHandle(channelId,
+                    etl::delegate<void(BtContext &)>::create([](BtContext &ctx)
+                    { 
+                        ctx.handle = HCI_CON_HANDLE_INVALID; 
+                    })
+                );
+                // clang-format on
+            }
+            else
+            {
+                // clang-format off
+                Bluetooth::withHandle(channelId, 
+                    etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
+                    {
+                        auto rfcomm_mtu = rfcomm_event_channel_opened_get_max_frame_size(packet);
+                        ctx.mtu = static_cast<uint16_t>(rfcomm_mtu);
+                        ctx.readyState |= 0b001;
+                        rfcomm_request_can_send_now_event(ctx.rfcommChannelId); 
+                    })
+                );
+                // clang-format on
+            }
+        }
+        break;
+
+        case RFCOMM_EVENT_CAN_SEND_NOW:
+        {
+            sendPackage(rfcomm_event_can_send_now_get_rfcomm_cid(packet));
+        }
+        break;
+
+        case RFCOMM_EVENT_CHANNEL_CLOSED:
+        {
+            // clang-format off
+            Bluetooth::withHandle(rfcomm_event_channel_closed_get_rfcomm_cid(packet),
+                etl::delegate<void(BtContext &)>::create([](BtContext &ctx)
+                { 
+                    ctx.handle = HCI_CON_HANDLE_INVALID;
+                })
+            );
+            // clang-format on
+        }
+        break;
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+}
+#endif
 
 int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size)
 {

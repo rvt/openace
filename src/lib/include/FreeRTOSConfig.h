@@ -60,7 +60,7 @@
 #define configQUEUE_REGISTRY_SIZE               8
 #define configUSE_QUEUE_SETS                    1
 #define configUSE_TIME_SLICING                  1
-#define configUSE_NEWLIB_REENTRANT              1
+#define configUSE_NEWLIB_REENTRANT              0
 // todo need this for lwip FreeRTOS sys_arch to compile
 #define configENABLE_BACKWARD_COMPATIBILITY     1
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
@@ -168,10 +168,15 @@ to exclude the API function. */
 
 /* A header file that defines trace macro can be included here. */
 
+/* Macro's to calculate wait times */
 #define pdMS_TO_TICKS( x )     ( ( x ) / portTICK_PERIOD_MS )
 #define TASK_DELAY_MS( x )     ( ( x ) / portTICK_PERIOD_MS )
 #define TASK_DELAY_S( x )      ( ( x ) * 1000 / portTICK_PERIOD_MS )
 #define TASK_DELAY_MIN( x )    ( ( x ) * 60 * 1000 / portTICK_PERIOD_MS )
 
+/* Task prioority and stack sizes to hopefully fix some strange crashes */
+#define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 512 )
+#define CYW43_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 512 )
+#define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 5 )
 #endif /* FREERTOS_CONFIG_H */
 

@@ -104,10 +104,10 @@
 
 // Address field
 // The address field starts with “$” followed by the talker ID and a sentence identifier. The used talker IDs are:
-// * GP for GPS only solutions
-// * GL for GLONASS only solutions
-// * GA for GALILEO only solutions
-// * GN for multi GNSS solutions
+// * $P for GPS only solutions
+// * $GL for GLONASS only solutions
+// * $GA for GALILEO only solutions
+// * $GN for multi GNSS solutions
 // The used sentence identifiers are:
 // * GGA – Global Positioning System Fix Data
 // * VTG – Course over Ground and Ground Speed
@@ -135,3 +135,6 @@
 
 // Maximum number of bluetooth connections
 #define OPENACE_MAX_BLUETOOTH_CONNECTIONS ( 3 )
+
+// Enable/Disable Serial Port Profile
+#define OPENACE_ENABLE_CLASSIC ( 1 )

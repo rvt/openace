@@ -66,6 +66,9 @@ private:
     // START: methods within this block as running within the BLE task
     static void smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
+#if (OPENACE_ENABLE_CLASSIC == 1)
+    static void rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
+#endif
     static void sendPackage(hci_con_handle_t handle);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list

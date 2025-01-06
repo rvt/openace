@@ -279,8 +279,9 @@ void vLaunch(void)
     // Load all the modules
     xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 768, NULL, tskIDLE_PRIORITY, nullptr);
 
-    // Run a Idle Task
-    xTaskCreate(idleTask, "idleTask", configMINIMAL_STACK_SIZE + 512, NULL, tskIDLE_PRIORITY, nullptr);
+    // Run a Idle Task Idletask
+    // TODO: apparently needs a large stack??
+    xTaskCreate(idleTask, "idleTask", configMINIMAL_STACK_SIZE + 2048, NULL, tskIDLE_PRIORITY, nullptr);
 
 #if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1
     // we must bind the main task to one core (well at least while the init is called)

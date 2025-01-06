@@ -45,7 +45,7 @@ private:
         pinInterruptHandler(uint32_t _event, pinIntrCallback_t _callback) : event(_event), handler(nullptr), callback(_callback), notificationValue(0x00), enabled(true) {}
         pinInterruptHandler() : event(0x00), handler(nullptr), callback(nullptr), notificationValue(0x00), enabled(true) {}
     };
-    inline static etl::map<uint8_t, BaseModule::pinInterruptHandler, 8> pinInterruptHandlers;
+    inline static etl::map<uint8_t, BaseModule::pinInterruptHandler, 8> __scratch_y("OpenAceMem") pinInterruptHandlers;
 
 public:
     static void initBase()

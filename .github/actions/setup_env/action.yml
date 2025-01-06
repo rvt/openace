@@ -7,7 +7,7 @@ runs:
       shell: bash
       run: |
         sudo apt-get remove --purge gcc-11
-        sudo apt-get install tree git python3 ninja-build cmake gcc-12 gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev
+        sudo apt-get install tree git python3 ninja-build cmake gcc-12 gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev python3-pycryptodome
 
     - name: Checkout pico-sdk
       uses: actions/checkout@v4
@@ -32,6 +32,7 @@ runs:
         cd ${{github.workspace}}/pico-sdk/lib/btstack
         git fetch --all --tags --prune
         git fetch --unshallow
+        # Develop branch that contains gatt_client_init
         git checkout 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c
         cd ${{github.workspace}}/pico-sdk
         git apply ${{github.workspace}}/src/pico-sdk.patch
