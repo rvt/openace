@@ -12,7 +12,7 @@ OpenAce::PostConstruct AircraftTracker::postConstruct()
 
 void AircraftTracker::start()
 {
-    xTaskCreate(aircraftTrackerTask, "AircraftTracker", configMINIMAL_STACK_SIZE + 64, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(aircraftTrackerTask, "AircraftTracker", configMINIMAL_STACK_SIZE + 192, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 

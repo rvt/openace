@@ -17,7 +17,7 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
 }
 
 // This method is not protected with a mutex since it's called from hardware interrupt well before OpenAce::GpsTimeMsg& event is end
-void __force_inline PicoRtc::ppsEvent()
+__force_inline void PicoRtc::ppsEvent()
 {
     CoreUtils::setPPS();
     lastPpstime = CoreUtils::timeUs32();
@@ -52,7 +52,7 @@ void PicoRtc::on_receive(const OpenAce::GpsTimeMsg& msg)
 
     // Don't set the time if it's more than 100ms since the last PPS and also ensures RTC
     // will be set at whole seconds only
-    if (elapsedUsSincePps > 100000)
+    if (elapsedUsSincePps > 100'000)
     {
         statistics.highElapseTime++;
         return;

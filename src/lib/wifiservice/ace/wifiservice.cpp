@@ -321,7 +321,6 @@ uint8_t WifiService::connectClient()
 
 bool WifiService::checkIfClientActive(int itf)
 {
-    // Periodically check the Wi-Fi connection status
     int status = cyw43_tcpip_link_status(&cyw43_state, itf);
 
     switch (status)

@@ -103,7 +103,7 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
                 retval = ERR_OK;
             }
             else if (RequestContext.method == RequestContext_t::DELETE)
-            // Handle delete configuraiton requests
+            // Handle delete configuration requests
             {
                 RequestContext.response = configModule->deleteData(RequestContext.uri);
                 retval = ERR_OK;

@@ -240,24 +240,21 @@ static void loadModules(void *arch)
     vTaskDelete(nullptr);
 }
 
-static void idleTask(void *arch)
+static void openAceIdlTask(void *arch)
 {
     (void)arch;
     while (true)
     {
         if (cyw43_arch_async_context())
         {
-                // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
-                cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-                vTaskDelay(TASK_DELAY_MS(100));
-                // printf("1\n");
-
-                bus.receive(OpenAce::IdleMsg());
-
-                cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-                // Sync blink the LED with GPS
-                vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
-            }
+            // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+            vTaskDelay(TASK_DELAY_MS(100));
+            bus.receive(OpenAce::IdleMsg());
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+            // Sync blink the LED with GPS
+            vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
+        }
         else
         {
             vTaskDelay(5000);
@@ -281,7 +278,7 @@ void vLaunch(void)
 
     // Run a Idle Task Idletask
     // TODO: apparently needs a large stack??
-    xTaskCreate(idleTask, "idleTask", configMINIMAL_STACK_SIZE + 2048, NULL, tskIDLE_PRIORITY, nullptr);
+    xTaskCreate(openAceIdlTask, "openAceIdlTask", configMINIMAL_STACK_SIZE + 2048, NULL, tskIDLE_PRIORITY + 1, nullptr);
 
 #if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1
     // we must bind the main task to one core (well at least while the init is called)

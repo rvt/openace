@@ -80,7 +80,7 @@
 /* Hook function related definitions. */
 #if OPENACE_FREERTOS_DEBUG == 1
 /* Hook function related definitions. */
-#define configCHECK_FOR_STACK_OVERFLOW          1
+#define configCHECK_FOR_STACK_OVERFLOW          2
 #define configUSE_MALLOC_FAILED_HOOK            1
 #define configUSE_DAEMON_TASK_STARTUP_HOOK      0
 
@@ -175,7 +175,7 @@ to exclude the API function. */
 #define TASK_DELAY_MIN( x )    ( ( x ) * 60 * 1000 / portTICK_PERIOD_MS )
 
 /* Task prioority and stack sizes to hopefully fix some strange crashes */
-#define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 512 )
+#define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 1024 )
 #define CYW43_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 512 )
 #define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 5 )
 #endif /* FREERTOS_CONFIG_H */

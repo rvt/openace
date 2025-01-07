@@ -36,12 +36,12 @@ public:
      * Use this to measure short time differences of less then 71minutes
      * \sa isReached
      */
-    static uint32_t __force_inline timeUs32()
+    __force_inline static uint32_t timeUs32()
     {
         return time_us_32() - timeUs32PpsOffset;
     }
 
-    static uint64_t __force_inline timeUs64()
+    __force_inline static uint64_t timeUs64()
     {
         // time_us_64 and time_us_32 use the same hardware time, thus offset is also the same
         return time_us_64() - timeUs32PpsOffset;
@@ -71,7 +71,7 @@ public:
      * It will properly handle wraparounds if the time is less than 35 minutes in difference
      * \sa timeUs32
      */
-    static bool __force_inline isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
+    __force_inline static bool isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
     {
         return usToReference(referenceUs, us) < 0;
     }
@@ -139,7 +139,7 @@ public:
      * If referenceUs is in the past, the result is negative
      *
      */
-    static int32_t __force_inline usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
+    __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
     {
         return referenceUs - us;
     }
@@ -383,7 +383,7 @@ public:
      * @param nmea example '$PFEC,GPint,RMC05'
      * @return             '$PFEC,GPint,RMC05*2D\r\n'
      */
-    static void __force_inline addChecksumToNMEA(etl::istring &nmea)
+    __force_inline static void addChecksumToNMEA(etl::istring &nmea)
     {
         const char hexChars[] = "0123456789ABCDEF";
         uint16_t chk = 0, i = 1;
