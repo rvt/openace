@@ -135,6 +135,3 @@
 
 // Maximum number of bluetooth connections
 #define OPENACE_MAX_BLUETOOTH_CONNECTIONS ( 3 )
-
-// Enable/Disable Serial Port Profile
-#define OPENACE_ENABLE_CLASSIC ( 1 )

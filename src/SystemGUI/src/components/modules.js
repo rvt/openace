@@ -34,9 +34,10 @@ class OpenAceModules extends El {
       "WifiService",
       "DataPort",
       "AirConnect",
-      "Bluetooth"
+      "Bluetooth",
+      "Webserver"
     ];
-    this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "AircraftTracker", "Bluetooth"];
+    this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "Bluetooth"];
     this.enablers = [
       "ADSBDecoder",
       "Ogn1",

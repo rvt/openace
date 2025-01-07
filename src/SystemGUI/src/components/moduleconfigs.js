@@ -188,8 +188,8 @@ class WifiServiceConfig extends ModuleConfig {
         <div class="row g-0">
             <div class="col-10">
             <label for="apDisabled">
-              When disabled, only attempts to an Access point will be done
               <input type="checkbox" id="" id="apDisabled" ref="apDisabled" placeholder="1" />
+              When disabled, only attempts to an Access point will be done
             </label>
           <label for="ssid">
             SSID:
@@ -690,11 +690,13 @@ class BluetoothConfig extends ModuleConfig {
     } else {
       this.$refs.localName.value = data.localName;
     }
+    this.$refs.rfComm.checked = data.rfComm;
   }
 
   _getFormData() {
     return {
-        localName: this.$refs.localName.value,
+      localName: this.$refs.localName.value,
+      rfComm: this.$refs.rfComm.checked,
     };
   }
 
@@ -711,6 +713,12 @@ class BluetoothConfig extends ModuleConfig {
           <label for="localName">
             Device Name:
             <input type="text" id="localName" ref="localName" placeholder="OpenAce" />
+          </label>
+        </div>
+        <div class="row g-0">
+          <label for="rfComm">             
+            <input type="checkbox" id="rfComm" id="rfComm" ref="rfComm" placeholder="0" />
+            Enable SPP (Serial Port Profile) on Bluetooth. Normally just BLE is enough for systems like SkyDemon.
           </label>
         </div>
 

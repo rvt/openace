@@ -17,34 +17,6 @@
 
 extern const char *OpenAce_buildTime;
 
-/*
- * @section Advertisements
- *
- * @text The Flags attribute in the Advertisement Data indicates if a device is dual-mode or le-only.
- */
-
-#if ( OPENACE_ENABLE_CLASSIC == 1 )
-#define APP_AD_FLAGS 0x02
-#else
-#define APP_AD_FLAGS 0x06
-#endif
-
-// clang-format off
-// advertisement data, MAX 31 byte!
-const uint8_t adv_data[] = {
-    2, BLUETOOTH_DATA_TYPE_FLAGS, APP_AD_FLAGS, // Use 0x02 for Classic and LE. Use 0x06 for LE only
-    17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS, 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00,
-};
-// clang-format on
-
-static btstack_context_callback_registration_t callback_registration;
-static btstack_packet_callback_registration_t sm_event_callback_registration;
-
-// SPP
-#if (OPENACE_ENABLE_CLASSIC == 1)
-static uint8_t spp_service_buffer[100]; // Showed as length to 91
-#endif
-
 OpenAce::PostConstruct Bluetooth::postConstruct()
 {
     if (mutex != nullptr)
@@ -94,18 +66,19 @@ void Bluetooth::start()
     gatt_client_init();
 
     // RFCOMM
-#if (OPENACE_ENABLE_CLASSIC == 1)
-    rfcomm_init();
-    rfcomm_register_service(rfcommPacketHandler, RFCOMM_SERVER_CHANNEL, 0xffff);
+    if (rfComm)
+    {
+        rfcomm_init();
+        rfcomm_register_service(rfcommPacketHandler, RFCOMM_SERVER_CHANNEL, 0xffff);
 
-    // init SDP, create record for SPP (Serial Port Profile) and register with SDP
-    sdp_init();
-    memset(spp_service_buffer, 0, sizeof(spp_service_buffer));
-    spp_create_sdp_record(spp_service_buffer, sdp_create_service_record_handle(), RFCOMM_SERVER_CHANNEL, localName.c_str());
-    btstack_assert(de_get_len(spp_service_buffer) <= sizeof(spp_service_buffer));
-    sdp_register_service(spp_service_buffer);
-    // RFCOMM
-#endif
+        // init SDP, create record for SPP (Serial Port Profile) and register with SDP
+        sdp_init();
+        memset(Bluetooth::spp_service_buffer, 0, sizeof(Bluetooth::spp_service_buffer));
+        spp_create_sdp_record(Bluetooth::spp_service_buffer, sdp_create_service_record_handle(), RFCOMM_SERVER_CHANNEL, localName.c_str());
+        btstack_assert(de_get_len(Bluetooth::spp_service_buffer) <= sizeof(Bluetooth::spp_service_buffer));
+        sdp_register_service(Bluetooth::spp_service_buffer);
+        // RFCOMM
+    }
 
     // setup advertisements
     uint16_t adv_int_min = 0x0030;
@@ -114,12 +87,19 @@ void Bluetooth::start()
     bd_addr_t null_addr;
     memset(null_addr, 0, 6);
     gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
-    gap_advertisements_set_data(sizeof(adv_data), (uint8_t *)adv_data);
+    if (rfComm)
+    {
+        gap_advertisements_set_data(sizeof(rfCommAdvData), (uint8_t *)rfCommAdvData);
+    }
+    else
+    {
+        gap_advertisements_set_data(sizeof(leAdvData), (uint8_t *)leAdvData);
+    }
     gap_advertisements_enable(1);
 
     gap_set_local_name(localName.c_str());
 
-    sm_event_callback_registration.callback = &smPacketHandler;
+    Bluetooth::sm_event_callback_registration.callback = &smPacketHandler;
     sm_add_event_handler(&sm_event_callback_registration);
 
     // Configuration
@@ -518,7 +498,6 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
  *
  * @text The packet handler is used to handle new connections, can trigger Security Request
  */
-#if (OPENACE_ENABLE_CLASSIC == 1)
 void Bluetooth::rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
 {
     UNUSED(channel);
@@ -600,7 +579,6 @@ void Bluetooth::rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8
         break;
     }
 }
-#endif
 
 int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size)
 {

@@ -38,8 +38,22 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
     static constexpr uint8_t CONN_READY = 0b001;
-
     static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 512; // TODO: Tune buffer, should be > MTU which seems to be 255
+
+    // clang-format off
+    // advertisement data, MAX 31 byte!
+    static constexpr uint8_t leAdvData[] = {
+        2, BLUETOOTH_DATA_TYPE_FLAGS, 0x06, // https://tinyurl.com/yvvw6avx
+        8, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'O', 'p', 'e','n', 'A', 'c', 'e',
+        17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS, 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00,
+    };
+    static constexpr uint8_t rfCommAdvData[] = {
+        2, BLUETOOTH_DATA_TYPE_FLAGS, 0x02, // https://tinyurl.com/yvvw6avx
+        8, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'O', 'p', 'e','n', 'A', 'c', 'e',
+        17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS, 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00,
+    };
+    // clang-format on
+
     friend class message_router;
     struct
     {
@@ -47,6 +61,8 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
         uint32_t bufferOverrunErr = 0;
         uint16_t lastMtu = 0;
     } statistics;
+
+
 
 private:
     virtual OpenAce::PostConstruct postConstruct() override;
@@ -66,9 +82,7 @@ private:
     // START: methods within this block as running within the BLE task
     static void smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
-#if (OPENACE_ENABLE_CLASSIC == 1)
     static void rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
-#endif
     static void sendPackage(hci_con_handle_t handle);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
@@ -81,20 +95,21 @@ private:
 
     struct BtContext
     {
-        union {
+        union
+        {
             hci_con_handle_t handle;
             uint16_t rfcommChannelId;
         };
-        uint8_t readyState;                 // Simple binary state machine, 0b01 = notification enabled, 0b100 = rfcomm channel opened, 0b010 = att channel open
+        uint8_t readyState; // Simple binary state machine, 0b01 = notification enabled, 0b100 = rfcomm channel opened, 0b010 = att channel open
         bool requiresNotification;
         uint16_t mtu;
-        uint16_t attrHandle;                // Used for ATT connections only
+        uint16_t attrHandle;                            // Used for ATT connections only
         CircularBuffer<CONNECTIONS_BUFFER_SIZE> buffer; // connection private data
         BtContext(hci_con_handle_t handle_, uint16_t mtu_, uint8_t readyState_) : handle(handle_),
-                                                             readyState(readyState_),
-                                                             requiresNotification(true),
-                                                             mtu(mtu_),
-                                                             attrHandle(0) {};
+                                                                                  readyState(readyState_),
+                                                                                  requiresNotification(true),
+                                                                                  mtu(mtu_),
+                                                                                  attrHandle(0) {};
 
         BtContext(const BtContext &) = delete;
         BtContext &operator=(const BtContext &) = delete;
@@ -102,7 +117,7 @@ private:
         // Move constructor
         BtContext(BtContext &&other) noexcept
             : handle(other.handle),
-            readyState(other.readyState),
+              readyState(other.readyState),
               requiresNotification(other.requiresNotification),
               mtu(other.mtu),
               attrHandle(other.attrHandle),
@@ -156,15 +171,22 @@ private:
     }
 
     inline static etl::queue_spsc_atomic<OpenAce::NMEAString, 8> queue;
-    // Semaphore to ensure checking data and is synchronized with the BT thread. 
+    inline static btstack_context_callback_registration_t callback_registration;
+    inline static btstack_packet_callback_registration_t sm_event_callback_registration;
+    inline static uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
+
+    // Semaphore to ensure checking data and is synchronized with the BT thread.
     // TODO: Perhaps this can be optimized by using a atomic (allBufferEmpty), all we use it for is to validate if all buffers ar empty
     inline static SemaphoreHandle_t mutex = nullptr;
     OpenAce::SsidOrPasswdStr localName;
+    bool rfComm;
+
 public:
     static constexpr const char *NAME = "Bluetooth";
-    Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
+    Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), rfComm(false)
     {
         localName = config.strValueByPath("OpenAce", NAME, "localName");
+        rfComm = config.valueByPath(0, NAME, "rfComm");
     }
 
     virtual ~Bluetooth() = default;
