@@ -154,12 +154,12 @@ private:
     static void eraseBonding();
 
     // Lists of bluetooth contexts
-    using BlueTooConnections = etl::list<BtContext, OPENACE_MAX_BLUETOOTH_CONNECTIONS>;
-    inline static BlueTooConnections connections;
+    using BluetoothConnections = etl::list<BtContext, OPENACE_MAX_BLUETOOTH_CONNECTIONS>;
+    inline static BluetoothConnections connections;
     /**
      * Get the connections context by Bluetooth handle
      */
-    static BlueTooConnections::iterator ctxByHandle(hci_con_handle_t handle)
+    static BluetoothConnections::iterator ctxByHandle(hci_con_handle_t handle)
     {
         // clang-format off
         return etl::find_if(connections.begin(), connections.end(),
@@ -184,7 +184,7 @@ private:
         }
     }
 
-    inline static etl::queue_spsc_atomic<OpenAce::NMEAString, 8> queue;
+    inline static etl::queue_spsc_atomic<OpenAce::NMEAString, 8, etl::memory_model::MEMORY_MODEL_SMALL> queue;
     inline static btstack_context_callback_registration_t pushIntoQueueReg;
     inline static btstack_packet_callback_registration_t smEventCallback;
     inline static uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91

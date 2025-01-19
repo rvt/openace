@@ -118,10 +118,8 @@ void UbloxM8N::ubloxM8NTask(void *arg)
 
             if (notifyValue & TaskState::NEW)
             {
-                while (!ubloxM8N->queue.empty())
+                while (ubloxM8N->queue.pop(sentence))
                 {
-                    ubloxM8N->queue.pop(sentence);
-
                     // Note: if in case this get's removed because the messages are needed,
                     // then this filter needs to be added in DataPort that passes through GPS messages
                     // Otherwise it create indeed traffic over TCP/IP or Bluetooth
@@ -212,11 +210,11 @@ void UbloxM8N::getData(etl::string_stream &stream, const etl::string_view path) 
     stream << "}\n";
 }
 
-void __time_critical_func(UbloxM8N::processNewSentence)(const char *sentence)
+void __time_critical_func(UbloxM8N::processNewSentence)(const etl::array_view<char>& sentence)
 {
     if (!queue.full())
     {
-        queue.push(sentence);
+        queue.push(sentence.data());
     }
     else
     {

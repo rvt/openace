@@ -59,7 +59,7 @@ class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioR
         etl::bitset<100> timeTenthMs;
         uint32_t frequency;
     };
-    etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats;
+    etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // Two frequencies (Europe)
 
     TaskHandle_t taskHandle;
     QueueHandle_t frameConsumerQueue;

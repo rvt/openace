@@ -60,7 +60,7 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
         etl::bitset<100> timeTenthMs;
         uint32_t frequency;
     };
-    etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats;
+    etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // 2 for 2 timeslots (europe)
 
     TaskHandle_t taskHandle;
     QueueHandle_t frameConsumerQueue;

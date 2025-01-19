@@ -6,7 +6,7 @@ set(PICO_CXX_ENABLE_EXCEPTIONS 0)
 set(PICO_CXX_ENABLE_RTTI 0)
 
 set(OPTIMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
-                   openace_default_config.json default_config.hpp)
+                    openace_default_config.json default_config.hpp)
 execute_process(
   COMMAND ${OPTIMIZE_SCRIPT}
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} ECHO_OUTPUT_VARIABLE
@@ -50,8 +50,29 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 # Enable this to use picotool, and beable to receive UART data over picotool
 set(OPENACE_UART_OVER_USB 0)
 
-add_compile_options(-Wall -fsingle-precision-constant -ffast-math
-                    -Wno-stringop-overflow)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  add_compile_options(
+    -Wall
+    -fsingle-precision-constant
+    -ffast-math
+    -fno-check-new
+    -ffunction-sections
+    -fdata-sections
+    -funroll-loops
+    -Wno-stringop-overflow
+    -O3)
+else()
+  add_compile_options(
+    -Wall
+    -fsingle-precision-constant
+    -ffast-math
+    -fno-check-new
+    -ffunction-sections
+    -fdata-sections
+    -funroll-loops
+    -Wno-stringop-overflow)
+endif()
+
 add_link_options(-Wl,--print-memory-usage)
 
 # Collect all .c/cpp/hpp/h files from the specified directory and its
@@ -137,7 +158,8 @@ target_link_libraries(
 
 target_compile_definitions(
   OpenAce
-  PRIVATE FREE_RTOS_KERNEL_SMP=1 portSUPPORT_SMP=1
+  PRIVATE FREE_RTOS_KERNEL_SMP=1
+          portSUPPORT_SMP=1
           OPENACE_UART_OVER_USB=${OPENACE_UART_OVER_USB}
           PICO_USE_STACK_GUARDS=1)
 

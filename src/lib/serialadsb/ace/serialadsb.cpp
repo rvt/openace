@@ -42,9 +42,8 @@ void SerialADSB::serialADSBTask(void *arg)
 
             if (notifyValue & TaskState::NEW)
             {
-                while (!serialAdsb->queue.empty())
+                while (serialAdsb->queue.pop(sentence))
                 {
-                    serialAdsb->queue.pop(sentence);
                     serialAdsb->statistics.totalReceived++;
                     // Finalise implementation to create the binary message here and send
 //                    serialAdsb->getBus().receive(OpenAce::ADSBMessageBin{sentence});
@@ -63,11 +62,11 @@ void SerialADSB::getData(etl::string_stream &stream, const etl::string_view path
     stream << "}\n";
 }
 
-void __time_critical_func(SerialADSB::processNewSentence)(const char *sentence)
+void __time_critical_func(SerialADSB::processNewSentence)(const etl::array_view<char>& sentence)
 {
     if (!queue.full())
     {
-        queue.push(sentence);
+        queue.push(sentence.data());
     }
     else
     {

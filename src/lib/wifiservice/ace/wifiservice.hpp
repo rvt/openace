@@ -135,7 +135,6 @@ public:
 
     virtual void stop() override;
 
-
    /**
      * Get's the current local IP address
      */

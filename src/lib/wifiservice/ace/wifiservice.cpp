@@ -322,15 +322,7 @@ uint8_t WifiService::connectClient()
 
 bool WifiService::checkIfClientActive(int itf)
 {
-    int status = cyw43_tcpip_link_status(&cyw43_state, itf);
-
-    switch (status)
-    {
-    case CYW43_LINK_UP:
-        return true;
-    default:
-        return false;
-    }
+    return cyw43_tcpip_link_status(&cyw43_state, itf) == CYW43_LINK_UP;
 }
 
 void WifiService::enableSta()

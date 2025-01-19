@@ -76,7 +76,7 @@ public:
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-    void processNewSentence(const char *sentence);
+    void processNewSentence(const etl::array_view<char>& sentence);
 
 };
 

@@ -58,7 +58,7 @@ private:
     TrackerData<MAX_TRACKING_PLANES, 3> trackedAircraft;
 
     // Producer Consumer queue to handle data between this task and the send task
-    etl::queue_spsc_atomic<OpenAce::AircraftPositionInfo, 8> queue;
+    etl::queue_spsc_atomic<OpenAce::AircraftPositionInfo, 8, etl::memory_model::MEMORY_MODEL_SMALL> queue;
 
     enum TaskState : uint32_t
     {

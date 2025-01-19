@@ -21,12 +21,13 @@
 #include "ace/models.hpp"
 
 #include "etl/array.h"
+#include "etl/array_view.h"
 #include "etl/delegate.h"
 
 class PioSerial
 {
     public:
-    using CallBackFunction = etl::delegate<void(const char *)>;
+    using CallBackFunction = etl::delegate<void(const etl::array_view<char>&)>;
 
 private:
     static constexpr etl::array commonBaudrates{ 115200, 9600, 19200, 38400, 57600 };
@@ -78,7 +79,7 @@ private:
     uint txOffset;
 
     irq_handler_t handler;
-    char buffer[OpenAce::NMEA_MAX_LENGTH + 1]; // Plus 1 for any potential null termination
+    etl::array<char, OpenAce::NMEA_MAX_LENGTH + 1> buffer;
     CallBackFunction callback;
 
     bool enableRx();

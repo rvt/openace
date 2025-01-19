@@ -244,11 +244,9 @@ void Bluetooth::pushQueueIntoConnectionBuffers(void *arg)
 {
     (void)arg;
 
-    while (!Bluetooth::queue.empty())
+    OpenAce::NMEAString sentence;
+    while (Bluetooth::queue.pop(sentence))
     {
-        OpenAce::NMEAString sentence;
-        Bluetooth::queue.pop(sentence);
-
         for (auto &ctx : Bluetooth::connections)
         {
             if (ctx.buffer.available() >= sentence.size())
