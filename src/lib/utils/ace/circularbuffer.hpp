@@ -1,20 +1,21 @@
 #pragma once
 
 #include <stdint.h>
+#include "etl/array.h"
 
-template <size_t BufferSize>
+template <size_t BUFFER_SIZE>
 class CircularBuffer
 {
-    char buffer[BufferSize]; // Internal buffer
-    size_t head = 0;         // Write position
-    size_t tail = 0;         // Read position
-    size_t count = 0;        // Number of bytes in the buffer
+    etl::array<char, BUFFER_SIZE> buffer; // Internal buffer
+    size_t head = 0;                      // Write position
+    size_t tail = 0;                      // Read position
+    size_t count = 0;                     // Number of bytes in the buffer
 
 public:
     // 1️⃣ Returns the number of bytes available to write
     size_t available() const
     {
-        return BufferSize - count;
+        return BUFFER_SIZE - count;
     }
 
     size_t length() const {
@@ -34,26 +35,26 @@ public:
     }
 
     // 2️⃣ Pushes `len` bytes from `data` into the buffer
-    bool push(const char *data, size_t len)
+    bool push(const char* data, size_t len)
     {
         if (len > available())
         {
             return false; // Not enough space
         }
 
-        size_t end_space = BufferSize - head;
+        size_t end_space = BUFFER_SIZE - head;
         if (len <= end_space)
         {
             // Data fits in the remaining space at the end
-            memcpy(&buffer[head], data, len);
-            head = (head + len) % BufferSize;
+            memcpy(buffer.data() + head, data, len);
+            head = (head + len) % BUFFER_SIZE;
         }
         else
         {
             // Split the data into two parts
-            memcpy(&buffer[head], data, end_space);
-            memcpy(buffer, data + end_space, len - end_space);
-            head = (len - end_space);
+            memcpy(buffer.data() + head, data, end_space);
+            memcpy(buffer.data(), data + end_space, len - end_space);
+            head = len - end_space;
         }
 
         count += len;
@@ -88,14 +89,14 @@ public:
 
         if (count == 0)
         {
-            PeekResult{nullptr, 0};
+            return PeekResult{nullptr, 0};
         }
 
-        return PeekResult{&buffer[tail], std::min(count, BufferSize - tail)};
+        return PeekResult{buffer.data() + tail, std::min(count, BUFFER_SIZE - tail)};
     }
 
-    // Similar to peek, but will directly accepted the data
-    auto get() 
+    // Similar to peek, but will directly accept the data
+    auto get()
     {
         struct PeekResult {
             const char* part;
@@ -104,12 +105,12 @@ public:
 
         if (count == 0)
         {
-            PeekResult{nullptr, 0};
+            return PeekResult{nullptr, 0};
         }
 
-        auto size = std::min(count, BufferSize - tail);
+        auto size = std::min(count, BUFFER_SIZE - tail);
         accepted(size);
-        return PeekResult{&buffer[tail], size};
+        return PeekResult{buffer.data() + tail, size};
     }
 
     // 4️⃣ Advances the "read pointer" by `len` bytes
@@ -119,7 +120,7 @@ public:
         {
             len = count; // Prevent overflow
         }
-        tail = (tail + len) % BufferSize;
+        tail = (tail + len) % BUFFER_SIZE;
         count -= len;
     }
 
@@ -128,7 +129,7 @@ public:
     {
         printf("Buffer State: head=%zu, tail=%zu, count=%zu\n", head, tail, count);
         printf("Buffer: ");
-        for (size_t i = 0; i < BufferSize; ++i)
+        for (size_t i = 0; i < BUFFER_SIZE; ++i)
         {
             if (i == head)
                 printf("[H]");
