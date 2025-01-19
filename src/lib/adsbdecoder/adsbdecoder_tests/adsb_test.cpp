@@ -91,7 +91,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
     {
         test.received = false;
         get_absolute_timeValue++;
-        hexStrToByteArray(line.c_str() + 1, data);
+        CoreUtils::hexStrToByteArray(line.c_str() + 1, data);
         adsbDecoder.receiveBinary(data, 14);
 
         if (test.received)
@@ -122,7 +122,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
     {
         test.received = false;
         get_absolute_timeValue++;
-        hexStrToByteArray(line.c_str() + 1, data);
+        CoreUtils::hexStrToByteArray(line.c_str() + 1, data);
         adsbDecoder.receiveBinary(data, 14);
         if (test.received)
         {
@@ -145,8 +145,8 @@ TEST_CASE("Test filter below and above", "[single-file]")
     {
         test.received = false;
         get_absolute_timeValue += 10000;
-        time_us_32Value += 10000;
-        hexStrToByteArray(line.c_str() + 1, data);
+        time_us_64Value += 10000;
+        CoreUtils::hexStrToByteArray(line.c_str() + 1, data);
         adsbDecoder.receiveBinary(data, line.size() - 1);
         if (test.received)
         {
@@ -176,11 +176,11 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
     adsbDecoder.ownshipPosition.lon = 4.8;
 
     uint8_t data[14];
-    hexStrToByteArray("8d502cd1589992ecbaf1a4140b65", data);
+    CoreUtils::hexStrToByteArray("8d502cd1589992ecbaf1a4140b65", data);
     adsbDecoder.receiveBinary(data, 14);
-    hexStrToByteArray("8d502cd15899965802eb001f31d8", data);
+    CoreUtils::hexStrToByteArray("8d502cd15899965802eb001f31d8", data);
     adsbDecoder.receiveBinary(data, 14);
-    hexStrToByteArray("8d502cd19908c532903c9cced691", data);
+    CoreUtils::hexStrToByteArray("8d502cd19908c532903c9cced691", data);
     adsbDecoder.receiveBinary(data, 14);
 
     REQUIRE(test.received == true);
@@ -218,11 +218,11 @@ TEST_CASE("Test descending aircraft", "[single-file]")
     adsbDecoder.ownshipPosition.lon = 4.8;
 
     uint8_t data[14];
-    hexStrToByteArray("8d407a055817867d1ce5ecbe8fdd", data); // odd
+    CoreUtils::hexStrToByteArray("8d407a055817867d1ce5ecbe8fdd", data); // odd
     adsbDecoder.receiveBinary(data, 14);
-    hexStrToByteArray("8d407a0558178312d6eefaca54eb", data); // event
+    CoreUtils::hexStrToByteArray("8d407a0558178312d6eefaca54eb", data); // event
     adsbDecoder.receiveBinary(data, 14);
-    hexStrToByteArray("8d407a059908e102980c93715499", data);
+    CoreUtils::hexStrToByteArray("8d407a059908e102980c93715499", data);
     adsbDecoder.receiveBinary(data, 14);
 
     REQUIRE(test.position.verticalSpeed == Catch::Approx(-0.65024).margin(0.001));

@@ -29,7 +29,6 @@ class PioSerial
     using CallBackFunction = etl::delegate<void(const char *)>;
 
 private:
-    static constexpr uint8_t PIOSERIAL_MAX_QUEUE_LENGTH = 2;
     static constexpr etl::array commonBaudrates{ 115200, 9600, 19200, 38400, 57600 };
 
 
@@ -135,7 +134,7 @@ public:
     /**
      * Validate if the uart is receiving any valid data at the given baudrate
     */
-    bool testUartAtBaudrate(uint32_t testBaudRate, uint32_t maximumScanTimeMs, uint32_t ignoreFirstMs=5, uint16_t numcharsConsideringValid=48);
+    bool testUartAtBaudrate(uint32_t testBaudRate, uint32_t maximumScanTimeMs, uint16_t numcharsConsideringValid=48);
 
     /**
      * Find a buadrate where the uart is sending data on
@@ -145,6 +144,6 @@ public:
     /**
      * Flush the RX Buffers up to a timeout in ms
      */
-    bool rxFlush(uint32_t timeOutMs=1000);
+    void rxFlush();
 
 };

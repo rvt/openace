@@ -24,19 +24,19 @@ TEST_CASE( "msSinceEpoch", "[single-file]" )
 
 TEST_CASE( "msInSecond", "[single-file]" )
 {
-    time_us_32Value = 23456623;
+    time_us_64Value = 23456623;
     CoreUtils::setPPS();
     REQUIRE( CoreUtils::msInSecond() == 0 );
 
-    time_us_32Value = time_us_32Value + 1758'000;
+    time_us_64Value = time_us_64Value + 1758'000;
     REQUIRE( CoreUtils::msInSecond() == 758 );
 }
 
 TEST_CASE( "timeUs32 must be alliged with PPS", "[single-file]" )
 {
-    time_us_32Value = 23'456'623;
+    time_us_64Value = 23'456'623;
     CoreUtils::setPPS();
-    time_us_32Value = time_us_32Value+216500;
+    time_us_64Value = time_us_64Value+216500;
     REQUIRE( CoreUtils::timeUs32() == 23216500 );
 }
 
@@ -66,23 +66,23 @@ TEST_CASE( "usDiff must handle wraparounds", "[single-file]" )
 
 TEST_CASE( "isUsReached", "[single-file]" )
 {
-    time_us_32Value = 0;
+    time_us_64Value = 0;
     CoreUtils::setPPS();
     REQUIRE( CoreUtils::isUsReached(10000) == false );
 
-    time_us_32Value = 10001;
+    time_us_64Value = 10001;
     REQUIRE( CoreUtils::isUsReached(10000) == true );
 
-    time_us_32Value = 1000000;
+    time_us_64Value = 1000000;
     REQUIRE( CoreUtils::isUsReached(10000) == true );
 }
 
 TEST_CASE( "msDelayToReference", "[single-file]" )
 {
     time_us_64Value = 0;
-    time_us_32Value = 23456623;
+    time_us_64Value = 23456623;
     CoreUtils::setPPS();
-    time_us_32Value = time_us_32Value + 313'000;
+    time_us_64Value = time_us_64Value + 313'000;
     REQUIRE( CoreUtils::msDelayToReference(411, 123) == 288 ); // 123ms into whole second
 
     REQUIRE( CoreUtils::msDelayToReference(123, 411) == 712 );  // 411ms into whole second
@@ -246,7 +246,7 @@ TEST_CASE( "hexStrToByteArray overflow", "[single-file]" )
 {
     uint8_t bytes[7];
     bytes[6] = 0x12;
-    hexStrToByteArray("8D00FF4D2D58AA", sizeof(bytes) * 2 - 2, bytes);
+    CoreUtils::hexStrToByteArray("8D00FF4D2D58AA", sizeof(bytes) * 2 - 2, bytes);
     REQUIRE( bytes[0] == 0x8D );
     REQUIRE( bytes[1] == 0x00 );
     REQUIRE( bytes[2] == 0xFF );

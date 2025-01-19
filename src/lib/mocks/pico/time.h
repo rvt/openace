@@ -26,8 +26,7 @@ inline uint64_t time_us_64()
     return time_us_64Value;
 }
 
-inline uint32_t time_us_32Value = 0;
 inline uint32_t time_us_32()
 {
-    return time_us_32Value;
+    return time_us_64Value;
 }

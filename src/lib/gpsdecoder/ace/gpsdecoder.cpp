@@ -52,8 +52,8 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
 void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 {
     // printf("GpsDecoder: %s\n", msg.sentence.c_str());
-    static Every<uint32_t, 0, 1'000'000> sendGpsTimeMsg{0};
-    static Every<uint32_t, 10'000'000, 30'000'000> gpsStatsMsg{0};
+    static Every<uint32_t, 0, 15'000'000> sendGpsTimeMsg{0};        // every 15 seconds
+    static Every<uint32_t, 10'000'000, 30'000'000> gpsStatsMsg{0};  // Every 30 seconds 10 seconds in
 
     switch (minmea_sentence_id(msg.sentence.c_str(), false))
     {
@@ -162,7 +162,6 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
                     minmea_tofloat(&frame.hdop)});
             }
         }
-
     }
     break;
 
@@ -204,11 +203,12 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
     // If this in practise is not happening, due to newer GPS systems position should be taken from latest RMC
     // so we take position acuracy over altitude/course
     // TODO: Reconsider
-    auto alt = altitudeWgs84();
-    auto height = heightGeoidWGS84();
     if (lastGGATimestamp.microseconds == lastRMCTimestamp.microseconds && lastGGATimestamp.seconds == lastRMCTimestamp.seconds)
-    {
-        // Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
+    {        
+        auto alt = altitudeWgs84();
+        auto height = heightGeoidWGS84();
+        
+        // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
         getBus().receive(
             OpenAce::OwnshipPositionMsg
         {
@@ -229,7 +229,5 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                 }
         }
         );
-
-    
     }
 }

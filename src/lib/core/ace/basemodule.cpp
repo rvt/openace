@@ -68,7 +68,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
 {
     // printf("Looking %s depends on %s\n", that.name(), requesting);
     // Look for it's direct name ex:AceSpi
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex)) 
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex))
     {
 
         if (BaseModule::moduleLoaderMap.contains(requesting))
@@ -102,11 +102,11 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
 
 void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
 {
-    UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();
     // Handle the interrupt and call back over callback or task notification
     // printf("Pin %d event %d\n", pin, event);
     // Cannot wrap this in a mutex since when there is an interrupt we get an assert on suspend
     // This is in reality only an issue when modules are added/removed which is not expected during normal operation
+    // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     if (pinInterruptHandlers.contains(pin) && pinInterruptHandlers[pin].enabled)
     {
         pinInterruptHandler &iHandler = pinInterruptHandlers[pin];
@@ -118,13 +118,11 @@ void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t ev
             }
             else
             {
-                BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-                xTaskNotifyFromISR(iHandler.handler, iHandler.notificationValue, eSetBits, &xHigherPriorityTaskWoken);
-                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+                xTaskNotifyFromISR(iHandler.handler, iHandler.notificationValue, eSetBits, nullptr /* &xHigherPriorityTaskWoken*/);
             }
         }
     }
-    taskEXIT_CRITICAL_FROM_ISR(saved);
+    // portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 /**
@@ -132,7 +130,7 @@ void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t ev
  */
 void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t handler, uint32_t notificationValue)
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex)) 
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex))
     {
         if (pinInterruptHandlers.full())
         {
@@ -148,7 +146,7 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t
  */
 void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallback_t callback)
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex)) 
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex))
     {
         if (pinInterruptHandlers.full())
         {

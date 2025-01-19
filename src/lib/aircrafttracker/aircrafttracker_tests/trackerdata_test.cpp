@@ -48,7 +48,7 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
 
     SECTION("next not called")
     {
-        time_us_32Value = 120'000;
+        time_us_64Value = 120'000;
         auto delay = trackedAircraft.next([](const OpenAce::AircraftPositionInfo &position)
                                           { REQUIRE(false); });
         REQUIRE(delay == 380);
@@ -56,14 +56,14 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
 
     SECTION("next called with timeslice")
     {
-        time_us_32Value = 900'000;
+        time_us_64Value = 900'000;
         bool called = false;
         auto delay = trackedAircraft.next([&called](const OpenAce::AircraftPositionInfo &position)
                                           { called = true; });
         REQUIRE(called);
         REQUIRE(delay == 100);
 
-        time_us_32Value = 250'000;
+        time_us_64Value = 250'000;
         delay = trackedAircraft.next([&called](const OpenAce::AircraftPositionInfo &position)
                                      { REQUIRE(false); });
         REQUIRE(delay == 250);
@@ -71,7 +71,7 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
 
     SECTION("next called runs stale")
     {
-        time_us_32Value = aircraftPosition.timestamp + 10'000'000;
+        time_us_64Value = aircraftPosition.timestamp + 10'000'000;
         trackedAircraft.maintenance();
         REQUIRE(trackedAircraft.size() == 0);
     }
@@ -85,7 +85,7 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
         REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
         REQUIRE(trackedAircraft.size() == 2);
         int callbacks = 0;
-        time_us_32Value = 1'500'000;
+        time_us_64Value = 1'500'000;
         auto delay = trackedAircraft.next([&callbacks](const OpenAce::AircraftPositionInfo &position)
                                           {
                                         if (callbacks == 0 ) {
@@ -142,7 +142,7 @@ TEST_CASE("TrackerData Insert many and re-calculate adaptiveRadius ", "[single-f
 
         SECTION("Keep calling to max radius size should increase to ADAPTIVE_RADIUS_MAX")
         {
-            time_us_32Value = 12'000'000;
+            time_us_64Value = 12'000'000;
             for (i = 0; i < 100; i++)
             {
                 trackedAircraft.maintenance();
@@ -160,7 +160,7 @@ TEST_CASE("Next should handle correct delay 3 slices", "[single-file]")
 
     for (int i = 0; i < time.size(); i++)
     {
-        time_us_32Value = time[i];
+        time_us_64Value = time[i];
         auto delay = trackedAircraft.next([](const OpenAce::AircraftPositionInfo &position) {});
         REQUIRE(delay == expectedDelay[i]);
     }
@@ -174,7 +174,7 @@ TEST_CASE("Next should handle correct delay 4 slices", "[single-file]")
 
     for (int i = 0; i < time.size(); i++)
     {
-        time_us_32Value = time[i];
+        time_us_64Value = time[i];
         auto delay = trackedAircraft.next([](const OpenAce::AircraftPositionInfo &position) {});
         REQUIRE(delay == expectedDelay[i]);
     }

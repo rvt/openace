@@ -49,12 +49,11 @@ public:
     /**
      * Get a timestamp in ms
      * This timestamp monotonically increases from power up
-     * Note: When measuring time differences up to 35 minutes, it's best to use timeUs32 for performance reasons
      * \sa timeUs32
      */
     static uint32_t timeMs32()
     {
-        return timeUs32() / 1'000;
+        return timeUs64() / 1'000;
     }
     /**
      * Get a timestamp in seconds
@@ -91,7 +90,7 @@ public:
      * Must be called at high priority to set the PPS offset.
      * When offset is known, the correct time in us in reference to PPS can be calculated
      */
-    static void __force_inline setPPS()
+    static void __time_critical_func(setPPS)()
     {
         timeUs32PpsOffset = time_us_32() % 1'000'000;
     }
@@ -383,7 +382,7 @@ public:
      * @param nmea example '$PFEC,GPint,RMC05'
      * @return             '$PFEC,GPint,RMC05*2D\r\n'
      */
-    __force_inline static void addChecksumToNMEA(etl::istring &nmea)
+    static void addChecksumToNMEA(etl::istring &nmea)
     {
         const char hexChars[] = "0123456789ABCDEF";
         uint16_t chk = 0, i = 1;
@@ -414,7 +413,7 @@ public:
      * Later the idea is that it will use DDB to get the registration based on aircraftID and addressType
      *
      */
-    static const OpenAce::IcaoAddress makeIcaoAddress(uint32_t aircraftID, OpenAce::AddressType addressType)
+    static OpenAce::IcaoAddress makeIcaoAddress(uint32_t aircraftID, OpenAce::AddressType addressType)
     {
         (void)addressType;
         OpenAce::IcaoAddress icaoAddress;
@@ -422,46 +421,46 @@ public:
         stream << etl::hex << etl::uppercase << aircraftID;
         return icaoAddress;
     }
+
+    static uint8_t getHexVal(char hex)
+    {
+        uint8_t val = (uint8_t)hex;
+        // For uppercase A-F letters:
+        // return val - (val < 58 ? 48 : 55);
+        // For lowercase a-f letters:
+        // return val - (val < 58 ? 48 : 87);
+        // Or the two combined, but a bit slower:
+        return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
+    }
+
+    /**
+     * Convert a hex string in the form of 0123FA... to a byte array
+     */
+    static void hexStrToByteArray(const char hex[], uint8_t hexLength, uint8_t bytearray[])
+    {
+        for (uint8_t i = 0, j = 0; i < hexLength; i += 2, ++j)
+        {
+            bytearray[j] = (getHexVal(hex[i]) << 4) | getHexVal(hex[i + 1]);
+        }
+    }
+
+    static void hexStrToByteArray(const char *hex, uint8_t byteArray[])
+    {
+        auto hexLength = strlen(hex);
+        hexStrToByteArray(hex, hexLength, byteArray);
+    }
+
+    /**
+     * Convert a byteArray to a hex string, the reverse of hexStrToByteArray
+     */
+    static void byteArrayToHexStr(const uint8_t byteArray[], uint8_t byteArrayLength, char hexStr[])
+    {
+        const char hexChars[] = "0123456789ABCDEF";
+        for (uint8_t i = 0; i < byteArrayLength; ++i)
+        {
+            hexStr[i * 2] = hexChars[(byteArray[i] >> 4) & 0x0F]; // Extract the upper 4 bits
+            hexStr[i * 2 + 1] = hexChars[byteArray[i] & 0x0F];    // Extract the lower 4 bits
+        }
+        hexStr[byteArrayLength * 2] = '\0'; // Null-terminate the string
+    }
 };
-
-inline uint8_t getHexVal(char hex)
-{
-    uint8_t val = (uint8_t)hex;
-    // For uppercase A-F letters:
-    // return val - (val < 58 ? 48 : 55);
-    // For lowercase a-f letters:
-    // return val - (val < 58 ? 48 : 87);
-    // Or the two combined, but a bit slower:
-    return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
-}
-
-/**
- * Convert a hex string in the form of 0123FA... to a byte array
- */
-inline void hexStrToByteArray(const char hex[], uint8_t hexLength, uint8_t bytearray[])
-{
-    for (uint8_t i = 0, j = 0; i < hexLength; i += 2, ++j)
-    {
-        bytearray[j] = (getHexVal(hex[i]) << 4) | getHexVal(hex[i + 1]);
-    }
-}
-
-inline void hexStrToByteArray(const char *hex, uint8_t byteArray[])
-{
-    auto hexLength = strlen(hex);
-    hexStrToByteArray(hex, hexLength, byteArray);
-}
-
-/**
- * Convert a byteArray to a hex string, the reverse of hexStrToByteArray
- */
-inline void byteArrayToHexStr(const uint8_t byteArray[], uint8_t byteArrayLength, char hexStr[])
-{
-    const char hexChars[] = "0123456789ABCDEF";
-    for (uint8_t i = 0; i < byteArrayLength; ++i)
-    {
-        hexStr[i * 2] = hexChars[(byteArray[i] >> 4) & 0x0F]; // Extract the upper 4 bits
-        hexStr[i * 2 + 1] = hexChars[byteArray[i] & 0x0F];    // Extract the lower 4 bits
-    }
-    hexStr[byteArrayLength * 2] = '\0'; // Null-terminate the string
-}

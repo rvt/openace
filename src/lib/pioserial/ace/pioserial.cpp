@@ -126,37 +126,51 @@ void PioSerial::disableRx()
  */
 void __isr __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex)
 {
-    UBaseType_t savedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+    constexpr size_t numEntries = sizeof(interruptHandlers) / sizeof(interruptHandlers[0]);
 
-    PioSerial &pioSerial = *interruptHandlers[irqHandlerIndex];
-    while (!pio_sm_is_rx_fifo_empty(pioSerial.rxPio, pioSerial.rxSmIndx))
+    if (irqHandlerIndex >= numEntries)
     {
-        uint32_t data =  pioSerial.rxPio->rxf[pioSerial.rxSmIndx];
-        char *bytePtr = (char*)&data;
+        puts("irqHandlerIndex >= numEntries");
+        return;
+    }
+
+    PioSerial *pioSerial = interruptHandlers[irqHandlerIndex];
+    if (pioSerial == nullptr)
+    {
+        puts("pioSerial == nullptr");
+        return;
+    }
+
+    while (!pio_sm_is_rx_fifo_empty(pioSerial->rxPio, pioSerial->rxSmIndx))
+    {
+        uint32_t data = pio_sm_get(pioSerial->rxPio, pioSerial->rxSmIndx);
+        char *bytePtr = (char *)&data;
         for (int i = 0; i < 4; i++)
         {
             char c = bytePtr[i];
             if (c == '\n' || c == '\r')
             {
-                if (pioSerial.charIndex > 1)
+                // Ignore any newline or return characters on index 0
+                if (pioSerial->charIndex > 0)
                 {
-                    pioSerial.buffer[pioSerial.charIndex] = '\0';
-                    pioSerial.callback(pioSerial.buffer);
+                    pioSerial->buffer[pioSerial->charIndex] = '\0';
+                    pioSerial->callback(pioSerial->buffer);
                 }
-                pioSerial.charIndex = 0;
-            }
-            else if (pioSerial.charIndex >= OpenAce::NMEA_MAX_LENGTH)
-            {
-                pioSerial.charIndex = 0;
+                pioSerial->charIndex = 0;
             }
             else
             {
-                pioSerial.buffer[pioSerial.charIndex++] = c;
+                if (pioSerial->charIndex < (sizeof(pioSerial->buffer) - 1))
+                {
+                    pioSerial->buffer[pioSerial->charIndex++] = c;
+                }
+                else
+                {
+                    pioSerial->charIndex = 0;
+                }
             }
         }
     }
-
-    taskEXIT_CRITICAL_FROM_ISR(savedInterruptStatus);
 }
 
 void PioSerial::sendBlocking(const uint8_t *data, uint16_t length)
@@ -206,12 +220,12 @@ bool PioSerial::setBaudRate(uint32_t baudRate)
 /**
  * Validate if the uart is receiving any valid data at the given baudrate
  */
-bool PioSerial::testUartAtBaudrate(uint32_t testBaudRate, uint32_t maximumScanTimeMs, uint32_t ignoreFirstMs, uint16_t numcharsConsideringValid)
+bool PioSerial::testUartAtBaudrate(uint32_t testBaudRate, uint32_t maximumScanTimeMs, uint16_t numcharsConsideringValid)
 {
     if (rxPio != nullptr)
     {
         setBaudRate(testBaudRate);
-        bool hasData = uart_rx_program_test(rxPio, rxSmIndx, 0x0a, 0x80, maximumScanTimeMs, ignoreFirstMs, numcharsConsideringValid);
+        bool hasData = uart_rx_program_test(rxPio, rxSmIndx, 0x0a, 0x80, maximumScanTimeMs, numcharsConsideringValid);
         setBaudRate(baudrate);
         return hasData;
     }
@@ -225,7 +239,7 @@ uint32_t PioSerial::findBaudRate(uint32_t maxTimeOutMs)
 {
     for (uint32_t baudRate : commonBaudrates)
     {
-        // printf("Scanning %ldBd\n", baudRate);
+        //  printf("Scanning %ldBd\n", baudRate);
         if (testUartAtBaudrate(baudRate, maxTimeOutMs))
         {
             return baudRate;
@@ -234,7 +248,7 @@ uint32_t PioSerial::findBaudRate(uint32_t maxTimeOutMs)
     return 0;
 }
 
-bool PioSerial::rxFlush(uint32_t timeOutMs)
+void PioSerial::rxFlush()
 {
-    return uart_rx_flush(rxPio, rxSmIndx, timeOutMs);
+    uart_rx_flush(rxPio, rxSmIndx);
 }

@@ -26,8 +26,7 @@ class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, OpenAce::G
     {
         uint32_t epochSet=0;
         uint32_t delayUs=0; // Delay between PPS and when we received a time message from the GPS
-        uint32_t highElapseTime=0;
-        uint32_t ppsEventsReceived=0;
+        uint32_t highElapseTimeErr=0;
     } statistics;
 
 private:

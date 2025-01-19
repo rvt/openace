@@ -65,6 +65,7 @@
 // Other's that could help debugging problems
 // #define HTTPD_DEBUG LWIP_DBG_ON
 // #define RUN_FREE_RTOS_ON_CORE ( 1 )
+
 #endif
 // END: ***** Debugging PICO items
 

@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
+set(PICO_CXX_ENABLE_EXCEPTIONS 0)
+set(PICO_CXX_ENABLE_RTTI 0)
 
 set(OPTIMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
                    openace_default_config.json default_config.hpp)

@@ -43,7 +43,6 @@ private:
     {
         uint32_t sendTime;
         OpenAce::AircraftPositionInfo position;
-        TrackerEntry() = default;
     };
 
     struct TrackerEntryComparator

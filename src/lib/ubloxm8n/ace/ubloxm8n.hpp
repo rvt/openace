@@ -18,7 +18,9 @@
 class UbloxM8N : public BaseModule, public etl::message_router<UbloxM8N>
 {
 private:
-    static constexpr uint8_t QUEUE_SIZE = 6;
+    static constexpr uint8_t QUEUE_SIZE = 4;
+    static constexpr uint32_t REQUIRED_GPS_BAUDRATE = 115200; // If you change this, you need to change the baudrate in the ublox config as well
+
     friend class message_router;
     
     enum TaskState : uint32_t
@@ -44,7 +46,6 @@ private:
 
     bool detectAndConfigureGPS();
 
-    static constexpr uint32_t GPS_BAUDRATE = 115200; // If you change this, you need to change the baudrate in the ublox config as well
 
     PioSerial pioSerial;
     uint8_t ppsPin;
@@ -55,7 +56,7 @@ public:
     static constexpr const etl::string_view NAME = "UbloxM8N";
     UbloxM8N(etl::imessage_bus& bus, const OpenAce::PinTypeMap& pins) :
         BaseModule(bus, NAME),
-        pioSerial{pins, GPS_BAUDRATE, PioSerial::CallBackFunction::create<UbloxM8N, &UbloxM8N::processNewSentence>(*this)},
+        pioSerial{pins, REQUIRED_GPS_BAUDRATE, PioSerial::CallBackFunction::create<UbloxM8N, &UbloxM8N::processNewSentence>(*this)},
         ppsPin(pins.at(OpenAce::PinType::BUSY)),
         taskHandle(nullptr)
     {

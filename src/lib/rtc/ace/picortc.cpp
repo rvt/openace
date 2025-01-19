@@ -8,8 +8,7 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
     stream << "{";
     stream << "\"epochSet\":" << statistics.epochSet;
     stream << ",\"delayUs\":" << statistics.delayUs;
-    stream << ",\"highElapseTime\":" << statistics.highElapseTime;
-    stream << ",\"ppsEventsReceived\":" << statistics.ppsEventsReceived;
+    stream << ",\"highElapseTimeErr\":" << statistics.highElapseTimeErr;
     stream << ",\"lastPpstime\":" << lastPpstime;
     stream << ",\"timeUs32\":" << CoreUtils::timeUs32();
     stream << "}\n";
@@ -21,7 +20,6 @@ __force_inline void PicoRtc::ppsEvent()
 {
     CoreUtils::setPPS();
     lastPpstime = CoreUtils::timeUs32();
-    statistics.ppsEventsReceived++;
 }
 
 OpenAce::PostConstruct PicoRtc::postConstruct()
@@ -54,7 +52,7 @@ void PicoRtc::on_receive(const OpenAce::GpsTimeMsg& msg)
     // will be set at whole seconds only
     if (elapsedUsSincePps > 100'000)
     {
-        statistics.highElapseTime++;
+        statistics.highElapseTimeErr++;
         return;
     }
 

@@ -17,7 +17,6 @@ set(MODULE_TARGET_LINK
 set(PICO_EXTRA_LIBS
     pico_btstack_ble # BLE Bluetooth
     pico_btstack_classic # Classic Bluetooth
-    pico_btstack_flash_bank
     pico_btstack_cyw43
     pico_cyw43_arch_lwip_sys_freertos
 )

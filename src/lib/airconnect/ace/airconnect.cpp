@@ -31,7 +31,7 @@ void AirConnect::getData(etl::string_stream &stream, const etl::string_view path
 
 /**
  * Receive dataport messages and send it to all clients
- * TODO: CHange it such that each connected client can receive the OpenAce::DataPortMsg &msg
+ * TODO: Change it such that each connected client can receive the OpenAce::DataPortMsg &msg
  */
 void AirConnect::on_receive(const OpenAce::DataPortMsg &msg)
 {
@@ -334,7 +334,6 @@ void AirConnect::on_receive(const OpenAce::WifiConnectionStateMsg &wcs)
 void AirConnect::on_receive(const OpenAce::IdleMsg &msg)
 {
     (void)msg;
-
     if (wifiConnected && !serverPcb)
     {
         tcp_server_start();

@@ -78,8 +78,6 @@ void __time_critical_func(SerialADSB::processNewSentence)(const char *sentence)
     // Since this is a continues streem, this should be fine
     if (queue.size() > QUEUE_SIZE - 2)
     {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
     }
 }

@@ -12,24 +12,25 @@
 #include "ace/utils.hpp"
 
 // *INDENT-OFF*
+// clang-format off
 inline constexpr uint8_t UbloxM8N_baudrate[] = {
-    0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00,
-    0x00, 0xC2, 0x01, 0x00, 0x23, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDC, 0x5E}; // CFG_PRT Baudrate 115200
+                    0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00,
+                    0x00, 0xC2, 0x01, 0x00, 0x23, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDC, 0x5E}; // CFG_PRT Baudrate 115200
 
 inline constexpr uint8_t UbloxM8N_warmstart[] = {
-    0xB5, 0x62, 0x06, 0x04, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0E, 0x64}; // CFG_RST warm start
+                    0xB5, 0x62, 0x06, 0x04, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0E, 0x64}; // CFG_RST warm start
 
 inline constexpr uint8_t UbloxM8N_saveBBR[] = {
-    0xB5, 0x62, 0x06, 0x09, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x01, 0x1B, 0xA9}; // CFG_CFG, Safe into BBR
+                    0xB5, 0x62, 0x06, 0x09, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x01, 0x1B, 0xA9}; // CFG_CFG, Safe into BBR
 
 inline constexpr uint8_t UbloxM8N_saveBBR_FLASH[] = {
-    0xB5, 0x62, 0x06, 0x09, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x03, 0x1D, 0xAB};
+                    0xB5, 0x62, 0x06, 0x09, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x03, 0x1D, 0xAB};
 
 inline constexpr uint8_t UbloxM8N_defaultCfg[] = {
-    0xB5, 0x62, 0x06, 0x07, 0x14, 0x00, 0x40, 0x42, 0x0F, 0x00, 0x18, 0x73, 0x01, 0x00, // CFG_CFG, reset default
-    0x01, 0x01, 0x00, 0x00, 0x34, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x77, 0xF4};
+                    0xB5, 0x62, 0x06, 0x07, 0x14, 0x00, 0x40, 0x42, 0x0F, 0x00, 0x18, 0x73, 0x01, 0x00, // CFG_CFG, reset default
+                    0x01, 0x01, 0x00, 0x00, 0x34, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x77, 0xF4};
 
 constexpr uint8_t UbloxM8N_m8nConfig_size = 13;
 inline constexpr uint8_t *UbloxM8N_m8nConfig[UbloxM8N_m8nConfig_size] = {
@@ -48,13 +49,14 @@ inline constexpr uint8_t *UbloxM8N_m8nConfig[UbloxM8N_m8nConfig_size] = {
     (uint8_t[]){16, 0xB5, 0x62, 0x06, 0x16, 0x08, 0x00, 0x01, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2D, 0xC}, // CFG_SBAS
 
     (uint8_t[]){28, 0xB5, 0x62, 0x06, 0x07, 0x14, 0x00, 0x40, 0x42, 0x0F, 0x00, 0x30, 0x1B, 0x0F, 0x00, // CFG_TP Timepulse
-                0x01, 0x01, 0x00, 0x00, 0x34, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x10},
+                    0x01, 0x01, 0x00, 0x00, 0x34, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x10},
 
     (uint8_t[]){28, 0xB5, 0x62, 0x06, 0x17, 0x14, 0x00, 0x00, 0x21, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, // CFG NMEA 2.1, MAIN talker ID GP
-                0x00, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x57, 0x0C},
+                    0x00, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x57, 0x0C},
 
     (uint8_t[]){14, 0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A} // CFG_RATE 200ms GPS time
 };
+// clang-format on
 // *INDENT-ON*
 
 // TODO: For some reason casting to RTC did not work, so we use a global pointer PicoRtc, properly some casting did not go well
@@ -65,16 +67,17 @@ void __time_critical_func(UbloxM8N_pps_callback)(uint32_t events)
 {
     (void)events;
     UbloxM8N_rtc->ppsEvent();
+    // CoreUtils::setPPS();
 }
 
 void UbloxM8N::start()
 {
     // TODO: Check if there is a better way to reduce stack size.
-    // THis seem to have because the ublox is the beginning of messages through the complete system?
+    // This seem to have because the ublox is the beginning of messages through the complete system?
     // Can we use a reference to strings instead of copy?
     xTaskCreate(ubloxM8NTask, "UbloxM8N"
                               "Task",
-                configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 2, &taskHandle);
+                configMINIMAL_STACK_SIZE + 768, this, tskIDLE_PRIORITY + 2, &taskHandle);
 
     pioSerial.start();
     // ublox uses rising pulse to trigger
@@ -118,11 +121,15 @@ void UbloxM8N::ubloxM8NTask(void *arg)
                 while (!ubloxM8N->queue.empty())
                 {
                     ubloxM8N->queue.pop(sentence);
-                    // GPGS[AV] message are not needed
+
                     // Note: if in case this get's removed because the messages are needed,
                     // then this filter needs to be added in DataPort that passes through GPS messages
                     // Otherwise it create indeed traffic over TCP/IP or Bluetooth
-                    if (sentence.find("$GPGS") == OpenAce::NMEAString::npos)
+                    // "SkyDemon processes RMC, GGA, GSA and GSV, however GSV is not really used any more internally."
+                    // GSA : GPS DOP and active satellites
+                    // GSV : GPS Satellites in view
+                    if (sentence.find("$GPGSV") == OpenAce::NMEAString::npos &&
+                        sentence.find("$GPVTG") == OpenAce::NMEAString::npos)
                     {
                         ubloxM8N->statistics.totalReceived++;
                         ubloxM8N->getBus().receive(OpenAce::GPSSentenceMsg{sentence});
@@ -137,68 +144,53 @@ bool UbloxM8N::detectAndConfigureGPS()
 {
     // Initialise the GPS hardware
     statistics.status = "Search";
-    uint32_t scanBaudRate = pioSerial.findBaudRate(25000);
-    if (!scanBaudRate)
+    statistics.baudrate = pioSerial.findBaudRate(5'000);
+    if (!statistics.baudrate)
     {
         statistics.status = "NO GPS";
         return false;
     }
-    statistics.baudrate = scanBaudRate;
-    if (scanBaudRate != GPS_BAUDRATE)
+
+    // If not correct, try to set the GPS to the required baudrate
+    if (statistics.baudrate != REQUIRED_GPS_BAUDRATE)
     {
         statistics.status = "Found";
-        // printf("GPS found at %ldBd setting to %ldBd, waiting for GPS to come back on... ", scanBaudRate, GPS_BAUDRATE);
-        if (!pioSerial.enableTx(scanBaudRate))
+        // printf("GPS found at %ldBd setting to %ldBd, waiting for GPS to come back on... ", statistics.baudrate, GPS_BAUDRATE);
+        if (!pioSerial.enableTx(statistics.baudrate))
         {
-            puts("enableTx failed");
             return false;
         }
 
         pioSerial.sendBlocking(UbloxM8N_baudrate, sizeof(UbloxM8N_baudrate));
-        pioSerial.rxFlush(100);
-        pioSerial.sendBlocking(UbloxM8N_warmstart, sizeof(UbloxM8N_warmstart));
-        pioSerial.rxFlush(100);
-
-        for (uint8_t i = 0; i < 60; i++)
-        {
-            statistics.status = "NO GPS";
-            if (pioSerial.testUartAtBaudrate(GPS_BAUDRATE, 250))
-            {
-                break;
-            }
-        }
-        scanBaudRate = pioSerial.findBaudRate(25000);
-        statistics.baudrate = scanBaudRate;
-        if (scanBaudRate != GPS_BAUDRATE)
-        {
-            statistics.status = "Cfg Err";
-            return false;
-        }
-        // Save to BBR so we don't have slow startup delays finding the uart
-        // Temporary disabled to test finding of uBlox
-        statistics.status = "BBR";
-        pioSerial.sendBlocking(UbloxM8N_saveBBR, sizeof(UbloxM8N_saveBBR));
-        vTaskDelay(50);
         pioSerial.rxFlush();
-    }
+        pioSerial.sendBlocking(UbloxM8N_warmstart, sizeof(UbloxM8N_warmstart));
+        pioSerial.rxFlush();
 
-    // Configure GPS
-    if (!pioSerial.enableTx(scanBaudRate))
+        vTaskDelay(50);
+        return false;
+    }
+    
+    if (!pioSerial.enableTx(statistics.baudrate))
     {
         statistics.status = "Cfg err m8nCfg";
         return false;
     }
+
+    // Save to BBR so we don't have slow startup delays finding the uart
+    statistics.status = "BBR";
+    pioSerial.sendBlocking(UbloxM8N_saveBBR, sizeof(UbloxM8N_saveBBR));
+    vTaskDelay(250);
+
     for (uint8_t i = 0; i < UbloxM8N_m8nConfig_size; i++)
     {
+        pioSerial.rxFlush();
         // printf("Send configuration %d\n", i);
         pioSerial.sendBlocking(&UbloxM8N_m8nConfig[i][1], UbloxM8N_m8nConfig[i][0]);
         // TODO: Wait for 'ok' reply, this requires modification in pioserial
         vTaskDelay(250);
-        pioSerial.rxFlush(100);
     }
 
     statistics.status = "Configured";
-    statistics.baudrate = scanBaudRate;
     return true;
 }
 
@@ -232,11 +224,9 @@ void __time_critical_func(UbloxM8N::processNewSentence)(const char *sentence)
     }
 
     // To reduce some FreeRTOS switches only send when queue is nearly full
-    // Since this is a continues streem, this should be fine
-    if (queue.size() > QUEUE_SIZE - 2)
+    // Since this is a continues NMEA stream, this should be fine and accurate enough
+    if (queue.size() > queue.capacity() - 2)
     {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
     }
 }

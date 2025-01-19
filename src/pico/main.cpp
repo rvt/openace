@@ -332,7 +332,7 @@ int main()
     rtos_name = "OpenAce";
 #endif
 
-#if (configNUMBER_OF_CORES > 2)
+#if (configNUMBER_OF_CORES > 1)
     printf("Starting %s on both cores:\n\n", rtos_name);
     vLaunch();
 #elif (RUN_FREERTOS_ON_CORE == 1)

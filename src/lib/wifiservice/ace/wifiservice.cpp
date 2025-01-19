@@ -6,6 +6,7 @@
 
 #include "wifiservice.hpp"
 #include "lwip/apps/mdns.h"
+#include "ace/coreutils.hpp"
 
 OpenAce::PostConstruct WifiService::postConstruct()
 {

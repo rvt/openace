@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "dump1090client.hpp"
+#include "ace/coreutils.hpp"
 
 OpenAce::PostConstruct Dump1090Client::postConstruct()
 {
@@ -42,7 +43,7 @@ void Dump1090Client::processNewSentence(const char *sentence)
             auto halfSize = hexSize / 2;
             // puts(sentence);
             OpenAce::ADSBMessageBin msg;
-            hexStrToByteArray(sentence + 1, OpenAce::ADSBMessageBin::MAX_BINARY_LENGTH*2, msg.data);
+            CoreUtils::hexStrToByteArray(sentence + 1, OpenAce::ADSBMessageBin::MAX_BINARY_LENGTH*2, msg.data);
             receiver->receiveBinary(msg.data, halfSize);
             statistics.totalReceived++;
         }
