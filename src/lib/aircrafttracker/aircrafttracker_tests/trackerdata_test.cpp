@@ -179,3 +179,34 @@ TEST_CASE("Next should handle correct delay 4 slices", "[single-file]")
         REQUIRE(delay == expectedDelay[i]);
     }
 }
+
+TEST_CASE("Should update data", "[single-file]")
+{
+    TrackerData<100, 4> trackedAircraft;
+
+    OpenAce::AircraftPositionInfo aircraftPosition;
+    aircraftPosition.timestamp = 570'000;
+    aircraftPosition.distanceFromOwn = 10000;
+    aircraftPosition.address = 1;
+
+    // Insert aircraft
+    REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
+    REQUIRE(trackedAircraft.size() == 1);
+
+    // Insert same aircraft with other data tested by distanceFromOwn
+    aircraftPosition.timestamp = 1'570'000;
+    aircraftPosition.distanceFromOwn = 20000;
+    REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
+    REQUIRE(trackedAircraft.size() == 1);
+
+    // Validate if the queue was updated
+    int callbacks = 0;
+    time_us_64Value = 2'500'000;
+    auto delay = trackedAircraft.next([&callbacks](const OpenAce::AircraftPositionInfo &position)
+                                      {
+                                    REQUIRE (position.distanceFromOwn == 20000);
+                                    callbacks++; });
+    REQUIRE(callbacks == 1);
+
+
+}

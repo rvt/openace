@@ -193,9 +193,7 @@ public:
             return false;
         }
 
-        // if the queue is full bit this aircraft is in the queue, don't cleanup
-        auto it = trackedAircraft.find(TrackerEntry{0, position});
-        if (trackedAircraft.full() && it == trackedAircraft.end())
+        if (trackedAircraft.full())
         {
             if (!removeExpired())
             {
@@ -205,16 +203,13 @@ public:
             }
         }
 
-        // Add if exists, otherwise update position
-        if (it != trackedAircraft.end())
-        {
-            position.icaoAddress = it->position.icaoAddress;
-        }
-        else
-        {
-            position.icaoAddress = CoreUtils::makeIcaoAddress(position.address, position.addressType);
-        }
-        trackedAircraft.insert(TrackerEntry{position.timestamp, position});
+        // if the queue is full but this aircraft is in the queue, don't cleanup
+        auto entry = TrackerEntry{position.timestamp, position};
+        position.icaoAddress = CoreUtils::makeIcaoAddress(position.address, position.addressType);
+
+        // Update new entry
+        trackedAircraft.erase(entry);
+        trackedAircraft.insert(entry);
 
         return true;
     }

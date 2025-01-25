@@ -82,10 +82,10 @@ void AircraftTracker::aircraftTimerTask(TimerHandle_t timer)
 void AircraftTracker::aircraftTrackerTask(void *arg)
 {
     AircraftTracker *at = static_cast<AircraftTracker *>(arg);
-    xTimerChangePeriod(at->transmitTimerHandle, TASK_DELAY_MS(1000), TASK_DELAY_MS(25));
+    xTimerChangePeriod(at->transmitTimerHandle, TASK_DELAY_MS(1'000), TASK_DELAY_MS(25));
     while (true)
     {
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1'000)))
+        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(2'000)))
         {
             if (notifyValue & TaskState::EXIT)
             {
