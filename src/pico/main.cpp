@@ -200,10 +200,18 @@ static void loadModules(void *arch)
     load(WifiService::NAME, bus, config, true);
     load(ModuleManager::NAME, bus, config);
 
-    WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME, false));
+    WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME));
     if (client != nullptr)
     {
         load(Webserver::NAME, bus, config, true);
+    }
+    else
+    {
+        // call cyw43_arch_init because Bluetooth assumes it's loaded
+        if (cyw43_arch_init())
+        {
+            panic("cyw43_arch_init failed");
+        }
     }
     load(Bluetooth::NAME, bus, config);
     load(AircraftTracker::NAME, bus, config, true);
@@ -258,10 +266,20 @@ static void openAceIdlTask(void *arch)
         else
         {
             vTaskDelay(5000);
-            puts("Wifi module not enabled");
+            puts("Wifi module not yet enabled");
         }
     }
 }
+
+//  WifiService::PostConstruct()...assertion "get_core_num() == async_context_core_num(cyw43_async_context)" failed: file "/opt/pico/pico-sdk/src/rp2_common/pico_cyw43_driver/cyw43_driver.c", line 54, function: cyw43_irq_init 
+
+// #if PICO_CYW43_ARCH_DEBUG_ENABLED
+// #define CYW43_ARCH_DEBUG(...) printf(__VA_ARGS__)
+// #else
+// #define CYW43_ARCH_DEBUG(...) ((void)0)
+// #endif
+
+
 void vLaunch(void)
 {
     // Bootstap
@@ -274,7 +292,9 @@ void vLaunch(void)
     config.start();
 
     // Load all the modules
-    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 768, NULL, tskIDLE_PRIORITY, nullptr);
+    TaskHandle_t task;
+    xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 768, NULL, tskIDLE_PRIORITY, &task);
+    vTaskCoreAffinitySet(task, 1);
 
     // Run a Idle Task Idletask
     // TODO: apparently needs a large stack??

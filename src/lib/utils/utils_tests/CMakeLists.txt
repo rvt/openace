@@ -80,14 +80,6 @@ set(ALL_EXAMPLE_TARGETS
   ${TARGETS_IDIOMATIC_EXAMPLES}
 )
 
-add_compile_options(
-    -g
-    -Wall
-    -fstack-protector-all
-    -fstack-protector
-    -fsanitize=address -g
-    -O0)
-
 foreach( name ${ALL_EXAMPLE_TARGETS} )
     target_link_libraries( 
       ${name} 

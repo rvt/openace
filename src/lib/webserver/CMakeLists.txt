@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.10.0)
 
 project(webserver VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")

@@ -91,7 +91,7 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
     {
         char buffer[256];
         char *buf = (char *)pbuf_get_contiguous(p, buffer, sizeof(buffer), p->tot_len, 0);
-        Configuration *configModule = static_cast<Configuration *>(BaseModule::moduleByName(*webserver, Configuration::NAME, false));
+        Configuration *configModule = static_cast<Configuration *>(BaseModule::moduleByName(*webserver, Configuration::NAME));
         if (configModule != nullptr)
         {
             if (RequestContext.method == RequestContext_t::POST && buf)
@@ -221,7 +221,7 @@ int fs_open_custom(fs_file *file, const char *name)
         return 0;
     }
 
-    BaseModule *module = BaseModule::moduleByName(*webserver, path[1].c_str(), false);
+    BaseModule *module = BaseModule::moduleByName(*webserver, path[1].c_str());
     if (module == nullptr)
     {
         return 0;

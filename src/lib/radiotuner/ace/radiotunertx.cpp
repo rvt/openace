@@ -10,9 +10,12 @@
 
 OpenAce::PostConstruct RadioTunerTx::postConstruct()
 {
-    moduleByName(*this, Radio::NAMES[0]);
+    if (!moduleByName(*this, Radio::NAMES[0])) {
+        return OpenAce::PostConstruct::DEP_NOT_FOUND;
+    }
+
     numRadios = 1;
-    if (moduleByName(*this, Radio::NAMES[1], false))
+    if (moduleByName(*this, Radio::NAMES[1]))
     {
         numRadios++;
     }
@@ -23,7 +26,7 @@ void RadioTunerTx::start()
 {
     //    addDataSourceToTasks(dataSource, radio);
 
-    Configuration *config = static_cast<Configuration *>(BaseModule::moduleByName(*this, Configuration::NAME, false));
+    Configuration *config = static_cast<Configuration *>(BaseModule::moduleByName(*this, Configuration::NAME));
     if (config)
     {
         enableDisableDatasources(config->openAceConfig().protocols);
@@ -219,7 +222,7 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
                     continue;
                 }
 
-                xTaskCreate(radioTxTask, "txTask", configMINIMAL_STACK_SIZE, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
+                xTaskCreate(radioTxTask, "txTask", configMINIMAL_STACK_SIZE + 128, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
                 if (ref.taskHandle == nullptr)
                 {
                     xTimerDelete(ref.timerHandle, TASK_DELAY_MS(250));

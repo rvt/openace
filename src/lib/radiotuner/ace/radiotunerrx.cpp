@@ -14,9 +14,11 @@ OpenAce::PostConstruct RadioTunerRx::postConstruct()
 {
     moduleByName(*this, Radio::NAMES[0]);
     uint8_t numRadios = 1;
-    if (moduleByName(*this, Radio::NAMES[1], false))
+    if (moduleByName(*this, Radio::NAMES[1]))
     {
         numRadios++;
+    } else {
+        return OpenAce::PostConstruct::DEP_NOT_FOUND;
     }
     addRadioTasks(numRadios);
     return OpenAce::PostConstruct::OK;
@@ -26,7 +28,7 @@ void RadioTunerRx::start()
 {
     getBus().subscribe(*this);
 
-    Configuration *config = static_cast<Configuration *>(BaseModule::moduleByName(*this, Configuration::NAME, false));
+    Configuration *config = static_cast<Configuration *>(BaseModule::moduleByName(*this, Configuration::NAME));
     if (config)
     {
         enableDisableDatasources(config->openAceConfig().protocols);
@@ -52,7 +54,7 @@ void RadioTunerRx::addRadioTasks(uint8_t numRadios)
     for (uint8_t radioNo = 0; radioNo < numRadios; radioNo++)
     {
 
-        auto radio = static_cast<Radio *>(moduleByName(*this, Radio::NAMES[radioNo], false));
+        auto radio = static_cast<Radio *>(moduleByName(*this, Radio::NAMES[radioNo]));
         auto &ref = radioTasks.emplace_back(this, radio);
 
         ref.timerHandle = xTimerCreate("rxTaskTimer", TASK_DELAY_MS(1'000), pdFALSE /* Must not be autostart */, &ref, timerTuneCallback);
@@ -63,7 +65,7 @@ void RadioTunerRx::addRadioTasks(uint8_t numRadios)
             continue;
         }
 
-        xTaskCreate(radioTuneTask, "rxTask", configMINIMAL_STACK_SIZE, &ref, tskIDLE_PRIORITY + 3, &ref.taskHandle);
+        xTaskCreate(radioTuneTask, "rxTask", configMINIMAL_STACK_SIZE, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
         if (ref.taskHandle == nullptr)
         {
             radioTasks.pop_back();
@@ -225,7 +227,7 @@ void RadioTunerRx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
     uint8_t newDsPos = 0;
 
     // Validate if there is a TX module loaded, if so use that as a source for the RX datasource so all protocols remain on the same radio
-    auto rTx = static_cast<const RadioTunerTx *>(BaseModule::moduleByName(*this, RadioTunerTx::NAME, false));
+    auto rTx = static_cast<const RadioTunerTx *>(BaseModule::moduleByName(*this, RadioTunerTx::NAME));
 
     for (auto &taskCtx : radioTasks)
     {

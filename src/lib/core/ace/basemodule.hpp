@@ -94,7 +94,7 @@ public:
         BaseModule::moduleLoaderMap[moduleName].module = nullptr;
     }
 
-    static BaseModule *moduleByName(const BaseModule &that, const etl::string_view requesting, bool panicIfNotFound = true);
+    static BaseModule *moduleByName(const BaseModule &that, const etl::string_view requesting);
 
     static void registerModule(const etl::string_view name, ModuleLoadFunction loader)
     {

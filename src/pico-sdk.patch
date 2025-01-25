@@ -1,19 +1,3 @@
-diff --git a/.gitmodules b/.gitmodules
-index 7c382da..004d2d9 100644
---- a/.gitmodules
-+++ b/.gitmodules
-@@ -13,3 +13,4 @@
- [submodule "lib/btstack"]
- 	path = lib/btstack
- 	url = https://github.com/bluekitchen/btstack.git
-+	branch = v1.6.2
-diff --git a/lib/btstack b/lib/btstack
-index 565100c..5d4d8cc 160000
---- a/lib/btstack
-+++ b/lib/btstack
-@@ -1 +1 @@
--Subproject commit 565100c1cae73dc1c5f9b239953dbdd14ae283d3
-+Subproject commit 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c-dirty
 diff --git a/src/rp2_common/pico_async_context/async_context_freertos.c b/src/rp2_common/pico_async_context/async_context_freertos.c
 index 3cffcbb..9ae72b3 100644
 --- a/src/rp2_common/pico_async_context/async_context_freertos.c
@@ -52,3 +36,51 @@ index c622cac..7556db2 100644
          ${PICO_BTSTACK_PATH}/src/l2cap.c
          ${PICO_BTSTACK_PATH}/src/l2cap_signaling.c
          ${PICO_BTSTACK_PATH}/3rd-party/md5/md5.c
+diff --git a/src/rp2_common/pico_cyw43_driver/cyw43_driver.c b/src/rp2_common/pico_cyw43_driver/cyw43_driver.c
+index 11d2652..308d649 100644
+--- a/src/rp2_common/pico_cyw43_driver/cyw43_driver.c
++++ b/src/rp2_common/pico_cyw43_driver/cyw43_driver.c
+@@ -63,8 +63,8 @@ uint32_t cyw43_irq_deinit(__unused void *param) {
+ #ifndef NDEBUG
+     assert(get_core_num() == async_context_core_num(cyw43_async_context));
+ #endif
+-    gpio_remove_raw_irq_handler(CYW43_PIN_WL_HOST_WAKE, cyw43_gpio_irq_handler);
+     cyw43_set_irq_enabled(false);
++    gpio_remove_raw_irq_handler(CYW43_PIN_WL_HOST_WAKE, cyw43_gpio_irq_handler);
+     return 0;
+ }
+ 
+diff --git a/src/rp2_common/pico_time_adapter/include/pico/time_adapter.h b/src/rp2_common/pico_time_adapter/include/pico/time_adapter.h
+index 59308b4..822d47b 100644
+--- a/src/rp2_common/pico_time_adapter/include/pico/time_adapter.h
++++ b/src/rp2_common/pico_time_adapter/include/pico/time_adapter.h
+@@ -48,15 +48,16 @@ static inline void ta_set_timeout(alarm_pool_timer_t *timer, uint alarm_num, int
+     // 2. If we just passed the target time, then time_til_target will be high, meaning we will
+     //    likely not do the update, but this is OK since the caller who has the full 64 bits
+     //    must check if the target time has passed when we return anyway to avoid races.
+-    if (time_til_target < time_til_alarm) {
+-        timer_hw_from_timer(timer)->alarm[alarm_num] = (uint32_t) target;
++    // 3. We should never leave here without an alarm being armed
++    if (time_til_target < time_til_alarm || (timer_hw_from_timer(timer)->armed & (1 << alarm_num)) == 0) {
++	timer_hw_from_timer(timer)->alarm[alarm_num] = (uint32_t) target;
+     }
+ }
+ 
+ static inline bool ta_wakes_up_on_or_before(alarm_pool_timer_t *timer, uint alarm_num, int64_t target) {
+-    uint32_t current = timer_time_us_32(timer_hw_from_timer(timer));
+-    uint32_t time_til_target = (uint32_t) target - current;
+-    uint32_t time_til_alarm = timer_hw_from_timer(timer)->alarm[alarm_num] - current;
++    int64_t current = (int64_t)timer_time_us_64(timer_hw_from_timer(timer));
++    int64_t time_til_target = target - current;
++    uint32_t time_til_alarm = timer_hw_from_timer(timer)->alarm[alarm_num] - (uint32_t)current;
+     return time_til_alarm <= time_til_target;
+ }
+ 
+@@ -75,6 +76,7 @@ static inline void ta_enable_irq_handler(alarm_pool_timer_t *timer, uint alarm_n
+ 
+ static inline void ta_disable_irq_handler(alarm_pool_timer_t *timer, uint alarm_num, irq_handler_t irq_handler) {
+     uint irq_num = timer_hardware_alarm_get_irq_num(timer, alarm_num);
++    timer_hw_from_timer(timer)->armed = 1u << alarm_num; // disarm the timer
+     hw_clear_bits(&timer_hw_from_timer(timer)->inte, 1u << alarm_num);
+     irq_set_enabled(irq_num, true);
+     irq_remove_handler(irq_num, irq_handler);

@@ -3,7 +3,7 @@
 #include "gpsdecoder.hpp"
 #include "ace/moreutils.hpp"
 
-extern const char* OpenAce_buildTime;
+extern const char *OpenAce_buildTime;
 
 OpenAce::PostConstruct GpsDecoder::postConstruct()
 {
@@ -42,18 +42,18 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"fixQuality\":\"" << fixQuality << "\"";
     stream << ",\"satellitesTracked\":" << satellitesTracked;
     stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
-    stream << ",\"GpsTimeMsg\":" << "\""
-           << width2fill0 << lastGGATimestamp.hours << OpenAce::RESET_FORMAT << ":"
-           << width2fill0 << lastGGATimestamp.minutes << OpenAce::RESET_FORMAT << ":"
-           << width2fill0 << lastGGATimestamp.seconds << OpenAce::RESET_FORMAT << "\"";
+        stream << ",\"UtcTimeMsg\":" << "\""
+               << width2fill0 << lastGGATimestamp.hours << OpenAce::RESET_FORMAT << ":"
+               << width2fill0 << lastGGATimestamp.minutes << OpenAce::RESET_FORMAT << ":"
+               << width2fill0 << lastGGATimestamp.seconds << OpenAce::RESET_FORMAT << "\"";
     stream << "}\n";
 }
 
 void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 {
     // printf("GpsDecoder: %s\n", msg.sentence.c_str());
-    static Every<uint32_t, 0, 15'000'000> sendGpsTimeMsg{0};        // every 15 seconds
-    static Every<uint32_t, 10'000'000, 30'000'000> gpsStatsMsg{0};  // Every 30 seconds 10 seconds in
+    static Every<uint32_t, 0, 15'000'000> sendUtcTimeMsg{0};       // every 15 seconds
+    static Every<uint32_t, 10'000'000, 30'000'000> gpsStatsMsg{0}; // Every 30 seconds 10 seconds in
 
     switch (minmea_sentence_id(msg.sentence.c_str(), false))
     {
@@ -65,18 +65,18 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
         {
             uint16_t millis = frame.time.microseconds / 1000;
             // TODO: Be more intelligent on when sending time messages so a 'fix' is quicker known after (re)start of the whole system
-            if (millis == 0 && sendGpsTimeMsg.isItTime(CoreUtils::timeUs32()))
+            if (millis == 0 && sendUtcTimeMsg.isItTime(CoreUtils::timeUs32()))
             {
+                // The time in a RMC sentence is the UTC time, not GPS time
                 getBus().receive(
-                    OpenAce::GpsTimeMsg
-                {
-                    static_cast<int16_t>(frame.date.year + 2000),
-                    static_cast<int8_t>(frame.date.month),
-                    static_cast<int8_t>(frame.date.day),
-                    static_cast<int8_t>(frame.time.hours),
-                    static_cast<int8_t>(frame.time.minutes),
-                    static_cast<int8_t>(frame.time.seconds),
-                    static_cast<int16_t>(millis)});
+                    OpenAce::UtcTimeMsg{
+                        static_cast<int16_t>(frame.date.year + 2000),
+                        static_cast<int8_t>(frame.date.month),
+                        static_cast<int8_t>(frame.date.day),
+                        static_cast<int8_t>(frame.time.hours),
+                        static_cast<int8_t>(frame.time.minutes),
+                        static_cast<int8_t>(frame.time.seconds),
+                        static_cast<int16_t>(millis)});
             }
 
             // Update planes position when fix is valid
@@ -112,7 +112,7 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
         struct minmea_sentence_gga frame;
         if (minmea_parse_gga(&frame, msg.sentence.c_str()))
         {
-           
+
             float height = convertToMeters(&frame.height, frame.height_units);
             if (height != INVALID_CONVERSION)
             {
@@ -124,7 +124,7 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
             {
                 // Altitude from GPS is referenced to MSL, to get WGS96 offset needs to be added
                 // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
-                altitudeWgs84(alt + (height != INVALID_CONVERSION?height:0));
+                altitudeWgs84(alt + (height != INVALID_CONVERSION ? height : 0));
             }
 
             lastGGATimestamp = frame.time;
@@ -147,19 +147,20 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
     {
         statistics.receivedGSA++;
 
-        if (gpsStatsMsg.isItTime(CoreUtils::timeUs32())) {
+        if (gpsStatsMsg.isItTime(CoreUtils::timeUs32()))
+        {
             struct minmea_sentence_gsa frame;
             if (minmea_parse_gsa(&frame, msg.sentence.c_str()))
             {
                 pDop = minmea_tofloat(&frame.pdop);
+                auto hDop = minmea_tofloat(&frame.hdop);
                 getBus().receive(
-                    OpenAce::GpsStatsMsg
-                {
-                    fixQuality,
-                    (uint8_t)frame.fix_type,
-                    satellitesTracked,
-                    pDop,
-                    minmea_tofloat(&frame.hdop)});
+                    OpenAce::GpsStatsMsg{
+                        fixQuality,
+                        (uint8_t)frame.fix_type,
+                        satellitesTracked,
+                        pDop == NAN ? 100 : pDop,
+                        hDop == NAN ? 100 : hDop});
             }
         }
     }
@@ -178,6 +179,9 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 float GpsDecoder::convertToMeters(const struct minmea_float *value, char unit) const
 {
     float meters = minmea_tofloat(value);
+    if (meters==NAN) {
+        return INVALID_CONVERSION;
+    }
     switch (unit)
     {
     case 'M':
@@ -204,30 +208,26 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
     // so we take position acuracy over altitude/course
     // TODO: Reconsider
     if (lastGGATimestamp.microseconds == lastRMCTimestamp.microseconds && lastGGATimestamp.seconds == lastRMCTimestamp.seconds)
-    {        
+    {
         auto alt = altitudeWgs84();
         auto height = heightGeoidWGS84();
-        
+
         // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
         getBus().receive(
-            OpenAce::OwnshipPositionMsg
-        {
-            OpenAce::OwnshipPositionInfo{
-                .timestamp = CoreUtils::timeUs32(),
-                .airborne = groundSpeed() > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
-                .lat = latitude(),
-                .lon = longitude(),
-                .altitudeWgs84 = static_cast<int16_t>(alt),
-                .verticalSpeed = altitudeWgs84.perSecond(), // vertical speed
-                .groundSpeed = groundSpeed(),          // Ground Speed
-                .course = course(),
-                .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
-                .velocityNorth = velocityNorth,
-                .velocityEast = velocityEast,
-                .heightEgm96 = static_cast<int16_t>(alt - height),
-                .geoidOffset = static_cast<int16_t>(height)
-                }
-        }
-        );
+            OpenAce::OwnshipPositionMsg{
+                OpenAce::OwnshipPositionInfo{
+                    .timestamp = CoreUtils::timeUs32(),
+                    .airborne = groundSpeed() > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
+                    .lat = latitude(),
+                    .lon = longitude(),
+                    .altitudeWgs84 = static_cast<int16_t>(alt),
+                    .verticalSpeed = altitudeWgs84.perSecond(), // vertical speed
+                    .groundSpeed = groundSpeed(),               // Ground Speed
+                    .course = course(),
+                    .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
+                    .velocityNorth = velocityNorth,
+                    .velocityEast = velocityEast,
+                    .heightEgm96 = static_cast<int16_t>(alt - height),
+                    .geoidOffset = static_cast<int16_t>(height)}});
     }
 }

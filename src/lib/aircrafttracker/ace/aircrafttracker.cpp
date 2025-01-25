@@ -12,7 +12,7 @@ OpenAce::PostConstruct AircraftTracker::postConstruct()
 
 void AircraftTracker::start()
 {
-    xTaskCreate(aircraftTrackerTask, "AircraftTracker", configMINIMAL_STACK_SIZE + 192, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(aircraftTrackerTask, "AircraftTracker", configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -128,12 +128,12 @@ void AircraftTracker::handleNew()
 
 void AircraftTracker::sendEligibleAircraft()
 {
-//    puts("\033[2J\033[H");
-    //       trackedAircraft.dump();
+    // puts("\033[2J\033[H");
+    // trackedAircraft.dump();
     auto delay = trackedAircraft.next([this](const OpenAce::AircraftPositionInfo &position)
-                                      {
-                                          getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
-                                      });
+        {
+            getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
+        });
     xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay == 0 ? 1 : delay), portMAX_DELAY);
 }
 

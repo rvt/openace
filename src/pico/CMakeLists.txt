@@ -47,7 +47,7 @@ endif()
 project(OpenAce C CXX ASM)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-# Enable this to use picotool, and beable to receive UART data over picotool
+# Set to 0 to use picotool and openocd, and beable to receive UART data over picotool
 set(OPENACE_UART_OVER_USB 0)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -58,20 +58,20 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     -fno-check-new
     -ffunction-sections
     -fdata-sections
-    -funroll-loops
-    -Wno-stringop-overflow
-    -O3)
+    -flto
+    -O2)
 else()
   add_compile_options(
+    -g 
+    -O0
     -Wall
     -fsingle-precision-constant
     -ffast-math
     -fno-check-new
     -ffunction-sections
     -fdata-sections
-    -funroll-loops
-    -Wno-stringop-overflow)
-endif()
+    )
+    endif()
 
 add_link_options(-Wl,--print-memory-usage)
 
@@ -98,8 +98,6 @@ endforeach()
 set_source_files_properties(${C_SOURCE_FILES}
                             PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Werror")
 
-# target_compile_definitions(TARGET PRIVATE PICO_DEFAULT_UART_TX_PIN=16
-# PICO_DEFAULT_UART_RX_PIN=17 )
 pico_sdk_init()
 
 add_executable(${PROJECT_NAME} main.cpp IdleMemory.c)

@@ -62,7 +62,7 @@ void Bluetooth::start()
     sm_init();
 
     // setup ATT server
-    att_server_init(profile_data, NULL, NULL);
+    att_server_init(profile_data, nullptr, attWriteCallback);
 
     // setup GATT Client
     gatt_client_init();
@@ -117,9 +117,6 @@ void Bluetooth::start()
     // LE Legacy Pairing, Just Works
     sm_set_io_capabilities(IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
     sm_set_authentication_requirements(0 | SM_AUTHREQ_BONDING);
-
-    // setup ATT server
-    att_server_init(profile_data, nullptr, attWriteCallback);
 
     // register for ATT events
     att_server_register_packet_handler(attPacketHandler);
@@ -324,7 +321,7 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
             Bluetooth::withHandle(att_event_mtu_exchange_complete_get_handle(packet), 
                 etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
                 {
-                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16;
+                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16; // 11 bytes might be enough
                 })
             );
             // clang-format on

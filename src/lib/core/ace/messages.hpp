@@ -135,7 +135,7 @@ namespace OpenAce
     //     bool noTrack;           // Privacy option see dataport of explanation
     // };
 
-    struct GpsTimeMsg : public etl::message<12>
+    struct UtcTimeMsg : public etl::message<12>
     {
         int16_t year;        // Set with full year, e.g. 2021
         int8_t month;        // 1..12
@@ -145,10 +145,10 @@ namespace OpenAce
         int8_t second;       // 0..59
         int16_t millisecond; // 0..999
         // Constructor
-        GpsTimeMsg(int16_t year_, int8_t month_, int8_t day_, int8_t hour_, int8_t minute_, int8_t second_, int16_t millisecond_) : year(year_), month(month_), day(day_), hour(hour_), minute(minute_), second(second_), millisecond(millisecond_) {};
+        UtcTimeMsg(int16_t year_, int8_t month_, int8_t day_, int8_t hour_, int8_t minute_, int8_t second_, int16_t millisecond_) : year(year_), month(month_), day(day_), hour(hour_), minute(minute_), second(second_), millisecond(millisecond_) {};
 
         // Default constructor
-        GpsTimeMsg() : year(0), month(0), day(0), hour(0), minute(0), second(0), millisecond(0) {};
+        UtcTimeMsg() : year(0), month(0), day(0), hour(0), minute(0), second(0), millisecond(0) {};
     };
 
     struct GpsStatsMsg : public etl::message<14>
@@ -176,6 +176,7 @@ namespace OpenAce
 
     struct RadioRxFrameMsg : public etl::message<16>
     {
+        // TODO: CHange to ETL::array
         uint32_t frame[OpenAce::RADIO_MAX_FRAME_WORD_LENGTH];
         uint32_t err[OpenAce::RADIO_MAX_FRAME_WORD_LENGTH];
         uint32_t epochSeconds;
@@ -224,7 +225,6 @@ namespace OpenAce
     {
         const etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> msg;
         AccessPointClientsMsg(const etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> &msg_) : msg(msg_) {};
-        // Default constructor
         AccessPointClientsMsg() {};
     };
 
@@ -234,9 +234,7 @@ namespace OpenAce
     struct GdlMsg : public etl::message<22>
     {
         GDLData msg;
-        // Constructor
         GdlMsg(GDLData msg_) : msg(msg_) {};
-        // Default constructor
         GdlMsg() {};
     };
 
@@ -247,8 +245,6 @@ namespace OpenAce
     {
         bool connected;
         uint32_t networkAddress;
-        
-        // Default constructor
         WifiConnectionStateMsg(bool connected_) : connected(connected_), networkAddress(0) {};
         WifiConnectionStateMsg(bool connected_, uint32_t networkAddress_) : connected(connected_), networkAddress(networkAddress_) {};
     };

@@ -31,7 +31,7 @@ RUN \
 
 
 # Set Environments
-ENV PICO_SDK_PATH=/opt/pico-sdk/
+ENV PICO_SDK_PATH=/opt/pico-sdk
 ENV FREERTOS_KERNEL_PATH=/opt/FreeRTOS/FreeRTOS/Source
 ENV BUILD_DIR_NAME=release_build_docker
 
@@ -41,9 +41,11 @@ COPY ./pico-sdk.patch /opt/pico-sdk.patch
 RUN ls -l /opt
 
 RUN \
-    cd ${PICO_SDK_PATH}lib/btstack && \
+    cd ${PICO_SDK_PATH}/lib/btstack && \
     git fetch --unshallow && \
-    git checkout 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c && \
+    git checkout v1.6.2
+
+RUN \
     cd ${PICO_SDK_PATH} && \
     git apply /opt/pico-sdk.patch
 

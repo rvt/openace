@@ -4,7 +4,6 @@
 #include "ace/bitcount.hpp"
 
 constexpr float POSITION_DECODE = 0.0001f / 60.f;
-constexpr float POSITION_ENDECODE = 1.f / POSITION_DECODE;
 
 OpenAce::PostConstruct ADSL::postConstruct()
 {

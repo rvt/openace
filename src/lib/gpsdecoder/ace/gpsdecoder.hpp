@@ -72,7 +72,7 @@ public:
         satellitesTracked(0),
         pDop(255),
         lastRMCTimestamp({0,0,0,0}),
-                     lastGGATimestamp({0,0,0,0})
+        lastGGATimestamp({0,0,0,0})
     {
         (void)config;
     }

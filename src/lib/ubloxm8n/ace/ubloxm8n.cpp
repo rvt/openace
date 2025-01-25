@@ -222,7 +222,8 @@ void __time_critical_func(UbloxM8N::processNewSentence)(const etl::array_view<ch
     }
 
     // To reduce some FreeRTOS switches only send when queue is nearly full
-    // Since this is a continues NMEA stream, this should be fine and accurate enough
+    // Since this is a continues NMEA stream, this should be fine and accurate enough as
+    // longs as the queue is relative small
     if (queue.size() > queue.capacity() - 2)
     {
         xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);

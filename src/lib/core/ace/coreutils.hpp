@@ -79,7 +79,7 @@ public:
      * Set's the offset to the current time in ms since epoch.
      * THis function should be called to sync GPS time to the PICO's time using the PPS from the GPS
      * and is given the exact epochoffset when received from PPS this will calibrate the epoch function to exact ms
-     * See RTC::on_receive(const OpenAce::GpsTimeMsg& msg)
+     * See RTC::on_receive(const OpenAce::UtcTimeMsg& msg)
      */
     static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
     {

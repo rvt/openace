@@ -5,7 +5,7 @@
 
 OpenAce::PostConstruct Dump1090Client::postConstruct()
 {
-    receiver = static_cast<BinaryReceiver *>(BaseModule::moduleByName(*this, "ADSBDecoder", false));
+    receiver = static_cast<BinaryReceiver *>(BaseModule::moduleByName(*this, "ADSBDecoder"));
     if (receiver == nullptr)
     {
         return OpenAce::PostConstruct::DEP_NOT_FOUND;

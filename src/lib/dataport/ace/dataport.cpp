@@ -21,6 +21,7 @@ void DataPort::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 void DataPort::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
     static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
+    ownshipPosition = msg.position;
     if (sendValidGps.isItTime(CoreUtils::timeUs32())) {
 
         // sendGPRMC(message.position);
@@ -77,7 +78,7 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
            << groundSpeed << ","                                              // Ground Speed
            << clibRate << ","                                                 // Climb Rate
            << aircraftType << ","                                             // Aircraft Type
-           << (position.noTrack ? '0' : '1') << ","                           // Tracking
+           << position.noTrack << ","                                         // Tracking
            << getPFLAASourceType(position) << ","                             // Source Type
            << "";                                                             // RSSI
 

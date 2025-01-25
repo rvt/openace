@@ -64,7 +64,7 @@ BaseModule::BaseModule(etl::imessage_bus &bus_, const etl::string_view name_) : 
     }
 }
 
-BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_view requesting, bool panicIfNotFound)
+BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_view requesting)
 {
     // printf("Looking %s depends on %s\n", that.name(), requesting);
     // Look for it's direct name ex:AceSpi
@@ -90,11 +90,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
                 // }
             }
         }
-        if (panicIfNotFound)
-        {
-            printf("Module %s depends on %s but it is not registered\n", that.name().cbegin(), requesting.cbegin());
-            panic("Module not found but required");
-        }
+        printf("Module %s requests dependecy on %s but it is not registered\n", that.name().cbegin(), requesting.cbegin());
     }
 
     return nullptr;
