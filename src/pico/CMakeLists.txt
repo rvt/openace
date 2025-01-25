@@ -58,7 +58,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     -fno-check-new
     -ffunction-sections
     -fdata-sections
-    -flto
     -O2)
 else()
   add_compile_options(
