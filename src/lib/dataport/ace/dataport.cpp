@@ -35,7 +35,6 @@ void DataPort::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 
 void DataPort::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
 {
-    // These are already send by the tracker at every second interval
     sendPFLAA(msg.position);
 }
 
@@ -83,7 +82,7 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
            << "";                                                             // RSSI
 
     CoreUtils::addChecksumToNMEA(pflaa);
-
+    // printf("pflaa t:%08ld %06lx\n", CoreUtils::timeUs32() / 1'000'000, position.address);
     getBus().receive(OpenAce::DataPortMsg{pflaa});
 }
 
@@ -110,14 +109,14 @@ uint8_t DataPort::getPFLAAAddressType(const OpenAce::AddressType type)
 
 void DataPort::getPFLAAGroundSpeed(const OpenAce::AircraftPositionInfo &position, etl::string<6> &speed)
 {
-    if (position.stealth /* || ownship.notrack */)
-    {
-        return;
-    }
-    if (!position.airborne)
-    {
-        return;
-    }
+    // if (position.stealth /* || ownship.notrack */)
+    // {
+    //     return;
+    // }
+    // if (!position.airborne)
+    // {
+    //     return;
+    // }
 
     etl::to_string(static_cast<uint16_t>(position.groundSpeed + 0.5f), speed);
 }
@@ -126,10 +125,10 @@ void DataPort::getPFLAAClimbRate(const OpenAce::AircraftPositionInfo &position, 
 {
     etl::format_spec clibRateFormat = etl::format_spec().precision(1);
 
-    if (position.stealth /* || ownship.privacy */)
-    {
-        return;
-    }
+    // if (position.stealth /* || ownship.privacy */)
+    // {
+    //     return;
+    // }
 
     etl::to_string(position.verticalSpeed, verticalSpeed, clibRateFormat);
 }

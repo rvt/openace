@@ -4,7 +4,7 @@
 #include "ace/constants.hpp"
 #include "ace/models.hpp"
 
-#include "etl/set.h"
+#include "etl/unordered_set.h"
 #include "etl/scaled_rounding.h"
 
 /**
@@ -43,17 +43,19 @@ private:
     {
         uint32_t sendTime;
         OpenAce::AircraftPositionInfo position;
-    };
 
-    struct TrackerEntryComparator
-    {
-        bool operator()(const TrackerEntry &lhs, const TrackerEntry &rhs) const
-        {
-            return lhs.position.address < rhs.position.address; // Uniqueness by address
+        bool operator==(const TrackerEntry& other) const {
+            return position.address == other.position.address; // Compare objects by ID
         }
     };
 
-    etl::set<TrackerEntry, SIZE, TrackerEntryComparator> trackedAircraft;
+    struct TrackerEntryHash {
+        size_t operator()(const TrackerEntry& entry) const {
+            return etl::hash<int>()(entry.position.address); // Hash by ID
+        }
+    };
+
+    etl::unordered_set<TrackerEntry, SIZE, SIZE, TrackerEntryHash> trackedAircraft;
 
     // A Value of a radius around our aircraft that increase and decrease based on the number of aircraft within
     uint32_t adaptiveRadius;
@@ -121,6 +123,7 @@ private:
         {
             if (it->position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC <= timeStamp)
             {
+                // printf("Erase     t:%08ld %06lX\n", timeStamp / 1'000'000, it->position.address);
                 it = trackedAircraft.erase(it);
                 cleaned = true;
             }
@@ -190,6 +193,7 @@ public:
         // Never insert outside of adaptive radius
         if (position.distanceFromOwn > adaptiveRadius)
         {
+            // printf("Adaptive> t:%08ld %06lX\n", CoreUtils::timeUs32() / 1'000'000, position.address);
             return false;
         }
 
@@ -203,14 +207,18 @@ public:
             }
         }
 
-        // if the queue is full but this aircraft is in the queue, don't cleanup
-        auto entry = TrackerEntry{position.timestamp, position};
-        position.icaoAddress = CoreUtils::makeIcaoAddress(position.address, position.addressType);
+        // Add/update entry
+        auto it = trackedAircraft.find({0, OpenAce::AircraftPositionInfo{position.address}});
+        if (it == trackedAircraft.end()) {
+            position.icaoAddress = CoreUtils::makeIcaoAddress(position.address, position.addressType);
+            trackedAircraft.insert(TrackerEntry{position.timestamp, position});
+        } else {
+            position.icaoAddress = it->position.icaoAddress;
+            it->position  = position;
+            it->sendTime  = position.timestamp;
+        }
 
-        // Update new entry
-        trackedAircraft.erase(entry);
-        trackedAircraft.insert(entry);
-
+        // printf("Insert    t:%08ld %06lX\n", CoreUtils::timeUs32() / 1'000'000, position.address);
         return true;
     }
 
@@ -222,17 +230,15 @@ public:
     uint16_t next(const etl::delegate<void(const OpenAce::AircraftPositionInfo &)> &msg)
     {
         auto currentTime = CoreUtils::timeUs32();
-        auto it = trackedAircraft.begin();
-        while (it != trackedAircraft.end())
+       for (auto it = trackedAircraft.begin(); it != trackedAircraft.end(); ++it)
         {
             if (CoreUtils::isUsReached(it->sendTime, currentTime))
             {
                 msg(it->position);
                 it->sendTime = currentTime + HEARTBEAT_TIME;
             }
-            ++it;
         }
-
+    
         uint8_t currentSlice = (CoreUtils::timeMs32() % 1'000) / SLICE_SIZE_MS;
         return CoreUtils::msDelayToReference((currentSlice + 1) * SLICE_SIZE_MS);
     }

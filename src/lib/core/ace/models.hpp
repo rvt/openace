@@ -218,6 +218,10 @@ namespace OpenAce
         AircraftPositionInfo() : timestamp(0), icaoAddress(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeWgs84(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
         {
         }
+
+        AircraftPositionInfo(AircraftAddress address_) : address(address_)
+        {
+        }
     };
 
     struct OwnshipPositionInfo

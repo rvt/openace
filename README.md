@@ -35,20 +35,21 @@ Radio Protocol is the method used to communicate with other conspicuity devices
 
 Communication support is what protocols are supported to other devices like electronic flight bags or other equipment.
 
-| Protocol   | Send UDP over WIFI | Send UDP over Bluetooth |
-| ---------- | ------------------ | ----------------------- |
-| GDL90      | :heavy_check_mark: | :construction:          |
-| AirConnect | :construction:     | :construction:          |
+| Protocol   | Send UDP over WIFI | Receive UDP over WIFI   | Send Bluetooth      | Send TCP over WIFI | Receiver over TCP WIFI |
+| ---------- | ------------------ | ----------------------- | ------------------- | ------------------ | ---------------------- |
+| GDL90      | :heavy_check_mark: | N/A                     | N/A                 | N/A                | N/A                    |
+| AirConnect | N/A                | N/A                     | :heavy_check_mark:  | :heavy_check_mark: | N/A                    |
+| Dump1090   | N/A                | N/A                     | N/A                 | N/A                | :heavy_check_mark:     |
+
+\* Sending GDL90 over Bluetooth is not used in the industry so this is currently not setup. If this is really required, then this can be done. Do let me know the use case
 
 ### Tested with Electronic Flight Bag
 
 OpenAce is currently tested with SkyDeamon only,  If you made it work with any other software on Phone or Tabled, do let me know so I can add or help out ot make this work.
 
-| EFB       | GDL90 over WIFI    | GDL90 over Bluetooth |
-| --------- | ------------------ | -------------------- |
-| SkyDeamon | :heavy_check_mark: | :construction:       |
-
-The PCB measures approximately 8x9 cm.
+| EFB       | GDL90 over WIFI    | Bluetooth                 | DataPort (NEMA) WIFI |
+| --------- | ------------------ |  --------------------     | -------------------- |
+| SkyDeamon | :heavy_check_mark: | :heavy_check_mark:        | :heavy_check_mark:   |
 
 ## External Libraries and frameworks used
 

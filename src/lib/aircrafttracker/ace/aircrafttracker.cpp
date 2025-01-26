@@ -132,6 +132,7 @@ void AircraftTracker::sendEligibleAircraft()
     // trackedAircraft.dump();
     auto delay = trackedAircraft.next([this](const OpenAce::AircraftPositionInfo &position)
         {
+            // printf("Send      t:%08ld %06lX\n", CoreUtils::timeUs32() / 1'000'000, position.address);
             getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
         });
     xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay == 0 ? 1 : delay), portMAX_DELAY);

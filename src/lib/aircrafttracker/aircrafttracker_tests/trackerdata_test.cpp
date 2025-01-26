@@ -23,7 +23,7 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
 
     OpenAce::AircraftPositionInfo aircraftPosition;
     aircraftPosition.timestamp = 560'000;
-    aircraftPosition.distanceFromOwn = 10000;
+    aircraftPosition.distanceFromOwn = 10'000;
     REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
     REQUIRE(trackedAircraft.size() == 1);
 
@@ -63,10 +63,18 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
         REQUIRE(called);
         REQUIRE(delay == 100);
 
-        time_us_64Value = 250'000;
+        // Would not call again with the same time as send time is updated
+        called = false;
         delay = trackedAircraft.next([&called](const OpenAce::AircraftPositionInfo &position)
-                                     { REQUIRE(false); });
-        REQUIRE(delay == 250);
+                                            { called = true; });
+        REQUIRE(called == false);
+
+        time_us_64Value = time_us_64Value + 250'000;
+        delay = trackedAircraft.next([&called](const OpenAce::AircraftPositionInfo &position)
+                                    { 
+                                        REQUIRE(false);                                    
+                                    });
+        REQUIRE(delay == 350);
     }
 
     SECTION("next called runs stale")
@@ -204,9 +212,7 @@ TEST_CASE("Should update data", "[single-file]")
     time_us_64Value = 2'500'000;
     auto delay = trackedAircraft.next([&callbacks](const OpenAce::AircraftPositionInfo &position)
                                       {
-                                    REQUIRE (position.distanceFromOwn == 20000);
-                                    callbacks++; });
+                                        REQUIRE (position.distanceFromOwn == 20000);
+                                        callbacks++; });
     REQUIRE(callbacks == 1);
-
-
 }

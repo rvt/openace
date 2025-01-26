@@ -1,7 +1,9 @@
 #include <stdio.h>
 
 #include "dump1090client.hpp"
+#include "ace/assert.hpp"
 #include "ace/coreutils.hpp"
+#include "etl/error_handler.h"
 
 OpenAce::PostConstruct Dump1090Client::postConstruct()
 {
@@ -33,12 +35,15 @@ void Dump1090Client::start()
 
 void Dump1090Client::processNewSentence(const char *sentence)
 {
+    constexpr uint8_t ADSBDATALENGTH = 28;
+    static_assert(OpenAce::ADSBMessageBin::MAX_BINARY_LENGTH * 2 == ADSBDATALENGTH, "Must be equal");
+
     // Fast detection of msgType 17 and hexStrToByteArray to reduce resources
     if (sentence != nullptr && sentence[1] == '8' && (sentence[2] == 'D' || sentence[2] == 'A' || sentence[2] == '0'))
     {
         uint8_t hexSize = strlen(sentence) - 2;
         // [*]8D4CADC458BF02B09CCB3E499B92[;] <- 28 chars without * and ;
-        if (hexSize == 28)
+        if (hexSize == ADSBDATALENGTH)
         {
             auto halfSize = hexSize / 2;
             // puts(sentence);

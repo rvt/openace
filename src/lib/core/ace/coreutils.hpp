@@ -379,6 +379,7 @@ public:
 
     /**
      * Add's the checksum and postfix characters to a NMEA string. It may contain an existing checksum that will be overwritten
+     * When the capacity is not enough, the result is undefined 
      * @param nmea example '$PFEC,GPint,RMC05'
      * @return             '$PFEC,GPint,RMC05*2D\r\n'
      */
@@ -442,25 +443,5 @@ public:
         {
             bytearray[j] = (getHexVal(hex[i]) << 4) | getHexVal(hex[i + 1]);
         }
-    }
-
-    static void hexStrToByteArray(const char *hex, uint8_t byteArray[])
-    {
-        auto hexLength = strlen(hex);
-        hexStrToByteArray(hex, hexLength, byteArray);
-    }
-
-    /**
-     * Convert a byteArray to a hex string, the reverse of hexStrToByteArray
-     */
-    static void byteArrayToHexStr(const uint8_t byteArray[], uint8_t byteArrayLength, char hexStr[])
-    {
-        const char hexChars[] = "0123456789ABCDEF";
-        for (uint8_t i = 0; i < byteArrayLength; ++i)
-        {
-            hexStr[i * 2] = hexChars[(byteArray[i] >> 4) & 0x0F]; // Extract the upper 4 bits
-            hexStr[i * 2 + 1] = hexChars[byteArray[i] & 0x0F];    // Extract the lower 4 bits
-        }
-        hexStr[byteArrayLength * 2] = '\0'; // Null-terminate the string
     }
 };

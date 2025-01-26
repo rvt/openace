@@ -172,8 +172,9 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                 return;
             }
 
+            // printf("Received  t:%08ld %06lX \n", usTime / 1'000'000, current.icao);
             getBus().receive(OpenAce::AircraftPositionMsg{
-                {CoreUtils::timeUs32() - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
+                {usTime - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
                  current.icaoAddress,
                  current.icao,
                  OpenAce::AddressType::ICAO,
