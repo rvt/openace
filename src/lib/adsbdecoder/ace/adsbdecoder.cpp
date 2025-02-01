@@ -76,6 +76,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
 
     if (auto guard = SemaphoreGuard<100>(mutex))
     {
+        // printf("Processing  a:%06lX \n", mm.aa);
         auto usTime = CoreUtils::timeUs32();
         if (ignoredAirplanes.ifContainsThenUpdate(mm.aa, usTime))
         {
@@ -111,14 +112,14 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             }
 
             int32_t altitude = (mm.unit == MODE_S_UNIT_METERS ? mm.altitude : mm.altitude * FT_TO_M);
-            if (mm.metype >= 20)
-            {
-                // printf("%.6X GPS: %d\n", mm.aa, altitude);
-                adsbDataCollector.updateGnssAltitude(altitude); // GPS Altitude
+            if (mm.metype >= 20 && mm.metype <= 22)
+            {                
+                adsbDataCollector.updateGnssAltitude(altitude); // GPS Altitude so far never seen this
             }
-            else
+            else if (mm.metype >= 9 && mm.metype <= 18)
             {
-                // printf("%.6X Barometric: %d offset: %d\n", mm.aa, altitude, mm.head);
+                //auto &current = adsbDataCollector.current();
+                //printf("%06lX Barometric: %ld Ellipsoid:%d\n", mm.aa, altitude, current.baro_gnss_diff);
                 adsbDataCollector.updateAltitude(altitude); // Barometric Altitude
             }
         }
@@ -126,7 +127,9 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         {
             if (mm.mesub == 1 || mm.mesub == 2)
             {
-                adsbDataCollector.updateVelocityHeadingBaroDiff(mm.velocity, mm.vert_rate, mm.vert_rate_sign, mm.heading, mm.head);
+                // printf("%06lX Ellipsoid:%ldm\n", mm.aa, baro_gnss_diff);
+                adsbDataCollector.updateVelocityHeadingBaroDiff(mm.velocity, mm.vert_rate, mm.vert_rate_sign, mm.heading, mm.head * FT_TO_M); // mm.head is always in feet
+
             }
             else if (mm.mesub == 3 || mm.mesub == 4)
             {
@@ -163,6 +166,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             if (outOfAltitudeRange(current.gnsAltitude) || fromOwn.distance > filterRadius)
             {
                 statistics.totalMsgIgnored++;
+                // printf("Ignored  t:%06ld a:%06lX gnsAlt:%ldm gnsAlt:%0.2fft distance:%ld\n", usTime / 1'000'000, current.icao, current.gnsAltitude, current.gnsAltitude * M_TO_FT, fromOwn.distance);
                 if (!ignoredAirplanes.insert(current.icao, usTime))
                 {
                     statistics.ignoredAircraftFull++;
@@ -172,7 +176,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                 return;
             }
 
-            // printf("Received  t:%08ld %06lX \n", usTime / 1'000'000, current.icao);
+            // printf("Received  t:%06ld a:%06lX gnsAlt:%ldm gnsAlt:%0.2fft\n", usTime / 1'000'000, current.icao, current.gnsAltitude, current.gnsAltitude * M_TO_FT);
             getBus().receive(OpenAce::AircraftPositionMsg{
                 {usTime - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
                  current.icaoAddress,

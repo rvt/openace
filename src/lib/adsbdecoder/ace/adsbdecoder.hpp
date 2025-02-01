@@ -46,7 +46,7 @@ private:
     } statistics;
 
 
-    AddressCache<MAX_ADDRESS_CACHE_SIZE, 30'000'000> ignoredAirplanes; // A quick cache to store all airplanes that we already know we should not track
+    AddressCache<MAX_ADDRESS_CACHE_SIZE, 15'000'000> ignoredAirplanes; // A quick cache to store all airplanes that we already know we should not track for up to 30 seconds
     AdsbDataCollector<MAX_PLANES_TRACKED, 5'000'000> adsbDataCollector;
 
     int32_t filterAbove; // Filter out all aircraft above me in meters. 1000 means all aircraft 1000m or more above me will not get processed
