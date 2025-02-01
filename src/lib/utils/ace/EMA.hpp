@@ -126,15 +126,15 @@ private:
 };
 
 
-template <uint8_t DP>
 class RatePerSecond
 {
     EMAFloat filter{1};
 //    etl::circular_buffer<float, DP> buffer;;
     float previous;
     float delta;
+    float dp;
 public:
-    RatePerSecond(float K) : filter{EMAFloat{K}}, previous{0}, delta{0.0}
+    RatePerSecond(float K, float DP) : filter{EMAFloat{K}}, previous{0}, delta{0.0}, dp(DP)
     {
 
     }
@@ -170,7 +170,7 @@ public:
     */
     inline float perSecond() const
     {
-        return delta / (1.0f / (float)DP);
+        return delta * dp;
     }
 
 
