@@ -271,6 +271,7 @@ static void openAceIdlTask(void *arch)
     }
 }
 
+#if configGENERATE_RUN_TIME_STATS == 1    
 void vDiagnosticsTask(void *pvParameters) {
     constexpr size_t DIAG_STRING_SIZE = 2048;  // Adjust based on your needs
     using DiagString = etl::string<DIAG_STRING_SIZE>;
@@ -305,6 +306,7 @@ void vDiagnosticsTask(void *pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
+#endif
 
 //  WifiService::PostConstruct()...assertion "get_core_num() == async_context_core_num(cyw43_async_context)" failed: file "/opt/pico/pico-sdk/src/rp2_common/pico_cyw43_driver/cyw43_driver.c", line 54, function: cyw43_irq_init 
 
