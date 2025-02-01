@@ -9,7 +9,6 @@ add_definitions(-DUNIT_TESTING)
 add_definitions(-DOPENACE_MAXIMUM_TCP_CLIENTS=4)
 add_definitions(-DOPENACE_MAX_RADIOS=2)
 add_definitions(-DOPENACE_MAX_SOURCE_PER_RADIO=3)
-add_definitions(-DOPENACE_GPS_FREQUENCY=5)
 
 
 

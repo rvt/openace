@@ -5,6 +5,7 @@ set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
     ace/ubloxm8n.cpp
+    ace/AbstractGnss.cpp
 )
 
 set(MODULE_TARGET_LINK

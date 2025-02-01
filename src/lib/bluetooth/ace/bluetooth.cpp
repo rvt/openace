@@ -144,7 +144,7 @@ void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path)
     (void)path;
     stream << "{";
     stream << "\"connections\":" << connections.size();
-    stream << ",\"CircularBufferOverrunErr\":" << statistics.CircularBufferOverrunErr;
+    stream << ",\"nmeaQueueErr\":" << statistics.nmeaQueueErr;
     stream << ",\"ctxBufferOverrunErr\":" << ctxBufferOverrunErr;
     stream << "}\n";
 }
@@ -176,7 +176,7 @@ void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
 
     if (queue.full())
     {
-        statistics.CircularBufferOverrunErr++;
+        statistics.nmeaQueueErr++;
         btstack_run_loop_execute_on_main_thread(&pushIntoQueueReg);
         return;
     }
@@ -302,6 +302,7 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
             auto mtu = att_server_get_mtu(handle) - 4;
             if (createConnection(handle, mtu, 0b010))
             {
+                printf("ATT_EVENT_CONNECTED Handle:%d MTU:%d\n", handle, mtu);
                 // Only re-advertise when it's possible to accept new connections
                 if (!Bluetooth::connections.full())
                 {
@@ -318,6 +319,7 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
         {
 
             // clang-format off
+            // printf("ATT_EVENT_MTU_EXCHANGE_COMPLETE Handle:%d MTU:%d\n", att_event_mtu_exchange_complete_get_handle(packet), att_event_mtu_exchange_complete_get_MTU(packet));
             Bluetooth::withHandle(att_event_mtu_exchange_complete_get_handle(packet), 
                 etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
                 {

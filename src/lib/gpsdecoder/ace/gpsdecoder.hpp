@@ -35,12 +35,12 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, Ope
 
     float velocityNorth;
     float velocityEast;
-    RatePerSecond<OPENACE_GPS_FREQUENCY> altitudeWgs84{OPENACE_EMAFLOAT_K_FACTOR_1S};
-    RatePerSecond<OPENACE_GPS_FREQUENCY> heightGeoidWGS84{OPENACE_EMAFLOAT_K_FACTOR_1S};   // Height of geoid above WGS84 ellipsoid eg sea level
-    RatePerSecond<OPENACE_GPS_FREQUENCY> groundSpeed{OPENACE_EMAFLOAT_K_FACTOR_1S};
-    RatePerSecond<OPENACE_GPS_FREQUENCY> course{OPENACE_EMAFLOAT_K_FACTOR_1S};
-    RatePerSecond<OPENACE_GPS_FREQUENCY> latitude{OPENACE_EMAFLOAT_K_FACTOR_1S};
-    RatePerSecond<OPENACE_GPS_FREQUENCY> longitude{OPENACE_EMAFLOAT_K_FACTOR_1S};
+    RatePerSecond altitudeWgs84{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2};
+    float heightGeoidWGS84;
+    float groundSpeed;
+    RatePerSecond course{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2};
+    float latitude;
+    float longitude;
 
     uint8_t fixQuality;
     uint8_t satellitesTracked;

@@ -85,7 +85,7 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
     xTimerChangePeriod(at->transmitTimerHandle, TASK_DELAY_MS(1'000), TASK_DELAY_MS(25));
     while (true)
     {
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(2'000)))
+        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
         {
             if (notifyValue & TaskState::EXIT)
             {

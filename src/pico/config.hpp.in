@@ -91,9 +91,6 @@
 
 // ***** OpenAce configurations 
 
-// If GPS is receiving 5 positions a second, then this needs to be configured to 5
-#define OPENACE_GPS_FREQUENCY ( 5 )
-
 // Maximum number of TCP clients that can connect to the server
 #define OPENACE_MAXIMUM_TCP_CLIENTS ( 4 )
 
@@ -123,8 +120,11 @@
 // Stat's collector antenna radial pattern divisions
 #define OPENACE_STATSCOLLECTOR_NUM_RADIALS ( 8 )
 
-// K Factor to use for EMA Filter that ensures we filter values over a 1 second period reach minimum to maximum
-#define OPENACE_EMAFLOAT_K_FACTOR_1S ( 1.9f )
+// K Factor to use for EMA Filter that ensures we filter values over a 1 second period reach minimum to maximum for 5 updates per second
+#define OPENACE_EMAFLOAT_K_FACTOR_5PS ( 1.9f )
+
+// K Factor to use for EMA Filter that ensures we filter values over a 1 second period reach minimum to maximum for 2 updates per second
+#define OPENACE_EMAFLOAT_K_FACTOR_2PS ( 1.2f )
 
 // Maximum radios that can be controlled
 #define OPENACE_MAX_RADIOS ( 2 ) 

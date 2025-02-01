@@ -53,8 +53,6 @@ private:
     OpenAce::AircraftAddress address;
     OpenAce::AircraftCategory category;
 private:
-    void static heartbeatTimerCallBack(TimerHandle_t xTimer);
-
     static void gdl90ServiceTask(void *arg);
 
     void on_receive(const OpenAce::TrackedAircraftPositionMsg &msg);

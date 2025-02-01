@@ -8,7 +8,6 @@ add_definitions(-DCATCH_CONFIG_NO_POSIX_SIGNALS)
 add_definitions(-DUNIT_TESTING)
 add_definitions(-DOPENACE_MAXIMUM_TCP_CLIENTS=4)
 add_definitions(-DOPENACE_MAX_RADIOS=2)
-add_definitions(-DOPENACE_GPS_FREQUENCY=5)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)

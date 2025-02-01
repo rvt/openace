@@ -31,11 +31,11 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"receivedRMC\":" << statistics.receivedRMC;
     stream << ",\"receivedGSA\":" << statistics.receivedGSA;
     stream << ",\"receivedOther\":" << statistics.receivedOther;
-    stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude();
-    stream << ",\"longitude\":" << longitude() << etl::format_spec{}.precision(1);
+    stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude;
+    stream << ",\"longitude\":" << longitude << etl::format_spec{}.precision(1);
     stream << ",\"altitudeWgs84\":" << altitudeWgs84();
-    stream << ",\"heightGeoidWGS84\":" << heightGeoidWGS84();
-    stream << ",\"groundspeed\":" << groundSpeed();
+    stream << ",\"heightGeoidWGS84\":" << heightGeoidWGS84;
+    stream << ",\"groundspeed\":" << groundSpeed;
     stream << ",\"track\":" << course();
     stream << ",\"pDop\":" << pDop << OpenAce::RESET_FORMAT;
     stream << ",\"dopValue\":\"" << dopValue << "\"";
@@ -82,17 +82,17 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
             // Update planes position when fix is valid
             if (frame.valid)
             {
-                float prevLatitude = latitude();
-                float prevLongitude = longitude();
+                float prevLatitude = latitude;
+                float prevLongitude = longitude;
 
-                latitude(minmea_tocoord(&frame.latitude));
-                longitude(minmea_tocoord(&frame.longitude));
+                latitude = (minmea_tocoord(&frame.latitude));
+                longitude = (minmea_tocoord(&frame.longitude));
 
-                auto const relNorthrelEast = CoreUtils::northEastDistance(prevLatitude, prevLongitude, latitude(), longitude());
+                auto const relNorthrelEast = CoreUtils::northEastDistance(prevLatitude, prevLongitude, latitude, longitude);
                 velocityNorth = relNorthrelEast.north;
                 velocityEast = relNorthrelEast.east;
 
-                groundSpeed(minmea_tofloat(&frame.speed));
+                groundSpeed = (minmea_tofloat(&frame.speed));
                 // Course might not always be done and will result in a inf values in the filter
                 if (frame.course.scale != 0)
                 {
@@ -116,7 +116,7 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
             float height = convertToMeters(&frame.height, frame.height_units);
             if (height != INVALID_CONVERSION)
             {
-                heightGeoidWGS84(height);
+                heightGeoidWGS84 = (height);
             }
 
             float alt = convertToMeters(&frame.altitude, frame.height_units);
@@ -210,19 +210,19 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
     if (lastGGATimestamp.microseconds == lastRMCTimestamp.microseconds && lastGGATimestamp.seconds == lastRMCTimestamp.seconds)
     {
         auto alt = altitudeWgs84();
-        auto height = heightGeoidWGS84();
+        auto height = heightGeoidWGS84;
 
         // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
         getBus().receive(
             OpenAce::OwnshipPositionMsg{
                 OpenAce::OwnshipPositionInfo{
                     .timestamp = CoreUtils::timeUs32(),
-                    .airborne = groundSpeed() > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
-                    .lat = latitude(),
-                    .lon = longitude(),
+                    .airborne = groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
+                    .lat = latitude,
+                    .lon = longitude,
                     .altitudeWgs84 = static_cast<int16_t>(alt),
                     .verticalSpeed = altitudeWgs84.perSecond(), // vertical speed
-                    .groundSpeed = groundSpeed(),               // Ground Speed
+                    .groundSpeed = groundSpeed,               // Ground Speed
                     .course = course(),
                     .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
                     .velocityNorth = velocityNorth,

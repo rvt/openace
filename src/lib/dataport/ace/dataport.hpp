@@ -22,6 +22,13 @@ class DataPort : public BaseModule, public etl::message_router<DataPort, OpenAce
     OpenAce::AircraftAddress address;
     OpenAce::AircraftCategory category;
 
+    virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
+    
+    struct
+    {
+        uint32_t messages = 0;
+    } statistics;
+
 public:
     static constexpr const etl::string_view NAME = "DataPort";
     DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)

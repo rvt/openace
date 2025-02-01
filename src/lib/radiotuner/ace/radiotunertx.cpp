@@ -149,7 +149,8 @@ void RadioTunerTx::radioTxTask(void *arg)
 void RadioTunerTx::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
     static uint16_t checkEvery = 0;
-    if (currentZone == CountryRegulations::Zone::ZONE0 || checkEvery++ > (OPENACE_GPS_FREQUENCY * 30))
+    // TODO: Change this to some proper timing
+    if (currentZone == CountryRegulations::Zone::ZONE0 || checkEvery++ > 30)
     {
         checkEvery = 0;
         currentZone = CountryRegulations::zone(msg.position.lat, msg.position.lon);

@@ -55,7 +55,7 @@
 /* Synchronization Related */
 #define configUSE_MUTEXES                       1
 #define configUSE_RECURSIVE_MUTEXES             1
-#define configUSE_APPLICATION_TASK_TAG          0
+//#define configUSE_APPLICATION_TASK_TAG          0
 #define configUSE_COUNTING_SEMAPHORES           1
 #define configQUEUE_REGISTRY_SIZE               8
 #define configUSE_QUEUE_SETS                    1
@@ -74,7 +74,7 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 /* OpenACE: Changed from 128 to 115 to 112*/
 /* ArduinoJson is memory hungry, need to change that for something else, but for now just lowered memory */
-#define configTOTAL_HEAP_SIZE                   (60*1024)
+#define configTOTAL_HEAP_SIZE                   (65*1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */
@@ -85,9 +85,19 @@
 #define configUSE_DAEMON_TASK_STARTUP_HOOK      0
 
 /* Run time and task stats gathering related definitions. */
-#define configGENERATE_RUN_TIME_STATS           0
-#define configUSE_TRACE_FACILITY                0
-#define configUSE_STATS_FORMATTING_FUNCTIONS    0
+#define configGENERATE_RUN_TIME_STATS           1
+#define configUSE_APPLICATION_TASK_TAG          0
+
+
+#ifdef configGENERATE_RUN_TIME_STATS
+#define configUSE_TRACE_FACILITY                1
+#define configUSE_STATS_FORMATTING_FUNCTIONS    1
+extern void configureRuntimeStatsTimer();
+extern uint32_t getRuntimeCounterValue();
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() configureRuntimeStatsTimer()
+#define portGET_RUN_TIME_COUNTER_VALUE() getRuntimeCounterValue()
+#endif
+
 #else
 /* Run time and task stats gathering related definitions. */
 /* Hook function related definitions. */
@@ -99,6 +109,7 @@
 #define configGENERATE_RUN_TIME_STATS           0
 // ##define configUSE_TRACE_FACILITY                0
 #define configUSE_STATS_FORMATTING_FUNCTIONS    0
+#define configUSE_APPLICATION_TASK_TAG          0
 #endif
 
 /* Co-routine related definitions. */
@@ -175,7 +186,7 @@ to exclude the API function. */
 #define TASK_DELAY_MIN( x )    ( ( x ) * 60 * 1000 / portTICK_PERIOD_MS )
 
 /* Task priority and stack sizes that needed to be changed */
-#define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 3072 )
+#define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 4096 )
 #define CYW43_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 1024 )
 #define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 5 )
 //#define CYW43_SLEEP_CHECK_MS 100

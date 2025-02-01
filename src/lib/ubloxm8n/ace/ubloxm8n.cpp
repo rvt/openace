@@ -1,15 +1,7 @@
 #include <stdio.h>
 
-#include "etl/string.h"
-#include "pico/stdlib.h"
-#include "pico/binary_info.h"
-
 #include "ubloxm8n.hpp"
 
-#include "ace/messagerouter.hpp"
-#include "ace/basemodule.hpp"
-#include "ace/coreutils.hpp"
-#include "ace/utils.hpp"
 
 // *INDENT-OFF*
 // clang-format off
@@ -54,178 +46,66 @@ inline constexpr uint8_t *UbloxM8N_m8nConfig[UbloxM8N_m8nConfig_size] = {
     (uint8_t[]){28, 0xB5, 0x62, 0x06, 0x17, 0x14, 0x00, 0x00, 0x21, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, // CFG NMEA 2.1, MAIN talker ID GP
                     0x00, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x57, 0x0C},
 
-    (uint8_t[]){14, 0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A} // CFG_RATE 200ms GPS time
+    (uint8_t[]){14, 0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xF4, 0x01, 0x01, 0x00, 0x01, 0x00, 0x0B, 0x77} // CFG_RATE 500ms GPS time
 };
+// (uint8_t[]){14, 0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A} // CFG_RATE 200ms GPS time
+
 // clang-format on
 // *INDENT-ON*
 
-// TODO: For some reason casting to RTC did not work, so we use a global pointer PicoRtc, properly some casting did not go well
-RtcModule *UbloxM8N_rtc = nullptr;
-
-// Call RTC in interrupt to native of when last second pulse happened
-void __time_critical_func(UbloxM8N_pps_callback)(uint32_t events)
-{
-    (void)events;
-    UbloxM8N_rtc->ppsEvent();
-    // CoreUtils::setPPS();
-}
-
-void UbloxM8N::start()
-{
-    // TODO: Check if there is a better way to reduce stack size.
-    // This seem to have because the ublox is the beginning of messages through the complete system?
-    // Can we use a reference to strings instead of copy?
-    xTaskCreate(ubloxM8NTask, "UbloxM8N"
-                              "Task",
-                configMINIMAL_STACK_SIZE + 768, this, tskIDLE_PRIORITY + 2, &taskHandle);
-
-    pioSerial.start();
-    // ublox uses rising pulse to trigger
-    // https://portal.u-blox.com/s/question/0D52p0000D35wjlCQA/how-to-minimize-serial-output-time-variance
-    // Note: when we really have a GPS without PPS, perhaps we can just call UbloxM8N_rtc->ppsEvent();
-    // after detecting GMC? and just 'add' a few us to compensate for incomming GPS time messages?
-    registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, UbloxM8N_pps_callback);
-};
-
-void UbloxM8N::stop()
-{
-    pioSerial.stop();
-    unregisterPinInterrupt(ppsPin);
-    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
-};
-
-void UbloxM8N::ubloxM8NTask(void *arg)
-{
-    UbloxM8N *ubloxM8N = static_cast<UbloxM8N *>(arg);
-
-    //    Initialise and find the GPS
-    while (!ubloxM8N->detectAndConfigureGPS())
-    {
-        vTaskDelay(TASK_DELAY_MS(1000));
-    }
-
-    ubloxM8N->statistics.queueFullErr = 0;
-    OpenAce::NMEAString sentence;
-    while (true)
-    {
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
-        {
-            if (notifyValue & TaskState::EXIT)
-            {
-                vTaskDelete(nullptr);
-                return;
-            }
-
-            if (notifyValue & TaskState::NEW)
-            {
-                while (ubloxM8N->queue.pop(sentence))
-                {
-                    // Note: if in case this get's removed because the messages are needed,
-                    // then this filter needs to be added in DataPort that passes through GPS messages
-                    // Otherwise it create indeed traffic over TCP/IP or Bluetooth
-                    // "SkyDemon processes RMC, GGA, GSA and GSV, however GSV is not really used any more internally."
-                    // GSA : GPS DOP and active satellites
-                    // GSV : GPS Satellites in view
-                    if (sentence.find("$GPGSV") == OpenAce::NMEAString::npos &&
-                        sentence.find("$GPVTG") == OpenAce::NMEAString::npos)
-                    {
-                        ubloxM8N->statistics.totalReceived++;
-                        ubloxM8N->getBus().receive(OpenAce::GPSSentenceMsg{sentence});
-                    }
-                }
-            }
-        }
-    }
-}
-
-bool UbloxM8N::detectAndConfigureGPS()
+bool UbloxM8N::configureGnss()
 {
     // Initialise the GPS hardware
-    statistics.status = "Search";
-    statistics.baudrate = pioSerial.findBaudRate(5'000);
-    if (!statistics.baudrate)
+    setStatus("Search");
+    uint32_t baudrate = getSerial().findBaudRate(5'000);
+    if (!baudrate)
     {
-        statistics.status = "NO GPS";
+        setStatus("NO GPS");
         return false;
     }
+    setStatusBaud(baudrate);
 
     // If not correct, try to set the GPS to the required baudrate
-    if (statistics.baudrate != REQUIRED_GPS_BAUDRATE)
+    if (baudrate != REQUIRED_GPS_BAUDRATE)
     {
-        statistics.status = "Found";
-        // printf("GPS found at %ldBd setting to %ldBd, waiting for GPS to come back on... ", statistics.baudrate, GPS_BAUDRATE);
-        if (!pioSerial.enableTx(statistics.baudrate))
+        setStatus("Found");
+        // printf("GPS found at %ldBd setting to %ldBd, waiting for GPS to come back on... ", baudrate, GPS_BAUDRATE);
+        if (!getSerial().enableTx(baudrate))
         {
             return false;
         }
 
-        pioSerial.sendBlocking(UbloxM8N_baudrate, sizeof(UbloxM8N_baudrate));
-        pioSerial.rxFlush();
-        pioSerial.sendBlocking(UbloxM8N_warmstart, sizeof(UbloxM8N_warmstart));
-        pioSerial.rxFlush();
+        getSerial().sendBlocking(UbloxM8N_baudrate, sizeof(UbloxM8N_baudrate));
+        getSerial().rxFlush();
+        getSerial().sendBlocking(UbloxM8N_warmstart, sizeof(UbloxM8N_warmstart));
+        getSerial().rxFlush();
 
         vTaskDelay(50);
         return false;
     }
     
-    if (!pioSerial.enableTx(statistics.baudrate))
+    if (!getSerial().enableTx(baudrate))
     {
-        statistics.status = "Cfg err m8nCfg";
+        setStatus("Cfg err m8nCfg");
+        setStatusBaud(0);
         return false;
     }
 
     // Save to BBR so we don't have slow startup delays finding the uart
-    statistics.status = "BBR";
-    pioSerial.sendBlocking(UbloxM8N_saveBBR, sizeof(UbloxM8N_saveBBR));
+    setStatus("BBR");
+    getSerial().sendBlocking(UbloxM8N_saveBBR, sizeof(UbloxM8N_saveBBR));
     vTaskDelay(250);
 
     for (uint8_t i = 0; i < UbloxM8N_m8nConfig_size; i++)
     {
-        pioSerial.rxFlush();
+        getSerial().rxFlush();
         // printf("Send configuration %d\n", i);
-        pioSerial.sendBlocking(&UbloxM8N_m8nConfig[i][1], UbloxM8N_m8nConfig[i][0]);
+        getSerial().sendBlocking(&UbloxM8N_m8nConfig[i][1], UbloxM8N_m8nConfig[i][0]);
         // TODO: Wait for 'ok' reply, this requires modification in pioserial
         vTaskDelay(250);
     }
 
-    statistics.status = "Configured";
+    setStatus("Configured");
     return true;
 }
 
-OpenAce::PostConstruct UbloxM8N::postConstruct()
-{
-    pioSerial.postConstruct();
-    UbloxM8N_rtc = static_cast<RtcModule *>(moduleByName(*this, RtcModule::NAME));
-    return OpenAce::PostConstruct::OK;
-}
-
-void UbloxM8N::getData(etl::string_stream &stream, const etl::string_view path) const
-{
-    (void)path;
-    stream << "{";
-    stream << "\"totalReceived\":" << statistics.totalReceived;
-    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
-    stream << ",\"status\":\"" << statistics.status << "\"";
-    stream << ",\"baudrate\":" << statistics.baudrate;
-    stream << "}\n";
-}
-
-void __time_critical_func(UbloxM8N::processNewSentence)(const etl::array_view<char>& sentence)
-{
-    if (!queue.full())
-    {
-        queue.push(sentence.data());
-    }
-    else
-    {
-        statistics.queueFullErr++;
-    }
-
-    // To reduce some FreeRTOS switches only send when queue is nearly full
-    // Since this is a continues NMEA stream, this should be fine and accurate enough as
-    // longs as the queue is relative small
-    if (queue.size() > queue.capacity() - 2)
-    {
-        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
-    }
-}

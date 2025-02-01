@@ -6,7 +6,7 @@ message(STATUS "Building tests.")
 
 add_definitions(-DCATCH_CONFIG_NO_POSIX_SIGNALS)
 add_definitions(-DUNIT_TESTING)
-add_definitions(-DOPENACE_EMAFLOAT_K_FACTOR_1S=1.9f)
+add_definitions(-DOPENACE_EMAFLOAT_K_FACTOR_5PS=1.9f)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)

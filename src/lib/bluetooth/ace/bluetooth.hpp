@@ -57,9 +57,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
     friend class message_router;
     struct
     {
-        uint32_t toManyClients = 0;
-        uint32_t CircularBufferOverrunErr = 0;
-        uint16_t lastMtu = 0;
+        uint32_t nmeaQueueErr = 0;
     } statistics;
 
     struct BtContext

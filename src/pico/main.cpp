@@ -271,6 +271,41 @@ static void openAceIdlTask(void *arch)
     }
 }
 
+void vDiagnosticsTask(void *pvParameters) {
+    constexpr size_t DIAG_STRING_SIZE = 2048;  // Adjust based on your needs
+    using DiagString = etl::string<DIAG_STRING_SIZE>;
+    using DiagStream = etl::string_stream;
+
+    (void)pvParameters;
+    DiagString buffer;
+    DiagStream stream(buffer);
+
+    while (true) {
+        buffer.clear();
+        
+        // Get task list (requires configUSE_TRACE_FACILITY)
+        char taskList[DIAG_STRING_SIZE];
+        vTaskList(taskList);  // Writes human-readable task list
+        
+        // Use ETL stream to format
+        stream << "Task List:\n" << taskList << "\n\n";
+        
+        // Optional: Get CPU usage stats (needs run time counter)
+        #ifdef configGENERATE_RUN_TIME_STATS
+        char runTimeStats[DIAG_STRING_SIZE];
+        vTaskGetRunTimeStats(runTimeStats);
+        stream << "CPU Usage:\tAbs Time\t% Time\n" << runTimeStats << "\n";
+        #endif
+
+        // Output the diagnostics (implement your output function)
+        puts("\033[2J\033[H");
+        puts(buffer.c_str());
+        
+        // Run every 5 seconds (adjust as needed)
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
+
 //  WifiService::PostConstruct()...assertion "get_core_num() == async_context_core_num(cyw43_async_context)" failed: file "/opt/pico/pico-sdk/src/rp2_common/pico_cyw43_driver/cyw43_driver.c", line 54, function: cyw43_irq_init 
 
 // #if PICO_CYW43_ARCH_DEBUG_ENABLED
@@ -299,6 +334,11 @@ void vLaunch(void)
     // Run a Idle Task Idletask
     // TODO: apparently needs a large stack??
     xTaskCreate(openAceIdlTask, "openAceIdlTask", configMINIMAL_STACK_SIZE + 2048, NULL, tskIDLE_PRIORITY + 1, nullptr);
+
+    // Dump some CPU diagnostics to terminal of all running tasks
+#if configGENERATE_RUN_TIME_STATS == 1    
+    xTaskCreate(vDiagnosticsTask,  "DiagTask", configMINIMAL_STACK_SIZE + 2048, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+#endif
 
 #if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1
     // we must bind the main task to one core (well at least while the init is called)
@@ -367,3 +407,16 @@ int main()
 
     return 0;
 }
+
+static uint32_t start_time_us = 0;
+
+void configureRuntimeStatsTimer() {
+    // Capture the starting time in microseconds
+    start_time_us = time_us_32();
+}
+
+uint32_t getRuntimeCounterValue() {
+    // Return elapsed time in microseconds since FreeRTOS started
+    return time_us_32() - start_time_us;
+}
+

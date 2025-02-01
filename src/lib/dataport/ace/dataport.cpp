@@ -43,6 +43,7 @@ void DataPort::on_receive(const OpenAce::GPSSentenceMsg &msg)
     OpenAce::NMEAString sentence = msg.sentence;
     sentence.append("\r\n");
     getBus().receive(OpenAce::DataPortMsg{sentence});
+    statistics.messages++;
 }
 
 /**
@@ -84,6 +85,7 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
     CoreUtils::addChecksumToNMEA(pflaa);
     // printf("pflaa t:%08ld %06lx\n", CoreUtils::timeUs32() / 1'000'000, position.address);
     getBus().receive(OpenAce::DataPortMsg{pflaa});
+    statistics.messages++;
 }
 
 uint8_t DataPort::getPFLAASourceType(const OpenAce::AircraftPositionInfo &position)
@@ -171,6 +173,7 @@ void DataPort::sendPFLAU(const OpenAce::OwnshipPositionInfo &position)
         // example $PFLAU,1,1,2,1,0,,0,,,*4D
         CoreUtils::addChecksumToNMEA(pflau);
         getBus().receive(OpenAce::DataPortMsg{pflau});
+        statistics.messages++;
 }
 
 /**
@@ -283,6 +286,7 @@ void DataPort::sendGPRMC(const OpenAce::AircraftPositionInfo &position)
 
     CoreUtils::addChecksumToNMEA(gnrmc);
     getBus().receive(OpenAce::DataPortMsg{gnrmc});
+    statistics.messages++;
 }
 
 void DataPort::sendPGRMZ(const OpenAce::OwnshipPositionInfo &position)
@@ -299,6 +303,7 @@ void DataPort::sendPGRMZ(const OpenAce::OwnshipPositionInfo &position)
     // example $PGRMZ,295,f,3*15
     CoreUtils::addChecksumToNMEA(pgrmz);
     getBus().receive(OpenAce::DataPortMsg{pgrmz});
+    statistics.messages++;
 }
 
 /**
@@ -313,6 +318,7 @@ void DataPort::sendGNGSA(const OpenAce::AircraftPositionInfo &position)
     OpenAce::NMEAString gngsa{"$GNGSA,A,3,,,,,,,,,,,,,1.0,1.0,1.0"};
     CoreUtils::addChecksumToNMEA(gngsa);
     getBus().receive(OpenAce::DataPortMsg{gngsa});
+    statistics.messages++;
 }
 
 void DataPort::sendGPGGA(const OpenAce::AircraftPositionInfo &position)
@@ -348,6 +354,7 @@ void DataPort::sendGPGGA(const OpenAce::AircraftPositionInfo &position)
 
     CoreUtils::addChecksumToNMEA(gngga);
     getBus().receive(OpenAce::DataPortMsg{gngga});
+    statistics.messages++;
 }
 
 /**
@@ -361,6 +368,7 @@ void DataPort::sendGPGSA()
     stream << "$GPGSA,A,3,,,,,,,,,,,,,1.0,1.0,1.0";
     CoreUtils::addChecksumToNMEA(gpgsa);
     getBus().receive(OpenAce::DataPortMsg{gpgsa});
+    statistics.messages++;
 }
 
 
@@ -370,5 +378,13 @@ void DataPort::sendLK8EX1() {
     stream << "$LK8EX1,999999,999999,9999,999,999";
     CoreUtils::addChecksumToNMEA(gpgsa);
     getBus().receive(OpenAce::DataPortMsg{gpgsa});
+    statistics.messages++;
+}
 
+void DataPort::getData(etl::string_stream &stream, const etl::string_view path) const
+{
+    (void)path;
+    stream << "{";
+    stream << "\"messages\":" << statistics.messages;
+    stream << "}\n";
 }

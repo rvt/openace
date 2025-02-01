@@ -36,38 +36,20 @@ void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "}\n";
 }
 
-void Gdl90Service::heartbeatTimerCallBack(TimerHandle_t xTimer)
-{
-    TaskHandle_t handle = (TaskHandle_t)pvTimerGetTimerID(xTimer);
-    xTaskNotify(handle, TaskState::HEARTBEAT, eSetBits);
-}
-
 void Gdl90Service::gdl90ServiceTask(void *arg)
 {
     Gdl90Service *gdl90Service = (Gdl90Service *)arg;
-    TaskHandle_t taskHandle = xTaskGetCurrentTaskHandle();
-    TimerHandle_t heartBeatTimer = xTimerCreate("heartbeatTimer", TASK_DELAY_MS(1'000), pdTRUE, taskHandle, heartbeatTimerCallBack);
-    xTimerStart(heartBeatTimer, TASK_DELAY_MS(1'000));
-
     while (true)
     {
-        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(2'000));
-        if (notifyValue != 0)
+        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1'000));
+        if (notifyValue & TaskState::SHUTDOWN)
         {
-            if (notifyValue & TaskState::SHUTDOWN)
-            {
-                xTimerDelete(heartBeatTimer, TASK_DELAY_MS(2'000));
-                vTaskDelete(nullptr);
-                return;
-            }
-            else if (notifyValue & TaskState::HEARTBEAT)
-            {
-                sendHeartBeat(*gdl90Service);
-            }
+            vTaskDelete(nullptr);
+            return;
         }
         else
         {
-            // xTimerStart(heartBeatTimer, TASK_DELAY_MS(1'000));
+            sendHeartBeat(*gdl90Service);
         }
     }
 }
