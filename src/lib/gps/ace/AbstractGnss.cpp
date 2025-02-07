@@ -80,6 +80,7 @@ void AbstractGnss::receiveTask(void *arg)
                     // GSA : GPS DOP and active satellites
                     // GSV : GPS Satellites in view
                     if (abstractGnss->preProcessSentence(sentence)) {
+//                        puts(sentence.c_str());
                         abstractGnss->getBus().receive(OpenAce::GPSSentenceMsg{sentence});
                         abstractGnss->statistics.totalReceived++;
                     }
@@ -91,7 +92,10 @@ void AbstractGnss::receiveTask(void *arg)
 
 OpenAce::PostConstruct AbstractGnss::postConstruct()
 {
-    pioSerial.postConstruct();
+    if (pioSerial.postConstruct() != OpenAce::PostConstruct::OK)
+    {
+        return OpenAce::PostConstruct::HARDWARE_ERROR;
+    }
     AbstractGnss_rtc = static_cast<RtcModule *>(moduleByName(*this, RtcModule::NAME));
     return OpenAce::PostConstruct::OK;
 }
@@ -121,18 +125,21 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
         // "SkyDemon processes RMC, GGA, GSA and GSV, however GSV is not really used any more internally."
         // GSA : GPS DOP and active satellites
         // GSV : GPS Satellites in view
-        bool found = (etl::search(sentence.begin(), sentence.end(), target1.begin(), target1.end()) != sentence.end()) ||
-                     (etl::search(sentence.begin(), sentence.end(), target2.begin(), target2.end()) != sentence.end());
 
-        if (!found) {
+        bool match=true;
+        for (uint8_t i=3;i<6;i++) {
+            match = match && (sentence[i] == target1[i]);
+            match = match && (sentence[i] == target2[i]);
+            if (!match) break;
+        }
+
+        if (!match) {
             queue.push(sentence.data());
         }
     }
     else
     {
         statistics.queueFullErr++;
-        //xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
-        //portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
     }
 
     // To reduce some FreeRTOS switches only send when queue is nearly full
@@ -141,6 +148,5 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     if (queue.size() > 3)
     {
         xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
-        //portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
     }
 }

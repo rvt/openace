@@ -2,17 +2,24 @@
 
 #include "pioserial.hpp"
 
+#include "pico/binary_info.h"
+
 #include "ace/utils.hpp"
 
 OpenAce::PostConstruct PioSerial::postConstruct()
 {
+    if (rxPin == -1 || txPin == -1)
+    {
+        return OpenAce::PostConstruct::HARDWARE_NOT_CONFIGURED;
+    }
 
-    int numElements = sizeof(interruptHandlers) / sizeof(interruptHandlers[0]);
-    while (handlerIdx < numElements && interruptHandlers[handlerIdx] != nullptr)
+    handlerIdx = 0;
+    while (handlerIdx < interruptHandlers.size() && interruptHandlers[handlerIdx] != nullptr)
     {
         ++handlerIdx;
     }
-    if (handlerIdx >= numElements)
+
+    if (handlerIdx >= interruptHandlers.size())
     {
         return OpenAce::PostConstruct::HARDWARE_ERROR;
     }
@@ -56,8 +63,9 @@ OpenAce::PostConstruct PioSerial::postConstruct()
         break;
     default:
         return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;
-        ;
     }
+    
+    bi_decl(bi_2pins_with_func(static_cast<uint32_t>(txPin), static_cast<uint32_t>(rxPin), GPIO_FUNC_UART));
     return OpenAce::PostConstruct::OK;
 }
 
@@ -126,9 +134,7 @@ void PioSerial::disableRx()
  */
 void __isr __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex)
 {
-    constexpr size_t numEntries = sizeof(interruptHandlers) / sizeof(interruptHandlers[0]);
-
-    if (irqHandlerIndex >= numEntries)
+    if (irqHandlerIndex >= interruptHandlers.size())
     {
         puts("irqHandlerIndex >= numEntries");
         return;
@@ -178,6 +184,11 @@ void PioSerial::sendBlocking(const uint8_t *data, uint16_t length)
     uart_tx_program_put(txPio, txSmIndx, data, length);
 }
 
+void PioSerial::sendBlocking(const etl::string_view &data)
+{
+    uart_tx_program_put(txPio, txSmIndx, (uint8_t *)data.cbegin(), data.size());
+}
+
 bool PioSerial::enableTx(uint32_t givenBaudRate)
 {
     if (txPio == nullptr)
@@ -225,9 +236,11 @@ bool PioSerial::testUartAtBaudrate(uint32_t testBaudRate, uint32_t maximumScanTi
     if (rxPio != nullptr)
     {
         setBaudRate(testBaudRate);
-        bool hasData = uart_rx_program_test(rxPio, rxSmIndx, 0x0a, 0x80, maximumScanTimeMs, numcharsConsideringValid);
+//        printf("Baud: tx:%d rx:%d %ld ", txPin, rxPin, testBaudRate);
+        uint8_t status = uart_rx_program_test(rxPio, rxSmIndx, 0x0a, 0x80, maximumScanTimeMs, numcharsConsideringValid);
+//        printf(" uart: %d\n", status);
         setBaudRate(baudrate);
-        return hasData;
+        return status == 0;
     }
     return false;
 }

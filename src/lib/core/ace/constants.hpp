@@ -1,7 +1,7 @@
 #pragma once
 
 #include <math.h>
-#include "etl/map.h"
+#include "etl/flat_map.h"
 #include "etl/string.h"
 #include "etl/vector.h"
 #include "etl/string_stream.h"
@@ -48,7 +48,7 @@ namespace OpenAce
     using SsidOrPasswdStr = etl::string<20>;
 
     enum class PinType : uint8_t;
-    using PinTypeMap = etl::map<PinType, uint8_t, 12>;
+    using PinTypeMap = etl::flat_map<PinType, int8_t, 8>;
 
     constexpr etl::format_spec ICAO_HEX_FORMAT = etl::format_spec{}.hex().width(6).upper_case(true);
     constexpr etl::format_spec RESET_FORMAT = etl::format_spec{};

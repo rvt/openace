@@ -114,11 +114,17 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
             if (RequestContext.response)
             {
                 auto pathParsed = CoreUtils::parsePath(RequestContext.uri);
+                // Suspend all tasks so configuration can take place
+                // This also means non of the function are allowed to block during
+                // COnfigurations. This should not be a problem.
+                // By doing this, some mutexes are not needed anymore
+                vTaskSuspendAll();
                 configModule->getBus().receive(
                     OpenAce::ConfigUpdatedMsg{
                         *configModule,
                         pathParsed[2],
                     });
+                xTaskResumeAll(); 
             }
         }
     }

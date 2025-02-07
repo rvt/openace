@@ -28,12 +28,11 @@ class Configuration;
 class BaseModule
 {
     static constexpr uint8_t MAX_MODULES = 40;
-    inline static SemaphoreHandle_t xMutex;
-
-protected:
-    inline static SemaphoreHandle_t configMutex;
 
 private:
+// Mutex to be used during load/unloading and changes in interrupts
+    inline static SemaphoreHandle_t xMutex;
+
     struct pinInterruptHandler
     {
         uint32_t event;
@@ -50,35 +49,22 @@ private:
 public:
     static void initBase()
     {
-        xMutex = xSemaphoreCreateRecursiveMutex();
+        xMutex = xSemaphoreCreateMutex();
         if (xMutex == nullptr)
         {
             panic("Failed to create xMutex");
-        }
-        configMutex = xSemaphoreCreateMutex();
-        if (configMutex == nullptr)
-        {
-            panic("Failed to create configMutex");
         }
     }
     using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
     struct ModuleStatus
     {
-        // NOTE: The reason why it's currently done by delegate is that it's possible to have module A depending on module B loads Module B automatically
-        // In insight, may be this can easer with a simple switch structure.
         ModuleLoadFunction loadFunction;
         OpenAce::PostConstruct result;
         BaseModule *module;
+        bool hwCheck;
     };
 
 protected:
-    // struct CharPtrComparator
-    // {
-    //     bool operator()(const etl::string_view lhs, const etl::string_view rhs) const
-    //     {
-    //         return 1; // strcmp(lhs.c_str(), rhs.c_str()) < 0;
-    //     }
-    // };
     using ModuleLoadMap = etl::map<const etl::string_view, ModuleStatus, MAX_MODULES /*, CharPtrComparator*/>;
     inline static ModuleLoadMap moduleLoaderMap;
 
@@ -96,11 +82,14 @@ public:
 
     static BaseModule *moduleByName(const BaseModule &that, const etl::string_view requesting);
 
-    static void registerModule(const etl::string_view name, ModuleLoadFunction loader)
+    static void registerModule(const etl::string_view name, bool hwCheck, ModuleLoadFunction loader)
     {
-        moduleLoaderMap[name] = {loader, OpenAce::PostConstruct::NA, nullptr};
+        moduleLoaderMap[name] = {loader, OpenAce::PostConstruct::NA, nullptr, hwCheck};
     }
-    // TODO: Not to happy yet about the 'double' registration of the same module example _SPI and AceSpi in the same moduleLoaderMap
+
+    /**
+     * Set the final evaluation of the module. b
+     */
     static void setModuleStatus(const etl::string_view name, BaseModule *base, OpenAce::PostConstruct result)
     {
         moduleLoaderMap[name].result = result;
@@ -191,6 +180,7 @@ public:
      * Unregister a pin interrupt handler
      */
     void unregisterPinInterrupt(uint8_t pin);
+
 };
 
 /**
@@ -261,6 +251,7 @@ public:
      */
     virtual bool acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()> &delegate) = 0;
     virtual void releaseSlotSync() = 0;
+    virtual uint8_t spiNum() const = 0;
 };
 
 /**
@@ -362,7 +353,7 @@ public:
     virtual ~Configuration() = default;
 
     virtual const OpenAce::Config::OpenAceConfiguration openAceConfig() const = 0;
-    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName, OpenAce::PinTypeMap map = OpenAce::PinTypeMap()) const = 0;
+    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName) const = 0;
 
     virtual bool deleteData(const etl::string_view fullPath) = 0;
     virtual int valueByPath(int defaultValue, const etl::string_view pathToValue, const etl::string_view key) const = 0;

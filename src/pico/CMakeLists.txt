@@ -55,7 +55,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     -Wall
     -fsingle-precision-constant
     -ffast-math
-    -fno-check-new
     -ffunction-sections
     -fdata-sections
     -O2)
@@ -66,7 +65,6 @@ else()
     -Wall
     -fsingle-precision-constant
     -ffast-math
-    -fno-check-new
     -ffunction-sections
     -fdata-sections
     )
@@ -130,7 +128,7 @@ target_link_libraries(
           pioserial
           serialadsb
           config
-          ubloxm8n
+          gps
           adsbdecoder
           libmodes
           dump1090client

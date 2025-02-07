@@ -36,5 +36,3 @@ public:
     virtual ~UbloxM8N() = default;
 
 };
-
-

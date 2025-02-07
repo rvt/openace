@@ -2,29 +2,29 @@
 
 OpenAce::PostConstruct AceSpi::postConstruct()
 {
-    // Make the SPI pins available to picotool
-    bi_decl(bi_3pins_with_func(static_cast<uint32_t>(miso), static_cast<uint32_t>(mosi), static_cast<uint32_t>(clk), GPIO_FUNC_SPI));
-
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
         return OpenAce::PostConstruct::MUTEX_ERROR;
     }
 
-    // Chip select is active-low, so we'll initialise it to a driven-high state
+    // Reset is active-low, so we'll initialise it to a driven-high state
     gpio_init(rst);
     gpio_set_dir(rst, GPIO_OUT);
     gpio_put(rst, 1);
 
     // Set default SPI bus frequency
-    spi_init(OPENACE_SPI_DEFAULT, OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY * 1000 * 1000);
+    spi_init(spi?spi1:spi0, OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY * 1000 * 1000);
     gpio_set_function(miso, GPIO_FUNC_SPI);
     gpio_set_function(clk, GPIO_FUNC_SPI);
     gpio_set_function(mosi, GPIO_FUNC_SPI);
 
     // Reset ALL devices
     resetDevices();
-    printf("Initialised on miso:%d clk:%d mosi:%d rst:%d (devices reset) ", miso, clk, mosi, rst);
+    printf("Initialised on miso:%d clk:%d mosi:%d rst:%d (devices reset)", miso, clk, mosi, rst);
+
+    // Make the SPI pins available to picotool
+    bi_decl(bi_3pins_with_func(static_cast<uint32_t>(miso), static_cast<uint32_t>(mosi), static_cast<uint32_t>(clk), GPIO_FUNC_SPI));
     return OpenAce::PostConstruct::OK;
 }
 
@@ -42,9 +42,9 @@ void AceSpi::read_registers(uint8_t cs, uint8_t reg, uint8_t *buf, uint16_t len,
 {
     reg |= READ_BIT;
     cs_select(cs);
-    spi_write_blocking(OPENACE_SPI_DEFAULT, &reg, 1);
+    spi_write_blocking(spi?spi1:spi0, &reg, 1);
     vTaskDelay(TASK_DELAY_MS(delayMs));
-    spi_read_blocking(OPENACE_SPI_DEFAULT, 0, buf, len);
+    spi_read_blocking(spi?spi1:spi0, 0, buf, len);
     cs_deselect(cs);
     vTaskDelay(TASK_DELAY_MS(delayMs));
 }
@@ -53,12 +53,12 @@ void AceSpi::read_registers_select(uint8_t cs, uint8_t reg) const
 {
     reg |= READ_BIT;
     cs_select(cs);
-    spi_write_blocking(OPENACE_SPI_DEFAULT, &reg, 1);
+    spi_write_blocking(spi?spi1:spi0, &reg, 1);
 }
 
 void AceSpi::read_registers_read(uint8_t cs, uint8_t *buf, uint16_t len) const
 {
-    spi_read_blocking(OPENACE_SPI_DEFAULT, 0, buf, len);
+    spi_read_blocking(spi?spi1:spi0, 0, buf, len);
     cs_deselect(cs);
 }
 
@@ -75,7 +75,7 @@ void AceSpi::cs_deselect(uint8_t cs) const
 void AceSpi::write_array(uint8_t cs, uint8_t *data, uint8_t length, uint8_t delayMs) const
 {
     cs_select(cs);
-    spi_write_blocking(OPENACE_SPI_DEFAULT, data, length);
+    spi_write_blocking(spi?spi1:spi0, data, length);
     cs_deselect(cs);
     vTaskDelay(TASK_DELAY_MS(delayMs));
 }
@@ -114,7 +114,7 @@ bool AceSpi::acquireSlotSync(uint8_t busFrequencyMhz)
         if (lastBusFrequency != busFrequencyMhz)
         {
             lastBusFrequency = busFrequencyMhz;
-            spi_init(OPENACE_SPI_DEFAULT, lastBusFrequency * 1'000'000);
+            spi_init(spi?spi1:spi0, lastBusFrequency * 1'000'000);
         }
         return true;
     }
@@ -131,3 +131,7 @@ void AceSpi::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
 }
+
+uint8_t AceSpi::spiNum() const {
+    return spi;
+};

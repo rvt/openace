@@ -3,10 +3,13 @@ import { El } from "@frameable/el";
 let instance;
 
 export class OpenAceStore {
+  availableHardware = [{name: "-", hardware:"-"}, {name: "OpenAce Board", hardware:"PICO_2RADIO"}, {name: "Waveshare Lite", hardware:"WAVESHARE_LITE"}];
+
   constructor() {
     if (instance) {
       throw new Error("New instance cannot be created!!");
     }
+
 
     instance = this;
 
@@ -19,6 +22,8 @@ export class OpenAceStore {
       aircrafts: [],
       numberOfAircrafts: 0,
       configModified: false,
+      hardware: {},
+      hardwareName: ""
     });
   }
 
@@ -42,29 +47,30 @@ export class OpenAceStore {
    *
    * @returns
    */
-  init() {
-    return this.fetch("/api/_Configuration/config.json")
-      .then((data) => {
-        this.state.aircraftId = data.aircraftId;
-        this.state.configModified = data._dirty;
-        return this.state.aircraftId;
-      })
-      .then((aircraftId) => {
-        this.fetch(`/api/_Configuration/aircraft.json`).then((data) => {
-          Object.assign(this.state.aircraftsObj, data);
-          this._updateAircraftArray();
+  async init()  {
+      // Fetch config.json
+    const configData = await this.fetch("/api/_Configuration/config.json");
+    this.state.aircraftId = configData.aircraftId;
+    this.state.configModified = configData._dirty;
 
-          // Validate if the configured aircraft exists in the array
-          if (data[this.state.aircraftId] === undefined) {
-            if (this.state.aircrafts.length > 0) {
-              return this.setDefaultAirCraftId(this.state.aircrafts[0].callSign);
-            } else {
-              this.state.aircraftId = "";
-            }
-          }
-          return data;
-        });
-      });
+    // Fetch aircraft.json
+    const aircraftData = await this.fetch("/api/_Configuration/aircraft.json");
+    Object.assign(this.state.aircraftsObj, aircraftData);
+    this._updateAircraftArray();
+
+    // Validate if the configured aircraft exists
+    if (aircraftData[this.state.aircraftId] === undefined) {
+      if (this.state.aircrafts.length > 0) {
+        await this.setDefaultAirCraftId(this.state.aircrafts[0].callSign);
+      } else {
+        this.state.aircraftId = "";
+      }
+    }
+
+    // Fetch hardware.json
+    const hardwareData = await this.fetch("/api/_Configuration/hardware.json");
+    Object.assign(this.state.hardware, hardwareData);
+    this.state.hardwareName = this.availableHardware.find(d => d.hardware === hardwareData.type)?.name;
   }
 
   /**
@@ -104,6 +110,26 @@ export class OpenAceStore {
       this.state.aircraftsObj[aircraft.callSign] = {};
       Object.assign(this.state.aircraftsObj[aircraft.callSign], aircraft);
       this._updateAircraftArray();
+      return data;
+    });
+  }
+
+  /**
+   * Update the type of board this is running on
+   * @param {*} type 
+   * @returns 
+   */
+  updateHardware(typeIdx) {
+    const type = this.availableHardware[typeIdx].hardware;
+    this.state.hardwareName =  this.availableHardware[typeIdx].name;
+    return this.fetch(`/api/_Configuration/hardware.json`, {
+      method: "POST",
+      headers: {
+        "X-Method": "POST",
+      },
+      body: JSON.stringify({type}),
+    }).then((data) => {
+      this.state.hardware.type = type;
       return data;
     });
   }
@@ -177,7 +203,7 @@ export class OpenAceStore {
   fetch(path, requestOptions) {
     return fetch(path, {
       ...requestOptions,
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(5500),
     })
       .then((response) => {
         if (path.includes("SaveBR.json")) {
@@ -190,6 +216,9 @@ export class OpenAceStore {
         }
         this.state.connected = true;
         return response.json();
+      })
+      .then((data) => {
+        return new Promise((resolve) => setTimeout(() => resolve(data), 10)); // Delay to not overload the PICO
       })
       .catch((e) => {
         this.state.connected = false;

@@ -10,7 +10,10 @@ class AirCraftSession extends El {
     let idx = e.currentTarget.selectedIndex;
     let aircraftId = store.state.aircrafts[idx].callSign;
     if (aircraftId === store.state.aircraftId) return;
-    this.changed(aircraftId);
+    // Call the assigned function to update the aircraft
+    if (aircraftId) {
+      this.changed(aircraftId);
+    }
   }
 
   render(html) {

@@ -6,10 +6,15 @@
 #include "queue.h"
 #include "timers.h"
 
-/* OpenACE. */
+/* ETL. */
 #include "etl/map.h"
+
+/* OpenACE. */
 #include "ace/manchester.hpp"
 #include "ace/coreutils.hpp"
+
+/* PICO */
+#include "hardware/spi.h"
 
 void Sx1262::start()
 {
@@ -26,6 +31,10 @@ OpenAce::PostConstruct Sx1262::postConstruct()
 {
     spiHall = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
 
+    if (spiHall == nullptr) {
+        return OpenAce::PostConstruct::DEP_NOT_FOUND;
+    }
+
     // Chip select is active-low, so we'll initialise it to a driven-high state
     gpio_init(csPin);
     gpio_set_dir(csPin, GPIO_OUT);
@@ -35,8 +44,8 @@ OpenAce::PostConstruct Sx1262::postConstruct()
     gpio_init(busyPin);
     gpio_set_dir(busyPin, GPIO_IN);
 
-    // Make the SPI pins available to picotool
-    bi_decl(bi_1pin_with_name(static_cast<uint32_t>(csPin), "Sx1262 CS"));
+    gpio_init(dio1Pin);
+    gpio_set_dir(dio1Pin, GPIO_IN); 
 
     // Read the device type
     char data[7];
@@ -61,6 +70,12 @@ OpenAce::PostConstruct Sx1262::postConstruct()
     registerPinInterrupt(dio1Pin, GPIO_IRQ_EDGE_RISE, taskHandle, TASK_VALUE_DIO1_INTERRUPT);
 
     printf("Initialised on cs:%d busy:%d dio1:%d ", csPin, busyPin, dio1Pin);
+
+    // Make the SPI pins available to picotool
+    bi_decl(bi_1pin_with_name(static_cast<uint32_t>(csPin), NAMES[radioNo].cbegin()));
+    bi_decl(bi_1pin_with_name(static_cast<uint32_t>(busyPin), NAMES[radioNo].cbegin()));
+    bi_decl(bi_1pin_with_name(static_cast<uint32_t>(dio1Pin), NAMES[radioNo].cbegin()));
+
     return OpenAce::PostConstruct::OK;
 }
 
@@ -69,6 +84,7 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     (void)path;
     stream << "{";
     stream << "\"deviceErrors\":" << statistics.deviceErrors;
+    stream << ",\"spiNo\":" << spiHall->spiNum();
     stream << ",\"waitPacketTimeout\":" << statistics.waitPacketTimeout;
     stream << ",\"receivedPackets\":" << statistics.receivedPackets;
     stream << ",\"buzyWaitsTimeout\":" << statistics.buzyWaitsTimeout;

@@ -102,7 +102,7 @@ private:
      * Prepare the path into the configuration and return a possible index that is the last item of the path
      * Example  : api/modulefoo/bar/bas/1.json  => idx 1  bar/bas
      * Example  : api/modulefoo/bar/bas/beer.json  => idx <no value>  bar/bas/beer
-     * When local = true, the json extension and /apt/_Configuration is not part of the path and points directly into configuration
+     * When fullPath = true, the json extension and /apt/_Configuration is not part of the path and points directly into configuration
      * returns: Result object
      */
     auto preparePath(const etl::string_view path, bool fullPath = true) const
@@ -139,7 +139,8 @@ private:
         return Result
         {
             index,
-            pathParsed};
+            pathParsed
+        };
     }
 
     void serializeToVolatile();
@@ -175,14 +176,6 @@ public:
     void on_receive_unknown(const etl::imessage &msg);
 
     /**
-     * Get the name of the current configured hardware type
-     */
-    virtual const OpenAce::ConfigString hardware() const
-    {
-        return (ccharptr)doc["hardware"];
-    };
-
-    /**
      * Returns the hardware configuration for this station or Aircraft
      *
      */
@@ -194,7 +187,7 @@ public:
     /**
      * Retreives the pin mapping for a given module, usually used for hardware configurations
      */
-    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName, OpenAce::PinTypeMap map) const override;
+    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName) const override;
 
     virtual int valueByPath(int defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override;
 

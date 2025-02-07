@@ -19,6 +19,7 @@
 /* OpenACE. */
 #include "ace/constants.hpp"
 #include "ace/models.hpp"
+#include "ace/coreutils.hpp"
 
 #include "etl/array.h"
 #include "etl/array_view.h"
@@ -55,18 +56,13 @@ private:
 
     // We have PIO's and each PIO has 8 state machine
     // Note: We properly need to put these in a struct or something
-    inline static PioSerial*  __scratch_y("OpenAceMem") interruptHandlers[] =
-    {
-        {nullptr},
-        {nullptr},
-        {nullptr},
-        {nullptr}
-    };
+    // inline static etl::array<PioSerial*, 4> __scratch_y("OpenAceMem") interruptHandlers;
+    inline static etl::array<PioSerial*, 4> interruptHandlers;
 
-    int32_t handlerIdx=0;
+    uint8_t handlerIdx=0;
 
-    const uint8_t rxPin;
-    const uint8_t txPin;
+    const int8_t rxPin;
+    const int8_t txPin;
     const uint32_t baudrate;
 
     PIO rxPio;
@@ -86,8 +82,8 @@ private:
     void disableRx();
 public:
     PioSerial(const OpenAce::PinTypeMap &pins, uint32_t baudrate_, CallBackFunction callback_) :
-        rxPin(pins.at(OpenAce::PinType::RX)),
-        txPin(pins.at(OpenAce::PinType::TX)),
+        rxPin(CoreUtils::pinValue(pins, OpenAce::PinType::RX)),
+        txPin(CoreUtils::pinValue(pins, OpenAce::PinType::TX)),
         baudrate(baudrate_),
         rxPio(nullptr),
         rxSmIndx(-1),
@@ -129,6 +125,7 @@ public:
      * @return true if the data was sent
     */
     void sendBlocking(const uint8_t *data, uint16_t length);
+    void sendBlocking(const etl::string_view &data);
     void disableTx();
 
     bool setBaudRate(uint32_t baudRate);

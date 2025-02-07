@@ -98,13 +98,10 @@ void Gdl90Service::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
         return;
     }
 
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::configMutex))
-    {
-        auto openAceConfiguration = msg.config.openAceConfig();
-        type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
-        address = openAceConfiguration.address;
-        category = openAceConfiguration.category;
-    }
+    auto openAceConfiguration = msg.config.openAceConfig();
+    type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+    address = openAceConfiguration.address;
+    category = openAceConfiguration.category;
 }
 
 void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)

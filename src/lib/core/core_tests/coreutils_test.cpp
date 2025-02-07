@@ -223,7 +223,7 @@ TEST_CASE( "addChecksumToNMEA", "[single-file]" )
     REQUIRE( pflau.size() == 6  );
     REQUIRE( pflau.compare("$*00") );
 
-    // Should start from 0
+    // Should start from 1 because string must contain the $
     pflau="1234";
     CoreUtils::addChecksumToNMEA(pflau);
     REQUIRE( pflau.size() == 9  );
@@ -240,6 +240,13 @@ TEST_CASE( "addChecksumToNMEA", "[single-file]" )
     CoreUtils::addChecksumToNMEA(pflau);
     REQUIRE( pflau.size() == 10  );
     REQUIRE( pflau.compare("$1234*04\r\n") == 0 );
+}
+
+TEST_CASE( "createNmeaChecksum", "[single-file]" )
+{
+    // Empty string stays empty
+    auto checked = CoreUtils::createNmeaChecksum("$abds,2,3,4");
+    REQUIRE( checked.compare("$abds,2,3,4*0D\r\n") == 0 );
 }
 
 TEST_CASE( "hexStrToByteArray overflow", "[single-file]" )

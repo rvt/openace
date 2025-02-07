@@ -24557,39 +24557,6 @@
 			)
 		)
 	)
-	(dimension
-		(type aligned)
-		(layer "F.Cu")
-		(uuid "5e43da73-1987-4d03-9ce1-6dbfab2211bb")
-		(pts
-			(xy 130.429 36.195) (xy 49.53 36.195)
-		)
-		(height -8.636)
-		(gr_text "80.8990 mm"
-			(at 89.9795 43.031 0)
-			(layer "F.Cu")
-			(uuid "5e43da73-1987-4d03-9ce1-6dbfab2211bb")
-			(effects
-				(font
-					(size 1.5 1.5)
-					(thickness 0.3)
-				)
-			)
-		)
-		(format
-			(prefix "")
-			(suffix "")
-			(units 3)
-			(units_format 1)
-			(precision 4)
-		)
-		(style
-			(thickness 0.2)
-			(arrow_length 1.27)
-			(text_position_mode 0)
-			(extension_height 0.58642)
-			(extension_offset 0.5) keep_text_aligned)
-	)
 	(segment
 		(start 89.154 100.076)
 		(end 89.154 102.489)

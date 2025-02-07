@@ -1,14 +1,16 @@
 {
-    "_comment_signature": "A signature used to decide if the JSON loaded, even when it was correct that it was an OpenACE configuration",
-    "signature": 4321,
+    "_comment_signature": "A signature used to decide if the JSON loaded, even when it was correct that it was an OpenACE configuration. Format YYMMDD and only changes when HW config changes that is not backward compatible",
+    "signature": 250207,
     "_comment_hardware": "Hardware configuration used.",
-    "hardware": "PICO_2RADIO",
+    "hardware": {
+        "type": "PICO_2RADIO"
+    },
     "config": {
         "pilotname": "OpenACE",
         "aircraftId": "XX-XXX"
     },
     "_comment_modules": "All modules that will be loaded when OpenACE starts up",
-    "modules": "Ogn1,Flarm,GDLoverUDP,Gdl90Service,Dump1090Client,Bmp280,ADSL,_SerialADSB,Sx1262_1,Sx1262_0,WifiClient,GpsDecoder,ADSBDecoder,RadioTunerRx,RadioTunerTx",
+    "modules": "Ogn1,Flarm,GDLoverUDP,Gdl90Service,ADSL,_SerialADSB,Sx1262_1,Sx1262_0,WifiClient,GpsDecoder,ADSBDecoder,RadioTunerRx,RadioTunerTx,DataPort",
     "aircraft": {
         "_comment": "All aircrafts and their configurations settings, config::aircraftId will be used to setup the hardware and load the configuration for that aircraft",
         "XX-XXX": {
@@ -29,9 +31,6 @@
         "filterAbove": 1500,
         "filterBelow": 1500
     },
-    "AceSpi": {
-        "port": "port1"
-    },
     "Bluetooth": {
         "_comment_client": "The standard SSD and password when OpenACE is in Access Point mode",
         "localName": "OpenAce"
@@ -43,20 +42,20 @@
             "password": "12345678",
             "disabled": false
         },
-        "_comment_client": "A list of Access Points OpenACE will be trying to to connect to.",
+        "_comment_clients": "A list of Access Points OpenACE will be trying to to connect to.",
         "clients": [
-            {
-                "ssid": "Your Device",
-                "password": "Your Password"
-            }
         ]
     },
+    "AceSpi": {
+    },
     "Bmp280": {
-        "port": "porta",
         "compensation": 0
     },
     "Sx1262_0": {
-        "port": "port8",
+        "txEnabled": 1,
+        "offset": 0
+    },
+    "Sx1262_1": {
         "txEnabled": 1,
         "offset": 0
     },
@@ -68,11 +67,6 @@
     },
     "ADSL": {
         "distanceIgnore": 25000
-    },
-    "Sx1262_1": {
-        "port": "port9",
-        "txEnabled": 1,
-        "offset": 0
     },
     "Dump1090Client": {
         "ip": "192.168.178.105",
@@ -94,25 +88,26 @@
         ]
     },
     "UbloxM8N": {
-        "port": "port2"
+    },
+    "L76B": {
     },
     "SerialADSB": {
-        "port": "port3"
     },
     "PICO_2RADIO": {
-        "port1": {
+        "AceSpi": {
             "clk": 2,
             "mosi": 3,
             "miso": 4,
-            "rst": 5
+            "rst": 5,
+            "spi": 0
         },
-        "port2": {
+        "UbloxM8N": {
             "tx": 0,
             "rx": 1,
             "busy": 18,
             "n": 0
         },
-        "port3": {
+        "SerialADSB": {
             "tx": 16,
             "rx": 17,
             "busy": 27,
@@ -135,40 +130,55 @@
             "p0": 8,
             "p1": 9
         },
-        "port8": {
+        "Sx1262_0": {
             "cs": 22,
             "busy": 11,
             "dio1": 10,
-            "p0": 10,
-            "p1": 11,
-            "p2": 22
+            "spi": 0
         },
-        "port9": {
+        "Sx1262_1": {
             "cs": 12,
             "busy": 13,
             "dio1": 19,
             "tx": 12,
             "rx": 13,
-            "p0": 12,
-            "p1": 13,
-            "p2": 19
+            "spi": 0
         },
-        "porta": {
+        "Bmp280": {
             "cs": 14,
-            "busy": 15,
-            "p0": 14,
-            "p1": 15
+            "busy": 15
         },
         "portb": {
             "cs": 20,
             "busy": 21,
             "rx": 21,
-            "tx": 20,
-            "p0": 20,
-            "p1": 21
+            "tx": 20
         },
         "portc": {
             "ad0": 28
+        }
+    },
+    "WAVESHARE_LITE": {
+        "_comment_L76B": "Waveshare Pico-GPS-L76B https://www.waveshare.com/wiki/Pico-GPS-L76B. Requires PPS to be soldered",
+        "L76B": {
+            "tx": 0,
+            "rx": 1,
+            "busy": 16
+        },
+        "_comment_Sx1262_0": "Waveshare https://www.waveshare.com/wiki/Pico-LoRa-SX1262-868M",
+        "Sx1262_0": {
+            "cs": 3,
+            "busy": 2,
+            "dio1": 20,
+            "spi": 1
+        },
+        "_comment_AceSpi": "SPI Port",
+        "AceSpi": {
+            "clk": 10,
+            "mosi": 11,
+            "miso": 12,
+            "rst": 15,
+            "spi": 1
         }
     }
 }

@@ -14,10 +14,7 @@
 
 void GDLoverUDP::getConfiguration(const Configuration &config)
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::configMutex))
-    {
-        getConfigurationNoMutex(config);
-    }
+    getConfigurationNoMutex(config);
 }
 
 void GDLoverUDP::getConfigurationNoMutex(const Configuration &config)
@@ -55,12 +52,6 @@ OpenAce::PostConstruct GDLoverUDP::postConstruct()
         return OpenAce::PostConstruct::NETWORK_ERROR;
     }
 
-    configMutex = xSemaphoreCreateMutex();
-    if (configMutex == nullptr)
-    {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
-    }
-
     return OpenAce::PostConstruct::OK;
 }
 
@@ -92,25 +83,22 @@ void GDLoverUDP::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
 {
     // Send to the connect clients and the defined ports
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::configMutex))
+    for (auto ip : connectedClients)
     {
-        for (auto ip : connectedClients)
+        // Connected clients are always on the accesspoint, 
+        // thus we don't need to test for the networkAddress            
+        for (auto port : udpPorts)
         {
-            // Connected clients are always on the accesspoint, 
-            // thus we don't need to test for the networkAddress            
-            for (auto port : udpPorts)
-            {
-                sendTo(msg, ip, port);
-            }
+            sendTo(msg, ip, port);
         }
+    }
 
-        for (const auto &client : customClients)
+    for (const auto &client : customClients)
+    {
+        // Custom clients can have any netmask and thus need to be tested if they are on the local net            
+        if ((client.ip & 0xFFFFFF) == networkAddress)
         {
-            // Custom clients can have any netmask and thus need to be tested if they are on the local net            
-            if ((client.ip & 0xFFFFFF) == networkAddress)
-            {
-                sendTo(msg, client.ip, client.port); 
-            }
+            sendTo(msg, client.ip, client.port); 
         }
     }
 }

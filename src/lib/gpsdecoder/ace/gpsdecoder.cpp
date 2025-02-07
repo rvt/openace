@@ -39,7 +39,8 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"track\":" << course();
     stream << ",\"pDop\":" << pDop << OpenAce::RESET_FORMAT;
     stream << ",\"dopValue\":\"" << dopValue << "\"";
-    stream << ",\"fixQuality\":\"" << fixQuality << "\"";
+    stream << ",\"gpsRatePerSec\":" << getGpsRate();
+    stream << ",\"fixQuality\":" << fixQuality;
     stream << ",\"satellitesTracked\":" << satellitesTracked;
     stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
         stream << ",\"UtcTimeMsg\":" << "\""
@@ -82,6 +83,10 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
             // Update planes position when fix is valid
             if (frame.valid)
             {
+                if (frame.latitude.scale == 0 || frame.longitude.scale == 0) {
+                    return;
+                }
+
                 float prevLatitude = latitude;
                 float prevLongitude = longitude;
 
@@ -92,11 +97,11 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
                 velocityNorth = relNorthrelEast.north;
                 velocityEast = relNorthrelEast.east;
 
-                groundSpeed = (minmea_tofloat(&frame.speed));
-                // Course might not always be done and will result in a inf values in the filter
+                groundSpeed = getFloat(frame.speed, groundSpeed);
+                // Course might not always be available and will result in a inf values in the filter
                 if (frame.course.scale != 0)
                 {
-                    course(minmea_tofloat(&frame.course));
+                    course(getFloat(frame.course, course()));
                 }
                 lastRMCTimestamp = frame.time;
                 sendMessageWhenGGAisRMC();
@@ -113,30 +118,15 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
         if (minmea_parse_gga(&frame, msg.sentence.c_str()))
         {
 
-            float height = convertToMeters(&frame.height, frame.height_units);
-            if (height != INVALID_CONVERSION)
-            {
-                heightGeoidWGS84 = (height);
-            }
+            heightGeoidWGS84 = convertToMeters(frame.height, frame.height_units, heightGeoidWGS84);
+            altitude = convertToMeters(frame.altitude, frame.height_units, altitude);
 
-            float alt = convertToMeters(&frame.altitude, frame.height_units);
-            if (alt != INVALID_CONVERSION)
-            {
-                // Altitude from GPS is referenced to MSL, to get WGS96 offset needs to be added
-                // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
-                altitudeWgs84(alt + (height != INVALID_CONVERSION ? height : 0));
-            }
+            // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
+            altitudeWgs84(altitude + heightGeoidWGS84);
 
-            lastGGATimestamp = frame.time;
             satellitesTracked = frame.satellites_tracked;
-            // 0: Fix not valid
-            // 1: GPS fix
-            // 2: Differential GPS fix (DGNSS), SBAS, OmniSTAR VBS, Beacon, RTX in GVBS mode
-            // 3: Not applicable
-            // 4: RTK Fixed, xFill
-            // 5: RTK Float, OmniSTAR XP/HP, Location RTK, RTX
-            // 6: INS Dead reckoning
             fixQuality = frame.fix_quality;
+            lastGGATimestamp = frame.time;
 
             sendMessageWhenGGAisRMC();
         }
@@ -152,15 +142,18 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
             struct minmea_sentence_gsa frame;
             if (minmea_parse_gsa(&frame, msg.sentence.c_str()))
             {
-                pDop = minmea_tofloat(&frame.pdop);
-                auto hDop = minmea_tofloat(&frame.hdop);
+                pDop = getFloat(frame.pdop, 100);
+                auto hDop = getFloat(frame.hdop, 100);
+
                 getBus().receive(
                     OpenAce::GpsStatsMsg{
                         fixQuality,
                         (uint8_t)frame.fix_type,
                         satellitesTracked,
-                        pDop == NAN ? 100 : pDop,
-                        hDop == NAN ? 100 : hDop});
+                        pDop,
+                        hDop
+                    }
+                );
             }
         }
     }
@@ -176,12 +169,12 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 /**
  * Convert an minmea_float with altitude/height information in meters
  */
-float GpsDecoder::convertToMeters(const struct minmea_float *value, char unit) const
+float GpsDecoder::convertToMeters(const minmea_float &f, char unit, float defaultValue) const
 {
-    float meters = minmea_tofloat(value);
-    if (meters==NAN) {
-        return INVALID_CONVERSION;
+    if (f.scale == 0) {
+        return defaultValue;
     }
+    float meters = minmea_tofloat(&f);
     switch (unit)
     {
     case 'M':
@@ -191,7 +184,7 @@ float GpsDecoder::convertToMeters(const struct minmea_float *value, char unit) c
     case 'f':
         return meters * FT_TO_M;
     default:
-        return INVALID_CONVERSION;
+        return defaultValue;
     }
 }
 
@@ -228,6 +221,9 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .velocityNorth = velocityNorth,
                     .velocityEast = velocityEast,
                     .heightEgm96 = static_cast<int16_t>(alt - height),
-                    .geoidOffset = static_cast<int16_t>(height)}});
+                    .geoidOffset = static_cast<int16_t>(height)
+                }
+            }
+        );
     }
 }

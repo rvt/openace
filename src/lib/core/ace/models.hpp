@@ -14,24 +14,26 @@ namespace OpenAce
      */
     enum class PostConstruct : uint8_t
     {
-        NA = 0,                 // No data yet avaiulable, use in the web modules
-        OK = 1,                 // Module is ready to be started
-        FAILED = 2,             // Generale failure
-        MEMORY = 3,             // Memory allocation issues
-        DEP_NOT_FOUND = 4,      // A dependency was needed but not loaded
-        XQUEUE_ERROR = 5,       // FreeRTOS X queue error
-        TASK_ERROR = 6,         // task creation failure
-        HARDWARE_NOT_FOUND = 7, // Hardware  not found
-        HARDWARE_ERROR = 8,     // Hardware  found but not working correctly
-        NETWORK_ERROR = 9,      // Netowrk issue
-        CONFIG_ERROR = 10,      // Configuration issue (not found incorrect etc...)
-        TIMER_ERROR = 11,       // task creation failure
-        MUTEX_ERROR = 12,       // FreeRTOS X queue error
+        NA = 0,                     // No data yet avaiulable, use in the web modules
+        OK = 1,                     // Module is ready to be started
+        FAILED = 2,                 // Generale failure
+        MEMORY = 3,                 // Memory allocation issues
+        DEP_NOT_FOUND = 4,          // A dependency was needed but not loaded
+        XQUEUE_ERROR = 5,           // FreeRTOS X queue error
+        TASK_ERROR = 6,             // task creation failure
+        HARDWARE_NOT_FOUND = 7,     // Hardware  not found
+        HARDWARE_ERROR = 8,         // Hardware  found but not working correctly
+        NETWORK_ERROR = 9,          // Netowrk issue
+        CONFIG_ERROR = 10,          // Configuration issue (not found incorrect etc...)
+        TIMER_ERROR = 11,           // task creation failure
+        MUTEX_ERROR = 12,           // FreeRTOS X queue error
+        HARDWARE_NOT_CONFIGURED = 13 // Indicate there was no configuration found
     };
 
     enum class PinType : uint8_t
     {
         UNKNOWN,
+        SPI,
         CLK,
         MOSI,
         MISO,

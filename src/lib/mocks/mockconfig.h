@@ -35,7 +35,7 @@ public:
         };
     }
 
-    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName, OpenAce::PinTypeMap map = OpenAce::PinTypeMap()) const override
+    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName) const override
     {
         OpenAce::PinTypeMap m;
         return m;

@@ -31,7 +31,7 @@ static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin,
  * numcharsConsideringValid        if this many characters are within rangeStart and rangeEnd then return true
  * ignoreFirstMs                   Ignore the first few bytes to ensure the uart is stable, we might get one or two bad bytes (5ms is aprox 6 bytes at 9600 baud)
  */
-static inline char uart_rx_program_test(
+static inline uint8_t uart_rx_program_test(
     PIO pio,
     uint sm,
     char rangeStart,
@@ -50,7 +50,7 @@ static inline char uart_rx_program_test(
         uint32_t currentTime = time_us_32();
         if (currentTime > endTime)
         {
-            return false;
+            return 2;
         }
 
         // Only process if FIFO is not empty
@@ -68,12 +68,12 @@ static inline char uart_rx_program_test(
                         validCharCounter++;
                         if (validCharCounter >= numcharsConsideringValid)
                         {
-                            return true;
+                            return 0;
                         }
                     }
                     else
                     {
-                        return false;
+                        return 1;
                     }
                 }
                 else
@@ -83,7 +83,6 @@ static inline char uart_rx_program_test(
             }
         }
 
-        taskYIELD();
     }
 }
 

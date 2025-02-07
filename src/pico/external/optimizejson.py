@@ -21,16 +21,19 @@ def write_cpp_header(data, file_path):
 
         file.write("#pragma once\n\n")
         file.write("#include <stdint.h>\n\n")        
-        file.write("static constexpr uint8_t DEFAULT_OPENACE_CONFIG[] = {")
 
         json_string = json.dumps(data, separators=(',', ':'))
+        json_bytes = [f"0x{ord(char):02X}" for char in json_string]
 
-        for i, char in enumerate(json_string):
+        file.write(f"static constexpr uint16_t DEFAULT_OPENACE_CONFIG_SIZE = {len(json_bytes) + 1};\n")
+        file.write("static constexpr uint8_t DEFAULT_OPENACE_CONFIG[] = {")
+
+        for i, byte in enumerate(json_bytes):
             if i % 20 == 0:
                 file.write("\n    ")
-            file.write(f"0x{ord(char):02X}, ")
+            file.write(f"{byte}, ")
 
-        file.write("0x00};\n")
+        file.write("0x00};\n")  # Null terminator
 
 def main():
     parser = argparse.ArgumentParser(description='Convert JSON file to a C++ constexpr array.')

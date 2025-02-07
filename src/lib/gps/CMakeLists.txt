@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(ubloxm8n VERSION 0.0.0 LANGUAGES CXX)
+project(gps VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
     ace/ubloxm8n.cpp
+    ace/L76B.cpp
     ace/AbstractGnss.cpp
 )
 

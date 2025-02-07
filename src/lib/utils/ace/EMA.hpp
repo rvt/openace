@@ -134,7 +134,7 @@ class RatePerSecond
     float delta;
     float dp;
 public:
-    RatePerSecond(float K, float DP) : filter{EMAFloat{K}}, previous{0}, delta{0.0}, dp(DP)
+    RatePerSecond(float K, float DP) : filter{EMAFloat{K}}, previous{0.f}, delta{0.0}, dp(DP)
     {
 
     }

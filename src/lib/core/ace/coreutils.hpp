@@ -380,6 +380,7 @@ public:
     /**
      * Add's the checksum and postfix characters to a NMEA string. It may contain an existing checksum that will be overwritten
      * When the capacity is not enough, the result is undefined 
+     * Note: Must start with the prefix character $
      * @param nmea example '$PFEC,GPint,RMC05'
      * @return             '$PFEC,GPint,RMC05*2D\r\n'
      */
@@ -405,6 +406,15 @@ public:
         nmea[i++] = '\n';
         nmea[i++] = '\0';
     }
+
+    template<size_t Array_Size>
+    static etl::string<Array_Size + 6> createNmeaChecksum(const char(&text)[Array_Size])
+    {
+        etl::string<Array_Size + 6> nmea(text, etl::strlen(text, Array_Size - 1));
+        addChecksumToNMEA(nmea);
+        return nmea;
+    }
+
 
     static uint32_t getTotalHeap(void);
     static uint32_t getFreeHeap(void);
@@ -463,5 +473,18 @@ public:
             hexStr[i * 2 + 1] = hexChars[byteArray[i] & 0x0F];    // Extract the lower 4 bits
         }
         hexStr[byteArrayLength * 2] = '\0'; // Null-terminate the string
+    }
+
+    /**
+     * Returns the pin number from the pin map, when not found returns -1 to indicate that
+     */
+    static int8_t pinValue(const OpenAce::PinTypeMap& pm, const OpenAce::PinType &pinName)
+    {
+        auto it = pm.find(pinName);
+        if (it != pm.end())
+        {
+            return it->second;
+        }
+        return -1;
     }
 };

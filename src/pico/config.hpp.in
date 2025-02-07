@@ -25,7 +25,7 @@
 #define LWIP_IGMP 1
 #define LWIP_NUM_NETIF_CLIENT_DATA 1
 #define MDNS_RESP_USENETIF_EXTCALLBACK  1
-// Increased to 8 ti prevent sys_timeout: timeout != NULL, pool MEMP_SYS_TIMEOUT is empty
+// Increased to 8 t0 prevent sys_timeout: timeout != NULL, pool MEMP_SYS_TIMEOUT is empty
 #define MEMP_NUM_SYS_TIMEOUT (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 8)
 #define MEMP_NUM_TCP_PCB 12
 // END: The following is needed to test mDns
@@ -94,9 +94,6 @@
 // Maximum number of TCP clients that can connect to the server
 #define OPENACE_MAXIMUM_TCP_CLIENTS ( 4 )
 
-// Default SPI hardware on Pico. THis cannot eb changed unless hardware or implementation is changed
-#define OPENACE_SPI_DEFAULT spi0
-
 // Default BUS frequency of SPI in MHZ
 #define OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY ( 15 )
 
@@ -136,3 +133,7 @@
 
 // Maximum number of bluetooth connections
 #define OPENACE_MAX_BLUETOOTH_CONNECTIONS ( 3 )
+
+// Signature for Flash configuration. When this signature changes, a compete new and fresh configuration will be loaded
+// Make sure this value is the same as in openace_default_config.json
+#define OPENACE_FLASH_SIGNATURE ( 250207 )

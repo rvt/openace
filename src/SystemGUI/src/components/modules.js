@@ -11,7 +11,9 @@ class OpenAceModules extends El {
       selectedModule: 0,
       enabled: [],
       restartDlg: false,
+      changeHwDlg : false,
     });
+
     // All modules that can be monitored (Some time we should automated this by reading this from the Micocontroller)
     this.monitorable = [
       "ADSL",
@@ -26,6 +28,7 @@ class OpenAceModules extends El {
       "Sx1262_0",
       "Sx1262_1",
       "UbloxM8N",
+      "L76B",
       "ADSBDecoder",
       "Dump1090Client",
       "Bmp280",
@@ -35,7 +38,7 @@ class OpenAceModules extends El {
       "DataPort",
       "AirConnect",
       "Bluetooth",
-      "Webserver"
+      "Webserver",
     ];
     this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "Bluetooth"];
     this.enablers = [
@@ -51,11 +54,12 @@ class OpenAceModules extends El {
       "Sx1262_1",
       "Sx1262_0",
       "UbloxM8N",
+      "L76B",
       "RadioTunerRx",
       "RadioTunerTx",
       "DataPort",
       "AirConnect",
-      "Bluetooth"
+      "Bluetooth",
     ];
     this.info = {
       WifiService: (html) =>
@@ -79,7 +83,8 @@ class OpenAceModules extends El {
       AceSpi: (html) => html`Core module for controlling SPI access between different modules.`,
       Config: (html) => html`Core module for receiving and storing configurations.`,
       GpsDecoder: (html) => html`Core module for decoding GPS NMEA messages.`,
-      UbloxM8N: (html) => html`Configures uBlox8 or similar hardware devices.`,
+      UbloxM8N: (html) => html`Configures uBlox GPS devices`,
+      L76B: (html) => html`Configures L76B GPS devices`,
       PicoRtc: (html) => html`Reads GPS messages and handles accurate time tracking for various protocols.`,
       Sx1262_0: (html) => html`Radio module 1. Sends and receives ADS-L, OGN, and Flarm protocols.`,
       Sx1262_1: (html) => html`Radio module 2. Sends and receives ADS-L, OGN, and Flarm protocols.`,
@@ -90,6 +95,7 @@ class OpenAceModules extends El {
 
   mounted() {
     this._running = false;
+    this._newHwIdx = 0;
     this._fetchData();
   }
 
@@ -109,8 +115,11 @@ class OpenAceModules extends El {
   }
 
   _restartButton(html) {
-    return html`<button class="btn xs" onclick=${() => (this.state.restartDlg = true)}>Restart</button>`;
+    return html`<button class="btn xs" onclick=${() => (this.state.restartDlg = true)}>Restart</button>
+          ${this.state.restartDlg ? this._restartAreYouSureDlg(html) : ""} ${this.state.usbBootDlg ? this._usbBootDlgAreYouSureDlg(html) : ""}
+    `;
   }
+
   _usbBootButton(html) {
     return html`<button class="btn xs" onclick=${() => (this.state.usbBootDlg = true)}>Upload Firmware</button>`;
   }
@@ -165,6 +174,43 @@ class OpenAceModules extends El {
     </div>`;
   }
 
+  _changeHwButton(html) {
+    return html`<button class="btn xs" onclick=${() => (this.state.changeHwDlg = true)}>Change Board : ${store.state.hardwareName}</button>
+          ${this.state.changeHwDlg === true ? this._changeHardwareDialog(html) : ""}
+    `;
+  }
+
+  _changeHardwareDialog(html) {
+    return html` <div class="modal show">
+      <div class="modal-content mw-400 rounded">
+        <article class="accent-light shadow">
+          <header>
+          <h4>Change hardware model?</h4>
+          </header>
+          <div class="overflow-auto accent-primary" style="color: black">
+            <!-- Quick hack to make text black on Safari Desktop -->
+            <p>
+              This will change the type of board that OpenAce is running on. 
+              After changing the connection will be temporary disconnected. 
+              Any unsaved data will be available after restart.<br />
+            </p>
+
+            <select onchange=${ e => this._selectedHwIndx = e.currentTarget.selectedIndex}>
+              ${store.availableHardware.map(
+                (item) => html`<option ${item.hardware === store.state?.hardware?.type ? "selected" : ""} value="${item.hardware}">${item.name}</option>`,
+              )}
+            </select>
+
+          </div>
+          <footer class="px-2 jc-end">
+            <button type="button" class="btn btn-error sm ml-1 md-ml-3" onclick=${this._hardwareUpdatedConfirm}>Change</button>
+            <button type="button" class="btn btn-primary sm ml-1 md-ml-3" onclick=${() => (this.state.changeHwDlg = false)}>Cancel</button>
+          </footer>
+        </article>
+      </div>
+    </div>`;
+  }
+
   _postConstructToString(value) {
     const errorMap = {
       0: "Never Loaded",
@@ -180,6 +226,7 @@ class OpenAceModules extends El {
       10: "Configuration error",
       11: "Timer error",
       12: "Mutex error",
+      13: "Not Available",
     };
     return errorMap[value] || "Unknown error";
   }
@@ -249,6 +296,17 @@ class OpenAceModules extends El {
     `;
   }
 
+  async _hardwareUpdatedConfirm(e)  
+  {
+    if (this._selectedHwIndx > 0) {
+      this.state.changeHwDlg = true;
+      await store.updateHardware(this._selectedHwIndx);
+      this._selectedHwIndx = 0;
+      store.restart();
+    } 
+    this.state.changeHwDlg = false;
+  }
+
   _row(html, item) {
     let monitorBtn =
       item.poststatus == 1 && this.monitorable.includes(item.name)
@@ -288,11 +346,7 @@ class OpenAceModules extends El {
   _showModuleOverview(html) {
     let items = this._filteredItems();
     return html`
-      <div class="grid md-columns-2 lg-columns-3 ">
-        <div>${this._restartButton(html)}</div>
-        <div>${this._usbBootButton(html)}</div>
-      </div>
-      ${this.state.restartDlg ? this._restartAreYouSureDlg(html) : ""} ${this.state.usbBootDlg ? this._usbBootDlgAreYouSureDlg(html) : ""}
+
       <div class="section">
         <table>
           <tbody>
@@ -303,11 +357,22 @@ class OpenAceModules extends El {
     `;
   }
 
+  _showHeader(html) {
+    let items = this._filteredItems();
+    return html`
+      <div class="row md-columns-2 lg-columns-3" style="margin-top: 5px">
+          <div>${this._restartButton(html)}</div>
+          <div>${this._usbBootButton(html)}</div>
+          <div>${this._changeHwButton(html)}</div>
+      </div>
+    `;
+  }
+
   render(html) {
     let pageContent;
     switch (this.state.whatToShow) {
       case "modules":
-        pageContent = this._showModuleOverview(html);
+        pageContent = this._showHeader(html) + this._showModuleOverview(html);
         break;
       case "monitor":
         pageContent = this._showModuleStatus(html);

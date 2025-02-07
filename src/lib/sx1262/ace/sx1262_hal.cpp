@@ -52,10 +52,10 @@ sx126x_hal_status_t sx126x_hal_write(const void *context, const uint8_t *command
     else
     {
         spi->cs_select(sx1262->cs());
-        spi_write_blocking(OPENACE_SPI_DEFAULT, command, command_length);
+        spi_write_blocking(spi->spiNum()?spi1:spi0, command, command_length);
         if (data_length != 0)
         {
-            spi_write_blocking(OPENACE_SPI_DEFAULT, data, data_length);
+            spi_write_blocking(spi->spiNum()?spi1:spi0, data, data_length);
         }
     }
     spi->cs_deselect(sx1262->cs());
@@ -77,7 +77,7 @@ sx126x_hal_status_t sx126x_hal_read(const void *context, const uint8_t *command,
     else
     {
         spi->cs_select(sx1262->cs());
-        int length = spi_write_blocking(OPENACE_SPI_DEFAULT, command, command_length);
+        int length = spi_write_blocking(spi->spiNum()?spi1:spi0, command, command_length);
         if (length != command_length)
         {
             puts("sx126x_hal_read write error");
@@ -85,7 +85,7 @@ sx126x_hal_status_t sx126x_hal_read(const void *context, const uint8_t *command,
         }
         else
         {
-            length = spi_read_blocking(OPENACE_SPI_DEFAULT, 0, data, data_length);
+            length = spi_read_blocking(spi->spiNum()?spi1:spi0, 0, data, data_length);
             if (length != data_length)
             {
                 puts("sx126x_hal_read read error");

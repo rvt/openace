@@ -57,7 +57,7 @@ bool UbloxM8N::configureGnss()
 {
     // Initialise the GPS hardware
     setStatus("Search");
-    uint32_t baudrate = getSerial().findBaudRate(5'000);
+    uint32_t baudrate = getSerial().findBaudRate(1'000);
     if (!baudrate)
     {
         setStatus("NO GPS");

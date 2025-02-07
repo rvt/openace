@@ -30,12 +30,14 @@ OpenAce::PostConstruct Config::postConstruct()
     // Load a configuration in this order
     // volatileStore -> persistentStore -> Defaul configuration
     auto error = deserializeJson(doc, volatileStore.data());
-    if (error)
+    auto loadDefaultConfig = false; // Only usefull for developers, this ensures the default config is always loaded when ste to true
+    if (error || loadDefaultConfig)
     {
         error = deserializeJson(doc, permanentStore.data());
+        auto signatureMismatch = doc[SIGNATURE].as<uint32_t>() != OPENACE_FLASH_SIGNATURE;
 
         // Still error, load default
-        if (error)
+        if (error || signatureMismatch || loadDefaultConfig)
         {
             volatileStore.write(defaultConfig, strlen((const char *)defaultConfig) + 1);
             deserializeJson(doc, volatileStore.data());
@@ -51,14 +53,6 @@ OpenAce::PostConstruct Config::postConstruct()
     else
     {
         statistics.location = VOLATILE;
-    }
-
-    // To protected any hardware from incorrectly configurations all processing needs to stop
-    uint32_t value = doc[SIGNATURE].as<uint16_t>();
-    if (value != 4321)
-    {
-        panic("Signature incorrect");
-        return OpenAce::PostConstruct::CONFIG_ERROR;
     }
 
     return OpenAce::PostConstruct::OK;
@@ -170,7 +164,7 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
                 while (true)
                 {
                     tight_loop_contents();
-                }
+                } 
             }
             else
             {
@@ -265,20 +259,18 @@ void Config::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-const OpenAce::PinTypeMap Config::pinMap(const etl::string_view moduleName, OpenAce::PinTypeMap map) const
+const OpenAce::PinTypeMap Config::pinMap(const etl::string_view moduleName) const
 {
-    ccharptr hardware = (ccharptr)doc["hardware"];
-    if (ccharptr port = doc[moduleName]["port"]; port)
+    OpenAce::PinTypeMap map;
+    ccharptr hardware = (ccharptr)doc["hardware"]["type"];
+    if (JsonObjectConst moduleConfig = doc[hardware][moduleName]; !moduleConfig.isNull())
     {
-        if (JsonObjectConst configPort = doc[hardware][port]; !configPort.isNull())
+        for (JsonPairConst kv : moduleConfig)
         {
-            for (JsonPairConst kv : configPort)
+            auto pinType = OpenAce::stringToPinType(kv.key().c_str());
+            if (pinType != OpenAce::PinType::UNKNOWN)
             {
-                auto pinType = OpenAce::stringToPinType(kv.key().c_str());
-                if (pinType != OpenAce::PinType::UNKNOWN)
-                {
-                    map[pinType] = kv.value().as<uint8_t>();
-                }
+                map[pinType] = kv.value().as<uint8_t>();
             }
         }
     }

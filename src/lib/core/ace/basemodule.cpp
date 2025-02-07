@@ -19,9 +19,9 @@ const char *postConstructToString(OpenAce::PostConstruct value)
     case OpenAce::PostConstruct::FAILED:
         return "OpenAce::PostConstruct failed";
     case OpenAce::PostConstruct::MEMORY:
-        return "PMemory error";
+        return "Memory error";
     case OpenAce::PostConstruct::DEP_NOT_FOUND:
-        return "PA dependency was not found";
+        return "A dependency was not found";
     case OpenAce::PostConstruct::XQUEUE_ERROR:
         return "xQueue error";
     case OpenAce::PostConstruct::TASK_ERROR:
@@ -38,6 +38,8 @@ const char *postConstructToString(OpenAce::PostConstruct value)
         return "Failed to create mutex";
     case OpenAce::PostConstruct::TIMER_ERROR:
         return "Timer error";
+    case OpenAce::PostConstruct::HARDWARE_NOT_CONFIGURED:
+        return "Hardware configuration not found";
     default:
         return "unknown error";
     }
@@ -132,6 +134,8 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t
         {
             panic("pinInterruptHandlers is full");
         }
+        // TODO: https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#group_hardware_gpio_1ga6165f07f4b619dd08ea6dc97d069e78a
+        // Might need to change this to gpio_add_raw_irq_handler
         gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
         pinInterruptHandlers[pin] = {events, handler, notificationValue};
     }
@@ -148,7 +152,7 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallb
         {
             panic("pinInterruptHandlers is full");
         }
-        puts("Registering2 pin interrupt");
+        printf("Registering pin %d interrupt", pin);
         gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
         pinInterruptHandlers[pin] = {events, callback};
     }

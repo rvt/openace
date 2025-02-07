@@ -25,11 +25,18 @@
 class AceSpi : public SpiModule, public etl::message_router<AceSpi>
 {
 private:
+    /**
+     * Reset all attached devices that is using the rst pin
+     */
+    void resetDevices() const;
+
+private:
     static constexpr uint8_t READ_BIT = 0x80;
     const uint8_t clk;
     const uint8_t mosi;
     const uint8_t miso;
     const uint8_t rst;
+    const uint8_t spi;
     uint8_t lastBusFrequency;
     SemaphoreHandle_t mutex;
 public:
@@ -39,6 +46,7 @@ public:
                                                                       mosi(pins.at(OpenAce::PinType::MOSI)),
                                                                       miso(pins.at(OpenAce::PinType::MISO)),
                                                                       rst(pins.at(OpenAce::PinType::RST)),
+                                                                      spi(pins.at(OpenAce::PinType::SPI)),
                                                                       lastBusFrequency(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY)
     {
     }
@@ -74,10 +82,7 @@ public:
 
     virtual void releaseSlotSync() override;
 
-    /**
-     * Reset all attached devices that is using the rst pin
-     */
-    void resetDevices() const;
+    virtual uint8_t spiNum() const;
 
     void on_receive_unknown(const etl::imessage &msg);
 };

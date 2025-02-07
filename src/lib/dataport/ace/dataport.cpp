@@ -11,11 +11,8 @@ void DataPort::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
         return;
     }
 
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::configMutex))
-    {
-        address = openAceConfiguration.address;
-        category = openAceConfiguration.category;
-    }
+    address = openAceConfiguration.address;
+    category = openAceConfiguration.category;
 }
 
 void DataPort::on_receive(const OpenAce::OwnshipPositionMsg &msg)

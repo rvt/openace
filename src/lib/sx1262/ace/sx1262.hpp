@@ -210,4 +210,5 @@ public:
     virtual void txPacket(const TxPacket &txpacket) override;
 
     void waitBusy(uint16_t minimumDelay) const;
+
 };

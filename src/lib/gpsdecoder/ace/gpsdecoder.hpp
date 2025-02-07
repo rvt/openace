@@ -13,6 +13,7 @@
 
 #include "minmea.h"
 
+#include "etl/math.h"
 
 
 /**
@@ -31,30 +32,38 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, Ope
         uint32_t startTime = CoreUtils::timeS32();
     } statistics;
 
-    static constexpr float INVALID_CONVERSION = -9999;
-
-    float velocityNorth;
-    float velocityEast;
+    float velocityNorth=0;
+    float velocityEast=0;
     RatePerSecond altitudeWgs84{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2};
-    float heightGeoidWGS84;
-    float groundSpeed;
+    float heightGeoidWGS84=0;
+    float altitude=0;
+    float groundSpeed=0;
     RatePerSecond course{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2};
-    float latitude;
-    float longitude;
+    float latitude=0;
+    float longitude=0;
 
-    uint8_t fixQuality;
-    uint8_t satellitesTracked;
-    float pDop;
+    // 0: Fix not valid
+    // 1: GPS fix
+    // 2: Differential GPS fix (DGNSS), SBAS, OmniSTAR VBS, Beacon, RTX in GVBS mode
+    // 3: Not applicable
+    // 4: RTK Fixed, xFill
+    // 5: RTK Float, OmniSTAR XP/HP, Location RTK, RTX
+    // 6: INS Dead reckoning
+    uint8_t fixQuality=0;
+    uint8_t satellitesTracked=0;
+    float pDop=255;
 
     minmea_time lastRMCTimestamp;
     minmea_time lastGGATimestamp;
+    const uint32_t taskStartTime;
+
 private:
     void on_receive(const OpenAce::GPSSentenceMsg& msg);
 
     /**
      * Convert an minmea_float with altitude/height information in meters
     */
-    float convertToMeters(const struct minmea_float *value, char unit) const;
+    float convertToMeters(const minmea_float &value, char unit, float defaultValue) const;
 
     /**
      * Send message when both GGA and RMC sentences are received
@@ -65,14 +74,24 @@ private:
     {
         (void)msg;
     }
+
+    uint8_t getGpsRate() const {
+        return (((float)statistics.receivedRMC) / (CoreUtils::timeS32() - taskStartTime)) + 0.5f;
+    }
+
+    float getFloat(const minmea_float &f, float defaultValue) {
+        if (f.scale == 0) {
+            return defaultValue;
+        }
+        return  minmea_tofloat(&f);
+    }
+
 public:
     static constexpr const etl::string_view NAME = "GpsDecoder";
     GpsDecoder(etl::imessage_bus& bus, const Configuration &config) : BaseModule(bus, NAME),
-        fixQuality(0),
-        satellitesTracked(0),
-        pDop(255),
         lastRMCTimestamp({0,0,0,0}),
-        lastGGATimestamp({0,0,0,0})
+        lastGGATimestamp({0,0,0,0}),
+        taskStartTime(CoreUtils::timeS32())
     {
         (void)config;
     }

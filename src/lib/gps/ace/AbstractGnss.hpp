@@ -6,7 +6,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "etl/message_router.h"
 #include "etl/message_bus.h"
 #include "etl/string_view.h"
 
@@ -20,7 +19,7 @@ class AbstractGnss : public BaseModule
 {
 private:
     static constexpr uint8_t QUEUE_SIZE = 6;
-    static constexpr uint32_t REQUIRED_GPS_BAUDRATE = 115200; // If you change this, you need to change the baudrate in the ublox config as well
+    static constexpr uint32_t DEFAULT_GPS_BAUDRATE = 115200; // If you change this, you need to change the baudrate in the ublox config as well
 
     friend class message_router;
     
@@ -40,10 +39,9 @@ private:
     static void receiveTask(void *arg);
 
     PioSerial pioSerial;
-    uint8_t ppsPin;
+    int8_t ppsPin;
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<OpenAce::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
-
 protected:
     PioSerial &getSerial() {
         return pioSerial;
@@ -63,7 +61,7 @@ protected:
     /*
     This method can be overwritten to cleanup teh sebtence if needed
     */
-    virtual bool preProcessSentence(OpenAce::NMEAString &sentence) {
+    virtual bool preProcessSentence(etl::string_view sentence) {
         (void)sentence;
         return true;
     }
@@ -75,8 +73,8 @@ protected:
 public:
     AbstractGnss(etl::imessage_bus& bus, const etl::string_view name, const OpenAce::PinTypeMap& pins) :
         BaseModule(bus, name),
-        pioSerial{pins, REQUIRED_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
-        ppsPin(pins.at(OpenAce::PinType::BUSY)),
+        pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
+        ppsPin(CoreUtils::pinValue(pins, OpenAce::PinType::BUSY)),
         taskHandle(nullptr)
     {
     }
