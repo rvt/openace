@@ -47,7 +47,7 @@ Communication support is what protocols are supported to other devices like elec
 
 OpenAce is currently tested with SkyDeamon only,  If you made it work with any other software on Phone or Tabled, do let me know so I can add or help out ot make this work.
 
-| EFB       | GDL90 over WIFI    | Bluetooth                 | DataPort (NEMA) WIFI |
+| EFB       | GDL90 over WIFI    | Bluetooth                 | DataPort (NMEA) WIFI |
 | --------- | ------------------ |  --------------------     | -------------------- |
 | SkyDeamon | :heavy_check_mark: | :heavy_check_mark:        | :heavy_check_mark:   |
 

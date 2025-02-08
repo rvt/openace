@@ -53,6 +53,11 @@ inline constexpr uint8_t *UbloxM8N_m8nConfig[UbloxM8N_m8nConfig_size] = {
 // clang-format on
 // *INDENT-ON*
 
+// Note on PPS:
+// ublox uses rising pulse to trigger
+// https://portal.u-blox.com/s/question/0D52p0000D35wjlCQA/how-to-minimize-serial-output-time-variance
+// Note: when we really have a GPS without PPS, perhaps we can just call AbstractGnss_rtc->ppsEvent();
+// after detecting GMC? and just 'add' a few us to compensate for incomming GPS time messages?
 bool UbloxM8N::configureGnss()
 {
     // Initialise the GPS hardware

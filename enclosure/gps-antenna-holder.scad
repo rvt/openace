@@ -15,7 +15,9 @@ include <NopSCADlib/vitamins/screws.scad>
 $fn = $preview ? 32 : 256;
 
 // Diameter of the inner case
-DIAMETER=31;    // [20:50]
+WIDTH=31;    // [20:50]
+LENGTH=31;    // [20:50]
+DIAMETER = WIDTH<LENGTH?WIDTH:LENGTH;
 SQUARE_ROUND=3; // [1:25]
 
 WALL=0.4*4;
@@ -36,8 +38,14 @@ FRICTION_RING=true;
 NON_STRUCTURAL=true;
 
 
-SCREWS=[45,135,225,315];
-SCREW_DIST=16; // [12:0.5:25]
+SCREW_DIST_X=0; // [-10:0.5:10]
+SCREW_DIST_Y=0; // [-10:0.5:10]
+SCREWS=[
+  [-WIDTH/2-SCREW_DIST_X,LENGTH/2+SCREW_DIST_Y],
+  [-WIDTH/2-SCREW_DIST_X,-LENGTH/2-SCREW_DIST_Y],
+  [WIDTH/2+SCREW_DIST_X,-LENGTH/2-SCREW_DIST_Y],
+  [WIDTH/2+SCREW_DIST_X,LENGTH/2+SCREW_DIST_Y],
+];
 
 /** [Visualisation only] **/
 // hangle of the hinge
@@ -63,6 +71,8 @@ SCREWD=2.4;
 SCREWHD=5;
 SCREW_L=8;
 SCREWWALL=0.4*2;
+
+up (6) color([1,1,1,0.1]) #cuboid([22,20,8]);
 
 // Simple cropping function
 // c=Size of cropping cube
@@ -91,7 +101,7 @@ module topGNSS() {
     for(r = [0, 90, 180, 270]) {
       zrot(r) {
         intersect("bounds")
-        cyl(d=DIAMETER,l=BHEIGHT,anchor=TOP){
+        cyl(d=WIDTH,l=BHEIGHT,anchor=TOP){
           tag("bounds") left(25.5/2+30/2+1) cube([30,30,10], center=true);
         }
         tag("remove3") left(33/2) cyl(d=2,l=15);
@@ -102,7 +112,7 @@ module topGNSS() {
 
 module cdebyte_E108_GN04 () {
   right(2) if ($preview && NON_STRUCTURAL) {
-    #cuboid([21,20,0.6], anchor=BOTTOM) {
+    #cuboid([22,20,0.6], anchor=BOTTOM) {
       position(TOP) cuboid([18,18,4.5],anchor=BOTTOM);
       position(BOTTOM) right(2.5) cuboid([18,15.5,3],anchor=TOP, spin=90);
       position(BOTTOM) left(8.5) cuboid([4,9,3.5],anchor=TOP);
@@ -121,16 +131,17 @@ module cdebyte_E108_GN04 () {
 
 module cap_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
 
-  attachable(anchor, spin, orient, size=[DIAMETER,DIAMETER,THEIGHT], center) {  
+  attachable(anchor, spin, orient, size=[WIDTH,LENGTH,THEIGHT], center) {  
     union() {
     down(THEIGHT/2) 
     diff("remove_cap") 
-    rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, d=DIAMETER, anchor=BOTTOM) {
+    rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, rect=[WIDTH,LENGTH], anchor=BOTTOM) {
             
-      attach(TOP) down(0.5) {
+      attach(TOP) down(0.8) {
         {
-          cylinder(d=DIAMETER-10,h=ANTENNA_CLERARANCE, anchor=TOP);
-          tag("remove_cap") down(ANTENNA_CLERARANCE) rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, d=DIAMETER-WALL*2, anchor=TOP);
+          tag("remove_cap") cylinder(d=DIAMETER-10,h=ANTENNA_CLERARANCE+1, anchor=TOP);
+          tag("remove_cap") down(ANTENNA_CLERARANCE) rrect(rt=2, rs=SQUARE_ROUND, l=THEIGHT, 
+          rect=[WIDTH,LENGTH]-[WALL*2,WALL*2], anchor=TOP);
         }
       }
     } 
@@ -142,6 +153,7 @@ module cap_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
 
 module cap() {
   // Cap
+  crop(c=(_CROP?300:0),t=[0,0,0],r=90)
   color("#FFA0A0")
   {
     diff()    
@@ -150,10 +162,10 @@ module cap() {
     
       position(BOTTOM)
       for (n = SCREWS) {
-          zrot(n) left(SCREW_DIST) cyl(d=SCREWD+0.4*5, l=THEIGHT-2, anchor=BOTTOM) { // d Should be the same as bottom case
+          left(n.x) back(n.y) cyl(d=SCREWD+0.4*5, l=THEIGHT-2, anchor=BOTTOM) { // d Should be the same as bottom case
           position(TOP) cyl(d1=SCREWD+0.4*5, d2=SCREWD+0.4*5-2, l=1.5, anchor=BOTTOM);
         }
-        zrot(n) left(SCREW_DIST) down(0.01) tag("remove") up(0) screwStuff(struct=2, anchor=TOP, shaftd=2.4, shaftl=THEIGHT-2, orient=DOWN);
+        left(n.x) back(n.y) down(0.01) tag("remove") up(0) screwStuff(struct=2, anchor=TOP, shaftd=2.4, shaftl=THEIGHT-2, orient=DOWN);
       }
     }
 
@@ -161,11 +173,12 @@ module cap() {
 }
 
 module base_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
-  attachable(anchor, spin, orient, size=[DIAMETER,DIAMETER,BHEIGHT], center) {  
+  attachable(anchor, spin, orient, size=[WIDTH,LENGTH,BHEIGHT], center) {  
       union() {
         diff("remove2", "keep2")
-          rrect(rt=0.1, rs=SQUARE_ROUND, l=BHEIGHT, d=DIAMETER) {
-            tag("remove2") attach(TOP) up(1) rrect(rt=0.1, rs=SQUARE_ROUND-WALL, l=BHEIGHT, d=DIAMETER-WALL*2, anchor=TOP);
+          rrect(rt=0.1, rs=SQUARE_ROUND, l=BHEIGHT, rect=[WIDTH,LENGTH]) {
+            tag("remove2") attach(TOP) up(1) rrect(rt=0.1, rs=SQUARE_ROUND-WALL, l=BHEIGHT, 
+            rect=[WIDTH,LENGTH]-[WALL*2,WALL*2], anchor=TOP);
         }
       }
       children();
@@ -204,8 +217,8 @@ module casing() {
         // Screw + Support
         color([1,1,1])
         for (n = SCREWS) {
-          zrot(n)
-          left(SCREW_DIST) {
+          left(n.x) back(n.y)
+          {
             // Structure
             position(BOTTOM) {
               cyl(d=SCREWD+0.4*5,l=6, anchor=BOTTOM); // d Should be the same as top case
@@ -320,13 +333,13 @@ module gpsSideAttach(w1=21.5, w2=9, d=3, h=18) {
 
 
 // Round Rect module to set top and side rounding
-module rrect(rt=4, rs=2, l=10, d=10, anchor=CENTER, spin=0, orient=UP) {
-  r=d/2;
-  RT = ((rt>r)?r:rt) - 0.1;
-  RS = ((rs>r)?r:rs) - 0.1;
-  asize=[d,d,l];
+module rrect(rt=4, rs=2, l=10, rect=[10,10], anchor=CENTER, spin=0, orient=UP) {
+//  r=d/2;
+  RT = rt - 0.1;
+  RS = rs - 0.1;
+  asize=[rect.x,rect.y,l];
   attachable(anchor, spin, orient, asize) {
-    down(l/2)     offset_sweep(round_corners(rect(d), radius=RS), height=l, top=os_circle(r=RT));
+    down(l/2)     offset_sweep(round_corners(rect(rect), radius=RS), height=l, top=os_circle(r=RT));
     children();
   }
 }

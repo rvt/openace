@@ -1,12 +1,10 @@
 #pragma once
 
 #include <stdint.h>
-
 #include "AbstractGnss.hpp"
-
 #include "etl/message_router.h"
 
-class UbloxM8N : public AbstractGnss, public etl::message_router<UbloxM8N>
+class L76B : public AbstractGnss, public etl::message_router<L76B>
 {
 private:
     static constexpr uint32_t REQUIRED_GPS_BAUDRATE = 115200; // If you change this, you need to change the baudrate in the ublox config as well
@@ -28,16 +26,18 @@ private:
     // }
 
 public:
-    static constexpr const etl::string_view NAME = "UbloxM8N";
-    UbloxM8N(etl::imessage_bus& bus, const OpenAce::PinTypeMap& pins) : 
+    static constexpr const etl::string_view NAME = "L76B";
+    L76B(etl::imessage_bus& bus, const OpenAce::PinTypeMap& pins) : 
         AbstractGnss(bus, NAME, pins)
     {
     }
 
-    UbloxM8N(etl::imessage_bus& bus, const Configuration &config)  : UbloxM8N(bus, config.pinMap(NAME))
+    L76B(etl::imessage_bus& bus, const Configuration &config)  : L76B(bus, config.pinMap(NAME))
     {
     }
 
-    virtual ~UbloxM8N() = default;
+    virtual ~L76B() = default;
 
 };
+
+

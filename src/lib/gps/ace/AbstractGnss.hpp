@@ -68,6 +68,7 @@ protected:
 
     virtual bool configureGnss() = 0;
 
+    
 
 
 public:

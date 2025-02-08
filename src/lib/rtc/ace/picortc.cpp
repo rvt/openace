@@ -47,8 +47,8 @@ void PicoRtc::on_receive(const OpenAce::UtcTimeMsg &msg)
     uint32_t elapsedUsSincePps = CoreUtils::timeUs32() - lastPpstime;
 
     // Don't set the time if it's more than 100ms since the last PPS and also ensures RTC
-    // will be set at whole seconds only
-    if (elapsedUsSincePps > 100'000)
+    // will be set at whole seconds only L78B needs between 170ms..180ms.
+    if (elapsedUsSincePps > 200'000)
     {
         statistics.highElapseTimeErr++;
         return;
