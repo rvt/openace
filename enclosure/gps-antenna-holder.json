@@ -2,19 +2,22 @@
     "fileFormatVersion": "1",
     "parameterSets": {
         "TopGNSS": {
-            "CAP_POSITION": "50",
+            "CAP_POSITION": "41.5",
             "CROP": "false",
+            "LENGTH": "42",
             "NON_STRUCTURAL": "true",
-            "SQUARE_ROUND": "11",
-            "THEIGHT": "10.5"
+            "SCREW_DIST_X": "-5.5",
+            "SCREW_DIST_Y": "-5.5",
+            "SQUARE_ROUND": "19",
+            "THEIGHT": "10.5",
+            "WIDTH": "42"
         },
         "cdebyte_E108_GN04": {
             "ANTENNA_CLERARANCE": "1",
             "BHEIGHT": "5",
-            "CAP_POSITION": "5.5",
-            "CROP": "true",
+            "CAP_POSITION": "50",
+            "CROP": "false",
             "FRICTION_RING": "true",
-            "HINGE_ANGLE": "86",
             "LENGTH": "25",
             "MODULE": "cdebyte_E108_GN04",
             "NON_STRUCTURAL": "false",
@@ -30,7 +33,6 @@
             "CAP_POSITION": "25",
             "CROP": "false",
             "FRICTION_RING": "true",
-            "HINGE_ANGLE": "45",
             "MODULE": "No Module",
             "SQUARE_ROUND": "6",
             "THEIGHT": "13"

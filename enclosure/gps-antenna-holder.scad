@@ -34,12 +34,9 @@ ANTENNA_CLERARANCE=1; // [1,1.5,2,2.5,3]
 // Friction makes some extra room for a rubber ring to ensure the antenna will stay in position during vibrations
 FRICTION_RING=true;
 
-// SHow any non structual design elements, like the HW of the GPS itself
-NON_STRUCTURAL=true;
 
-
-SCREW_DIST_X=0; // [-10:0.5:10]
-SCREW_DIST_Y=0; // [-10:0.5:10]
+SCREW_DIST_X=0; // [-15:0.5:15]
+SCREW_DIST_Y=0; // [-15:0.5:15]
 SCREWS=[
   [-WIDTH/2-SCREW_DIST_X,LENGTH/2+SCREW_DIST_Y],
   [-WIDTH/2-SCREW_DIST_X,-LENGTH/2-SCREW_DIST_Y],
@@ -48,13 +45,13 @@ SCREWS=[
 ];
 
 /** [Visualisation only] **/
-// hangle of the hinge
-HINGE_ANGLE=45; // [0:110]
+// SHow any non structual design elements, like the HW of the GPS itself
+NON_STRUCTURAL=true;
 
 // Position of the top to move it up/down
 CAP_POSITION=20; // [0:0.5:50]
 
-// Visualize cropping
+
 CROP=false;
 
 MODULE="TOPGNSS"; // [TOPGNSS, square20_20_5, cdebyte_E108_GN04, No Module]
@@ -72,7 +69,7 @@ SCREWHD=5;
 SCREW_L=8;
 SCREWWALL=0.4*2;
 
-up (6) color([1,1,1,0.1]) #cuboid([22,20,8]);
+//up (6) color([1,1,1,0.1]) #cuboid([22,20,8]);
 
 // Simple cropping function
 // c=Size of cropping cube
@@ -211,8 +208,10 @@ module casing() {
 
         // Hinge
         position(RIGHT)
-          knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+0.5, 
-            arm_height=0,  anchor=BOT, orient=RIGHT, spin=90, inner=true, knuckle_diam=KNUNCKLE_DIAM);     
+          knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, orient=RIGHT, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+0.5, 
+            arm_height=0,  anchor=BOT,  spin=90, inner=true, knuckle_diam=KNUNCKLE_DIAM) {
+            position(BOT) cuboid([1.5,KNUNCKLE_DIAM,HINGE_LENGTH*(HINGE_SEGS-2)], anchor=LEFT, orient=RIGHT);
+          }    
         
         // Screw + Support
         color([1,1,1])
@@ -246,7 +245,7 @@ module bottom_plate() {
   // Bottom plate
   PLATE_DOWN=($preview?0:5);
   diff()
-  cuboid([HINGE_LENGTH*5+2, 25, 0.2*4], anchor=TOP, chamfer=0.2*4, edges=[TOP+LEFT, TOP+RIGHT, TOP+FRONT, TOP+BACK]) {
+  cuboid([HINGE_LENGTH*5+10, 35, 1.5], anchor=BOTTOM, chamfer=0.2*4, edges=[TOP+LEFT, TOP+RIGHT, TOP+FRONT, TOP+BACK]) {
     
     position(TOP+BACK)     
     fwd(1) knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+0.5, arm_height=0, anchor=BOT+BACK, inner=false,knuckle_diam=KNUNCKLE_DIAM) {
