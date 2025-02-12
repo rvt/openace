@@ -53,7 +53,6 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
 void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 {
     // printf("GpsDecoder: %s\n", msg.sentence.c_str());
-    static Every<uint32_t, 0, 15'000'000> sendUtcTimeMsg{0};       // every 15 seconds
     static Every<uint32_t, 10'000'000, 30'000'000> gpsStatsMsg{0}; // Every 30 seconds 10 seconds in
 
     switch (minmea_sentence_id(msg.sentence.c_str(), false))
@@ -65,8 +64,9 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
         if (minmea_parse_rmc(&frame, msg.sentence.c_str()))
         {
             uint16_t millis = frame.time.microseconds / 1000;
-            // TODO: Be more intelligent on when sending time messages so a 'fix' is quicker known after (re)start of the whole system
-            if (millis == 0 && sendUtcTimeMsg.isItTime(CoreUtils::timeUs32()))
+
+            // Send only 2 times per minute
+            if ((frame.time.seconds == 0 || frame.time.seconds == 30) && millis == 0)
             {
                 // The time in a RMC sentence is the UTC time, not GPS time
                 getBus().receive(

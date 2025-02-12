@@ -22,7 +22,7 @@ private:
      * Future: When PPS is not receive, this value can be used as an average delay to at least get some time right
      */
     // virtual uint32_t delayUs() override {
-    //     return 35000;
+    //     return 290000; // Average value as observed
     // }
 
 public:

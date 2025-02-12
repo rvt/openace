@@ -21,11 +21,13 @@
 class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, OpenAce::UtcTimeMsg>
 {
     friend class message_router;
+    // UtcTimeMsg needs to be ignored when time between PPS and the message is more than this value
+    static constexpr const uint32_t HIGH_TIMEMSG_DELAY_THRESHOLD = 300'000; 
 
     struct
     {
         uint32_t epochSet=0;
-        uint32_t delayUs=0; // Delay between PPS and when we received a time message from the GPS
+        uint32_t delayMs=0; // Delay between PPS and when we received a time message from the GPS
         uint32_t highElapseTimeErr=0;
     } statistics;
 

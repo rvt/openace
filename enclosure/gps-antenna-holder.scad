@@ -51,6 +51,9 @@ NON_STRUCTURAL=true;
 // Position of the top to move it up/down
 CAP_POSITION=20; // [0:0.5:50]
 
+// Position of the plate
+PLATE_POSITION=0; // [-20:10:100]
+
 
 CROP=false;
 
@@ -59,7 +62,7 @@ MODULE="TOPGNSS"; // [TOPGNSS, square20_20_5, cdebyte_E108_GN04, No Module]
 /* [Hidden] */
 _CROP=CROP && $preview;
 HINGE_ATTACH_LENGTH=23; // Controls the length of the hiunge
-KNUNCKLE_DIAM=6;       // Size of the nuckle
+KNUNCKLE_DIAM=BHEIGHT;       // Size of the nuckle
 HINGE_SEGS=5;          // Number of hinge items
 HINGE_LENGTH=6;        // Length of each hinge
 
@@ -85,8 +88,10 @@ module crop(c=100,t=[0,0,0],r=0)
 
 //*** START Place here your visualisation modules
 module topGNSS() {
+    HEIGHT=6;
    {
     if ($preview && NON_STRUCTURAL) {
+      up(HEIGHT)
       #cyl(d=38,l=0.6,  anchor=BOTTOM) {
         position(TOP) cuboid([27,27,7],anchor=BOTTOM);
         position(BOTTOM) cuboid([25.5,25.5,4],anchor=TOP);
@@ -94,11 +99,12 @@ module topGNSS() {
     }
 
     SCREW_POS=33; // Distance between the holes
+    up(HEIGHT)
     diff(remove="remove3")
     for(r = [0, 90, 180, 270]) {
       zrot(r) {
         intersect("bounds")
-        cyl(d=WIDTH,l=BHEIGHT,anchor=TOP){
+        cyl(d=WIDTH,l=HEIGHT,anchor=TOP){
           tag("bounds") left(25.5/2+30/2+1) cube([30,30,10], center=true);
         }
         tag("remove3") left(33/2) cyl(d=2,l=15);
@@ -108,7 +114,9 @@ module topGNSS() {
 }
 
 module cdebyte_E108_GN04 () {
-  right(2) if ($preview && NON_STRUCTURAL) {
+    HEIGHT=5;
+
+   up(HEIGHT) right(1) if ($preview && NON_STRUCTURAL) {
     #cuboid([22,20,0.6], anchor=BOTTOM) {
       position(TOP) cuboid([18,18,4.5],anchor=BOTTOM);
       position(BOTTOM) right(2.5) cuboid([18,15.5,3],anchor=TOP, spin=90);
@@ -183,7 +191,11 @@ module base_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
 }
 
 up($preview?CAP_POSITION:50) cap();
-left(50) bottom_plate();
+if ($preview) {
+  right(3+PLATE_POSITION) down(BHEIGHT/2-2) zrot(-90) bottom_plate();
+} else {
+  left(50) bottom_plate();
+}
 casing();
 
 
@@ -195,22 +207,31 @@ module casing() {
     diff() {
       base_casing() {
 
-        position(TOP) {
-        //*** START Place here your visualisation
-        if (MODULE == "TOPGNSS") zrot(45) topGNSS();
-        if (MODULE == "cdebyte_E108_GN04") down(0) zrot(180) cdebyte_E108_GN04();
-        if (MODULE == "square20_20_5") %cuboid([20,20,5], anchor=TOP);
-        //***STOP Place here your visualisation
+        position(BOTTOM) {
+          //*** START Place here your visualisation
+          if (MODULE == "TOPGNSS") zrot(45) topGNSS();
+          if (MODULE == "cdebyte_E108_GN04") down(0) zrot(180) cdebyte_E108_GN04();
+          if (MODULE == "square20_20_5") %cuboid([20,20,5], anchor=TOP);
+          //***STOP Place here your visualisation
         }
         
         // Gap bottom for wire
-        tag("remove") position(BOTTOM+RIGHT) right(1) down(0.1) cube([10,3,WALL],anchor=BOTTOM+RIGHT);
+        tag("remove") position(BOTTOM+RIGHT) right(1) down(0.1) cube([11,3,WALL],anchor=BOTTOM+RIGHT);
 
         // Hinge
         position(RIGHT)
           knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, orient=RIGHT, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+0.5, 
-            arm_height=0,  anchor=BOT,  spin=90, inner=true, knuckle_diam=KNUNCKLE_DIAM) {
+            arm_height=0,  anchor=BOT,  spin=90, inner=true, knuckle_diam=KNUNCKLE_DIAM, pin_diam=2) {
             position(BOT) cuboid([1.5,KNUNCKLE_DIAM,HINGE_LENGTH*(HINGE_SEGS-2)], anchor=LEFT, orient=RIGHT);
+            
+            // Ratched 
+            if (FRICTION_RING) {
+              for (p = [0, HINGE_LENGTH*2]) {
+                right(p)
+                attach(LEFT)
+                down(HINGE_LENGTH+0.2) hirth(8,1.5,BHEIGHT/2,tooth_angle=140,base=0.3,rounding=.05,crop=true, anchor=BOTTOM);
+              }
+            }      
           }    
         
         // Screw + Support
@@ -220,8 +241,8 @@ module casing() {
           {
             // Structure
             position(BOTTOM) {
-              cyl(d=SCREWD+0.4*5,l=6, anchor=BOTTOM); // d Should be the same as top case
-              cyl(d=SCREWHD+0.4*4,l=3, anchor=BOTTOM) {
+              cyl(d=SCREWD+0.4*5,l=BHEIGHT, anchor=BOTTOM); // d Should be the same as top case
+              cyl(d=SCREWHD+0.4*4,l=BHEIGHT-4, anchor=BOTTOM) {
                 position(TOP) cyl(d1=SCREWHD+0.4*4,d2=4, l=1, anchor=BOTTOM);
               }
             }
@@ -230,7 +251,7 @@ module casing() {
             position(BOTTOM) down(0.01)
             tag("remove") {
               cyl(d=SCREWD+0.2,l=6*3, anchor=CENTER); 
-              cyl(d=SCREWHD,l=2, anchor=BOTTOM); 
+              cyl(d=SCREWHD,l=BHEIGHT-4, anchor=BOTTOM); 
             }          
           }
         }
@@ -243,24 +264,43 @@ module casing() {
 
 module bottom_plate() {
   // Bottom plate
+  PLATETHICK=1.5;
+  KNUKLEOFFSET=0.5;
   PLATE_DOWN=($preview?0:5);
+  FWD=1;
   diff()
-  cuboid([HINGE_LENGTH*5+10, 35, 1.5], anchor=BOTTOM, chamfer=0.2*4, edges=[TOP+LEFT, TOP+RIGHT, TOP+FRONT, TOP+BACK]) {
+  cuboid([HINGE_LENGTH*5+10, 45, PLATETHICK], anchor=BOTTOM, chamfer=0.2*4, edges=[TOP+LEFT, TOP+RIGHT, TOP+FRONT, TOP+BACK]) {
     
     position(TOP+BACK)     
-    fwd(1) knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+0.5, arm_height=0, anchor=BOT+BACK, inner=false,knuckle_diam=KNUNCKLE_DIAM) {
+    fwd(FWD) knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, arm_angle=90, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2+KNUKLEOFFSET, arm_height=0, anchor=BOT+BACK, inner=false,knuckle_diam=KNUNCKLE_DIAM, pin_diam=2) {
 
       if (FRICTION_RING) {
-        right(HINGE_LENGTH)
-        attach(LEFT)
-        tag("remove") {
-          if ($preview) color([1,0.44,00,0.4]) down(0.2) %torus(od=6,id=2, anchor=BOTTOM);
-          cylinder(d=7,h=1.75);
-        }        
+       
+
+        for (p = [HINGE_LENGTH, HINGE_LENGTH*3]) {
+          RINGTHICK=2;
+          right(p)
+          attach(LEFT)
+          tag("remove") { // 2            
+            cylinder(d=BHEIGHT+1,h=2, anchor=CENTER);
+            cylinder(d=BHEIGHT-RINGTHICK,h=1.5, anchor=BOTTOM) {
+              position(TOP) torus(od=BHEIGHT-0.4*2,id=BHEIGHT-2*RINGTHICK, anchor=TOP);
+              position(TOP) if ($preview) color([1,0.44,00,0.4]) %torus(od=BHEIGHT-0.4,id=BHEIGHT-2*RINGTHICK, anchor=TOP);
+            }
+          }      
+        }
+          
+        for (p = [0, HINGE_LENGTH*2]) {
+          right(p+HINGE_LENGTH)
+          attach(LEFT)
+          tag("remove") down(HINGE_LENGTH+1.1) xrot(180) hirth(8,1.2,BHEIGHT/2+0.4,tooth_angle=140,base=0.5,rounding=.05,crop=true,anchor=TOP);
+        }
       }
     }
     
-    position(TOP+BACK) tag("remove") fwd(KNUNCKLE_DIAM+2) cube([3.5, 7, 4], anchor=BACK);
+    position(TOP+BACK) tag("remove") fwd(KNUNCKLE_DIAM+2) cube([3.5, 10, 4], anchor=BACK);
+    position(TOP+FRONT) back(5) cube([HINGE_LENGTH*5,5,KNUKLEOFFSET], anchor=BOTTOM);
+    position(BOTTOM+BACK) cuboid([HINGE_LENGTH*5,FWD,4.4], anchor=BOTTOM+BACK, rounding=0.4, edges=[BACK+LEFT, BACK+RIGHT, BACK+TOP, TOP+LEFT, TOP+RIGHT]);
   }
 }
 

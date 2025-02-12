@@ -111,39 +111,51 @@ void AbstractGnss::getData(etl::string_stream &stream, const etl::string_view pa
 
 void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char>& sentence)
 {
+    // Note: if in case this get's removed because the messages are needed,
+    // then this filter needs to be added in DataPort that passes through GPS messages
+    // Otherwise it create indeed traffic over TCP/IP or Bluetooth
+    // "SkyDemon processes RMC, GGA, GSA and GSV, however GSV is not really used any more internally."
+    // GSA : GPS DOP and active satellites
+    // GSV : GPS Satellites in view
+
+    // Targets to remove
     constexpr etl::string_view target1 = "$GPGSV";
     constexpr etl::string_view target2 = "$GPVTG";
+    constexpr etl::string_view target3 = "$GPGLL";
+    // RMC target for for pushing to the queue. Since timings is based on RMC.
+    constexpr etl::string_view rmctarget = "$GNRMC";
     
-    // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    // Used to force a push to keep timing's
+    bool isRmc;
     if (!queue.full())
     {
-        // Note: if in case this get's removed because the messages are needed,
-        // then this filter needs to be added in DataPort that passes through GPS messages
-        // Otherwise it create indeed traffic over TCP/IP or Bluetooth
-        // "SkyDemon processes RMC, GGA, GSA and GSV, however GSV is not really used any more internally."
-        // GSA : GPS DOP and active satellites
-        // GSV : GPS Satellites in view
 
-        bool match=true;
+        bool match1=true;
+        bool match2=true;
+        bool match3=true;
+        isRmc=true;
         for (uint8_t i=3;i<6;i++) {
-            match = match && (sentence[i] == target1[i]);
-            match = match && (sentence[i] == target2[i]);
-            if (!match) break;
+            match1 = match1 && (sentence[i] == target1[i]);
+            match2 = match2 && (sentence[i] == target2[i]);
+            match3 = match3 && (sentence[i] == target3[i]);
+            isRmc = isRmc && (sentence[i] == rmctarget[i]);
         }
 
-        if (!match) {
+        if (!(match1 || match2 || match3) || true) {
             queue.push(sentence.data());
         }
     }
     else
     {
+        isRmc = false;
         statistics.queueFullErr++;
     }
 
     // To reduce some FreeRTOS switches only send when queue is nearly full
     // Since this is a continues NMEA stream, this should be fine and accurate enough as
     // longs as the queue is relative small
-    if (queue.size() > 3)
+    if (queue.size() > 3 || isRmc)
     {
         xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
     }

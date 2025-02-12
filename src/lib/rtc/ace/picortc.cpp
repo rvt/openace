@@ -7,7 +7,6 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
     stream << "\"epochSet\":" << statistics.epochSet;
     stream << ",\"delayUs\":" << statistics.delayUs;
     stream << ",\"highElapseTimeErr\":" << statistics.highElapseTimeErr;
-    stream << ",\"lastPpstime\":" << lastPpstime;
     stream << ",\"timeUs32\":" << CoreUtils::timeUs32();
     stream << "}\n";
 }
@@ -46,9 +45,8 @@ void PicoRtc::on_receive(const OpenAce::UtcTimeMsg &msg)
 
     uint32_t elapsedUsSincePps = CoreUtils::timeUs32() - lastPpstime;
 
-    // Don't set the time if it's more than 100ms since the last PPS and also ensures RTC
-    // will be set at whole seconds only L78B needs between 170ms..180ms.
-    if (elapsedUsSincePps > 200'000)
+// Must be set within a second to ensure correct timing for epoch
+    if (elapsedUsSincePps > 500'000)
     {
         statistics.highElapseTimeErr++;
         return;
@@ -69,6 +67,7 @@ void PicoRtc::on_receive(const OpenAce::UtcTimeMsg &msg)
     //     };
     //     rtc_set_datetime(&t);
     // }
+
 
     // Set the time of the PICO, this will use the underlaying to_us_since_boot and friends
     // Getting the time will then work when using gettimeofday(&tv, nullptr);
@@ -98,10 +97,10 @@ void PicoRtc::on_receive(const OpenAce::UtcTimeMsg &msg)
     // printf("GPS: %02d:%02d:%02d.%03d   Current Pico:%02d:%02d:%02d.%03ld \n", msg.hour, msg.minute, msg.second, elapsedUsSincePps/1000, time.tm_hour, time.tm_min, time.tm_sec, CoreUtils::msInSecond());
     //  settimeofday(&tv, nullptr);
     
-    elapsedUsSincePps = CoreUtils::timeUs32() - lastPpstime;
-    statistics.delayUs = elapsedUsSincePps;
-    CoreUtils::setOffsetMsSinceEpoch(secondsSinceEpoch * 1000 + elapsedUsSincePps / 1000);
+    statistics.delayMs = CoreUtils::msInSecond();
+    CoreUtils::setOffsetMsSinceEpoch(secondsSinceEpoch * 1000 + statistics.delayMs);
     statistics.epochSet++;
+
 }
 
 void PicoRtc::on_receive_unknown(const etl::imessage &msg)

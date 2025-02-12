@@ -46,6 +46,7 @@ public:
         // time_us_64 and time_us_32 use the same hardware time, thus offset is also the same
         return time_us_64() - timeUs32PpsOffset;
     }
+
     /**
      * Get a timestamp in ms
      * This timestamp monotonically increases from power up
