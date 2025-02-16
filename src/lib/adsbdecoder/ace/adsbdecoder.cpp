@@ -185,7 +185,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                  OpenAce::DataSource::ADSB,
                  OpenAce::AircraftCategory::Unknown, // ADSB does not have type
                  false,                              // ADSB does not have privacy
-                 false,                              // Heading is always a known
+                 false,                              // No privacy
                  current.airborne,
                  current.lat,
                  current.lon,

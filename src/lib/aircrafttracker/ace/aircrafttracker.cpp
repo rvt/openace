@@ -53,7 +53,7 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     (void)path;
     stream << "{";
     stream << "\"queueFullErr\":" << statistics.queueFullErr;
-    stream << ",\"numberOfPlanesTracking\":" << trackedAircraft.size();
+    stream << ",\"numberOfObjectsTracking\":" << trackedAircraft.size();
     stream << ",\"positionsProcessed\":" << statistics.positionsProcessed;
     stream << ",\"adaptiveRadius\":" << trackedAircraft.radius();
     stream << "}\n";
@@ -128,11 +128,8 @@ void AircraftTracker::handleNew()
 
 void AircraftTracker::sendEligibleAircraft()
 {
-    // puts("\033[2J\033[H");
-    // trackedAircraft.dump();
     auto delay = trackedAircraft.next([this](const OpenAce::AircraftPositionInfo &position)
         {
-            // printf("Send      t:%08ld %06lX\n", CoreUtils::timeUs32() / 1'000'000, position.address);
             getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
         });
     xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay == 0 ? 1 : delay), portMAX_DELAY);

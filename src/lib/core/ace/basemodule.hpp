@@ -15,6 +15,7 @@
 #include "etl/array.h"
 #include "etl/string.h"
 #include "etl/message_bus.h"
+#include "etl/span.h"
 
 #include "etl/delegate.h"
 
@@ -30,7 +31,7 @@ class BaseModule
     static constexpr uint8_t MAX_MODULES = 40;
 
 private:
-// Mutex to be used during load/unloading and changes in interrupts
+    // Mutex to be used during load/unloading and changes in interrupts
     inline static SemaphoreHandle_t xMutex;
 
     struct pinInterruptHandler
@@ -180,7 +181,6 @@ public:
      * Unregister a pin interrupt handler
      */
     void unregisterPinInterrupt(uint8_t pin);
-
 };
 
 /**
@@ -290,18 +290,24 @@ public:
         Radio::Mode mode;               // Mode of the radio
         OpenAce::DataSource dataSource; // Data source
         uint8_t packetLength;           // Total packet length including CRC
-        uint8_t preambleLength;
+        uint8_t preambleLength;         // Preamble length in bits
+        uint8_t codingRate;             // Coding rate for LORA packages
         uint8_t syncLength;
         etl::array<uint8_t, 10> syncWord; // Sync word
-        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t preambleLength_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
-            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), preambleLength(preambleLength_), syncLength(syncLength_), syncWord(syncWord_) {}
+
+        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t preambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
+            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), preambleLength(preambleLength_), codingRate(codingRate_), syncLength(syncLength_), syncWord(syncWord_) {}
+
         constexpr ProtocolConfig(const ProtocolConfig &other)
             : mode(other.mode),
               dataSource(other.dataSource),
               packetLength(other.packetLength),
               preambleLength(other.preambleLength),
+              codingRate(other.codingRate),
               syncLength(other.syncLength),
               syncWord(other.syncWord) {}
+
+        ProtocolConfig() = default;
     };
 
     struct RadioParameters
@@ -312,6 +318,7 @@ public:
 
         constexpr RadioParameters(const Radio::ProtocolConfig &_config, uint32_t _frequency, int8_t _powerdBm) : config(_config), frequency(_frequency), powerdBm(_powerdBm) {}
         constexpr RadioParameters(const Radio::RadioParameters &_params) : config(_params.config), frequency(_params.frequency), powerdBm(_params.powerdBm) {}
+        RadioParameters() = default;
         RadioParameters &operator=(const RadioParameters &other) = default;
     };
 
@@ -320,14 +327,20 @@ public:
         RadioParameters radioParameters;
         uint8_t length;
         OpenAce::TxPacketType data;
-        TxPacket(const RadioParameters &radioParameters_, uint8_t length_, const void *data_) : radioParameters(radioParameters_), length(length_)
+        TxPacket(const RadioParameters &radioParameters_, etl::span<const uint8_t> dataSpan)
+            : radioParameters(radioParameters_), length(static_cast<uint8_t>(dataSpan.size()))
         {
-            if (length_ > data.size())
+            if (dataSpan.size() > data.size())
             {
-                panic("TxPacket: Frame length to large for this packet");
+                puts("TxPacket: Frame length too large for this packet, clearing out");
+                memset(data.data(), 0, data.size());
+            } else {
+                memcpy(data.data(), dataSpan.data(), dataSpan.size());
             }
-            memcpy(data.data(), data_, length < data.size() ? length : data.size());
         }
+
+        TxPacket(const RadioParameters &radioParameters_, uint8_t length_, const void *data_)
+            : TxPacket(radioParameters_, etl::span<const uint8_t>(static_cast<const uint8_t *>(data_), length_)) {}
     };
 
     struct RxMode

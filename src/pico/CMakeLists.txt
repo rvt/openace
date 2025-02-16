@@ -121,6 +121,7 @@ target_link_libraries(
           GDL90
           minmea
           etl::etl
+          fanet::fanet
           ArduinoJson
           # /lib
           core
@@ -141,6 +142,7 @@ target_link_libraries(
           sx1262
           adsl
           flarm
+          fanetace
           ogn
           radiotuner
           gdl90service
@@ -149,7 +151,8 @@ target_link_libraries(
           aircrafttracker
           dataport
           airconnect
-          bluetooth)
+          bluetooth
+          )
 
 target_compile_definitions(
   OpenAce

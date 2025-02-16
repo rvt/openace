@@ -223,7 +223,8 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
                     continue;
                 }
 
-                xTaskCreate(radioTxTask, "txTask", configMINIMAL_STACK_SIZE + 128, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
+                // HAd to increase this due to FANET
+                xTaskCreate(radioTxTask, "txTask", configMINIMAL_STACK_SIZE + 512, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
                 if (ref.taskHandle == nullptr)
                 {
                     xTimerDelete(ref.timerHandle, TASK_DELAY_MS(250));

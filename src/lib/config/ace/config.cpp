@@ -30,7 +30,7 @@ OpenAce::PostConstruct Config::postConstruct()
     // Load a configuration in this order
     // volatileStore -> persistentStore -> Defaul configuration
     auto error = deserializeJson(doc, volatileStore.data());
-    auto loadDefaultConfig = false; // Only usefull for developers, this ensures the default config is always loaded when ste to true
+    auto loadDefaultConfig = false; // Only usefull for developers, this ensures the default config is always loaded when set to true
     if (error || loadDefaultConfig)
     {
         error = deserializeJson(doc, permanentStore.data());

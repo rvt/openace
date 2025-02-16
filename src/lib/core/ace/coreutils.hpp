@@ -137,11 +137,10 @@ public:
     /**
      * Calculate the time from referenceUs to us
      * If referenceUs is in the past, the result is negative
-     *
      */
     __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
     {
-        return referenceUs - us;
+        return static_cast<int32_t>(referenceUs - us);
     }
 
     static int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
@@ -161,6 +160,7 @@ public:
     {
         return localTime(msSinceEpoch());
     }
+    
     static tm localTime(uint64_t msSinceEpoch)
     {
         time_t secondsSinceEpoch = msSinceEpoch / 1000;
@@ -430,7 +430,7 @@ public:
         (void)addressType;
         OpenAce::IcaoAddress icaoAddress;
         etl::string_stream stream(icaoAddress);
-        stream << etl::hex << etl::uppercase << aircraftID;
+        stream << etl::hex <<  etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID;
         return icaoAddress;
     }
 
@@ -479,13 +479,13 @@ public:
     /**
      * Returns the pin number from the pin map, when not found returns -1 to indicate that
      */
-    static int8_t pinValue(const OpenAce::PinTypeMap& pm, const OpenAce::PinType &pinName)
+    static int8_t pinValue(const OpenAce::PinTypeMap& pm, const OpenAce::PinType &pinName, int8_t defaultValue=-1)
     {
         auto it = pm.find(pinName);
         if (it != pm.end())
         {
             return it->second;
         }
-        return -1;
+        return defaultValue;
     }
 };

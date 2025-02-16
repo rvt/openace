@@ -41,8 +41,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     enum TaskState : uint8_t
     {
         DELETE = 1 << 0,
-        TASK_VALUE_DIO1_INTERRUPT = 1 << 2,
-        FAILSAVE_LISTEN_MODE = 1 << 3
+        TASK_VALUE_DIO1_INTERRUPT = 1 << 2
     };
 
     mutable struct
@@ -54,14 +53,10 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
         uint32_t queueFull = 0;
         uint32_t txTimeout = 0;
         uint32_t txOk = 0;
-        Radio::Mode mode = Radio::Mode::NONE;
-        OpenAce::DataSource dataSource = OpenAce::DataSource::NONE;
-        uint32_t frequency = 0;
-        int8_t powerdBm = -100;
     } statistics;
 
     // ************************************************************************************
-    // 13.1.14 SetPaConfig
+    // 13.1.14.1 SetPaConfig
     // Table 13-21: PA Operating Modes with Optimal Settings
     static constexpr sx126x_pa_cfg_params_s DEFAULT_HIGH_POWER_PA_CFG =
         {
@@ -102,16 +97,34 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
 
     // 13.1.8 SetCAD
     // CAD is only used by LORA
-    static constexpr sx126x_cad_params_t cad_params_lora =
+    static constexpr sx126x_cad_params_t DEFAULT_CAD_PARAMS =
         {
-            .cad_symb_nb = SX126X_CAD_08_SYMB,
+            .cad_symb_nb = SX126X_CAD_16_SYMB,
             .cad_detect_peak = 0x14,
             .cad_detect_min = 0X0A,
             .cad_exit_mode = SX126X_CAD_ONLY,
-            .cad_timeout = 0x00000000,
+            .cad_timeout = 0,
         };
 
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::NONE, OpenAce::DataSource::NONE, 0, 1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+    // 13.67
+    static constexpr sx126x_pkt_params_lora_t DEFAULT_PKG_PARAMS_LORA =
+        {
+            .preamble_len_in_symb = 12,
+            .header_type = SX126X_LORA_PKT_EXPLICIT,
+            .pld_len_in_bytes = 0xFF,
+            .crc_is_on = true,
+            .invert_iq_is_on = false,
+        };
+
+    static constexpr sx126x_mod_params_lora_t DEFAULT_MOD_PARAMS_LORA =
+        {
+            .sf = SX126X_LORA_SF7,
+            .bw = SX126X_LORA_BW_250,
+            .cr = SX126X_LORA_CR_4_8,
+            .ldro = 0,
+        };
+
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0, 1*8, 0, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
@@ -121,8 +134,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     bool txEnabled;
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
-    Radio::RadioParameters lastRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
-
+    Radio::RadioParameters currentRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
 
 public:
     static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
@@ -178,9 +190,9 @@ public:
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-    inline void sendToBus(OpenAce::RadioRxFrameMsg &frame)
+    inline void sendToBus(const etl::imessage& message)
     {
-        getBus().receive(frame);
+        getBus().receive(message);
     };
 
     void on_receive_unknown(const etl::imessage &msg)
@@ -193,10 +205,11 @@ public:
 
     void radioInit();
     void checkAndClearDeviceErrors();
-    void receiveGFSKPacket(Radio::RadioParameters const &parameters);
+    void receiveGFSKPacket();
+    void receiveLORAPacket();
     void sendGFSKPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length);
+    void sendLORAPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length);
     void configureSx1262(const RadioParameters &newParameters);
-    bool applyNewLoraParameters(const Radio::ProtocolConfig &parameters);
     sx126x_irq_mask_t getIrqStatus();
 
     void Listen();
@@ -209,6 +222,5 @@ public:
     virtual void rxMode(const RxMode &rxMode) override;
     virtual void txPacket(const TxPacket &txpacket) override;
 
-    void waitBusy(uint16_t minimumDelay) const;
-
+    void waitBusy(uint16_t minimumDelay=0) const;
 };

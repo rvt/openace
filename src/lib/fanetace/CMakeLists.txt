@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(fanet VERSION 0.0.0 LANGUAGES CXX)
+project(fanetace VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
@@ -9,6 +9,7 @@ set(MODULE_SOURCE_FILES
 
 set(MODULE_TARGET_LINK
     utils
+    fanet
 )
 
 set(PICO_EXTRA_LIBS

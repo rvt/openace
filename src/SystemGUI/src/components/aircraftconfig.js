@@ -21,7 +21,7 @@ class AircraftConfig extends El {
       "StaticObstacle",
     ];
     this.transponderTypes = ["ICAO", "FLARM", "OGN", "ADSL"];
-    this.protocolTypes = ["FLARM", "OGN", "ADSL"];
+    this.protocolTypes = ["FLARM", "OGN", "ADSL", "FANET"];
 
     this.state = this.$observable({ showHelp: false, aircraft: {} });
     this.copyOfAircraft = {};
