@@ -26,6 +26,7 @@ add_subdirectory(gdloverudp)
 add_subdirectory(dataport)
 add_subdirectory(airconnect)
 add_subdirectory(bluetooth)
+add_subdirectory(fanet)
 
 
 if (PICO_SDK_VERSION_STRING)
