@@ -59,7 +59,8 @@ namespace FANET
             }
             return *this;
         }
-        PacketBuilder &setDestination(const uint32_t destination_) {
+        PacketBuilder &setDestination(const uint32_t destination_)
+        {
             return setDestination(Address(destination_));
         }
 
@@ -113,27 +114,21 @@ namespace FANET
             return offset;
         }
 
-        etl::vector<uint8_t, MAX_HEADER_SIZE> build()
-        {
-            etl::vector<uint8_t, MAX_HEADER_SIZE> buffer;
-            auto offset = serializeCommonFields(buffer);
-            return buffer;
-        }
-
         template <typename PAYLOAD>
         etl::vector<uint8_t, MAX_HEADER_SIZE + sizeof(PAYLOAD)> build(const PAYLOAD &payload)
         {
             etl::vector<uint8_t, MAX_HEADER_SIZE + sizeof(PAYLOAD)> buffer;
             header.type = payload.type();
             auto offset = serializeCommonFields(buffer);
+            // AckPayload cannot be serialized as it's header only
             if (header.type == MessageType::ACK)
             {
+                // TODO: Validate if a destination is set?
                 return buffer;
             }
             buffer.resize(offset + sizeof(PAYLOAD));
             etl::mem_copy(const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&payload)), sizeof(PAYLOAD), buffer.data() + offset);
             return buffer;
         }
-
     };
 };

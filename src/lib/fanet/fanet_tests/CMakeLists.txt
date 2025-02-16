@@ -31,7 +31,7 @@ endif()
 # These examples use the standard separate compilation
 set(SOURCES_IDIOMATIC_EXAMPLES # Tests
   fanet_builder_tests.cpp 
-  #fanet_common_tests.cpp 
+  fanet_common_tests.cpp 
 )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES

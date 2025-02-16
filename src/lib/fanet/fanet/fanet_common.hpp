@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "etl/string.h"
+#include "etl/vector.h"
 #include "math.h"
 
 // FANET Header Structure
@@ -31,6 +32,20 @@ namespace FANET
         LANDMARKS = 5,
         REMOTE_CONFIG = 6,
         GROUND_TRACKING = 7
+    };
+
+    enum class GroundTrackingType : uint8_t
+    {
+        OTHER = 0,
+        WALKING = 1,
+        VEHICLE = 2,
+        BIKE = 3,
+        BOOT = 4,
+        NEED_A_RIDE = 8,
+        NEED_TECHNICAL_SUPPORT = 12,
+        NEED_MEDICAL_HELP = 13,
+        DISTRESS_CALL = 14,
+        DISTRESS_CALL_AUTO = 15
     };
 
     enum class AckType : uint8_t
@@ -77,13 +92,12 @@ namespace FANET
         AckType ack : 2;       // Acknowledgment
     } __attribute__((packed));
 
-
-
     class AckPayload
-    {   
-        public:
-        MessageType type() const {
-            return  MessageType::ACK;
+    {
+    public:
+        MessageType type() const
+        {
+            return MessageType::ACK;
         }
     };
 
@@ -102,9 +116,9 @@ namespace FANET
         bool trackingBit : 1;
         uint8_t speedRaw : 7;
         bool sScalingBit : 1;
-        uint8_t climbRaw : 7;
+        int8_t climbRaw : 7;
         bool cScaling : 1;
-        uint8_t headingRaw : 8;
+        uint8_t groundTrackRaw : 8;
         uint8_t turnRateRaw : 7;
         bool tScalingBit : 1;
 
@@ -120,17 +134,17 @@ namespace FANET
               sScalingBit(false),
               climbRaw(0),
               cScaling(false),
-              headingRaw(0),
+              groundTrackRaw(0),
               turnRateRaw(0),
               tScalingBit(false)
         {
         }
 
-        MessageType type() const {
-            return  MessageType::TRACKING;
+        MessageType type() const
+        {
+            return MessageType::TRACKING;
         }
 
-        
         float latitude()
         {
             return ((latitudeRaw << 8) >> 8) / 93206.f;
@@ -189,9 +203,9 @@ namespace FANET
         /**
          * Set if this aircraft allows tracking
          */
-        TrackingPayload &tracking(bool tracking_)
+        TrackingPayload &tracking(bool tracking)
         {
-            trackingBit = tracking_;
+            trackingBit = tracking;
             return *this;
         }
 
@@ -206,9 +220,9 @@ namespace FANET
         /**
          * Set the type of aircraft
          */
-        TrackingPayload &aircraftType(AircraftType aircraftType_)
+        TrackingPayload &aircraftType(AircraftType aircraftType)
         {
-            aircraftTypeRaw = aircraftType_;
+            aircraftTypeRaw = aircraftType;
             return *this;
         }
 
@@ -244,7 +258,7 @@ namespace FANET
          */
         float climbRate()
         {
-            return cScaling ? climbRaw * .5f : climbRaw / 10.0f;
+            return cScaling ? ((climbRaw << 1) >> 1) * .5f : ((climbRaw << 1) >> 1) / 10.0f;
         }
 
         /**
@@ -270,17 +284,26 @@ namespace FANET
         /**
          * Get the heading in degrees
          */
-        float heading()
+        float groundTrack()
         {
-            return headingRaw * 360.f / 256.f;
+            return (float)groundTrackRaw * 360.f / 256.f;
         }
 
         /**
-         * Set the heading
+         * Set the groundtrack
          */
-        TrackingPayload &heading(float heading)
+        TrackingPayload &groundTrack(float groundTrack)
         {
-            headingRaw = CONSTRAIN((int)roundf(heading * 256.0f / 360.0f), 0, 255);
+            if (groundTrack < 0.0f)
+            {
+                groundTrack += 360.0f;
+            }
+            else if (groundTrack >= 360.0f)
+            {
+                groundTrack -= 360.0f;
+            }
+
+            groundTrackRaw = CONSTRAIN(((int)roundf(groundTrack * 256.0f / 360.0f)), 0, 255);
             return *this;
         }
 
@@ -327,9 +350,24 @@ namespace FANET
     template <size_t SIZE>
     class NamePayload
     {
-    public:
-        etl::string<SIZE> name;
+        etl::string<SIZE> nameRaw;
         static_assert(SIZE <= 245, "NamePayload size cannot exceed 245 bytes");
+
+    public:
+        MessageType type() const
+        {
+            return MessageType::NAME;
+        }
+
+        const etl::istring &name() const
+        {
+            return &nameRaw;
+        }
+
+        void name(const etl::istring &name) const
+        {
+            nameRaw = name;
+        }
     };
 
     /**
@@ -339,10 +377,97 @@ namespace FANET
     template <size_t SIZE>
     class MessagePayload
     {
-    public:
-        uint8_t subHeader;
-        etl::string<SIZE> message;
+        uint8_t subHeaderRaw;
+        etl::vector<uint8_t, SIZE> messageRaw;
         static_assert(SIZE <= 244, "MessagePayload size cannot exceed 244 bytes");
+
+    public:
+        MessageType type() const
+        {
+            return MessageType::MESSAGE;
+        }
+        const etl::ivector<uint8_t> &message() const
+        {
+            return &messageRaw;
+        }
+
+        void message(const etl::ivector<uint8_t> &message) const
+        {
+            messageRaw = message;
+        }
+    };
+
+    /**
+     * Ground Tracking Payload
+     * Messagetype : 7
+     */
+    class GroundTrackingPayload
+    {
+        uint32_t latitudeRaw : 24;  // Scaled by 93206
+        uint32_t longitudeRaw : 24; // Scaled by 46603
+        bool trackingBit : 1;
+        uint8_t unk : 3;
+        GroundTrackingType groundTypeRaw : 4;
+
+    public:
+        MessageType type() const
+        {
+            return MessageType::GROUND_TRACKING;
+        }
+
+        float latitude()
+        {
+            return ((latitudeRaw << 8) >> 8) / 93206.f;
+        }
+        float longitude()
+        {
+            return ((longitudeRaw << 8) >> 8) / 46603.f;
+        }
+        GroundTrackingPayload &latitude(float lat)
+        {
+            lat = CONSTRAIN(lat, -90.f, 90.f);
+            latitudeRaw = roundf(lat * 93206.0f);
+            return *this;
+        }
+        GroundTrackingPayload &longitude(float lon)
+        {
+            lon = CONSTRAIN(lon, -180.f, 180.f);
+            longitudeRaw = roundf(lon * 46603.0f);
+            return *this;
+        }
+        /**
+         * Get if this aircraft allows tracking
+         */
+        bool tracking()
+        {
+            return trackingBit;
+        }
+
+        /**
+         * Set if this aircraft allows tracking
+         */
+        GroundTrackingPayload &tracking(bool tracking_)
+        {
+            trackingBit = tracking_;
+            return *this;
+        }
+        /**
+         * Get the type of aircraft
+         */
+        GroundTrackingType groundType()
+        {
+            return groundTypeRaw;
+        }
+
+        /**
+         * Set the type of aircraft
+         */
+        GroundTrackingPayload &groundType(GroundTrackingType groundType)
+        {
+            groundTypeRaw = groundType;
+            return *this;
+        }
+
     } __attribute__((packed));
 
     /**
@@ -352,8 +477,9 @@ namespace FANET
     class ServicePayload
     {
     public:
-        MessageType type() const {
-            return  MessageType::SERVICE;
+        MessageType type() const
+        {
+            return MessageType::SERVICE;
         }
 
         bool exAvailable : 1;
@@ -362,7 +488,7 @@ namespace FANET
         bool humidAvailable : 1;
         bool windAvailable : 1;
         bool tempAvailable : 1;
-        uint8_t gateway : 1;
+        bool gateway : 1;
         uint8_t extendedHeader : 8;
         uint32_t latitude : 24;  // Scaled by 93206
         uint32_t longitude : 24; // Scaled by 46603
@@ -374,24 +500,6 @@ namespace FANET
         uint8_t gScale : 1;
         uint8_t humidity : 8;     // 0.4 %rh per bit
         uint16_t barometric : 16; // 0.01 hPa per bit, offset 430 hPa
-    } __attribute__((packed));
-
-    /**
-     * Ground Tracking Payload
-     * Messagetype : 7
-     */
-    class GroudTrackingPayload
-    {
-    public:
-        MessageType type() const {
-            return  MessageType::GROUND_TRACKING;
-        }
-
-        uint32_t latitude : 24;  // Scaled by 93206
-        uint32_t longitude : 24; // Scaled by 46603
-        bool tracking : 1;
-        uint8_t unk : 3;
-        uint8_t groundType : 4;
     } __attribute__((packed));
 
 };

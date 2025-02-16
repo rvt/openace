@@ -28,7 +28,7 @@ TEST_CASE("TrackingPayload Default Constructor", "[TrackingPayload]") {
     REQUIRE(payload.tracking() == false);
     REQUIRE(payload.speed() == 0);
     REQUIRE(payload.climbRate() == 0);
-    REQUIRE(payload.heading() == 0);
+    REQUIRE(payload.groundTrack() == 0);
     REQUIRE(payload.turnRate() == 0);
 }
 
@@ -65,18 +65,19 @@ TEST_CASE("TrackingPayload altitude ", "[single-file]")
     TrackingPayload tp;
     REQUIRE(tp.altitude() == 0);
 
-    tp.altitude(1235);
-    REQUIRE(tp.altitude() == 1235);
-
+    tp.altitude(2046);
+    REQUIRE(tp.altitude() == 2046);
     tp.altitude(2047);
     REQUIRE(tp.altitude() == 2047);
 
+    tp.altitude(5677);
+    REQUIRE(tp.altitude() == 5676);
     tp.altitude(5678);
     REQUIRE(tp.altitude() == 5680);
-    tp.altitude(5679);
+    tp.altitude(5681);
     REQUIRE(tp.altitude() == 5680);
-    tp.altitude(5680);
-    REQUIRE(tp.altitude() == 5680);
+    tp.altitude(5682);
+    REQUIRE(tp.altitude() == 5684);
 
     tp.altitude(-100);
     REQUIRE(tp.altitude() == 0);
@@ -120,8 +121,48 @@ TEST_CASE("TrackingPayload speed ", "[single-file]")
 TEST_CASE("TrackingPayload climbRate ", "[single-file]")
 {
     TrackingPayload tp;
-    REQUIRE(tp.climbRate() == Catch::Approx(0).margin(0.5));
+    REQUIRE(tp.climbRate() == Catch::Approx(0).margin(0.1));
 
-    tp.speed(6.2);
-    REQUIRE(tp.climbRate() == Catch::Approx(6.2).margin(0.5));
+    tp.climbRate(6.2);
+    REQUIRE(tp.climbRate() == Catch::Approx(6.2).margin(0.1));
+ 
+    tp.climbRate(-6.2);
+    REQUIRE(tp.climbRate() == Catch::Approx(-6.2).margin(0.1));
+
+    tp.climbRate(16.8);
+    REQUIRE(tp.climbRate() == Catch::Approx(16.8).margin(0.5));
+ 
+    tp.climbRate(-16.8);
+    REQUIRE(tp.climbRate() == Catch::Approx(-16.8).margin(0.5));
+
+    tp.climbRate(31.5);
+    REQUIRE(tp.climbRate() == Catch::Approx(31.5).margin(0.5));
+
+    tp.climbRate(-31.5);
+    REQUIRE(tp.climbRate() == Catch::Approx(-31.5).margin(0.5));
+
+    tp.climbRate(100.0f);
+    REQUIRE(tp.climbRate() == Catch::Approx(31.5).margin(0.5));
+
+    tp.climbRate(-100.0f);
+    REQUIRE(tp.climbRate() == Catch::Approx(-31.5).margin(0.5));
+}
+
+TEST_CASE("TrackingPayload heading ", "[single-file]")
+{
+    TrackingPayload tp;
+    REQUIRE(tp.groundTrack() == Catch::Approx(0).margin(1.4));
+
+    tp.groundTrack(360.0f);
+    REQUIRE(tp.groundTrack() == Catch::Approx(0.f).margin(1.4));
+
+    tp.groundTrack(-10.f);
+    REQUIRE(tp.groundTrack() == Catch::Approx(350).margin(1.4));
+ 
+    tp.groundTrack(127.f);
+    REQUIRE(tp.groundTrack() == Catch::Approx(127).margin(1.4));
+
+    tp.groundTrack(380.f);
+    REQUIRE(tp.groundTrack() == Catch::Approx(20.0f).margin(1.4));
+
 }
