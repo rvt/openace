@@ -21,6 +21,7 @@ void dumpHex(const etl::ivector<uint8_t> &buffer) {
 TEST_CASE("TrackingPayload Default Constructor", "[TrackingPayload]") {
     TrackingPayload payload;
 
+    REQUIRE(payload.type() == MessageType::TRACKING);
     REQUIRE(payload.latitude() == 0);
     REQUIRE(payload.longitude() == 0);
     REQUIRE(payload.altitude() == 0);
@@ -34,135 +35,196 @@ TEST_CASE("TrackingPayload Default Constructor", "[TrackingPayload]") {
 
 TEST_CASE("TrackingPayload Latitude ", "[single-file]")
 {
-    TrackingPayload tp;
-    REQUIRE(tp.latitude() == Catch::Approx(0.0).margin(0.00001));
-    tp.latitude(56.95812f);
-    REQUIRE(tp.latitude() == Catch::Approx(56.95812f).margin(0.00001));
-    tp.latitude(-56.18748);
-    REQUIRE(tp.latitude() == Catch::Approx(-56.18748f).margin(0.00001));
-    tp.latitude(-91);
-    REQUIRE(tp.latitude() == Catch::Approx(-90).margin(0.00001));
-    tp.latitude(91);
-    REQUIRE(tp.latitude() == Catch::Approx(90).margin(0.00001));
+    TrackingPayload payload;
+    REQUIRE(payload.latitude() == Catch::Approx(0.0).margin(0.00001));
+    payload.latitude(56.95812f);
+    REQUIRE(payload.latitude() == Catch::Approx(56.95812f).margin(0.00001));
+    payload.latitude(-56.18748);
+    REQUIRE(payload.latitude() == Catch::Approx(-56.18748f).margin(0.00001));
+    payload.latitude(-91);
+    REQUIRE(payload.latitude() == Catch::Approx(-90).margin(0.00001));
+    payload.latitude(91);
+    REQUIRE(payload.latitude() == Catch::Approx(90).margin(0.00001));
 }
 
 TEST_CASE("TrackingPayload Longitude ", "[single-file]")
 {
-    TrackingPayload tp;
-    REQUIRE(tp.longitude() == Catch::Approx(0.0).margin(0.00002));
-    tp.longitude(160.54197);
-    REQUIRE(tp.longitude() == Catch::Approx(160.54197).margin(0.00002));
-    tp.longitude(-126.74510);
-    REQUIRE(tp.longitude() == Catch::Approx(-126.74510).margin(0.00002));
-    tp.longitude(-181);
-    REQUIRE(tp.longitude() == Catch::Approx(-180).margin(0.00002));
-    tp.longitude(181);
-    REQUIRE(tp.longitude() == Catch::Approx(180).margin(0.00002));
+    TrackingPayload payload;
+    REQUIRE(payload.longitude() == Catch::Approx(0.0).margin(0.00002));
+    payload.longitude(160.54197);
+    REQUIRE(payload.longitude() == Catch::Approx(160.54197).margin(0.00002));
+    payload.longitude(-126.74510);
+    REQUIRE(payload.longitude() == Catch::Approx(-126.74510).margin(0.00002));
+    payload.longitude(-181);
+    REQUIRE(payload.longitude() == Catch::Approx(-180).margin(0.00002));
+    payload.longitude(181);
+    REQUIRE(payload.longitude() == Catch::Approx(180).margin(0.00002));
 }
 
 TEST_CASE("TrackingPayload altitude ", "[single-file]")
 {
-    TrackingPayload tp;
-    REQUIRE(tp.altitude() == 0);
+    TrackingPayload payload;
+    REQUIRE(payload.altitude() == 0);
 
-    tp.altitude(2046);
-    REQUIRE(tp.altitude() == 2046);
-    tp.altitude(2047);
-    REQUIRE(tp.altitude() == 2047);
+    payload.altitude(2046);
+    REQUIRE(payload.altitude() == 2046);
+    payload.altitude(2047);
+    REQUIRE(payload.altitude() == 2047);
 
-    tp.altitude(5677);
-    REQUIRE(tp.altitude() == 5676);
-    tp.altitude(5678);
-    REQUIRE(tp.altitude() == 5680);
-    tp.altitude(5681);
-    REQUIRE(tp.altitude() == 5680);
-    tp.altitude(5682);
-    REQUIRE(tp.altitude() == 5684);
+    payload.altitude(5677);
+    REQUIRE(payload.altitude() == 5676);
+    payload.altitude(5678);
+    REQUIRE(payload.altitude() == 5680);
+    payload.altitude(5681);
+    REQUIRE(payload.altitude() == 5680);
+    payload.altitude(5682);
+    REQUIRE(payload.altitude() == 5684);
 
-    tp.altitude(-100);
-    REQUIRE(tp.altitude() == 0);
-    tp.altitude(10000);
-    REQUIRE(tp.altitude() == 8188);
+    payload.altitude(-100);
+    REQUIRE(payload.altitude() == 0);
+    payload.altitude(10000);
+    REQUIRE(payload.altitude() == 8188);
 }
 
 TEST_CASE("TrackingPayload tracking ", "[single-file]")
 {
-    TrackingPayload tp;
-    tp.tracking(true);
-    REQUIRE(tp.tracking() == true);
+    TrackingPayload payload;
+    payload.tracking(true);
+    REQUIRE(payload.tracking() == true);
 }
 
 TEST_CASE("TrackingPayload aircrafttype ", "[single-file]")
 {
-    TrackingPayload tp;
-    tp.aircraftType(AircraftType::GLIDER);
-    REQUIRE(tp.aircraftType() == AircraftType::GLIDER);
+    TrackingPayload payload;
+    payload.aircraftType(AircraftType::GLIDER);
+    REQUIRE(payload.aircraftType() == AircraftType::GLIDER);
 }
 
 TEST_CASE("TrackingPayload speed ", "[single-file]")
 {
-    TrackingPayload tp;
-    tp.speed(0);
-    REQUIRE(tp.speed() == Catch::Approx(0).margin(0.5));
+    TrackingPayload payload;
+    payload.speed(0);
+    REQUIRE(payload.speed() == Catch::Approx(0).margin(0.5));
 
-    tp.speed(-1);
-    REQUIRE(tp.speed() == Catch::Approx(0).margin(0.5));
+    payload.speed(-1);
+    REQUIRE(payload.speed() == Catch::Approx(0).margin(0.5));
 
-    tp.speed(60.2);
-    REQUIRE(tp.speed() == Catch::Approx(60).margin(0.5));
+    payload.speed(60.2);
+    REQUIRE(payload.speed() == Catch::Approx(60).margin(0.5));
 
-    tp.speed(128.8);
-    REQUIRE(tp.speed() == Catch::Approx(128.8).margin(2.5));
+    payload.speed(128.8);
+    REQUIRE(payload.speed() == Catch::Approx(128.8).margin(2.5));
 
-    tp.speed(320);
-    REQUIRE(tp.speed() == Catch::Approx(317.5).margin(2.5));
+    payload.speed(320);
+    REQUIRE(payload.speed() == Catch::Approx(317.5).margin(2.5));
 }
 
 TEST_CASE("TrackingPayload climbRate ", "[single-file]")
 {
-    TrackingPayload tp;
-    REQUIRE(tp.climbRate() == Catch::Approx(0).margin(0.1));
+    TrackingPayload payload;
+    REQUIRE(payload.climbRate() == Catch::Approx(0).margin(0.1));
 
-    tp.climbRate(6.2);
-    REQUIRE(tp.climbRate() == Catch::Approx(6.2).margin(0.1));
+    payload.climbRate(6.2);
+    REQUIRE(payload.climbRate() == Catch::Approx(6.2).margin(0.1));
  
-    tp.climbRate(-6.2);
-    REQUIRE(tp.climbRate() == Catch::Approx(-6.2).margin(0.1));
+    payload.climbRate(-6.2);
+    REQUIRE(payload.climbRate() == Catch::Approx(-6.2).margin(0.1));
 
-    tp.climbRate(16.8);
-    REQUIRE(tp.climbRate() == Catch::Approx(16.8).margin(0.5));
+    payload.climbRate(16.8);
+    REQUIRE(payload.climbRate() == Catch::Approx(16.8).margin(0.5));
  
-    tp.climbRate(-16.8);
-    REQUIRE(tp.climbRate() == Catch::Approx(-16.8).margin(0.5));
+    payload.climbRate(-16.8);
+    REQUIRE(payload.climbRate() == Catch::Approx(-16.8).margin(0.5));
 
-    tp.climbRate(31.5);
-    REQUIRE(tp.climbRate() == Catch::Approx(31.5).margin(0.5));
+    payload.climbRate(31.5);
+    REQUIRE(payload.climbRate() == Catch::Approx(31.5).margin(0.5));
 
-    tp.climbRate(-31.5);
-    REQUIRE(tp.climbRate() == Catch::Approx(-31.5).margin(0.5));
+    payload.climbRate(-31.5);
+    REQUIRE(payload.climbRate() == Catch::Approx(-31.5).margin(0.5));
 
-    tp.climbRate(100.0f);
-    REQUIRE(tp.climbRate() == Catch::Approx(31.5).margin(0.5));
+    payload.climbRate(100.0f);
+    REQUIRE(payload.climbRate() == Catch::Approx(31.5).margin(0.5));
 
-    tp.climbRate(-100.0f);
-    REQUIRE(tp.climbRate() == Catch::Approx(-31.5).margin(0.5));
+    payload.climbRate(-100.0f);
+    REQUIRE(payload.climbRate() == Catch::Approx(-31.5).margin(0.5));
 }
 
-TEST_CASE("TrackingPayload heading ", "[single-file]")
+TEST_CASE("GroundTrackingPayload Default Constructor", "[TrackingPayload]") {
+    GroundTrackingPayload payload;
+
+    REQUIRE(payload.type() == MessageType::GROUND_TRACKING);
+    REQUIRE(payload.latitude() == 0);
+    REQUIRE(payload.longitude() == 0);
+    REQUIRE(payload.tracking() == false);
+    REQUIRE(payload.unk() == 0);
+    REQUIRE(payload.groundType() == GroundTrackingType::OTHER);
+}
+
+TEST_CASE("GroundTrackingPayload Latitude ", "[single-file]")
 {
-    TrackingPayload tp;
-    REQUIRE(tp.groundTrack() == Catch::Approx(0).margin(1.4));
+    GroundTrackingPayload payload;
+    REQUIRE(payload.latitude() == Catch::Approx(0.0).margin(0.00001));
+    payload.latitude(56.95812f);
+    REQUIRE(payload.latitude() == Catch::Approx(56.95812f).margin(0.00001));
+    payload.latitude(-56.18748);
+    REQUIRE(payload.latitude() == Catch::Approx(-56.18748f).margin(0.00001));
+    payload.latitude(-91);
+    REQUIRE(payload.latitude() == Catch::Approx(-90).margin(0.00001));
+    payload.latitude(91);
+    REQUIRE(payload.latitude() == Catch::Approx(90).margin(0.00001));
+}
 
-    tp.groundTrack(360.0f);
-    REQUIRE(tp.groundTrack() == Catch::Approx(0.f).margin(1.4));
+TEST_CASE("GroundTrackingPayload Longitude ", "[single-file]")
+{
+    GroundTrackingPayload payload;
+    REQUIRE(payload.longitude() == Catch::Approx(0.0).margin(0.00002));
+    payload.longitude(160.54197);
+    REQUIRE(payload.longitude() == Catch::Approx(160.54197).margin(0.00002));
+    payload.longitude(-126.74510);
+    REQUIRE(payload.longitude() == Catch::Approx(-126.74510).margin(0.00002));
+    payload.longitude(-181);
+    REQUIRE(payload.longitude() == Catch::Approx(-180).margin(0.00002));
+    payload.longitude(181);
+    REQUIRE(payload.longitude() == Catch::Approx(180).margin(0.00002));
+}
 
-    tp.groundTrack(-10.f);
-    REQUIRE(tp.groundTrack() == Catch::Approx(350).margin(1.4));
- 
-    tp.groundTrack(127.f);
-    REQUIRE(tp.groundTrack() == Catch::Approx(127).margin(1.4));
+TEST_CASE("GroundTrackingPayload tracking ", "[single-file]")
+{
+    GroundTrackingPayload payload;
+    payload.tracking(true);
+    REQUIRE(payload.tracking() == true);
+}
 
-    tp.groundTrack(380.f);
-    REQUIRE(tp.groundTrack() == Catch::Approx(20.0f).margin(1.4));
+TEST_CASE("GroundTrackingPayload groundTrackingType ", "[single-file]")
+{
+    GroundTrackingPayload payload;
+    payload.groundType(GroundTrackingType::DISTRESS_CALL);
+    REQUIRE(payload.groundType() == GroundTrackingType::DISTRESS_CALL);
+}
 
+
+TEST_CASE("NamePayload", "[single-file]") {
+    NamePayload<123> payload;
+
+    REQUIRE(payload.type() == MessageType::NAME);
+    REQUIRE(payload.name() == etl::string_view("")); 
+    payload.name("Foo and Bar");
+    REQUIRE(payload.name() == etl::string_view("Foo and Bar")); 
+    payload.name("Only this one");
+    REQUIRE(payload.name() == etl::string_view("Only this one")); 
+}
+
+
+TEST_CASE("MessagePayload", "[single-file]") {
+    MessagePayload<123> payload;
+
+    REQUIRE(payload.type() == MessageType::MESSAGE);
+    REQUIRE(payload.subHeader() == 0); 
+    REQUIRE(payload.message().size() == 0); 
+    payload.subHeader(12);
+    REQUIRE(payload.subHeader() == 12); 
+
+    etl::vector<uint8_t, 12> message = {0x80, 0x12, 0x56, 0x34, 0x30, 0x98, 0x54, 0x76, 0x32, 0x54, 0x76, 0x98};
+    payload.message(message);
+    REQUIRE(payload.message() == message);
 }

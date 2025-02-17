@@ -43,16 +43,18 @@ public:
         uint32_t channelSeperation;
         uint8_t channels;
         int8_t powerdBm;
+        uint16_t bandwidth;
     };
 
     // From https://github.com/VirusPilot/esp32-ogn-tracker
-    static constexpr Frequency Europe{868'200'000, 200'000, 02, 14};
-    static constexpr Frequency NorthAmerica{902'200'000, 400'000, 65, 30};
-    static constexpr Frequency NewZealand{869'250'000, 200'000, 01, 10};
-    static constexpr Frequency Australia{917'000'000, 400'000, 24, 30};
-    static constexpr Frequency Israel{916'200'000, 200'000, 01, 22};
-    static constexpr Frequency SouthAmerica{917'000'000, 400'000, 24, 30};
-    static constexpr Frequency EuropeFanet{869'525'000, 000'000, 00, 14};
+    static constexpr Frequency Europe{868'200'000, 200'000, 02, 14, 0};
+    static constexpr Frequency NorthAmerica{902'200'000, 400'000, 65, 30, 0};
+    static constexpr Frequency NewZealand{869'250'000, 200'000, 01, 10, 0};
+    static constexpr Frequency Australia{917'000'000, 400'000, 24, 30, 0};
+    static constexpr Frequency Israel{916'200'000, 200'000, 01, 22, 0};
+    static constexpr Frequency SouthAmerica{917'000'000, 400'000, 24, 30, 0};
+//    static constexpr Frequency PawEurope{869'525'000, 000'000, 00, 14, 100};
+    static constexpr Frequency EuropeFanet{868'200'000, 000'000, 01, 14, 250};
 
     // First byte of the syncWord is the preamble for TX
     static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0,          1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
@@ -117,7 +119,7 @@ public:
         ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
 
         // Fanet
-        ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 500, 1500, 00, 000, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 500, 1500, 15, 000, ChannelMethod::CHANNEL_0},
     };
 
 private:

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "etl/string.h"
 #include "etl/vector.h"
+#include "etl/bit_stream.h"
 #include "math.h"
 
 // FANET Header Structure
@@ -75,6 +76,9 @@ namespace FANET
         {
             manufacturerId = static_cast<uint8_t>((combinedId >> 16) & 0xFF);
             uniqueID = static_cast<uint16_t>(combinedId & 0xFFFF);
+        }
+        Address(uint8_t manufacturerId_, uint16_t uniqueID_) : manufacturerId(manufacturerId_), uniqueID(uniqueID_)
+        {
         }
 
         // Default constructor (if needed)
@@ -359,14 +363,14 @@ namespace FANET
             return MessageType::NAME;
         }
 
-        const etl::istring &name() const
+        etl::string_view name() const
         {
-            return &nameRaw;
+            return etl::string_view(nameRaw);
         }
 
-        void name(const etl::istring &name) const
+        void name(const etl::string_view &name)
         {
-            nameRaw = name;
+            nameRaw.assign(name.data(), name.size());
         }
     };
 
@@ -382,18 +386,28 @@ namespace FANET
         static_assert(SIZE <= 244, "MessagePayload size cannot exceed 244 bytes");
 
     public:
+        MessagePayload() : subHeaderRaw(0) {}
         MessageType type() const
         {
             return MessageType::MESSAGE;
         }
+        void subHeader(uint8_t subHeader)
+        {
+            subHeaderRaw = subHeader;
+        }
+        uint8_t subHeader()
+        {
+            return subHeaderRaw;
+        }
         const etl::ivector<uint8_t> &message() const
         {
-            return &messageRaw;
+            return messageRaw;
         }
 
-        void message(const etl::ivector<uint8_t> &message) const
+        void message(const etl::ivector<uint8_t> &message)
         {
-            messageRaw = message;
+            size_t copy_size = std::min(message.size(), messageRaw.capacity());
+            messageRaw.assign(message.begin(), message.begin() + copy_size);
         }
     };
 
@@ -406,10 +420,18 @@ namespace FANET
         uint32_t latitudeRaw : 24;  // Scaled by 93206
         uint32_t longitudeRaw : 24; // Scaled by 46603
         bool trackingBit : 1;
-        uint8_t unk : 3;
+        uint8_t unkRaw : 3;
         GroundTrackingType groundTypeRaw : 4;
 
     public:
+        GroundTrackingPayload()
+            : latitudeRaw(0),
+              longitudeRaw(0),
+              trackingBit(false),
+              unkRaw(0),
+              groundTypeRaw(GroundTrackingType::OTHER)
+        {
+        }
         MessageType type() const
         {
             return MessageType::GROUND_TRACKING;
@@ -422,6 +444,10 @@ namespace FANET
         float longitude()
         {
             return ((longitudeRaw << 8) >> 8) / 46603.f;
+        }
+        uint8_t unk()
+        {
+            return unkRaw;
         }
         GroundTrackingPayload &latitude(float lat)
         {
@@ -474,32 +500,32 @@ namespace FANET
      * Service Payload
      * Messagetype : 4
      */
-    class ServicePayload
-    {
-    public:
-        MessageType type() const
-        {
-            return MessageType::SERVICE;
-        }
+    // class ServicePayload
+    // {
+    // public:
+    //     MessageType type() const
+    //     {
+    //         return MessageType::SERVICE;
+    //     }
 
-        bool exAvailable : 1;
-        uint8_t tbd : 2;
-        bool baromAvailable : 1;
-        bool humidAvailable : 1;
-        bool windAvailable : 1;
-        bool tempAvailable : 1;
-        bool gateway : 1;
-        uint8_t extendedHeader : 8;
-        uint32_t latitude : 24;  // Scaled by 93206
-        uint32_t longitude : 24; // Scaled by 46603
-        uint8_t temperature : 8; // ±0.5°C per bit
-        uint8_t windHeading : 8;
-        uint8_t windSpeed : 7;
-        uint8_t sScale : 1;
-        uint8_t windGusts : 7;
-        uint8_t gScale : 1;
-        uint8_t humidity : 8;     // 0.4 %rh per bit
-        uint16_t barometric : 16; // 0.01 hPa per bit, offset 430 hPa
-    } __attribute__((packed));
+    //     bool exAvailable : 1;
+    //     uint8_t tbd : 2;
+    //     bool baromAvailable : 1;
+    //     bool humidAvailable : 1;
+    //     bool windAvailable : 1;
+    //     bool tempAvailable : 1;
+    //     bool gateway : 1;
+    //     uint8_t extendedHeader : 8;
+    //     uint32_t latitude : 24;  // Scaled by 93206
+    //     uint32_t longitude : 24; // Scaled by 46603
+    //     uint8_t temperature : 8; // ±0.5°C per bit
+    //     uint8_t windHeading : 8;
+    //     uint8_t windSpeed : 7;
+    //     uint8_t sScale : 1;
+    //     uint8_t windGusts : 7;
+    //     uint8_t gScale : 1;
+    //     uint8_t humidity : 8;     // 0.4 %rh per bit
+    //     uint16_t barometric : 16; // 0.01 hPa per bit, offset 430 hPa
+    // } __attribute__((packed));
 
 };
