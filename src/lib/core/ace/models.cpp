@@ -24,7 +24,8 @@ namespace OpenAce
         {PinType::P0, "P0"},
         {PinType::P1, "P1"},
         {PinType::P2, "P2"},
-        {PinType::AD0, "AD0"}
+        {PinType::AD0, "AD0"},
+        {PinType::SPI, "SPI"}
     };
 
     PinType stringToPinType(const char *str)

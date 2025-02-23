@@ -68,7 +68,7 @@ OpenAce::PostConstruct Flarm::postConstruct()
         return OpenAce::PostConstruct::FAILED;
     }
 
-    frameConsumerQueue = xQueueCreate( 4, sizeof( OpenAce::RadioRxFrameMsg ) );
+    frameConsumerQueue = xQueueCreate( 4, sizeof( OpenAce::RadioRxGfskMsg ) );
     if (frameConsumerQueue == nullptr)
     {
         panic("Failed to create frameConsumerQueue");
@@ -238,7 +238,7 @@ void Flarm::flarmReceiveTask(void *arg)
     Flarm *flarm = static_cast<Flarm*>(arg);
     while (true)
     {
-        OpenAce::RadioRxFrameMsg msg;
+        OpenAce::RadioRxGfskMsg msg;
         if (xQueueReceive(flarm->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
             // Validate checksum

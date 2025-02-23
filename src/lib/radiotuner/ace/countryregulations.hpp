@@ -62,7 +62,7 @@ public:
     static constexpr Radio::ProtocolConfig PROTOCOL_OGN1{Radio::Mode::GFSK, OpenAce::DataSource::OGN1, 20 + 6,     1, 7, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}}; // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
     static constexpr Radio::ProtocolConfig PROTOCOL_ADSL{Radio::Mode::GFSK, OpenAce::DataSource::ADSL, 24,         2, 6, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
     static constexpr Radio::ProtocolConfig PROTOCOL_PAW{Radio::Mode::GFSK, OpenAce::DataSource::PAW, 00 + 0,       1, 8, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}}; // 4 PAW
-    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{Radio::Mode::LORA, OpenAce::DataSource::FANET, 00 + 0,   1, 8, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // 5 FANET 3
+    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{Radio::Mode::LORA, OpenAce::DataSource::FANET, 0xff,   12, 2, {0xF4, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // 5 FANET 3
 
     enum class ChannelMethod : uint8_t
     {

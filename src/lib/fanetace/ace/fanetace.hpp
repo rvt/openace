@@ -11,7 +11,7 @@
 #include "etl/message_bus.h"
 #include "etl/queue_spsc_atomic.h"
 
-class FanetAce : public BaseModule, public etl::message_router<FanetAce>
+class FanetAce : public BaseModule, public etl::message_router<FanetAce, OpenAce::RadioTxPositionRequestMsg, OpenAce::RadioRxLoraMsg>
 {
     static constexpr uint8_t QUEUE_SIZE = 6;
 
@@ -35,11 +35,14 @@ private:
 
     static void FanetAceTask(void *arg);
 
+    void on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
+    void on_receive(const OpenAce::RadioRxLoraMsg &msg);
+
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<OpenAce::ADSBString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
 
 public:
-    static constexpr const etl::string_view NAME = "FanetAce";
+    static constexpr const etl::string_view NAME = "Fanet";
 
     FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr)
     {

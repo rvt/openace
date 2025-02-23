@@ -91,7 +91,7 @@ void Flarm2024::scramble(uint32_t *data, uint32_t timestamp) const
 
 OpenAce::PostConstruct Flarm2024::postConstruct()
 {
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrameMsg));
+    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxGfskMsg));
     if (frameConsumerQueue == nullptr)
     {
         return OpenAce::PostConstruct::XQUEUE_ERROR;
@@ -270,7 +270,7 @@ void Flarm2024::flarmReceiveTask(void *arg)
     Flarm2024 *flarm = static_cast<Flarm2024 *>(arg);
     while (true)
     {
-        OpenAce::RadioRxFrameMsg msg;
+        OpenAce::RadioRxGfskMsg msg;
         if (xQueueReceive(flarm->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
             // Validate checksum
@@ -295,11 +295,11 @@ void Flarm2024::flarmReceiveTask(void *arg)
     }
 }
 
-void Flarm2024::on_receive(const OpenAce::RadioRxFrameMsg &msg)
+void Flarm2024::on_receive(const OpenAce::RadioRxGfskMsg &msg)
 {
     if (msg.dataSource == OpenAce::DataSource::FLARM)
     {
-        const OpenAce::RadioRxFrameMsg cpy = msg;
+        const OpenAce::RadioRxGfskMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;

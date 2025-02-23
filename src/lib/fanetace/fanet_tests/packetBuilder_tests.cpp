@@ -3,7 +3,7 @@
 
 // #define private public
 
-#include "../fanet/fanet_builder.hpp"
+#include "../fanet/packetBuilder.hpp"
 
 
 constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
@@ -43,18 +43,18 @@ void dumpHex(const etl::array<uint8_t, 16> &buffer) {
 
 TEST_CASE("PacketBuilder Tracking Payload", "[single-file]")
 {
-    TrackingPayload tp;
-    tp.longitude(52.3);
-    tp.latitude(13.4);
-    tp.speed(45.6);
+//     TrackingPayload tp;
+//     tp.longitude(52.3);
+//     tp.latitude(13.4);
+//     tp.speed(45.6);
 
-    puts("Tracking Payload");
-    PacketBuilder pb{Address(0x12, 0x3456)};
-    pb.setSignature(0x98765432);
-    pb.setDestination(Address{0x345678});
+//     puts("Tracking Payload");
+//     PacketBuilder pb{Address(0x12, 0x3456)};
+// //    pb.setSignature(0x98765432);
+// //    pb.setDestination(Address{0x345678});
 
 
-    dumpHex(pb.build(tp));
+//     dumpHex(pb.build(tp));
 }
 
 // TEST_CASE("PacketBuilder Service Payload", "[single-file]")

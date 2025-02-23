@@ -34,7 +34,7 @@
 
 #include "ognpacket.hpp"
 
-class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioRxFrameMsg, OpenAce::OwnshipPositionMsg,
+class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioRxGfskMsg, OpenAce::OwnshipPositionMsg,
     OpenAce::RadioTxPositionRequestMsg, OpenAce::BarometricPressureMsg, OpenAce::GpsStatsMsg, OpenAce::ConfigUpdatedMsg>
 {
     static constexpr int32_t DEFAULT_IGNORE_DISTANCE = 25000;
@@ -96,7 +96,7 @@ private:
      * Send a FreeRTOS message when a OgnFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxFrameMsg &msg);
+    void on_receive(const OpenAce::RadioRxGfskMsg &msg);
     void on_receive(const OpenAce::OwnshipPositionMsg &msg);
     void on_receive(const OpenAce::BarometricPressureMsg &msg);
     void on_receive(const OpenAce::GpsStatsMsg &msg);

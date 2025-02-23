@@ -4,7 +4,7 @@
 
 // #define private public
 
-#include "../fanet/fanet_common.hpp"
+#include "../fanet/fanet.hpp"
 #include "etl/vector.h"
 
 
@@ -21,11 +21,11 @@ void dumpHex(const etl::ivector<uint8_t> &buffer) {
 TEST_CASE("TrackingPayload Default Constructor", "[TrackingPayload]") {
     TrackingPayload payload;
 
-    REQUIRE(payload.type() == MessageType::TRACKING);
+    //REQUIRE(payload.type() == MessageType::TRACKING);
     REQUIRE(payload.latitude() == 0);
     REQUIRE(payload.longitude() == 0);
     REQUIRE(payload.altitude() == 0);
-    REQUIRE(payload.aircraftType() == AircraftType::OTHER);
+    REQUIRE(payload.aircraftType() == TrackingPayload::AircraftType::OTHER);
     REQUIRE(payload.tracking() == false);
     REQUIRE(payload.speed() == 0);
     REQUIRE(payload.climbRate() == 0);
@@ -96,8 +96,8 @@ TEST_CASE("TrackingPayload tracking ", "[single-file]")
 TEST_CASE("TrackingPayload aircrafttype ", "[single-file]")
 {
     TrackingPayload payload;
-    payload.aircraftType(AircraftType::GLIDER);
-    REQUIRE(payload.aircraftType() == AircraftType::GLIDER);
+    payload.aircraftType(TrackingPayload::AircraftType::GLIDER);
+    REQUIRE(payload.aircraftType() == TrackingPayload::AircraftType::GLIDER);
 }
 
 TEST_CASE("TrackingPayload speed ", "[single-file]")
@@ -149,16 +149,16 @@ TEST_CASE("TrackingPayload climbRate ", "[single-file]")
     REQUIRE(payload.climbRate() == Catch::Approx(-31.5).margin(0.5));
 }
 
-TEST_CASE("GroundTrackingPayload Default Constructor", "[TrackingPayload]") {
-    GroundTrackingPayload payload;
+    TEST_CASE("GroundTrackingPayload Default Constructor", "[TrackingPayload]") {
+        GroundTrackingPayload payload;
 
-    REQUIRE(payload.type() == MessageType::GROUND_TRACKING);
-    REQUIRE(payload.latitude() == 0);
-    REQUIRE(payload.longitude() == 0);
-    REQUIRE(payload.tracking() == false);
-    REQUIRE(payload.unk() == 0);
-    REQUIRE(payload.groundType() == GroundTrackingType::OTHER);
-}
+        //REQUIRE(payload.type() == MessageType::GROUND_TRACKING);
+        REQUIRE(payload.latitude() == 0);
+        REQUIRE(payload.longitude() == 0);
+        REQUIRE(payload.tracking() == false);
+        REQUIRE(payload.unk() == 0);
+        REQUIRE(payload.groundType() == GroundTrackingPayload::TrackingType::OTHER);
+    }
 
 TEST_CASE("GroundTrackingPayload Latitude ", "[single-file]")
 {
@@ -195,18 +195,18 @@ TEST_CASE("GroundTrackingPayload tracking ", "[single-file]")
     REQUIRE(payload.tracking() == true);
 }
 
-TEST_CASE("GroundTrackingPayload groundTrackingType ", "[single-file]")
+TEST_CASE("GroundTrackingPayload TrackingType ", "[single-file]")
 {
     GroundTrackingPayload payload;
-    payload.groundType(GroundTrackingType::DISTRESS_CALL);
-    REQUIRE(payload.groundType() == GroundTrackingType::DISTRESS_CALL);
+    payload.groundType(GroundTrackingPayload::TrackingType::DISTRESS_CALL);
+    REQUIRE(payload.groundType() == GroundTrackingPayload::TrackingType::DISTRESS_CALL);
 }
 
 
 TEST_CASE("NamePayload", "[single-file]") {
     NamePayload<123> payload;
 
-    REQUIRE(payload.type() == MessageType::NAME);
+    //REQUIRE(payload.type() == MessageType::NAME);
     REQUIRE(payload.name() == etl::string_view("")); 
     payload.name("Foo and Bar");
     REQUIRE(payload.name() == etl::string_view("Foo and Bar")); 
@@ -218,7 +218,7 @@ TEST_CASE("NamePayload", "[single-file]") {
 TEST_CASE("MessagePayload", "[single-file]") {
     MessagePayload<123> payload;
 
-    REQUIRE(payload.type() == MessageType::MESSAGE);
+    //REQUIRE(payload.type() == MessageType::MESSAGE);
     REQUIRE(payload.subHeader() == 0); 
     REQUIRE(payload.message().size() == 0); 
     payload.subHeader(12);

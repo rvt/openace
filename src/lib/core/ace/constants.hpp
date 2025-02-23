@@ -33,6 +33,7 @@ namespace OpenAce
     constexpr uint8_t RADIO_MAX_FRAME_WORD_LENGTH = 7;                                         // OGN:26 FLARM:24 Maximum length expected for a frame received via Radio (OGN/ Flarm, Fannet etc...) This includes address bytes + Some zero's for parity calculations
     constexpr uint8_t RADIO_MAX_FRAME_LENGTH = RADIO_MAX_FRAME_WORD_LENGTH * sizeof(uint32_t); // Maximum length expected for a frame received via Radio (OGN/ Flarm, Fannet etc...) This includes address bytes + Some zero's for parity calculations
     constexpr uint8_t MAX_LENGTH_ADSB = 33;
+    constexpr uint8_t MAX_LORA_MSG_SIZE = 255;
     constexpr float GROUNDSPEED_CONSIDERING_AIRBORN = 15.f; // groundspeed > 25ms is considered beeing airborn
     // @todo: added one extra word because 'somwhere' I think there is an issue where we corrupt the stack
     using NMEAString = etl::string<NMEA_MAX_LENGTH>; // NMEA sentence

@@ -15,7 +15,7 @@ namespace FANET
         ExtendedHeader extHeader{};        // Present if header.extended is set
         Address destination{};             // Present if extHeader.cast is set
         uint32_t signature{};              // Present if extHeader.signature is set
-        etl::vector<uint8_t, 255> payload; // Message payload
+        etl::vector<uint8_t, OpenAce::RADIO_MAX_FRAME_LENGTH> payload; // Message payload
         bool isValid{false};               // Indicates if parsing was successful
 
     public:

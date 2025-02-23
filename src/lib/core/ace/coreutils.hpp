@@ -479,13 +479,13 @@ public:
     /**
      * Returns the pin number from the pin map, when not found returns -1 to indicate that
      */
-    static int8_t pinValue(const OpenAce::PinTypeMap& pm, const OpenAce::PinType &pinName)
+    static int8_t pinValue(const OpenAce::PinTypeMap& pm, const OpenAce::PinType &pinName, int8_t defaultValue=-1)
     {
         auto it = pm.find(pinName);
         if (it != pm.end())
         {
             return it->second;
         }
-        return -1;
+        return defaultValue;
     }
 };

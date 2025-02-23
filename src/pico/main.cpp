@@ -52,6 +52,7 @@
 #include "ace/dataport.hpp"
 #include "ace/airconnect.hpp"
 #include "ace/bluetooth.hpp"
+#include "ace/fanetace.hpp"
 
 const char *OpenAce_buildTime = BUILD_TIMESTAMP;
 
@@ -135,6 +136,7 @@ void registerModules()
     BaseModule::registerModule(DataPort::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new DataPort(bus, config); });
     BaseModule::registerModule(AirConnect::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new AirConnect(bus, config); });
     BaseModule::registerModule(Bluetooth::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Bluetooth(bus, config); });
+    BaseModule::registerModule(FanetAce::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new FanetAce(bus, config); });
     // clang-format on
     // *INDENT-ON*
 
@@ -239,6 +241,7 @@ static void loadModules(void *arch)
     load(Gdl90Service::NAME, bus, config);
     load(ADSBDecoder::NAME, bus, config);
     load(ADSL::NAME, bus, config);
+    load(FanetAce::NAME, bus, config);
     load(Flarm2024::NAME, bus, config);
     load(Ogn1::NAME, bus, config);
     load(GDLoverUDP::NAME, bus, config);
