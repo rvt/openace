@@ -4,21 +4,9 @@
 
 #include "../fanet/utils.hpp"
 #include "../fanet/tracking.hpp"
+#include "helpers.hpp"
 
 using namespace FANET;
-
-#define private public
-
-template <class T>
-const T &constrain(const T &x, const T &lo, const T &hi)
-{
-    if (x < lo)
-        return lo;
-    else if (hi < x)
-        return hi;
-    else
-        return x;
-}
 
 TEST_CASE("toScaled unsigned 1 2 ", "[Utils]")
 {
@@ -104,16 +92,6 @@ TEST_CASE("toScaled signed 0.5 2.5 ", "[Utils]")
 // Tests against original code
 
 
-
-int16_t climbRate_Origional(float climbRate)
-{
-    int climb10 = constrain((int)std::round(climbRate * 10.0f), -315, 315);
-    if (std::abs(climb10) > 63)
-        return ((climb10 + (climb10 >= 0 ? 2 : -2)) / 5);
-    else
-        return climb10;
-}
-
 TEST_CASE("toScaled climbRate", "[Utils]")
 {
     auto result = toScaled<int16_t, etl::ratio<1, 10>, etl::ratio<1, 2>, 7>(-2.5f);
@@ -125,14 +103,6 @@ TEST_CASE("toScaled climbRate", "[Utils]")
     REQUIRE(result.value == climbRate_Origional(-20.5f));
 }
 
-int16_t turnRate_Origional(float turnRate)
-{
-    int trOs = constrain((int)std::round(turnRate * 4.0f), -254, 254);
-    if (std::abs(trOs) >= 63)
-        return ((trOs + (trOs >= 0 ? 2 : -2)) / 4);
-    else
-        return trOs;
-}
 
 TEST_CASE("toScaled turnRate", "[Utils]")
 {
@@ -145,14 +115,6 @@ TEST_CASE("toScaled turnRate", "[Utils]")
     REQUIRE(result.value == turnRate_Origional(30.f));
 }
 
-int16_t speed_Origional(float speed)
-{
-    int speed2 = constrain((int)std::round(speed * 2.0f), 0, 635);
-    if (speed2 > 127)    
-        return ((speed2 + 2) / 5);
-    else
-        return speed2;
-}
 
 TEST_CASE("toScaled speed", "[Utils]")
 {
@@ -165,14 +127,6 @@ TEST_CASE("toScaled speed", "[Utils]")
     REQUIRE(result.value == speed_Origional(135.5f));
 }
 
-int16_t altitude_Origional(float altitude)
-{
-    int alt = constrain(altitude, 0.f, 8190.f);
-    if(alt > 2047)
-        return (alt+2)/4;
-    else
-        return alt;    
-}
 
 TEST_CASE("toScaled altitude", "[Utils]")
 {
@@ -184,5 +138,4 @@ TEST_CASE("toScaled altitude", "[Utils]")
     REQUIRE(result.scaled == true);
     REQUIRE(result.value == altitude_Origional(5000.f));
 }
-
 

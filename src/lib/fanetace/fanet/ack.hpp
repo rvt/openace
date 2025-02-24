@@ -13,5 +13,9 @@ namespace FANET
         {
             return Header::MessageType::ACK;
         }
+        void serialize(etl::bit_stream_writer &writer) const
+        {
+        }
+
     };
 }

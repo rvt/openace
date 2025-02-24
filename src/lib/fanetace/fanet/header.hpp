@@ -30,18 +30,16 @@ namespace FANET
         };
 
     private:
-        MessageType msgType : 6; // Type of message (6 bits)
-        bool isForwarded : 1;    // Forwarding bit
-        bool hasExtended : 1;    // Extended header bit
+        bool hasExtended = false;               // Extended header bit
+        bool isForwarded = false;               // Forwarding bit
+        MessageType msgType = MessageType::ACK; // Type of message (6 bits)
 
     public:
-        // Constructor
-        Header() : msgType(static_cast<MessageType>(0)), isForwarded(false), hasExtended(false) {}
+    explicit Header() = default;
 
-        Header(MessageType type_, bool forward_, bool extended_)
-            : msgType(type_), isForwarded(forward_), hasExtended(extended_) {}
+        Header(bool extended_, bool forward_, MessageType type_)
+            : hasExtended(extended_), isForwarded(forward_), msgType(type_) {}
 
-        // Methods without `get` and `set` prefixes
         MessageType type() const
         {
             return msgType;
@@ -76,12 +74,14 @@ namespace FANET
             writer.write_unchecked(static_cast<uint8_t>(msgType), 6U);
         }
 
-        void deserialize(etl::bit_stream_reader &reader)
+        static const Header deserialize(etl::bit_stream_reader &reader)
         {
-            hasExtended = reader.read_unchecked<bool>();
-            isForwarded = reader.read_unchecked<bool>();
-            msgType = static_cast<MessageType>(reader.read_unchecked<uint8_t>(6U));
+            Header header;
+            header.hasExtended = reader.read_unchecked<bool>();
+            header.isForwarded = reader.read_unchecked<bool>();
+            header.msgType = static_cast<MessageType>(reader.read_unchecked<uint8_t>(6U));
+            return header;
         }
-    } __attribute__((packed));
+    };
 
 }

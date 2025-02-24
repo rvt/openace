@@ -9,23 +9,20 @@ namespace FANET
     class Address final
     {
     private:
-        uint8_t mfgId;     // Manufacturer ID
-        uint16_t uniqueId; // Unique Device ID
+        uint8_t mfgId= 0;     // Manufacturer ID
+        uint16_t uniqueId = 0; // Unique Device ID
     public:
+        Address() = default;
+
         // Constructor 1: Takes a uint32_t and splits it into manufacturerId and uniqueID
-        explicit Address(uint32_t combinedId)
+        Address(uint32_t combinedId) : Address(mfgId = static_cast<uint8_t>((combinedId >> 16) & 0xFF), uniqueId = static_cast<uint16_t>(combinedId & 0xFFFF))
         {
-            mfgId = static_cast<uint8_t>((combinedId >> 16) & 0xFF);
-            uniqueId = static_cast<uint16_t>(combinedId & 0xFFFF);
         }
+
         Address(uint8_t manufacturerId_, uint16_t uniqueId_) : mfgId(manufacturerId_), uniqueId(uniqueId_)
         {
         }
 
-        // Default constructor (if needed)
-        Address() = default;
-
-        // Methods without `get` and `set` prefixes
         uint8_t manufacturer() const
         {
             return mfgId;
@@ -55,12 +52,12 @@ namespace FANET
             writer.write_unchecked<uint16_t>(etl::reverse_bytes<uint16_t>(uniqueId));
         }
 
-        void deserialize(etl::bit_stream_reader &reader)
+        static const Address deserialize(etl::bit_stream_reader &reader)
         {
-            mfgId = reader.read_unchecked<uint8_t>();
-            uniqueId = etl::reverse_bytes<uint16_t>(reader.read_unchecked<uint16_t>());
+            Address address;
+            address.mfgId = reader.read_unchecked<uint8_t>();
+            address.uniqueId = etl::reverse_bytes<uint16_t>(reader.read_unchecked<uint16_t>());
+            return address;
         }
-
-    } __attribute__((packed));
-
+    };
 }

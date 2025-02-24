@@ -26,38 +26,43 @@ namespace FANET
             UAV = 7               // 7: UAV
         };
 
-    public:
-        int32_t latitudeRaw : 24;  // Scaled by 93206
-        int32_t longitudeRaw : 24; // Scaled by 46603
-        uint16_t altitudeRaw : 11; // 11-bit altitude
-        bool aScaling : 1;
-        AircraftType aircraftTypeRaw : 3;
-        bool trackingBit : 1;
-        uint8_t speedRaw : 7;
-        bool sScalingBit : 1;
-        int8_t climbRaw : 7;
-        bool cScalingBit : 1;
-        uint8_t groundTrackRaw : 8;
-        uint8_t turnRateRaw : 7;
-        bool tScalingBit : 1;
+    private:
+        int32_t latitudeRaw = 0;
+        int32_t longitudeRaw = 0;
+        uint16_t altitudeRaw = 0;
+        bool trackingBit = false;
+        AircraftType aircraftTypeRaw = AircraftType::OTHER;
+        bool aScaling = false;
+        bool sScalingBit = false;
+        uint8_t speedRaw = 0;
+        bool cScalingBit = false;
+        int8_t climbRaw = 0;
+        uint8_t groundTrackRaw = 0;
+        bool tScalingBit = false;
+        int8_t turnRateRaw = 0;
 
     public:
-        TrackingPayload()
-            : latitudeRaw(0),
-              longitudeRaw(0),
-              altitudeRaw(0),
-              aScaling(false),
-              aircraftTypeRaw(AircraftType::OTHER),
-              trackingBit(false),
-              speedRaw(0),
-              sScalingBit(false),
-              climbRaw(0),
-              cScalingBit(false),
-              groundTrackRaw(0),
-              turnRateRaw(0),
-              tScalingBit(false)
-        {
-        }
+    explicit TrackingPayload() = default;
+
+        TrackingPayload(int32_t latitudeRaw_, int32_t longitudeRaw_, uint16_t altitudeRaw_,
+            bool trackingBit_, AircraftType aircraftTypeRaw_,
+            bool aScaling_, bool sScalingBit_, uint8_t speedRaw_,
+            bool cScalingBit_, int8_t climbRaw_, uint8_t groundTrackRaw_,
+            bool tScalingBit_, uint8_t turnRateRaw_)
+  : latitudeRaw(latitudeRaw_),
+    longitudeRaw(longitudeRaw_),
+    altitudeRaw(altitudeRaw_),
+    trackingBit(trackingBit_),
+    aircraftTypeRaw(aircraftTypeRaw_),
+    aScaling(aScaling_),
+    sScalingBit(sScalingBit_),
+    speedRaw(speedRaw_),
+    cScalingBit(cScalingBit_),
+    climbRaw(climbRaw_),
+    groundTrackRaw(groundTrackRaw_),
+    tScalingBit(tScalingBit_),
+    turnRateRaw(turnRateRaw_)
+{}
 
         Header::MessageType type() const
         {
@@ -234,14 +239,7 @@ namespace FANET
          */
         float turnRate() const
         {
-            if (tScalingBit)
-            {
-                return turnRateRaw * 4.0f;
-            }
-            else
-            {
-                return turnRateRaw;
-            }
+            return tScalingBit ? ((turnRateRaw << 1) >> 1) : ((turnRateRaw << 1) >> 1) / 4.0f;
         }
 
         /**
@@ -257,7 +255,7 @@ namespace FANET
             }
             else
             {
-                turnRateRaw = roundf(turnRate);
+                turnRateRaw = trOs;
             }
 
             return *this;
@@ -265,8 +263,8 @@ namespace FANET
 
         virtual void serialize(etl::bit_stream_writer &writer) const
         {
-            writer.write_unchecked(etl::reverse_bytes(latitudeRaw >> 8), 24U);
-            writer.write_unchecked(etl::reverse_bytes(longitudeRaw >> 8), 24U);
+            writer.write_unchecked(etl::reverse_bytes(latitudeRaw << 8), 24U);
+            writer.write_unchecked(etl::reverse_bytes(longitudeRaw << 8), 24U);
             writer.write_unchecked(static_cast<uint8_t>(altitudeRaw), 8U);
 
             writer.write_unchecked(trackingBit);
@@ -287,32 +285,35 @@ namespace FANET
             writer.write_unchecked(turnRateRaw, 7U);
         }
 
-        virtual void deserialize(etl::bit_stream_reader &reader)
+        static const TrackingPayload deserialize(etl::bit_stream_reader &reader)
         {
-            latitudeRaw = etl::reverse_bytes(reader.read_unchecked<uint32_t>(24U)) << 8;
-            longitudeRaw = etl::reverse_bytes(reader.read_unchecked<uint32_t>(24U)) << 8;
+            TrackingPayload tracking;
+            tracking.latitudeRaw = etl::reverse_bytes(reader.read_unchecked<uint32_t>(24U)) >> 8;
+            tracking.longitudeRaw = etl::reverse_bytes(reader.read_unchecked<uint32_t>(24U)) >> 8;
 
-            altitudeRaw = static_cast<uint8_t>(reader.read_unchecked<uint8_t>(8U));
+            tracking.altitudeRaw = static_cast<uint8_t>(reader.read_unchecked<uint8_t>(8U));
 
-            trackingBit = reader.read_unchecked<bool>();
-            aircraftTypeRaw = static_cast<AircraftType>(reader.read_unchecked<uint8_t>(3U));
-            aScaling = reader.read_unchecked<uint8_t>();
+            tracking.trackingBit = reader.read_unchecked<bool>();
+            tracking.aircraftTypeRaw = static_cast<AircraftType>(reader.read_unchecked<uint8_t>(3U));
+            tracking.aScaling = reader.read_unchecked<bool>();
 
-            altitudeRaw |= static_cast<uint16_t>(reader.read_unchecked<uint8_t>(3U)) << 8;
+            tracking.altitudeRaw |= static_cast<uint16_t>(reader.read_unchecked<uint8_t>(3U)) << 8;
 
-            sScalingBit = reader.read_unchecked<bool>();
-            speedRaw = reader.read_unchecked<uint8_t>(7U);
+            tracking.sScalingBit = reader.read_unchecked<bool>();
+            tracking.speedRaw = reader.read_unchecked<uint8_t>(7U);
 
-            cScalingBit = reader.read_unchecked<bool>();
-            climbRaw = reader.read_unchecked<uint8_t>(7U);
+            tracking.cScalingBit = reader.read_unchecked<bool>();
+            tracking.climbRaw = reader.read_unchecked<int8_t>(7U);
 
-            groundTrackRaw = reader.read_unchecked<uint8_t>(8U);
+            tracking.groundTrackRaw = reader.read_unchecked<uint8_t>(8U);
 
             // TODO: make turnrate optional
-            tScalingBit = reader.read_unchecked<bool>();
-            turnRateRaw = reader.read_unchecked<uint8_t>(7U);
+            tracking.tScalingBit = reader.read_unchecked<bool>();
+            tracking.turnRateRaw = reader.read_unchecked<int8_t>(7U);
+
+            return tracking;
         }
 
-    } __attribute__((packed));
+    };
 
 }

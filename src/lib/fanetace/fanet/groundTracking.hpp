@@ -33,21 +33,25 @@ namespace FANET
         };
 
     private:
-        uint32_t latitudeRaw : 24;  // Scaled by 93206
-        uint32_t longitudeRaw : 24; // Scaled by 46603
-        bool trackingBit : 1;
-        uint8_t unkRaw : 3;
-        TrackingType groundTypeRaw : 4;
+        int32_t latitudeRaw=0;  // Scaled by 93206
+        int32_t longitudeRaw=0; // Scaled by 46603
+        bool trackingBit=false;
+        uint8_t unkRaw=0;
+        TrackingType groundTypeRaw=TrackingType::OTHER;
 
     public:
-        GroundTrackingPayload()
-            : latitudeRaw(0),
-              longitudeRaw(0),
-              trackingBit(false),
-              unkRaw(0),
-              groundTypeRaw(TrackingType::OTHER)
+        explicit GroundTrackingPayload() = default;
+        GroundTrackingPayload(uint32_t latitudeRaw_, uint32_t longitudeRaw_,
+                              bool trackingBit_, uint8_t unkRaw_,
+                              TrackingType groundTypeRaw_)
+            : latitudeRaw(latitudeRaw_),
+              longitudeRaw(longitudeRaw_),
+              trackingBit(trackingBit_),
+              unkRaw(unkRaw_),
+              groundTypeRaw(groundTypeRaw_)
         {
         }
+
         Header::MessageType type() const
         {
             return Header::MessageType::GROUND_TRACKING;

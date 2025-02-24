@@ -11,43 +11,43 @@ namespace FANET
     private:
         static constexpr size_t MAX_HEADER_SIZE = sizeof(Header) + sizeof(Address) + sizeof(Address) + sizeof(ExtendedHeader) + sizeof(uint32_t);
 
-        size_t headerSize()
-        {
-            // TODO Take the length from each object
-            size_t headerLength = 4; // Header + source Address
-            if (extHeader)
-            {
-                headerLength++;
-                if (destination)
-                {
-                    // Address = 3 bytes
-                    headerLength = headerLength + 3;
-                }
-                if (signature)
-                {
-                    // Signature = 4 bytes
-                    headerLength = headerLength + 4;
-                }
-            }
-            return headerLength;
-        }
+        // size_t headerSize()
+        // {
+        //     // TODO Take the length from each object
+        //     size_t headerLength = 4; // Header + source Address
+        //     if (optExtHeader)
+        //     {
+        //         headerLength++;
+        //         if (optDestination)
+        //         {
+        //             // Address = 3 bytes
+        //             headerLength = headerLength + 3;
+        //         }
+        //         if (optSignature)
+        //         {
+        //             // Signature = 4 bytes
+        //             headerLength = headerLength + 4;
+        //         }
+        //     }
+        //     return headerLength;
+        // }
 
         void serialize(etl::bit_stream_writer &writer) const
         {
             header.serialize(writer);
             source.serialize(writer);
 
-            if (extHeader)
+            if (optExtHeader)
             {
-                extHeader->serialize(writer);
+                optExtHeader->serialize(writer);
 
-                if (destination)
+                if (optDestination)
                 {
-                    destination->serialize(writer);
+                    optDestination->serialize(writer);
                 }
-                if (signature)
+                if (optSignature)
                 {
-                    writer.write_unchecked(etl::reverse_bytes(signature.value()));
+                    writer.write_unchecked(etl::reverse_bytes(optSignature.value()));
                 }
             }
         }
@@ -56,9 +56,9 @@ namespace FANET
         Header header{};
         Address source{};
 
-        etl::optional<Address> destination;
-        etl::optional<ExtendedHeader> extHeader;
-        etl::optional<uint32_t> signature;
+        etl::optional<Address> optDestination;
+        etl::optional<ExtendedHeader> optExtHeader;
+        etl::optional<uint32_t> optSignature;
 
     public:
         PacketBuilder(uint32_t src) : PacketBuilder(Address(src))
@@ -69,55 +69,69 @@ namespace FANET
         {
         }
 
-        PacketBuilder &setAck(ExtendedHeader::AckType ackType)
+        PacketBuilder &ack(ExtendedHeader::AckType ackType)
         {
             // Ack may not request an ack, and Ack::NONE does not require an extended header
             if (ackType == ExtendedHeader::AckType::NONE)
             {
                 return *this;
             }
-            if (extHeader)
+            if (optExtHeader)
             {
-                extHeader->ack(ackType);
+                optExtHeader->ack(ackType);
             }
             else
             {
-                extHeader = ExtendedHeader{0, false, false, false, ackType};
+                optExtHeader = ExtendedHeader{ackType, false, false, false};
             }
             return *this;
         }
 
-        PacketBuilder &setDestination(const Address &destination_)
+        PacketBuilder &destination(const Address &destination_)
         {
-            destination = destination_;
-            if (extHeader)
+            optDestination = destination_;
+            if (optExtHeader)
             {
-                extHeader->unicast(true);
+                optExtHeader->unicast(true);
             }
             else
             {
-                extHeader = ExtendedHeader{0, false, false, true, ExtendedHeader::AckType::NONE};
+                optExtHeader = ExtendedHeader{ExtendedHeader::AckType::NONE, true, false, false};
             }
             header.extended(true);
             return *this;
         }
 
-        PacketBuilder &setDestination(const uint32_t destination_)
+        PacketBuilder &destination(const uint32_t destination_)
         {
-            return setDestination(Address(destination_));
+            return destination(Address(destination_));
         }
 
-        PacketBuilder &setSignature(uint32_t signature_)
+        PacketBuilder &signature(uint32_t signature_)
         {
-            if (extHeader)
+            if (optExtHeader)
             {
-                extHeader->signature(true);
+                optExtHeader->signature(true);
             }
             else
             {
-                extHeader = ExtendedHeader{0, false, true, false, ExtendedHeader::AckType::NONE};
+                optExtHeader = ExtendedHeader{ExtendedHeader::AckType::NONE, false, true, false};
             }
-            signature = signature_;
+            optSignature = signature_;
+            header.extended(true);
+            return *this;
+        }
+
+        PacketBuilder &geoForward()
+        {
+            if (optExtHeader)
+            {
+                optExtHeader->geoForward(true);
+            }
+            else
+            {
+                optExtHeader = ExtendedHeader{ExtendedHeader::AckType::NONE, false, false, true};
+            }
             header.extended(true);
             return *this;
         }
@@ -128,6 +142,7 @@ namespace FANET
         RadioPacket build(const PAYLOAD &payload)
         {
             RadioPacket buffer;
+            buffer.resize(buffer.capacity());
             etl::bit_stream_writer writer(buffer.data(), buffer.capacity(), etl::endian::big);
 
             header.type(payload.type());
@@ -137,7 +152,7 @@ namespace FANET
             if (header.type() == Header::MessageType::ACK)
             {
                 // When no destination, simply return an empty buffer
-                if (!destination) {
+                if (!optExtHeader) {
                     buffer.clear();
                     return buffer;
                 }
@@ -147,6 +162,31 @@ namespace FANET
 
             // serialize the payload
             payload.serialize(writer);
+            buffer.resize(writer.size_bytes());
+            return buffer;
+        }
+
+        RadioPacket build()
+        {
+            RadioPacket buffer;
+            buffer.resize(buffer.capacity());
+            etl::bit_stream_writer writer(buffer.data(), buffer.capacity(), etl::endian::big);
+
+            header.type(Header::MessageType::ACK);
+            serialize(writer);
+
+            // AckPayload cannot be serialized as it's header only
+            if (header.type() == Header::MessageType::ACK)
+            {
+                // When no destination, simply return an empty buffer
+                if (!optExtHeader) {
+                    buffer.clear();
+                    return buffer;
+                }
+                buffer.resize(writer.size_bytes());
+                return buffer;
+            }
+
             buffer.resize(writer.size_bytes());
             return buffer;
         }

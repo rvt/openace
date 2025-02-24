@@ -17,24 +17,28 @@ namespace FANET
         };
 
     private:
-        uint8_t reservedBits : 3; // Reserved bits
-        bool geoForward : 1;      // Forwarding bit
-        bool hasSignature : 1;    // Signature presence
-        bool isUnicast : 1;       // 1: Unicast or 0:Broadcast
-        AckType ackType : 2;      // Acknowledgment
+        AckType ackType = AckType::NONE; // Acknowledgment
+        bool isUnicast = false;          // 1: Unicast or 0:Broadcast
+        bool hasSignature = false;       // Signature presence
+        uint8_t reservedBits = 0;        // Reserved bits
+        bool isGeoForward = false;         // Forwarding bit
     public:
-        ExtendedHeader() : reservedBits(0), geoForward(false), hasSignature(false), isUnicast(false), ackType(AckType::NONE) {}
+        explicit ExtendedHeader() = default;
 
-        ExtendedHeader(uint8_t reservedBits, bool geoForward, bool hasSignature, bool isUnicast, AckType ackType)
-            : reservedBits(reservedBits), geoForward(geoForward), hasSignature(hasSignature), isUnicast(isUnicast), ackType(ackType) {}
+        ExtendedHeader(AckType ackType_, bool isUnicast_, bool hasSignature_, bool isGeoForward_)
+        : ackType(ackType_),
+          isUnicast(isUnicast_),
+          hasSignature(hasSignature_),
+          reservedBits(0),
+          isGeoForward(isGeoForward_) {}
 
-        bool geo_forward() const
+        bool geoForward() const
         {
-            return geoForward;
+            return isGeoForward;
         }
-        void geo_forward(bool value)
+        void geoForward(bool value)
         {
-            geoForward = value;
+            isGeoForward = value;
         }
 
         bool signature() const
@@ -69,17 +73,19 @@ namespace FANET
             writer.write_unchecked(static_cast<uint8_t>(ackType), 2U);
             writer.write_unchecked(isUnicast);
             writer.write_unchecked(hasSignature);
-            writer.write_unchecked(0, 4U);
+            writer.write_unchecked(0, 3U);
+            writer.write_unchecked(isGeoForward);
         }
 
-        void deserialize(etl::bit_stream_reader &reader)
+        static const ExtendedHeader deserialize(etl::bit_stream_reader &reader)
         {
-            ackType = static_cast<AckType>(reader.read_unchecked<uint8_t>(2U));
-            isUnicast = reader.read_unchecked<bool>();
-            hasSignature = reader.read_unchecked<bool>();
-            reader.read_unchecked<uint8_t>(4U); // Ignoring the 4 bits as they're set to 0 during serialization
+            ExtendedHeader eHeader;
+            eHeader.ackType = static_cast<AckType>(reader.read_unchecked<uint8_t>(2U));
+            eHeader.isUnicast = reader.read_unchecked<bool>();
+            eHeader.hasSignature = reader.read_unchecked<bool>();
+            eHeader.reservedBits = reader.read_unchecked<uint8_t>(3U);
+            eHeader.isGeoForward = reader.read_unchecked<bool>();
+            return eHeader;
         }
-
-    } __attribute__((packed));
-
+    };
 }

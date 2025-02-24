@@ -30,9 +30,11 @@ endif()
 
 # These examples use the standard separate compilation
 set(SOURCES_IDIOMATIC_EXAMPLES # Tests
-  packetBuilder_tests.cpp
   fanet_tests.cpp
   utils_tests.cpp
+  packetParser_tests.cpp
+  packetBuilder_tests.cpp
+  tracking_tests.cpp
 )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
