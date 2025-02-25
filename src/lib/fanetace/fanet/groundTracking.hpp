@@ -33,22 +33,22 @@ namespace FANET
         };
 
     private:
-        int32_t latitudeRaw=0;  // Scaled by 93206
-        int32_t longitudeRaw=0; // Scaled by 46603
-        bool trackingBit=false;
-        uint8_t unkRaw=0;
-        TrackingType groundTypeRaw=TrackingType::OTHER;
+        int32_t latitudeRaw = 0;  // Scaled by 93206
+        int32_t longitudeRaw = 0; // Scaled by 46603
+        TrackingType groundTypeRaw = TrackingType::OTHER;
+        uint8_t unkRaw = 0;
+        bool trackingBit = false;
 
     public:
         explicit GroundTrackingPayload() = default;
         GroundTrackingPayload(uint32_t latitudeRaw_, uint32_t longitudeRaw_,
-                              bool trackingBit_, uint8_t unkRaw_,
-                              TrackingType groundTypeRaw_)
+                              TrackingType groundTypeRaw_, uint8_t unkRaw_, bool trackingBit_)
+
             : latitudeRaw(latitudeRaw_),
               longitudeRaw(longitudeRaw_),
-              trackingBit(trackingBit_),
+              groundTypeRaw(groundTypeRaw_),
               unkRaw(unkRaw_),
-              groundTypeRaw(groundTypeRaw_)
+              trackingBit(trackingBit_)
         {
         }
 
@@ -64,10 +64,6 @@ namespace FANET
         float longitude() const
         {
             return ((longitudeRaw << 8) >> 8) / 46603.f;
-        }
-        uint8_t unk() const
-        {
-            return unkRaw;
         }
         GroundTrackingPayload &latitude(float lat)
         {
@@ -116,22 +112,24 @@ namespace FANET
 
         virtual void serialize(etl::bit_stream_writer &writer) const
         {
-            writer.write_unchecked(etl::reverse_bytes(latitudeRaw >> 8), 24U);
-            writer.write_unchecked(etl::reverse_bytes(longitudeRaw >> 8), 24U);
+            writer.write_unchecked(etl::reverse_bytes(latitudeRaw << 8), 24U);
+            writer.write_unchecked(etl::reverse_bytes(longitudeRaw << 8), 24U);
 
             writer.write_unchecked(static_cast<uint8_t>(groundTypeRaw), 4U);
             writer.write_unchecked(unkRaw, 3U);
             writer.write_unchecked(trackingBit);
         }
 
-        virtual void deserialize(etl::bit_stream_reader &reader)
+        static const GroundTrackingPayload deserialize(etl::bit_stream_reader &reader)
         {
-            latitudeRaw = etl::reverse_bytes(reader.read_unchecked<uint32_t>(24U)) << 8;
-            longitudeRaw = etl::reverse_bytes(reader.read_unchecked<uint32_t>(24U)) << 8;
+            GroundTrackingPayload payload;
+            payload.latitudeRaw = etl::reverse_bytes(reader.read_unchecked<uint32_t>(24U)) >> 8;
+            payload.longitudeRaw = etl::reverse_bytes(reader.read_unchecked<uint32_t>(24U)) >> 8;
 
-            groundTypeRaw = static_cast<TrackingType>(reader.read_unchecked<uint8_t>(4U));
-            unkRaw = reader.read_unchecked<uint8_t>(3U);
-            trackingBit = reader.read_unchecked<bool>();
+            payload.groundTypeRaw = static_cast<TrackingType>(reader.read_unchecked<uint8_t>(4U));
+            payload.unkRaw = reader.read_unchecked<uint8_t>(3U);
+            payload.trackingBit = reader.read_unchecked<bool>();
+            return payload;
         }
 
     } __attribute__((packed));

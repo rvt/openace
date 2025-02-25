@@ -35,6 +35,9 @@ set(SOURCES_IDIOMATIC_EXAMPLES # Tests
   packetParser_tests.cpp
   packetBuilder_tests.cpp
   tracking_tests.cpp
+  message_tests.cpp
+  name_tests.cpp
+  groundTracking_tests.cpp
 )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES

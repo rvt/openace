@@ -16,7 +16,6 @@ TEST_CASE("GroundTrackingPayload Default Constructor", "[TrackingPayload]")
     REQUIRE(payload.latitude() == 0);
     REQUIRE(payload.longitude() == 0);
     REQUIRE(payload.tracking() == false);
-    REQUIRE(payload.unk() == 0);
     REQUIRE(payload.groundType() == GroundTrackingPayload::TrackingType::OTHER);
 }
 

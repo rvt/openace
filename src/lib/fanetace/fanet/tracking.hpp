@@ -42,27 +42,28 @@ namespace FANET
         int8_t turnRateRaw = 0;
 
     public:
-    explicit TrackingPayload() = default;
+        explicit TrackingPayload() = default;
 
         TrackingPayload(int32_t latitudeRaw_, int32_t longitudeRaw_, uint16_t altitudeRaw_,
-            bool trackingBit_, AircraftType aircraftTypeRaw_,
-            bool aScaling_, bool sScalingBit_, uint8_t speedRaw_,
-            bool cScalingBit_, int8_t climbRaw_, uint8_t groundTrackRaw_,
-            bool tScalingBit_, uint8_t turnRateRaw_)
-  : latitudeRaw(latitudeRaw_),
-    longitudeRaw(longitudeRaw_),
-    altitudeRaw(altitudeRaw_),
-    trackingBit(trackingBit_),
-    aircraftTypeRaw(aircraftTypeRaw_),
-    aScaling(aScaling_),
-    sScalingBit(sScalingBit_),
-    speedRaw(speedRaw_),
-    cScalingBit(cScalingBit_),
-    climbRaw(climbRaw_),
-    groundTrackRaw(groundTrackRaw_),
-    tScalingBit(tScalingBit_),
-    turnRateRaw(turnRateRaw_)
-{}
+                        bool trackingBit_, AircraftType aircraftTypeRaw_,
+                        bool aScaling_, bool sScalingBit_, uint8_t speedRaw_,
+                        bool cScalingBit_, int8_t climbRaw_, uint8_t groundTrackRaw_,
+                        bool tScalingBit_, uint8_t turnRateRaw_)
+            : latitudeRaw(latitudeRaw_),
+              longitudeRaw(longitudeRaw_),
+              altitudeRaw(altitudeRaw_),
+              trackingBit(trackingBit_),
+              aircraftTypeRaw(aircraftTypeRaw_),
+              aScaling(aScaling_),
+              sScalingBit(sScalingBit_),
+              speedRaw(speedRaw_),
+              cScalingBit(cScalingBit_),
+              climbRaw(climbRaw_),
+              groundTrackRaw(groundTrackRaw_),
+              tScalingBit(tScalingBit_),
+              turnRateRaw(turnRateRaw_)
+        {
+        }
 
         Header::MessageType type() const
         {
@@ -313,7 +314,6 @@ namespace FANET
 
             return tracking;
         }
-
     };
 
 }

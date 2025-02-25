@@ -122,7 +122,7 @@ namespace FANET
             return *this;
         }
 
-        PacketBuilder &geoForward()
+        PacketBuilder &isGeoForward()
         {
             if (optExtHeader)
             {
@@ -133,6 +133,12 @@ namespace FANET
                 optExtHeader = ExtendedHeader{ExtendedHeader::AckType::NONE, false, false, true};
             }
             header.extended(true);
+            return *this;
+        }
+
+        PacketBuilder &isForward()
+        {
+            header.forward(true);
             return *this;
         }
 
@@ -166,27 +172,22 @@ namespace FANET
             return buffer;
         }
 
-        RadioPacket build()
+        RadioPacket buildAck(Address destination_)
         {
             RadioPacket buffer;
+
+            // If this is not a ack type, then return an empty buffer
+            if (header.type() != Header::MessageType::ACK)
+            {
+                buffer.clear();
+                return buffer;
+            }
+            header.type(Header::MessageType::ACK);
+            destination(destination_);
             buffer.resize(buffer.capacity());
             etl::bit_stream_writer writer(buffer.data(), buffer.capacity(), etl::endian::big);
 
-            header.type(Header::MessageType::ACK);
             serialize(writer);
-
-            // AckPayload cannot be serialized as it's header only
-            if (header.type() == Header::MessageType::ACK)
-            {
-                // When no destination, simply return an empty buffer
-                if (!optExtHeader) {
-                    buffer.clear();
-                    return buffer;
-                }
-                buffer.resize(writer.size_bytes());
-                return buffer;
-            }
-
             buffer.resize(writer.size_bytes());
             return buffer;
         }
