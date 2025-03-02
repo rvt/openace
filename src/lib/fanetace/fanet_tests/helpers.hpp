@@ -22,16 +22,27 @@ void dumpHex(const etl::array<uint8_t, 16> &buffer) {
     printf("\n"); // Newline for formatting
 }
 
+void dumpHex(const etl::span<uint8_t> &buffer) {
+    for (uint8_t byte : buffer) {
+        printf("0x%02X, ", byte); // Print each byte in 2-digit uppercase hex
+    }
+    printf("\n"); // Newline for formatting
+}
+
 template <size_t N>
-etl::vector<uint8_t, N> make_etl_vector(const uint8_t (&arr)[N]) {
+etl::vector<uint8_t, N> makeVector(const uint8_t (&arr)[N]) {
     return etl::vector<uint8_t, N>(std::begin(arr), std::end(arr));
 }
 
+template <size_t SIZE>
+etl::vector<uint8_t, SIZE> makeVector(uint8_t value) {
+    return etl::vector<uint8_t, SIZE>(SIZE, value);
+}
 
 template <typename T>
 RadioPacket createRadioPacket(const T& payload) {
     RadioPacket buffer;
-    buffer.resize(buffer.capacity());
+    buffer.uninitialized_resize(buffer.capacity());
 
     etl::bit_stream_writer writer(buffer.data(), buffer.capacity(), etl::endian::big);
     payload.serialize(writer);

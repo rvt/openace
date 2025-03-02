@@ -40,6 +40,7 @@ namespace FANET
         uint8_t groundTrackRaw = 0;
         bool tScalingBit = false;
         int8_t turnRateRaw = 0;
+        bool hasTurnRateRaw = false;
 
     public:
         explicit TrackingPayload() = default;
@@ -235,6 +236,11 @@ namespace FANET
             return *this;
         }
 
+
+        bool hasTurnrate() {
+            return hasTurnRateRaw;
+        }
+
         /**
          * Get the turnrate in degrees per second
          */
@@ -248,6 +254,7 @@ namespace FANET
          */
         TrackingPayload &turnRate(float turnRate)
         {
+            hasTurnRateRaw = true;
             int16_t trOs = etl::clamp(static_cast<int>(roundf(turnRate * 4.0f)), -254, 254);
             if (etl::absolute(trOs) >= 63)
             {
@@ -281,9 +288,11 @@ namespace FANET
 
             writer.write_unchecked(groundTrackRaw, 8U);
 
-            // TODO: make turnrate optional
-            writer.write_unchecked(tScalingBit);
-            writer.write_unchecked(turnRateRaw, 7U);
+            if (hasTurnRateRaw)
+            {
+                writer.write_unchecked(tScalingBit);
+                writer.write_unchecked(turnRateRaw, 7U);
+            }
         }
 
         static const TrackingPayload deserialize(etl::bit_stream_reader &reader)
@@ -308,9 +317,12 @@ namespace FANET
 
             tracking.groundTrackRaw = reader.read_unchecked<uint8_t>(8U);
 
-            // TODO: make turnrate optional
-            tracking.tScalingBit = reader.read_unchecked<bool>();
-            tracking.turnRateRaw = reader.read_unchecked<int8_t>(7U);
+            auto tScaling = reader.read<bool>();
+            if (tScaling)
+            {
+                tracking.tScalingBit = tScaling.value();
+                tracking.turnRateRaw = reader.read_unchecked<int8_t>(7U);
+            }
 
             return tracking;
         }

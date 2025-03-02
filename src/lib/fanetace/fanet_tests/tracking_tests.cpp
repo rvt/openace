@@ -166,7 +166,7 @@ TEST_CASE("TrackingPayload serialize/deserialize empty", "[single-file]")
 {
     TrackingPayload payload;
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}));
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }));
 }
 
 TEST_CASE("TrackingPayload serialize/deserialize altitude", "[single-file]")
@@ -175,7 +175,7 @@ TEST_CASE("TrackingPayload serialize/deserialize altitude", "[single-file]")
     payload.altitude(5000);
     // printf("ALT:%X\n", altitude_Origional(5000)); // -> 4E2    
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE2, 0x0C, 0x00, 0x00, 0x00, 0x00, }));
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE2, 0x0C, 0x00, 0x00, 0x00, }));
     
     auto reader = createReader(result);
     auto received=TrackingPayload::deserialize(reader);
@@ -187,7 +187,7 @@ TEST_CASE("TrackingPayload serialize/deserialize aircraftType", "[single-file]")
     TrackingPayload payload;
     payload.aircraftType(TrackingPayload::AircraftType::GLIDER); // -> 0x04 << 4 
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00 }));
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00 }));
 
     auto reader = createReader(result);
     auto received=TrackingPayload::deserialize(reader);
@@ -201,7 +201,7 @@ TEST_CASE("TrackingPayload serialize/deserialize climbRate", "[single-file]")
     payload.climbRate(5.5f); // -> 0x49
     //printf("Climb:0x%X\n", climbRate_Origional(5.5f)); // -> 0x37
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x37, 0x00, 0x00}));    
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x37, 0x00 }));    
     
     auto reader = createReader(result);
     auto received=TrackingPayload::deserialize(reader);
@@ -210,7 +210,7 @@ TEST_CASE("TrackingPayload serialize/deserialize climbRate", "[single-file]")
     payload.climbRate(-5.5f); // -> 0x49
     //printf("Climb:0x%X\n", climbRate_Origional(-5.5f)); // -> 0xC9 ^ 0x80==> 0x49 (0x080 removes scaling bit)
     result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x49, 0x00, 0x00}));
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x49, 0x00}));
     
     auto reader2 = createReader(result);
     received=TrackingPayload::deserialize(reader2);
@@ -222,7 +222,7 @@ TEST_CASE("TrackingPayload serialize/deserialize groundTrack", "[single-file]")
     TrackingPayload payload;
     payload.groundTrack(100); // -> 100 * 256 / 360.f = 0X47
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x00,}));  
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47,}));  
 
     auto reader = createReader(result);
     auto received=TrackingPayload::deserialize(reader);
@@ -235,7 +235,7 @@ TEST_CASE("TrackingPayload serialize/deserialize speed", "[single-file]")
     payload.speed(234.f);
     // printf("Speed:%X\n", speed_Origional(234.f)); // -> 0x5E + scale bit
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDE, 0x00, 0x00, 0x00,}));    
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDE, 0x00, 0x00,}));    
 
     auto reader = createReader(result);
     auto received=TrackingPayload::deserialize(reader);
@@ -247,7 +247,7 @@ TEST_CASE("TrackingPayload serialize/deserialize tracking", "[single-file]")
     TrackingPayload payload;
     payload.tracking(true);
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,}));   
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,}));   
 
     auto reader = createReader(result);
     auto received=TrackingPayload::deserialize(reader);
@@ -260,7 +260,7 @@ TEST_CASE("TrackingPayload serialize/deserialize turnrate", "[single-file]")
     payload.turnRate(14.4f);
     // printf("turnRate:%X\n", turnRate_Origional(14.4f)); // -> 0x3A
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3A,}));    
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3A,}));    
 
     auto reader = createReader(result);
     auto received=TrackingPayload::deserialize(reader);
@@ -269,11 +269,20 @@ TEST_CASE("TrackingPayload serialize/deserialize turnrate", "[single-file]")
     payload.turnRate(-14.4f);
     // printf("turnRate:%X\n", turnRate_Origional(-14.4f)); // -> 0xC6 ^ 0x80 ==> 0x46
     result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46,}));    
+    REQUIRE(result == makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46,}));    
 
     auto reader2 = createReader(result);
     auto received2=TrackingPayload::deserialize(reader2);
     REQUIRE(received2.turnRate() == Catch::Approx(-14.4f).margin(0.2));  
+}
+
+TEST_CASE("TrackingPayload serialize/deserialize no turnrate", "[single-file]")
+{
+    TrackingPayload payload;
+    auto reader = createReader(makeVector({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }));
+    auto received=TrackingPayload::deserialize(reader);
+    REQUIRE(received.hasTurnrate() == false);  
+
 }
 
 TEST_CASE("TrackingPayload serialize/deserialize lat/long", "[single-file]")
@@ -283,7 +292,7 @@ TEST_CASE("TrackingPayload serialize/deserialize lat/long", "[single-file]")
     payload.longitude(-24.6123f);
     // printf("lat:%X lon:%X\n", (int32_t)roundf(52.4123f * 93206.0f), (int32_t)roundf(-24.6123f * 46603.0f)); // lat:4A8A95 lon:FFEE7F81
     auto result = createRadioPacket(payload);
-    REQUIRE(result == make_etl_vector({0x95, 0x8A, 0x4A, 0x81, 0x7F, 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, }));    
+    REQUIRE(result == makeVector({0x95, 0x8A, 0x4A, 0x81, 0x7F, 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, }));    
 
     auto reader = createReader(result);
     auto received=TrackingPayload::deserialize(reader);

@@ -4,77 +4,69 @@
 #include "etl/optional.h"
 #include "etl/vector.h"
 #include "etl/bit_stream.h"
+#include "etl/variant.h"
+#include "header.hpp"
+#include "address.hpp"
+#include "tracking.hpp"
+#include "name.hpp"
+#include "message.hpp"
+#include "groundTracking.hpp"
 
 namespace FANET
 {
-    class PacketParser final 
+    template <size_t MESSAGESIZE, size_t NAMESIZE>
+    using PayloadVariant = etl::variant<TrackingPayload, NamePayload<NAMESIZE>, MessagePayload<MESSAGESIZE>, GroundTrackingPayload>;
+
+    template <size_t MESSAGESIZE, size_t NAMESIZE>
+    class PacketParser final
     {
-    private:
-        Header header{};
-        Address source{};
-        etl::optional<Address> destination;
-        etl::optional<ExtendedHeader> extHeader;
-        etl::optional<uint32_t> signature;
-
-        PacketParser() = default;
     public:
+        static Packet<MESSAGESIZE, NAMESIZE> parse(const etl::ivector<uint8_t> &buffer)
+        {
+            etl::bit_stream_reader reader((uint8_t *)buffer.data(), buffer.size(), etl::endian::big);
+            Header header;
+            Address source;
+            etl::optional<Address> optDestination;
+            etl::optional<ExtendedHeader> optExtHeader;
+            etl::optional<uint32_t> optSignature;
+            etl::optional<PayloadVariant<MESSAGESIZE, NAMESIZE>> optPayload;
 
+            reader.restart();
+            header = Header::deserialize(reader);
+            source = Address::deserialize(reader);
+            if (header.extended())
+            {
+                optExtHeader = ExtendedHeader::deserialize(reader);
 
+                if (optExtHeader->unicast())
+                {
+                    optDestination = Address::deserialize(reader);
+                }
+                if (optExtHeader->signature())
+                {
+                    optSignature = etl::reverse_bytes(reader.read_unchecked<uint32_t>());
+                }
+            }
 
-        // const PacketParser &parse(const RadioPacket &packet) {
-        //     PacketParser packet;
+            switch (header.type())
+            {
+            case Header::MessageType::TRACKING:
+                optPayload = TrackingPayload::deserialize(reader);
+                break;
+            case Header::MessageType::NAME:
+                optPayload = NamePayload<NAMESIZE>::deserialize(reader);
+                break;
+            case Header::MessageType::MESSAGE:
+                optPayload = MessagePayload<MESSAGESIZE>::deserialize(reader);
+                break;
+            case Header::MessageType::GROUND_TRACKING:
+                optPayload = GroundTrackingPayload::deserialize(reader);
+                break;
+            default:
+                break; // ACK or unsupported types
+            }
 
-        //     etl::bit_stream_reader reader(packet.data(), packet.size(), etl::endian::big);
-
-        //     static const PacketParser INVALID_FRAME; // Shared invalid frame
-        //     PacketParser frame;
-        //     size_t index = 0;
-
-        //     if (packet.size() < sizeof(Header) + sizeof(Address))
-        //     {
-        //         return INVALID_FRAME;
-        //     }
-
-        //     header = Header.deserialize(reader);
-        //     source = Address.deserialize(reader);
-
-        //     if (header.extended())
-        //     {
-
-        //     //     ExtendedHeader extHeader;
-        //     //     etl::mem_copy(reinterpret_cast<uint8_t *>(buffer[index]), index + sizeof(ExtendedHeader), reinterpret_cast<uint8_t *>(&frame.extHeader));
-        //     //     index += sizeof(ExtendedHeader);
-
-        //     //     if (frame.extHeader.cast())
-        //     //     {
-        //     //         if (bufferSize < index + sizeof(Address))
-        //     //         {
-        //     //             return INVALID_FRAME;
-        //     //         }
-
-        //     //         etl::mem_copy(reinterpret_cast<uint8_t *>(buffer[index]), index + sizeof(Address), reinterpret_cast<uint8_t *>(&frame.destination));
-        //     //         index += sizeof(Address);
-        //     //     }
-
-        //     //     if (frame.extHeader.signature)
-        //     //     {
-        //     //         if (bufferSize < index + sizeof(uint32_t))
-        //     //         {
-        //     //             return INVALID_FRAME;
-        //     //         }
-
-        //     //         etl::mem_copy(reinterpret_cast<uint8_t *>(buffer[index]), index + sizeof(uint32_t), reinterpret_cast<uint8_t *>(&frame.signature));
-        //     //         index += sizeof(uint32_t);
-        //     //     }
-        //     }
-
-        //     // if (index < bufferSize)
-        //     // {
-        //     //     frame.payload.assign(buffer + index, buffer + bufferSize);
-        //     // }
-
-        //     // frame.isValid = true;
-        //     return frame;
-        // }
+            return Packet<MESSAGESIZE, NAMESIZE>(header, source, optDestination, optExtHeader, optSignature, optPayload);
+        }
     };
-}
+};

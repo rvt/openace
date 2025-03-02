@@ -68,14 +68,21 @@ namespace FANET
         static const MessagePayload deserialize(etl::bit_stream_reader &reader)
         {
             MessagePayload payload;
-            auto available_bytes = reader.size_bytes();
-            if (available_bytes < 2) {
+            
+            auto subHeaderOpt = reader.read<uint8_t>();
+            if (!subHeaderOpt) {
                 return payload;
             }
-
-            payload.subHeaderRaw = reader.read_unchecked<uint8_t>();
-            auto copy_size = std::min(available_bytes - 1, SIZE);
-            payload.messageRaw.assign((uint8_t *)(reader.cbegin() + 1), (uint8_t *)(reader.cbegin() + copy_size + 1) );
+            
+            payload.subHeaderRaw = *subHeaderOpt;
+            
+            while (payload.messageRaw.size() < SIZE) {
+                auto byteOpt = reader.read<uint8_t>();
+                if (!byteOpt) {
+                    break;
+                }
+                payload.messageRaw.push_back(*byteOpt);
+            }
 
             return payload;
         }

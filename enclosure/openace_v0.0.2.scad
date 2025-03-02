@@ -28,8 +28,6 @@ HINGE_ON_LID=false;
 // Make room for a GPS SMA connector for specific GPS types
 GPS_SMA=false;
 
-// Printer tolerance (Mainly used to fix the box)
-PRINT_TOLERANCE=0.2; // [0.05, 0.075, 0.1, 0.15, 0.175, 0.2]
 // Screw diameter if the screws for the pi
 PCB_SCREW_DIAM=2.4; // [2:2.2,2.4,2.5,3.0]
 // Screw diameter for the lid
@@ -51,12 +49,15 @@ VISUALIZE_MAIN_CASE=true;
 VISUALIZE_LID_POSITION=0; // [0:0.5:50]
 
 VISUALIZE_CUT=true;
-VISUALIZE_CUT_POS_X=75; // [-50:1:50]
-VISUALIZE_CUT_POS_Y=75; // [-50:1:50]
+VISUALIZE_CUT_POS_X=75; // [-75:1:75]
+VISUALIZE_CUT_POS_Y=75; // [-75:1:75]
 
 
 
 /* [Hidden] */
+// Printer tolerance (Mainly used to fix the box)
+PRINT_TOLERANCE=0.2; // [0.05, 0.075, 0.1, 0.15, 0.175, 0.2]
+
 LID_HOLE_DIAM=LID_SCREW_DIAM+0.2;
 LID_INNER_HIGHT=2;
 ATTACH_OFFSET = 0.01; // BOLS2 seems to leave part deatched.
@@ -74,29 +75,13 @@ FEET_HEIGHT=4.5;
 // Z roitation of the switch in the lid
 SWITCH_LID_ZROT=0;  
 // Position X/Y relative to the back left corner
-SWITCH_LID_POS=[40,-15, 0];  
+SWITCH_LID_POS=[47.5,-15, 0];  
 // 'Cube' size (even though cylinder shape
-SWITCH_LID_CUBE_SIZE=[22,20];
+SWITCH_LID_CUBE_SIZE=[24,20];
 // Switch bore diam
 SWITCH_LID_BORE=5.5;
 // Z- Offset of the switch
 SWITCH_LID_Z_OFFSET=5.5;
-
-
-//BAT_HOLDER_HEIGHT=2;
-//BAT_HOLDER=[BATTERY_COMPARTEMENT_WIDTH+WALL_THICKNESS*2, case.y];
-////down(BAT_HOLDER_HEIGHT+2) left(case.x/2-BAT_HOLDER.x/2)
-//back(100) left(40)
-//bottomAndWall(size=BAT_HOLDER, wall=WALL_THICKNESS, bottom=2, rounding=BOX_CORNER_RADUIS, ichamfer=0, h=BAT_HOLDER_HEIGHT) {
-//
-//  position(BACK)
-//    cuboid([16,2,12], anchor=FRONT+BOTTOM, rounding=2, edges=[BACK+BOTTOM,RIGHT+BACK,LEFT+BACK,TOP+BACK]);
-//  position(FRONT)
-//    cuboid([16,2,12], anchor=BACK+BOTTOM, rounding=2, edges=[FRONT+BOTTOM,RIGHT+FRONT,LEFT+FRONT,TOP+FRONT]);
-//}
-
-
-// up(25) right(45) fwd(72) zrot(90) import("gps-antenna-holder.stl", convexity=2);
 
 
 
@@ -169,13 +154,7 @@ bottomAndWall(size=case, wall=WALL_THICKNESS, bottom=BOTTOM_THICKNESS, rounding=
           yrot(90) xrot(-90) toggle(MINI_ROCKER, 3);  
       }
       
-      
-    // Battery compartement    removal 
-//    tag("remove")  
-//      position(BOTTOM+LEFT) 
-//        down(0.01)
-//        right(WALL_THICKNESS) 
-//        cube([BATTERY_COMPARTEMENT_WIDTH,case_inner.y,BOTTOM_THICKNESS+0.4], anchor=LEFT+BOTTOM);
+     
       
     // battery / PCB seperation
     position("ileft") 
@@ -260,7 +239,7 @@ diff("removeBox")
       
         zrot(SWITCH_LID_ZROT) {
           bottom_half() cyl(d=SWITCH_LID_CUBE_SIZE.x,l=SWITCH_LID_CUBE_SIZE.y, orient=FWD);
-          up(0.001) tag("removeBox") bottom_half() back(0.5) cyl(d=SWITCH_LID_CUBE_SIZE.x-1.5,l=SWITCH_LID_CUBE_SIZE.y-3, orient=FWD) {
+          up(0.005) tag("removeBox") bottom_half() back(0.5) cyl(d=SWITCH_LID_CUBE_SIZE.x-1.5,l=SWITCH_LID_CUBE_SIZE.y-3, orient=FWD) {
 
 
           left(5) position(LEFT) down(4) fwd(TEXT_LENGTH/2) xrot(-90) linear_extrude(TEXT_LENGTH) zrot(-90) 

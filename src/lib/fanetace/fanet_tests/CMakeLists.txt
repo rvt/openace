@@ -33,11 +33,13 @@ set(SOURCES_IDIOMATIC_EXAMPLES # Tests
   fanet_tests.cpp
   utils_tests.cpp
   packetParser_tests.cpp
-  packetBuilder_tests.cpp
+  packet_tests.cpp
   tracking_tests.cpp
   message_tests.cpp
   name_tests.cpp
   groundTracking_tests.cpp
+  protocol_tests.cpp
+  queue_tests.cpp
 )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES

@@ -44,14 +44,13 @@ namespace FANET
         static const NamePayload deserialize(etl::bit_stream_reader &reader)
         {
             NamePayload payload;
-            auto available_bytes = reader.size_bytes();
-            if (available_bytes < 1) {
-                return payload;
+            while (payload.nameRaw.size() < SIZE) {
+                auto byteOpt = reader.read<uint8_t>();
+                if (byteOpt == etl::nullopt) {
+                    break;  // No more bytes to read
+                }
+                payload.nameRaw.push_back(static_cast<char>(*byteOpt));
             }
-
-            auto copy_size = std::min(available_bytes, SIZE);
-            payload.nameRaw.assign((uint8_t *)(reader.cbegin()), (uint8_t *)(reader.cbegin() + copy_size) );
-
             return payload;
         }
     };

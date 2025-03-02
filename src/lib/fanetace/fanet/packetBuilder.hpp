@@ -9,8 +9,6 @@ namespace FANET
     class PacketBuilder final 
     {
     private:
-        static constexpr size_t MAX_HEADER_SIZE = sizeof(Header) + sizeof(Address) + sizeof(Address) + sizeof(ExtendedHeader) + sizeof(uint32_t);
-
         // size_t headerSize()
         // {
         //     // TODO Take the length from each object
@@ -61,6 +59,7 @@ namespace FANET
         etl::optional<uint32_t> optSignature;
 
     public:
+        
         PacketBuilder(uint32_t src) : PacketBuilder(Address(src))
         {
         }
@@ -144,11 +143,10 @@ namespace FANET
 
         ////////////////////////////////
         template<typename PAYLOAD>
-        // etl::vector<uint8_t, MAX_HEADER_SIZE + sizeof(PAYLOAD)> build(const PAYLOAD &payload)
         RadioPacket build(const PAYLOAD &payload)
         {
             RadioPacket buffer;
-            buffer.resize(buffer.capacity());
+            buffer.uninitialized_resize(buffer.capacity());
             etl::bit_stream_writer writer(buffer.data(), buffer.capacity(), etl::endian::big);
 
             header.type(payload.type());
@@ -175,16 +173,14 @@ namespace FANET
         RadioPacket buildAck(Address destination_)
         {
             RadioPacket buffer;
-
-            // If this is not a ack type, then return an empty buffer
             if (header.type() != Header::MessageType::ACK)
             {
                 buffer.clear();
                 return buffer;
             }
-            header.type(Header::MessageType::ACK);
+
             destination(destination_);
-            buffer.resize(buffer.capacity());
+            buffer.uninitialized_resize(buffer.capacity());
             etl::bit_stream_writer writer(buffer.data(), buffer.capacity(), etl::endian::big);
 
             serialize(writer);

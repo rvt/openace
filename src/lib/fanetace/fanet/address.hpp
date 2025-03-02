@@ -9,13 +9,13 @@ namespace FANET
     class Address final
     {
     private:
-        uint8_t mfgId= 0;     // Manufacturer ID
+        uint8_t mfgId = 0;     // Manufacturer ID
         uint16_t uniqueId = 0; // Unique Device ID
     public:
         Address() = default;
 
         // Constructor 1: Takes a uint32_t and splits it into manufacturerId and uniqueID
-        Address(uint32_t combinedId) : Address(mfgId = static_cast<uint8_t>((combinedId >> 16) & 0xFF), uniqueId = static_cast<uint16_t>(combinedId & 0xFFFF))
+        explicit Address(uint32_t asUintId) : Address(mfgId = static_cast<uint8_t>((asUintId >> 16) & 0xFF), uniqueId = static_cast<uint16_t>(asUintId & 0xFFFF))
         {
         }
 
@@ -41,9 +41,19 @@ namespace FANET
             uniqueId = value;
         }
 
-        uint32_t combined() const
+        uint32_t asUint() const
         {
             return (static_cast<uint32_t>(mfgId) << 16) | uniqueId;
+        }
+
+        bool operator==(const Address &other) const
+        {
+            return mfgId == other.mfgId && uniqueId == other.uniqueId;
+        }
+
+        bool operator!=(const Address &other) const
+        {
+            return !(*this == other);
         }
 
         void serialize(etl::bit_stream_writer &writer) const

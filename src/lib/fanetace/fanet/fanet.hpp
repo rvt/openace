@@ -7,6 +7,7 @@
 #include "groundTracking.hpp"
 #include "address.hpp"
 #include "header.hpp"
+#include "packet.hpp"
 #include "extendedHeader.hpp"
 //#include "packetBuilder.hpp"
 //#include "packetParser.hpp"

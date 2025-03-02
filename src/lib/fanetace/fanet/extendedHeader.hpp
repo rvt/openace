@@ -11,8 +11,8 @@ namespace FANET
         enum class AckType : uint8_t
         {
             NONE = 0,
-            REQUEST = 1,
-            REQUEST_VIA_FORWARD = 2, // via forward, if received via forward (received forward bit = 0). must be used if forward is set
+            SINGLEHOP = 1,
+            TWOHOP = 2, // via forward, if received via forward (received forward bit = 0). must be used if forward is set
             RESERVED = 3
         };
 
