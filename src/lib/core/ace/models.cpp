@@ -24,6 +24,7 @@ namespace OpenAce
         {PinType::P0, "P0"},
         {PinType::P1, "P1"},
         {PinType::P2, "P2"},
+        {PinType::SPI, "SPI"},
         {PinType::AD0, "AD0"}
     };
 

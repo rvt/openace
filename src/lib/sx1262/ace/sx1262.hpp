@@ -28,11 +28,12 @@
 
 // https://www.waveshare.com/wiki/SX1262_XXXM_LoRaWAN/GNSS_HAT
 
+
 /**
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTxFrameMsg, OpenAce::ConfigUpdatedMsg>
+class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTxFrameMsg, OpenAce::ConfigUpdatedMsg, OpenAce::GpsStatsMsg>
 {
     static constexpr uint32_t MAX_LISTEN_TIMEOUT = 150000; // maximum time we listen for packages before we timeout and reset the Sx1262
     static constexpr uint8_t MANCHESTER = 2;               // Used to just clarify why we sometime multiply by 2
@@ -119,6 +120,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     const uint8_t radioNo;
     uint32_t offsetHz;
     bool txEnabled;
+    volatile bool hasGpsFix;
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
     Radio::RadioParameters lastRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
@@ -134,6 +136,7 @@ public:
                                                                                                                              radioNo(radioNo_),
                                                                                                                              offsetHz(offsetHz_),
                                                                                                                              txEnabled(txEnabled_),
+                                                                                                                             hasGpsFix(false),
                                                                                                                              spiHall(nullptr),
                                                                                                                              taskHandle(nullptr)
     {
@@ -190,6 +193,8 @@ public:
 
     void on_receive(const OpenAce::RadioTxFrameMsg &msg);
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const  OpenAce::GpsStatsMsg &msg);
+   
 
     void radioInit();
     void checkAndClearDeviceErrors();
