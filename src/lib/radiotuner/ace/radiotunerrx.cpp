@@ -121,47 +121,46 @@ void RadioTunerRx::radioTuneTask(void *arg)
             taskBlock = false;
         }
 
-        if (taskBlock)
-        {
-            continue;
-        }
-        else if (notifyValue & TaskState::TIMER)
-        {
-            if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx)
+        if (!taskBlock) {
+            if (notifyValue & TaskState::TIMER)
             {
-
-                // printf("Set frequency to f:%ld ms:%d zone:%d source:%s\n", frequency, CoreUtils::msInSecond(), taskCtx->nextTimeSlot.zone, OpenAce::dataSourceToString(radioTask->nextTimeSlot.source));
-                auto thisTimeSlot = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot);
-                auto frequency = CountryRegulations::determineFrequency(thisTimeSlot);
-
-                // Send a message to the radio to indicate to switch and listen to a different protocol
-                taskCtx->radio->rxMode(
-                    {Radio::RadioParameters{
-                        thisTimeSlot.radioConfig,
-                        frequency,
-                        thisTimeSlot.frequency.powerdBm}});
-
-                auto delay = taskCtx->advanceReceiveSlot() - OPENACE_RX_OFFSET;
-                xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay < 1 ? 1 : delay), TASK_DELAY_MS(1));
-
-                // printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
-                //        taskCtx->radio->name().cbegin(), dataSourceToString(thisTimeSlot.radioConfig.dataSource), frequency, CoreUtils::msInSecond(), delay);
-
-                taskCtx->statistics.rxRequests++;
+                if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx)
+                {
+    
+                    // printf("Set frequency to f:%ld ms:%d zone:%d source:%s\n", frequency, CoreUtils::msInSecond(), taskCtx->nextTimeSlot.zone, OpenAce::dataSourceToString(radioTask->nextTimeSlot.source));
+                    auto thisTimeSlot = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot);
+                    auto frequency = CountryRegulations::determineFrequency(thisTimeSlot);
+    
+                    // Send a message to the radio to indicate to switch and listen to a different protocol
+                    taskCtx->radio->rxMode(
+                        {Radio::RadioParameters{
+                            thisTimeSlot.radioConfig,
+                            frequency,
+                            thisTimeSlot.frequency.powerdBm}});
+    
+                    auto delay = taskCtx->advanceReceiveSlot() - OPENACE_RX_OFFSET;
+                    xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay < 1 ? 1 : delay), TASK_DELAY_MS(1));
+    
+                    // printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
+                    //        taskCtx->radio->name().cbegin(), dataSourceToString(thisTimeSlot.radioConfig.dataSource), frequency, CoreUtils::msInSecond(), delay);
+    
+                    taskCtx->statistics.rxRequests++;
+                }
+            }
+            else
+            {
+                // Only count if it was not a NONE datasource
+                if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx)
+                {
+                    taskCtx->statistics.timerMissed++;
+                }
+    
+                // Try to find a next slot
+                taskCtx->advanceReceiveSlot();
+                xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(900), TASK_DELAY_MS(10));
             }
         }
-        else
-        {
-            // Only count if it was not a NONE datasource
-            if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx)
-            {
-                taskCtx->statistics.timerMissed++;
-            }
 
-            // Try to find a next slot
-            taskCtx->advanceReceiveSlot();
-            xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(900), TASK_DELAY_MS(10));
-        }
     }
 }
 
@@ -217,9 +216,6 @@ void RadioTunerRx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
     {
         xTaskNotify(taskCtx.taskHandle, TaskState::BLOCK, eSetBits);
     }
-
-    // TODO: Synchronize task blocking here instead of fixed delay
-    vTaskDelay(TASK_DELAY_MS(50)); // This delay could be replaced with a synchronization mechanism
 
     // Precompute how many protocols each radio should handle
     uint8_t dsPerRadio = dataSources.size() / radioTasks.size();
