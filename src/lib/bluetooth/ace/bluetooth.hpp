@@ -182,7 +182,8 @@ private:
         }
     }
 
-    inline static etl::queue_spsc_atomic<OpenAce::NMEAString, 8, etl::memory_model::MEMORY_MODEL_SMALL> queue;
+    // THis queue seem to run ful with 8 items in the queue
+    inline static etl::queue_spsc_atomic<OpenAce::NMEAString, 16, etl::memory_model::MEMORY_MODEL_SMALL> queue;
     inline static btstack_context_callback_registration_t pushIntoQueueReg;
     inline static btstack_packet_callback_registration_t smEventCallback;
     inline static uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
