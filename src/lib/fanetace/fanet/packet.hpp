@@ -146,16 +146,19 @@ namespace FANET
             header_.type(trackingPayload.type());
             payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(trackingPayload);
         }
+
         void payload(const GroundTrackingPayload &groundTrackingPayload)
         {
             header_.type(groundTrackingPayload.type());
             payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(groundTrackingPayload);
         }
+
         void payload(const MessagePayload<MESSAGESIZE> &messagePayload)
         {
             header_.type(messagePayload.type());
             payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(messagePayload);
         }
+
         void payload(const NamePayload<NAMESIZE> &namePayload)
         {
             header_.type(namePayload.type());

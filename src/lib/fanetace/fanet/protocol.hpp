@@ -114,7 +114,7 @@ namespace FANET
         {
             auto v = packet.build();
             auto txFrame = TxFrame{Address{}, {v.data(), v.size()}};
-            txPool.allocate(txFrame);
+            txPool.add(txFrame);
         }
 
         template <size_t MESSAGESIZE, size_t NAMESIZE>
@@ -148,7 +148,7 @@ namespace FANET
                 if (rssddBm > (frmList->rssi() + MAC_FORWARD_MIN_DB_BOOST))
                 {
                     /* received frame is at least 20dB better than the original -> no need to rebroadcast */
-                    txPool.deallocate(*frmList);
+                    txPool.remove(*frmList);
                 }
                 else
                 {
@@ -178,7 +178,7 @@ namespace FANET
                             // fmac.362
                             auto v = buildAck(packet);
                             // TODO: Check if destination is already IN the packet
-                            txPool.allocate(TxFrame{/*destination,*/ v});
+                            txPool.add(TxFrame{/*destination,*/ v});
                         }
 
                         // fmac.366
@@ -201,7 +201,7 @@ namespace FANET
                     // fmac.368
                     auto txFrame = TxFrame{/*destination,*/ {buffer.data(), buffer.size()}}.rssi(rssddBm).numTx(numTx).nextTx(nextTx);
                     txFrame.forward(false);
-                    txPool.allocate(txFrame);
+                    txPool.add(txFrame);
                 }
             }
 
@@ -256,7 +256,7 @@ namespace FANET
             if (frm->ackType() != ExtendedHeader::AckType::NONE && frm->numTx() < 0)
             {
                 // Why inform the app??
-                txPool.deallocate(*frm);
+                txPool.remove(*frm);
                 return 0;
             }
 
@@ -282,7 +282,7 @@ namespace FANET
             if (frm->ackType() != ExtendedHeader::AckType::NONE || frm->source() != ownAddress)
             {
                 // fmac.524
-                txPool.deallocate(*frm);
+                txPool.remove(*frm);
             }
             else if (frm->numTx() > 0)
             {
@@ -314,7 +314,7 @@ namespace FANET
         {
             if (carrierReceivedTime == 0)
             {
-                carrierReceivedTime =  connector.getTick() + MAC_TX_MINPREAMBLEHEADERTIME_MS + (255 * MAC_TX_TIMEPERBYTE_MS);
+                carrierReceivedTime = connector.getTick() + MAC_TX_MINPREAMBLEHEADERTIME_MS + (255 * MAC_TX_TIMEPERBYTE_MS);
             }
             else
             {
@@ -450,7 +450,7 @@ namespace FANET
                 {
                     auto toErase = it;
                     ++it;
-                    txPool.deallocate(*toErase);
+                    txPool.remove(*toErase);
                 }
                 else
                 {
@@ -489,6 +489,38 @@ namespace FANET
 
             // Payload time
             float tPayload = payloadSymbNb * tSym;
+
+            // Total airtime in milliseconds
+            return tPreamble + tPayload;
+        }
+
+        int32_t calculateAirtime2(int size,
+                                  int sf,
+                                  int bw,
+                                  int cr = 1, // Coding Rate in 1:4/5 2:4/6 3:4/7 4:4/8
+                                  int lowDrOptimize = 2 /*2:auto 1:yes 0:no*/,
+                                  bool explicitHeader = true,
+                                  int preambleLength = 8)
+        {
+            // Symbol time in milliseconds
+            int32_t tSym = 1 << sf;
+
+            // Preamble time
+            int32_t tPreamble = ((preambleLength*4 + 17) * tSym) / bw / 4;
+
+            // Header: 0 when explicit, 1 when implicit
+            int32_t h = explicitHeader ? 0 : 1;
+
+            // Low Data Rate Optimization (DE)
+            int32_t de = ((lowDrOptimize == 2 && bw == 125 && sf >= 11) || lowDrOptimize == 1) ? 1 : 0;
+
+            // Calculate number of payload symbols
+            int32_t payloadSymbNb = 8 + etl::max(
+                                            (int)std::ceil((8 * size - 4 * sf + 28 + 16 - 20 * h) / (4.0 * (sf - 2 * de))) * (cr + 4),
+                                            0);
+
+            // Payload time
+            int32_t tPayload = (payloadSymbNb * tSym) / bw;
 
             // Total airtime in milliseconds
             return tPreamble + tPayload;

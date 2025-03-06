@@ -7,9 +7,17 @@
 #include "etl/span.h"
 
 /**
- * A simple block allocator that allocates blocks from a fixed-size memory pool.
- * The goal is to have a fixed memory pool and allocate memory blocks dynamically,
- * ensuring that each allocated object maintains a reference to its memory.
+ * @brief A simple block allocator that allocates blocks from a fixed-size memory pool.
+ * 
+ * The goal is to have a fixed memory pool and allocate memory blocks dynamically for different sizes
+ * ensuring that each allocated object maintains a reference to its memory. The goal was to reduce memory for
+ * data blocks that can be of different size. 
+ *
+ * 
+ * @tparam T The type of objects to allocate, needs to have the functions
+ * etl::span<uint8_t> data() const {..}
+ * @tparam MAX_BLOCKS The maximum number of blocks in the memory pool.
+ * @tparam BLOCK_SIZE The size of each block in the memory pool.
  */
 template <typename T, size_t MAX_BLOCKS, size_t BLOCK_SIZE>
 class BlockAllocator
@@ -20,11 +28,17 @@ private:
     etl::vector<T, MAX_BLOCKS> allocatedBlocks;               // Stores allocated objects
 
 public:
+    /**
+     * @brief Constructor that initializes the block allocator.
+     */
     BlockAllocator()
     {
         clear();
     }
 
+    /**
+     * @brief Clears the memory pool and resets the allocation map.
+     */
     void clear()
     {
         allocationMap.reset();
@@ -32,7 +46,13 @@ public:
         memoryPool.clear();
     }
 
-    bool allocate(const T &data)
+    /**
+     * @brief Adds a new object to the memory pool.
+     * 
+     * @param data The object to add.
+     * @return True if the object was successfully added, false otherwise.
+     */
+    bool add(const T &data)
     {
         size_t size = data.data().size();
         size_t blocksNeeded = (size + BLOCK_SIZE - 1) / BLOCK_SIZE; // Round up to nearest block
@@ -70,7 +90,13 @@ public:
         return false; // No free contiguous blocks
     }
 
-    bool deallocate( T &data)
+    /**
+     * @brief Removes an object from the memory pool.
+     * 
+     * @param data The object to remove.
+     * @return True if the object was successfully removed, false otherwise.
+     */
+    bool remove(T &data)
     {
         bool deAllocated = false;
         uintptr_t offset = data.data().data() - memoryPool.data();
@@ -97,22 +123,54 @@ public:
         return deAllocated;
     }
 
-    // Expose iterators for allocatedBlocks
+    /**
+     * @brief Get an iterator to the beginning of the allocated blocks.
+     * @return An iterator to the beginning of the allocated blocks.
+     */
     typename etl::vector<T, MAX_BLOCKS>::iterator begin() { return allocatedBlocks.begin(); }
+
+    /**
+     * @brief Get an iterator to the end of the allocated blocks.
+     * @return An iterator to the end of the allocated blocks.
+     */
     typename etl::vector<T, MAX_BLOCKS>::iterator end() { return allocatedBlocks.end(); }
+
+    /**
+     * @brief Get a constant iterator to the beginning of the allocated blocks.
+     * @return A constant iterator to the beginning of the allocated blocks.
+     */
     typename etl::vector<T, MAX_BLOCKS>::const_iterator begin() const { return allocatedBlocks.begin(); }
+
+    /**
+     * @brief Get a constant iterator to the end of the allocated blocks.
+     * @return A constant iterator to the end of the allocated blocks.
+     */
     typename etl::vector<T, MAX_BLOCKS>::const_iterator end() const { return allocatedBlocks.end(); }
-    
-    // Optionally, add cbegin and cend for constant iterators
+
+    /**
+     * @brief Get a constant iterator to the beginning of the allocated blocks.
+     * @return A constant iterator to the beginning of the allocated blocks.
+     */
     typename etl::vector<T, MAX_BLOCKS>::const_iterator cbegin() const { return allocatedBlocks.cbegin(); }
+
+    /**
+     * @brief Get a constant iterator to the end of the allocated blocks.
+     * @return A constant iterator to the end of the allocated blocks.
+     */
     typename etl::vector<T, MAX_BLOCKS>::const_iterator cend() const { return allocatedBlocks.cend(); }
 
-        
+    /**
+     * @brief Get the allocated blocks.
+     * @return A reference to the vector of allocated blocks.
+     */
     etl::vector<T, MAX_BLOCKS> &getAllocatedBlocks()
     {
         return allocatedBlocks;
     }
 
+    /**
+     * @brief Print the allocation map to the console.
+     */
     void printAllocationMap() const
     {
         for (size_t i = 0; i < MAX_BLOCKS; ++i)

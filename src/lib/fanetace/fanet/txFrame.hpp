@@ -17,6 +17,7 @@ namespace FANET
     class TxFrame
     {
         friend class Protocol;
+        friend class BlockAllocator;
 
     private:
         etl::span<uint8_t> block_;
@@ -135,5 +136,6 @@ namespace FANET
         {
             block_ = v;
         }
+
     };
 }

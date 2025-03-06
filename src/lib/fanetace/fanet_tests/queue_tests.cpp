@@ -53,7 +53,7 @@ TEST_CASE("Queue tests Monkey", "[BlockAllocator]")
             vec.resize(type);
             vec.fill(type);
 
-            allocated = test.allocate(TestData{count, type, vec});
+            allocated = test.add(TestData{count, type, vec});
         } while (allocated);
         // printf("Full:    ");
         // test.printAllocationMap();
@@ -78,7 +78,7 @@ TEST_CASE("Queue tests Monkey", "[BlockAllocator]")
             auto isDelete = binaryGen(rng);
             if (isDelete)
             {
-                test.deallocate(b);
+                test.remove(b);
             }
         }
         // printf("Deleted: ");
