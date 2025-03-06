@@ -132,21 +132,18 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    uint32_t ctxBufferOverrunErr = 0;
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
+    if (auto guard = SemaphoreGuard<5>(mutex))
     {
+        (void)path;
+        stream << "{";
+        stream << "\"connections\":" << connections.size();
+        stream << ",\"ctxBufferOverrunErr\":[" ;
         for (auto &it : Bluetooth::connections)
         {
-            ctxBufferOverrunErr += it.bufferOverrunErr;
+            stream << it.bufferOverrunErr << ",";
         }
+        stream << "-1]}\n"; // Adding minus one to ensure the array is valid
     }
-
-    (void)path;
-    stream << "{";
-    stream << "\"connections\":" << connections.size();
-    stream << ",\"nmeaQueueErr\":" << statistics.nmeaQueueErr;
-    stream << ",\"ctxBufferOverrunErr\":" << ctxBufferOverrunErr;
-    stream << "}\n";
 }
 
 void Bluetooth::on_receive_unknown(const etl::imessage &msg)
@@ -169,35 +166,27 @@ void Bluetooth::on_receive(const OpenAce::IdleMsg &msg)
  */
 void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
 {
-    if (Bluetooth::connections.empty())
+    bool requiresPush = false;
+    if (auto guard = SemaphoreGuard<20>(mutex))
     {
-        return;
-    }
-
-    if (queue.full())
-    {
-        statistics.nmeaQueueErr++;
-        btstack_run_loop_execute_on_main_thread(&pushIntoQueueReg);
-        return;
-    }
-
-    // When all the buffers where empty, it can be assumed that BTstack might be stalled by detecting this
-    // a trigger is send to the BT thread to call pushQueueIntoConnectionBuffers, which in return call up the right connections to send data
-    bool allBufferEmpty = true;
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
-    {
-        for (auto &it : Bluetooth::connections)
+        for (auto &ctx : Bluetooth::connections)
         {
-            allBufferEmpty &= it.buffer.empty();
+            if (ctx.buffer.available() >= msg.sentence.size())
+            {
+                ctx.buffer.push(msg.sentence.c_str(), msg.sentence.size());
+            }
+            else
+            {
+                ctx.bufferOverrunErr++;
+            }
+            requiresPush |= ctx.requiresNotification;
         }
     }
 
-    queue.push(msg.sentence);
-
-    if (allBufferEmpty)
-    {
+    if (requiresPush) {
         btstack_run_loop_execute_on_main_thread(&pushIntoQueueReg);
     }
+
 }
 
 bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
@@ -240,22 +229,6 @@ void Bluetooth::removeConnection(uint16_t handle)
 void Bluetooth::pushQueueIntoConnectionBuffers(void *arg)
 {
     (void)arg;
-
-    OpenAce::NMEAString sentence;
-    while (Bluetooth::queue.pop(sentence))
-    {
-        for (auto &ctx : Bluetooth::connections)
-        {
-            if (ctx.buffer.available() >= sentence.size())
-            {
-                ctx.buffer.push(sentence.c_str(), sentence.size());
-            }
-            else
-            {
-                ctx.bufferOverrunErr++;
-            }
-        }
-    }
 
     if (arg == nullptr)
     {
@@ -433,7 +406,7 @@ void Bluetooth::sendNotification(Bluetooth::BtContext *it)
     auto handle = it->handle;
 
     auto [part, sendLength] = it->buffer.peek();
-    sendLength = etl::min(sendLength, static_cast<size_t>(it->mtu));
+    sendLength = etl::min(sendLength, static_cast<size_t>(it->mtu / 2));
 
     if (sendLength > 0)
     {
