@@ -67,10 +67,10 @@ namespace FANET
 
         void ack(ExtendedHeader::AckType ackType)
         {
-            // Ack may not request an ack, and Ack::NONE does not require an extended header
+            // Ack::NONE does not require an extended header
             if (ackType == ExtendedHeader::AckType::NONE)
             {
-                return *this;
+                return;
             }
             if (extendedHeader_)
             {
@@ -80,7 +80,7 @@ namespace FANET
             {
                 extendedHeader_ = ExtendedHeader{ackType, false, false, false};
             }
-            return *this;
+            return;
         }
 
         void destination(const Address &destination)
@@ -129,15 +129,37 @@ namespace FANET
             header_.extended(true);
         }
 
-        void forward(bool forward)
+        void forward()
         {
-            header_.forward(forward);
+            header_.forward(true);
         }
 
-        void payLoad(const PayloadVariant<MESSAGESIZE, NAMESIZE> &payload)
+        // void payload(const PayloadVariant<MESSAGESIZE, NAMESIZE> &payload)
+        // {
+        //     payload_ = payload;
+
+        //     //            header_.type(payload..type());
+        // }
+
+        void payload(const TrackingPayload &trackingPayload)
         {
-            payload_ = payload;
-            header_.type(payload.type());
+            header_.type(trackingPayload.type());
+            payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(trackingPayload);
+        }
+        void payload(const GroundTrackingPayload &groundTrackingPayload)
+        {
+            header_.type(groundTrackingPayload.type());
+            payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(groundTrackingPayload);
+        }
+        void payload(const MessagePayload<MESSAGESIZE> &messagePayload)
+        {
+            header_.type(messagePayload.type());
+            payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(messagePayload);
+        }
+        void payload(const NamePayload<NAMESIZE> &namePayload)
+        {
+            header_.type(namePayload.type());
+            payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(namePayload);
         }
 
         RadioPacket build()
@@ -174,101 +196,4 @@ namespace FANET
         }
     };
 
-    /**
-     * @brief A reference to a packet within a buffer that allows direct inspection or modification without serialization/deserialization.
-     * 
-     * This class is designed for use by the protocol handler, enabling the manipulation of packets in their raw buffer form rather 
-     * than their deserialized state. While deserialization could be used for packet comparison, it introduces unnecessary overhead 
-     * and resource consumption. This class allows working with the packet more efficiently.
-     * 
-     * Notes for future developers:
-     * - Only the header and source fields are mandatory. You cannot add for example an `ExtHeader`, but you may modify it if it exists.
-     * - The final length of the packet referenced by this class must remain consistent.
-     * 
-     * You may extend this class with additional functions as needed, but be mindful of the constraints on the packet structure.
-     */
-    class PacketRef
-    {
-        friend class Protocol;
-        etl::span<uint8_t> packet;
-        PacketRef() = default;
-        PacketRef(etl::span<uint8_t> packet_) : packet(packet)
-        {
-        }
-
-        private:
-        etl::span<uint8_t> payload() {
-            uint8_t payloadPosition[] = {4,4,4,4,5,9,8,12};
-            uint8_t extended = (packet[0] & 0x80)?4:0;
-            uint8_t cast = ((packet[4] & 0x20) && extended)?2:0;
-            uint8_t sig = ((packet[4] & 0x10)) && extended?1:0;
-            uint8_t pos = payloadPosition[extended | cast | sig];
-            return etl::span<uint8_t>(packet.data() + pos, packet.end());
-        }
-
-        /**
-         * Returns the mssage type
-         */
-        Header::MessageType type()  const 
-        {
-            return static_cast<Header::MessageType>(packet[0] & 0b00111111);
-        }
-
-        /**
-         * Returns the source address
-         */
-        Address source()  const 
-        {
-            return Address(packet[1], (static_cast<uint16_t>(packet[3]) << 8) | static_cast<uint16_t>(packet[2]));
-        }
-
-        /**
-         * Returns the ackType from the extended header.
-         * Returns ExtendedHeader::AckType::NONE if there was no extended header.
-         */
-        ExtendedHeader::AckType ackType() const 
-        {
-            if (packet[0] & 0x80)
-            {
-                return static_cast<ExtendedHeader::AckType>(packet[4] >> 6);
-            }
-            return ExtendedHeader::AckType::NONE;
-        }
-
-        /**
-         * Get the destination if within the frame, returns 0 if there is no destination
-         */
-        Address destination()  const 
-        {
-            if (packet[0] & 0x80)
-            {
-                return Address(packet[5], (static_cast<uint16_t>(packet[7]) << 8) | static_cast<uint16_t>(packet[6]));
-            }
-            return Address{};
-        }
-
-        /**
-         * Returns the status of the forward bit
-         */
-        bool forward()  const 
-        {
-            return packet[0] & 0x40;
-        }
-
-
-        /**
-         * Set or reset the forward bit
-         */
-        void forward(bool forward)
-        {
-            if (forward)
-            {
-                packet[0] |= 0x40; // Set bit 6
-            }
-            else
-            {
-                packet[0] &= ~0x40; // Clear bit 6
-            }
-        }
-    };
 }

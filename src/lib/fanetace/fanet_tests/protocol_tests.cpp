@@ -13,9 +13,18 @@ using namespace FANET;
 class TestApp : public Connector {
     public:
         
-    virtual uint32_t timeMs() const override {
+    virtual uint32_t getTick() const override {
             return 0;
         }
+    
+    virtual void sendFrame(uint8_t codingRate, const etl::span<uint8_t> &data) const override {
+        puts("Send Frame");        
+    }
+
+    virtual bool isBroadcastReady() const override {
+        return true;
+    }
+
 };
 
 TEST_CASE("Protocol Default Constructor", "[TrackingPayload]") {
@@ -23,6 +32,7 @@ TEST_CASE("Protocol Default Constructor", "[TrackingPayload]") {
     TestApp app;
     Protocol p(app);
 
-    auto result = p.handleRx<100, 100>(0, etl::vector<uint8_t, 255>());
+    auto v = etl::vector<uint8_t, 255>();
+    auto result = p.handleRx<100, 100>(0, v);
 
 }

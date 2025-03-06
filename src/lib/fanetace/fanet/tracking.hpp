@@ -43,8 +43,14 @@ namespace FANET
         bool hasTurnRateRaw = false;
 
     public:
+        /**
+         * @brief Default constructor.
+         */
         explicit TrackingPayload() = default;
 
+        /**
+         * @brief Constructor with all fields.
+         */
         TrackingPayload(int32_t latitudeRaw_, int32_t longitudeRaw_, uint16_t altitudeRaw_,
                         bool trackingBit_, AircraftType aircraftTypeRaw_,
                         bool aScaling_, bool sScalingBit_, uint8_t speedRaw_,
@@ -66,21 +72,38 @@ namespace FANET
         {
         }
 
+        /**
+         * @brief Get the message type.
+         * @return The message type.
+         */
         Header::MessageType type() const
         {
             return Header::MessageType::TRACKING;
         }
 
+        /**
+         * @brief Get the latitude in degrees.
+         * @return The latitude in degrees.
+         */
         float latitude() const
         {
             return ((latitudeRaw << 8) >> 8) / 93206.f;
         }
 
+        /**
+         * @brief Get the longitude in degrees.
+         * @return The longitude in degrees.
+         */
         float longitude() const
         {
             return ((longitudeRaw << 8) >> 8) / 46603.f;
         }
 
+        /**
+         * @brief Set the latitude in degrees.
+         * @param lat The latitude in degrees.
+         * @return Reference to the current object.
+         */
         TrackingPayload &latitude(float lat)
         {
             lat = etl::clamp(lat, -90.f, 90.f);
@@ -88,6 +111,11 @@ namespace FANET
             return *this;
         }
 
+        /**
+         * @brief Set the longitude in degrees.
+         * @param lon The longitude in degrees.
+         * @return Reference to the current object.
+         */
         TrackingPayload &longitude(float lon)
         {
             lon = etl::clamp(lon, -180.f, 180.f);
@@ -96,7 +124,8 @@ namespace FANET
         }
 
         /**
-         * Get Altitude in Meters
+         * @brief Get the altitude in meters.
+         * @return The altitude in meters.
          */
         int16_t altitude() const
         {
@@ -104,7 +133,9 @@ namespace FANET
         }
 
         /**
-         * Set Altitude in Meters
+         * @brief Set the altitude in meters.
+         * @param alt The altitude in meters.
+         * @return Reference to the current object.
          */
         TrackingPayload &altitude(int16_t alt)
         {
@@ -122,7 +153,8 @@ namespace FANET
         }
 
         /**
-         * Get if this aircraft allows tracking
+         * @brief Check if this aircraft allows tracking.
+         * @return True if tracking is allowed, false otherwise.
          */
         bool tracking() const
         {
@@ -130,7 +162,9 @@ namespace FANET
         }
 
         /**
-         * Set if this aircraft allows tracking
+         * @brief Set if this aircraft allows tracking.
+         * @param tracking True if tracking is allowed, false otherwise.
+         * @return Reference to the current object.
          */
         TrackingPayload &tracking(bool tracking)
         {
@@ -139,7 +173,8 @@ namespace FANET
         }
 
         /**
-         * Get the type of aircraft
+         * @brief Get the type of aircraft.
+         * @return The type of aircraft.
          */
         AircraftType aircraftType() const
         {
@@ -147,7 +182,9 @@ namespace FANET
         }
 
         /**
-         * Set the type of aircraft
+         * @brief Set the type of aircraft.
+         * @param aircraftType The type of aircraft.
+         * @return Reference to the current object.
          */
         TrackingPayload &aircraftType(AircraftType aircraftType)
         {
@@ -156,7 +193,8 @@ namespace FANET
         }
 
         /**
-         * Get the speed in kilometer per hour
+         * @brief Get the speed in kilometers per hour.
+         * @return The speed in kilometers per hour.
          */
         float speed() const
         {
@@ -164,7 +202,9 @@ namespace FANET
         }
 
         /**
-         * Set the speed in kilometer per hour
+         * @brief Set the speed in kilometers per hour.
+         * @param speed The speed in kilometers per hour.
+         * @return Reference to the current object.
          */
         TrackingPayload &speed(float speed)
         {
@@ -182,8 +222,8 @@ namespace FANET
         }
 
         /**
-         * get the climbrate in m/s
-
+         * @brief Get the climb rate in meters per second.
+         * @return The climb rate in meters per second.
          */
         float climbRate() const
         {
@@ -191,11 +231,13 @@ namespace FANET
         }
 
         /**
-         * Set the climbrate in m/s
+         * @brief Set the climb rate in meters per second.
+         * @param climbRate The climb rate in meters per second.
+         * @return Reference to the current object.
          */
         TrackingPayload &climbRate(float climbRate)
         {
-            int16_t climb10 = etl::clamp((int)roundf(climbRate * 10.0f), -315, 315);
+            int16_t climb10 = etl::clamp(static_cast<int>(roundf(climbRate * 10.0f)), -315, 315);
 
             if (etl::absolute(climb10) > 63)
             {
@@ -211,15 +253,18 @@ namespace FANET
         }
 
         /**
-         * Get the heading in degrees
+         * @brief Get the ground track in degrees.
+         * @return The ground track in degrees.
          */
         float groundTrack() const
         {
-            return (float)groundTrackRaw * 360.f / 256.f;
+            return static_cast<float>(groundTrackRaw) * 360.f / 256.f;
         }
 
         /**
-         * Set the groundtrack
+         * @brief Set the ground track in degrees.
+         * @param groundTrack The ground track in degrees.
+         * @return Reference to the current object.
          */
         TrackingPayload &groundTrack(float groundTrack)
         {
@@ -232,25 +277,32 @@ namespace FANET
                 groundTrack -= 360.0f;
             }
 
-            groundTrackRaw = etl::clamp(((int)roundf(groundTrack * 256.0f / 360.0f)), 0, 255);
+            groundTrackRaw = etl::clamp(static_cast<int>(roundf(groundTrack * 256.0f / 360.0f)), 0, 255);
             return *this;
         }
 
-
-        bool hasTurnrate() {
+        /**
+         * @brief Check if the turn rate is set.
+         * @return True if the turn rate is set, false otherwise.
+         */
+        bool hasTurnrate() const
+        {
             return hasTurnRateRaw;
         }
 
         /**
-         * Get the turnrate in degrees per second
+         * @brief Get the turn rate in degrees per second.
+         * @return The turn rate in degrees per second.
          */
         float turnRate() const
         {
-            return tScalingBit ? ((turnRateRaw << 1) >> 1) : ((turnRateRaw << 1) >> 1) / 4.0f;
+            return tScalingBit ? static_cast<float>(turnRateRaw) : static_cast<float>(turnRateRaw) / 4.0f;
         }
 
         /**
-         * Set the turnrate im degrees per second
+         * @brief Set the turn rate in degrees per second.
+         * @param turnRate The turn rate in degrees per second.
+         * @return Reference to the current object.
          */
         TrackingPayload &turnRate(float turnRate)
         {
@@ -269,7 +321,11 @@ namespace FANET
             return *this;
         }
 
-        virtual void serialize(etl::bit_stream_writer &writer) const
+        /**
+         * @brief Serialize the tracking payload to a bit stream.
+         * @param writer The bit stream writer.
+         */
+        virtual void serialize(etl::bit_stream_writer &writer) const override
         {
             writer.write_unchecked(etl::reverse_bytes(latitudeRaw << 8), 24U);
             writer.write_unchecked(etl::reverse_bytes(longitudeRaw << 8), 24U);
@@ -295,6 +351,11 @@ namespace FANET
             }
         }
 
+        /**
+         * @brief Deserialize the tracking payload from a bit stream.
+         * @param reader The bit stream reader.
+         * @return The deserialized tracking payload.
+         */
         static const TrackingPayload deserialize(etl::bit_stream_reader &reader)
         {
             TrackingPayload tracking;

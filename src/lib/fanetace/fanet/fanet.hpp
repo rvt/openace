@@ -21,10 +21,13 @@ namespace FANET {
 
 
         /**
-         * Should return a monotonic increating time in ms it's not required to be aligned with PPS or epoch.
-         * This is used to calculate frame timing
+         * @brief return a number of ms. Does not matter if it's from epoch, as long as it's monotonic.
          */
-        virtual uint32_t timeMs() const = 0;
+        virtual uint32_t getTick() const = 0;
+
+        virtual void sendFrame(uint8_t codingRate, const etl::span<uint8_t> &data) const = 0;
+
+        virtual bool isBroadcastReady() const = 0;
 
         /* device -> air */
         // virtual bool is_broadcast_ready(int num_neighbors) = 0;
