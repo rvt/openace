@@ -14,13 +14,37 @@
 
 namespace FANET
 {
+    /**
+     * @brief A variant type to hold different payload types.
+     * @tparam MESSAGESIZE The size of the message payload.
+     * @tparam NAMESIZE The size of the name payload.
+     */
     template <size_t MESSAGESIZE, size_t NAMESIZE>
     using PayloadVariant = etl::variant<TrackingPayload, NamePayload<NAMESIZE>, MessagePayload<MESSAGESIZE>, GroundTrackingPayload>;
 
+    /**
+     * @brief A class to parse FANET packets from a byte buffer.
+     * 
+     * The PacketParser class is responsible for parsing a byte buffer into a FANET packet.
+     * It reads the header, source address, optional extended header, and payload from the buffer.
+     * The class supports different payload types based on the message type in the header.
+     * 
+     * @tparam MESSAGESIZE The size of the message payload.
+     * @tparam NAMESIZE The size of the name payload.
+     */
     template <size_t MESSAGESIZE, size_t NAMESIZE>
     class PacketParser final
     {
     public:
+        /**
+         * @brief Parse a byte buffer into a FANET packet.
+         * 
+         * This function reads the header, source address, optional extended header, and payload from the buffer.
+         * It supports different payload types based on the message type in the header.
+         * 
+         * @param buffer The byte buffer containing the packet data.
+         * @return The parsed FANET packet.
+         */
         static Packet<MESSAGESIZE, NAMESIZE> parse(const etl::ivector<uint8_t> &buffer)
         {
             etl::bit_stream_reader reader((uint8_t *)buffer.data(), buffer.size(), etl::endian::big);

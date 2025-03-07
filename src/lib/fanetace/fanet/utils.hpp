@@ -8,14 +8,28 @@
 
 namespace FANET
 {
-    
+    /**
+     * @brief Scales a floating-point number to a fixed-point representation.
+     * 
+     * This function scales a floating-point number to a fixed-point representation
+     * based on the provided unit factor, scaling factor, and bit count. It ensures
+     * that the scaled value fits within the specified bit count and clamps the result
+     * if necessary.
+     * 
+     * @tparam R The return type (fixed-point representation).
+     * @tparam UnitFactor The unit factor for scaling.
+     * @tparam ScalingFactor The scaling factor for scaling.
+     * @tparam bitCount The number of bits for the fixed-point representation.
+     * @param number The floating-point number to scale.
+     * @return A struct containing the scaled value and a boolean indicating if scaling was applied.
+     */
     template <typename R, typename UnitFactor, typename ScalingFactor, uint8_t bitCount>
     auto toScaled(float number)
     {
         struct Result
         {
-            R value;
-            bool scaled;
+            R value;   ///< The scaled value.
+            bool scaled; ///< Indicates if scaling was applied.
         };
     
         // Compute constants
@@ -47,5 +61,4 @@ namespace FANET
             etl::clamp(static_cast<R>(scaled), static_cast<R>(etl::is_unsigned<R>::value ? 0 : -constrainedMax), static_cast<R>(constrainedMax)),
             true};
     }
-    
 }
