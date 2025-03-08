@@ -19,16 +19,17 @@ namespace FANET
         friend class BlockAllocator;
 
     private:
-        etl::span<uint8_t> block_; ///< Raw packet data
-        uint32_t nextTx_;          ///< Next transmission time
-        uint8_t numTx_;            ///< Number of transmissions
-        int16_t rssi_;             ///< Received Signal Strength Indicator (RSSI)
+        etl::span<uint8_t> block_; // Raw packet data, this will point to the correct BEGIN and END in the TxPool after the packet was copied
+        uint32_t nextTx_;          // Next transmission time
+        uint8_t numTx_;            // Number of transmissions
+        int8_t rssi_;              // Received Signal Strength Indicator (RSSI)
+        uint16_t id_;               // An app can give a packet an ID. During callbacks the same ID will be returned to indicate that a packet was acked/received etc.
 
         /**
          * @brief Constructor that initializes the TxFrame with a block of data.
          * @param block The block of data.
          */
-        TxFrame(etl::span<uint8_t> block) : block_(block), nextTx_(0), numTx_(0), rssi_(0) {}
+        TxFrame(etl::span<uint8_t> block) : block_(block), nextTx_(0), numTx_(0), rssi_(0), id_(0) {}
 
         /**
          * @brief Set the number of transmissions.
@@ -39,6 +40,35 @@ namespace FANET
         {
             numTx_ = v;
             return *this;
+        }
+
+        /**
+         * @brief Get the number of transmissions.
+         * @return The number of transmissions.
+         */
+        uint8_t numTx() const
+        {
+            return numTx_;
+        }
+
+        /**
+         * @brief ID of this package. Optionally can be used by the application.
+         * @param v The ID of this transmission
+         * @return Reference to the current object.
+         */
+        TxFrame &id(uint16_t v)
+        {
+            id_ = v;
+            return *this;
+        }
+
+        /**
+         * @brief Get the ID of this TX packet
+         * @return The ID
+         */
+        uint16_t id() const
+        {
+            return id_;
         }
 
         /**
@@ -70,15 +100,6 @@ namespace FANET
         uint32_t nextTx() const
         {
             return nextTx_;
-        }
-
-        /**
-         * @brief Get the number of transmissions.
-         * @return The number of transmissions.
-         */
-        uint8_t numTx() const
-        {
-            return numTx_;
         }
 
         /**

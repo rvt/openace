@@ -20,6 +20,12 @@
 
 namespace FANET
 {
+    /**
+     * @brief Protocol class for handling FANET communication.
+     *
+     * This class manages the sending and receiving of FANET packets, including handling
+     * acknowledgments, forwarding, and maintaining a neighbor table.
+     */
     class Protocol
     {
     private:
@@ -54,31 +60,35 @@ namespace FANET
         // Random number generator for random times
         etl::random_xorshift random; // XOR-Shift PRNG from ETL
 
-        // Pool for all frames that need to be send
+        // Pool for all frames that need to be sent
         using TxPool = BlockAllocator<FANET::TxFrame, 50, 16>;
         TxPool txPool;
 
-        // Table with received naugbours
+        // Table with received neighbors
         NeighbourTable<100> neighborTable;
 
-        // Users own address
+        // User's own address
         Address ownAddress;
         // When set to true, the protocol handler will forward received packages when applicable
         bool doForward = true;
 
         // When carrierReceivedTime has been set, then this is taken into consideration when to send the next packet
-        // THis is line CSMA in the old protocol.
+        // This is like CSMA in the old protocol.
         uint32_t carrierReceivedTime = 0;
         uint8_t carrierBackoffExp = 0;
         float airTime = 0;
         // Last time TX was done
         uint32_t lastTx = 0;
-        // Connector for the applciation, eg the interface between the FANET protocol and the application
+        // Connector for the application, e.g., the interface between the FANET protocol and the application
         Connector &connector;
 
     private:
         /**
-         * Build an ack package from existing packet
+         * @brief Build an acknowledgment packet from an existing packet.
+         * @tparam MESSAGESIZE The size of the message payload.
+         * @tparam NAMESIZE The size of the name payload.
+         * @param packet The packet to acknowledge.
+         * @return The acknowledgment packet.
          */
         template <size_t MESSAGESIZE, size_t NAMESIZE>
         auto buildAck(const Packet<MESSAGESIZE, NAMESIZE> &packet)
@@ -100,26 +110,49 @@ namespace FANET
         }
 
     public:
+        /**
+         * @brief Constructor for the Protocol class.
+         * @param connector_ The connector interface for the application.
+         */
         Protocol(Connector &connector_) : connector(connector_)
         {
         }
 
+        /**
+         * @brief Initialize the protocol.
+         */
         void init()
         {
             random.initialise(connector.getTick());
         }
 
+        /**
+         * @brief Send a FANET packet.
+         * @tparam MESSAGESIZE The size of the message payload.
+         * @tparam NAMESIZE The size of the name payload.
+         * @param packet The packet to send.
+         * @param id ID of this packet, can be used if you request an ack and to know if the packet was received
+         */
         template <size_t MESSAGESIZE, size_t NAMESIZE>
-        void sendPacket(const Packet<MESSAGESIZE, NAMESIZE> &packet)
+        void sendPacket(const Packet<MESSAGESIZE, NAMESIZE> &packet, uint16_t id = 0)
         {
             auto v = packet.build();
-            auto txFrame = TxFrame{Address{}, {v.data(), v.size()}};
+            auto txFrame = TxFrame{Address{}, {v.data(), v.size()}}.id(id);
             txPool.add(txFrame);
         }
 
+        /**
+         * @brief Handle a received FANET packet.
+         * @tparam MESSAGESIZE The size of the message payload.
+         * @tparam NAMESIZE The size of the name payload.
+         * @param rssddBm The received signal strength in dBm.
+         * @param buffer The byte buffer containing the packet data.
+         * @return The parsed FANET packet.
+         */
         template <size_t MESSAGESIZE, size_t NAMESIZE>
         Packet<MESSAGESIZE, NAMESIZE> handleRx(int16_t rssddBm, etl::ivector<uint8_t> &buffer)
         {
+            // START: OK
             static constexpr size_t MAC_PACKET_SIZE = ((MESSAGESIZE > NAMESIZE) ? MESSAGESIZE : NAMESIZE) + 12; // 12 Byte for maximum header size
             auto timeMs = connector.getTick();
 
@@ -129,22 +162,26 @@ namespace FANET
 
             // fmac.283 Perhaps move this to some maintenance task?
             neighborTable.removeOutdated(timeMs);
-            // fmac.322
-            // addOrUpdate will guarantiee we can update this one
-            neighborTable.addOrUpdate(packet.source(), timeMs);
 
             // Drop reserved and own package. Own package might be a forwarded package
-            if (packet.source() == Address{0} ||
+            if (packet.source() == Address{0x0} ||
                 packet.source() == Address{0xFFFFFF} ||
                 packet.source() == ownAddress)
             {
                 return packet;
             }
 
+            // fmac.322
+            // addOrUpdate will guarantee this one is added, and any old one is removed
+            neighborTable.addOrUpdate(packet.source(), timeMs);
+
             // fmac.326
+            // Decide if we have seen this frame already in the past, if so decide what to do with the frame in our buffer
+            // This concerns forwarding of packets from other FANET devices
             auto frmList = frameInTxPool(buffer);
             if (frmList)
             {
+                /* frame already in tx queue */
                 if (rssddBm > (frmList->rssi() + MAC_FORWARD_MIN_DB_BOOST))
                 {
                     /* received frame is at least 20dB better than the original -> no need to rebroadcast */
@@ -153,22 +190,23 @@ namespace FANET
                 else
                 {
                     /* adjusting new departure time */
+                    // fmac.346
                     frmList->nextTx(connector.getTick() + random.range(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX));
                 }
             }
+            // END: OK
             else
             {
-                // When the package was destined to us or 0
+                // When the package was destined to us or broadcast
                 // fmac.351
                 if (destination == Address{} || destination == ownAddress)
                 {
                     // fmac.353
+                    // When we receive an ack in broadcast or to us, but teh frame was not found in our pool
                     if (packet.header().type() == Header::MessageType::ACK)
                     {
                         // fmac.cpp 356
-                        // When we send a packet directly a destination and when we requested an ack, this will remove the
                         removeDeleteAckedFrame(packet.source());
-                        // TODO: Inform app
                     }
                     else
                     {
@@ -209,9 +247,12 @@ namespace FANET
         }
 
         /**
-         * @Brief Calling this method will handle any opackages in the queue
-         * THis can be called at regular intervals, or it can be called based on the time returned by this function when it
-         * thinks a packet can be send. THis function might not always send a packet even if there are packages in the queue
+         * @brief Handle any packets in the queue.
+         *
+         * This can be called at regular intervals, or it can be called based on the time returned by this function when it
+         * thinks a packet can be sent. This function might not always send a packet even if there are packets in the queue.
+         *
+         * @return The time in milliseconds until the next packet can be sent.
          */
         uint32_t handletx()
         {
@@ -236,7 +277,7 @@ namespace FANET
             }
 
             // fmac.428
-            // Apparently FANEt want's to send APP packets without consideration of airtime
+            // Apparently FANET wants to send APP packets without consideration of airtime
             if (calculate3MinAirTime(airTime) > 0.9f && !frm->isPriorityPacket())
             {
                 return 100;
@@ -276,7 +317,7 @@ namespace FANET
             connector.sendFrame(cr, frm->data());
             lastTx = connector.getTick();
 
-            airTime += calculateAirtime(frameLength, 7, 250, cr - 4);
+            airTime += FANET::calculateAirtime(frameLength, 7, 250, cr - 4);
 
             // fmac.522
             if (frm->ackType() != ExtendedHeader::AckType::NONE || frm->source() != ownAddress)
@@ -308,7 +349,7 @@ namespace FANET
         }
 
         /**
-         * @brief call this when your received detects a carrier
+         * @brief Call this when your receiver detects a carrier.
          */
         void carrierDetected()
         {
@@ -327,6 +368,11 @@ namespace FANET
         }
 
     private:
+        /**
+         * @brief Calculate the 3-minute average airtime.
+         * @param airTime The current airtime.
+         * @return The 3-minute average airtime.
+         */
         float calculate3MinAirTime(float airTime)
         {
             static uint32_t last = 0;
@@ -346,15 +392,19 @@ namespace FANET
         }
 
         /**
-         * Get the next TX block that can be transmitted in this other
-         * a) FInd ant tracking packet
-         * b) FInd any ack packet
-         * c) Find any other packet
+         * @brief Get the next TX block that can be transmitted.
+         *
+         * This function finds the next TX block that can be transmitted in the following order:
+         * a) Find any tracking packet.
+         * b) Find any acknowledgment packet.
+         * c) Find any other packet.
+         *
+         * @param timeMs The current time in milliseconds.
+         * @return A pointer to the next TX frame, or nullptr if no frame is available.
          */
         TxFrame *getNextTxFrame(uint32_t timeMs)
         {
             // Find Tracking packet
-
             auto trackIt = std::min_element(txPool.begin(), txPool.end(), [timeMs](auto &a, auto &b)
                                             {
         
@@ -400,6 +450,11 @@ namespace FANET
             return nullptr;
         }
 
+        /**
+         * @brief Find a frame in the TX pool that matches the given buffer.
+         * @param buffer The buffer to match.
+         * @return A pointer to the matching TX frame, or nullptr if no match is found.
+         */
         TxFrame *frameInTxPool(const etl::span<uint8_t> buffer)
         {
             auto it = etl::find_if(txPool.begin(), txPool.end(),
@@ -441,7 +496,10 @@ namespace FANET
             return nullptr;
         }
 
-        // fmac.140
+        /**
+         * @brief Remove any pending frame that waits on an ACK from a host
+         * @param destination The destination address of the acknowledged frames.
+         */
         void removeDeleteAckedFrame(const Address &destination)
         {
             for (auto it = txPool.begin(); it != txPool.end();)
@@ -457,73 +515,6 @@ namespace FANET
                     ++it;
                 }
             }
-        }
-
-        float calculateAirtime(int size,
-                               int sf,
-                               int bw,
-                               int cr = 1, // Coding Rate in 1:4/5 2:4/6 3:4/7 4:4/8
-                               int lowDrOptimize = 2 /*2:auto 1:yes 0:no*/,
-                               bool explicitHeader = true,
-                               int preambleLength = 8)
-        {
-            // Symbol time in milliseconds
-            float tSym = (std::pow(2, sf) / (bw * 1000)) * 1000.0;
-
-            // Preamble time
-            float tPreamble = (preambleLength + 4.25) * tSym;
-
-            // Header: 0 when explicit, 1 when implicit
-            int h = explicitHeader ? 0 : 1;
-
-            // Low Data Rate Optimization (DE)
-            int de = ((lowDrOptimize == 2 && bw == 125 && sf >= 11) || lowDrOptimize == 1) ? 1 : 0;
-
-            // Extract coding rate from "4/x" format (e.g., "4/5" -> cr = 1)
-            // int cr = std::stoi(codingRate.substr(2)) - 4;
-
-            // Calculate number of payload symbols
-            int payloadSymbNb = 8 + etl::max(
-                                        (int)std::ceil((8 * size - 4 * sf + 28 + 16 - 20 * h) / (4.0 * (sf - 2 * de))) * (cr + 4),
-                                        0);
-
-            // Payload time
-            float tPayload = payloadSymbNb * tSym;
-
-            // Total airtime in milliseconds
-            return tPreamble + tPayload;
-        }
-
-        int32_t calculateAirtime2(int size,
-                                  int sf,
-                                  int bw,
-                                  int cr = 1, // Coding Rate in 1:4/5 2:4/6 3:4/7 4:4/8
-                                  int lowDrOptimize = 2 /*2:auto 1:yes 0:no*/,
-                                  bool explicitHeader = true,
-                                  int preambleLength = 8)
-        {
-            // Symbol time in milliseconds
-            int32_t tSym = 1 << sf;
-
-            // Preamble time
-            int32_t tPreamble = ((preambleLength*4 + 17) * tSym) / bw / 4;
-
-            // Header: 0 when explicit, 1 when implicit
-            int32_t h = explicitHeader ? 0 : 1;
-
-            // Low Data Rate Optimization (DE)
-            int32_t de = ((lowDrOptimize == 2 && bw == 125 && sf >= 11) || lowDrOptimize == 1) ? 1 : 0;
-
-            // Calculate number of payload symbols
-            int32_t payloadSymbNb = 8 + etl::max(
-                                            (int)std::ceil((8 * size - 4 * sf + 28 + 16 - 20 * h) / (4.0 * (sf - 2 * de))) * (cr + 4),
-                                            0);
-
-            // Payload time
-            int32_t tPayload = (payloadSymbNb * tSym) / bw;
-
-            // Total airtime in milliseconds
-            return tPreamble + tPayload;
         }
     };
 
