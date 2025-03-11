@@ -34,6 +34,20 @@ etl::vector<uint8_t, N> makeVector(const uint8_t (&arr)[N]) {
     return etl::vector<uint8_t, N>(std::begin(arr), std::end(arr));
 }
 
+
+template <size_t N>
+etl::vector<uint8_t, N> makeVectorS(const etl::span<uint8_t> &span) {
+    // Ensure the span size does not exceed the vector's capacity
+    if (span.size() > N) {
+        // Handle the error case (e.g., throw an exception, return an empty vector, or truncate)
+        // For simplicity, this example returns an empty vector
+        return etl::vector<uint8_t, N>();
+    }
+    
+    // Construct and return the vector from the span's range
+    return etl::vector<uint8_t, N>(span.begin(), span.end());
+}
+
 template <size_t SIZE>
 etl::vector<uint8_t, SIZE> makeVector(uint8_t value) {
     return etl::vector<uint8_t, SIZE>(SIZE, value);

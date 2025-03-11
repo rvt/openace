@@ -9,7 +9,7 @@ namespace FANET
 {
     /**
      * @brief Class that holds a raw Packet in the TxPool.
-     * 
+     *
      * Due to the way FANET works, a few header bits can be modified even
      * when they are in the pool. This class supplies that possibility.
      */
@@ -23,7 +23,7 @@ namespace FANET
         uint32_t nextTx_;          // Next transmission time
         uint8_t numTx_;            // Number of transmissions
         int8_t rssi_;              // Received Signal Strength Indicator (RSSI)
-        uint16_t id_;               // An app can give a packet an ID. During callbacks the same ID will be returned to indicate that a packet was acked/received etc.
+        uint16_t id_;              // An app can give a packet an ID. During callbacks the same ID will be returned to indicate that a packet was acked/received etc.
 
         /**
          * @brief Constructor that initializes the TxFrame with a block of data.
@@ -43,15 +43,6 @@ namespace FANET
         }
 
         /**
-         * @brief Get the number of transmissions.
-         * @return The number of transmissions.
-         */
-        uint8_t numTx() const
-        {
-            return numTx_;
-        }
-
-        /**
          * @brief ID of this package. Optionally can be used by the application.
          * @param v The ID of this transmission
          * @return Reference to the current object.
@@ -60,15 +51,6 @@ namespace FANET
         {
             id_ = v;
             return *this;
-        }
-
-        /**
-         * @brief Get the ID of this TX packet
-         * @return The ID
-         */
-        uint16_t id() const
-        {
-            return id_;
         }
 
         /**
@@ -94,12 +76,64 @@ namespace FANET
         }
 
         /**
+         * @brief Set or reset the forward bit.
+         * @param forward True to set the forward bit, false to reset it.
+         */
+        TxFrame &forward(bool forward)
+        {
+            if (forward)
+            {
+                block_[0] |= 0x40; // Set bit 6
+            }
+            else
+            {
+                block_[0] &= ~0x40; // Clear bit 6
+            }
+
+            return *this;
+        }
+
+        /**
+         * @brief Get the payload data.
+         * @return The payload data as a span.
+         */
+        etl::span<uint8_t> payload()
+        {
+            // Position of the payload in the packet based on the various bits in the header
+            uint8_t payloadPosition[] = {4, 4, 4, 4, 5, 9, 8, 12};
+            uint8_t extended = (block_[0] & 0x80) ? 4 : 0;
+            uint8_t cast = ((block_[4] & 0x20) && extended) ? 2 : 0;
+            uint8_t sig = ((block_[4] & 0x10)) && extended ? 1 : 0;
+            uint8_t pos = payloadPosition[extended | cast | sig];
+            return etl::span<uint8_t>(block_.data() + pos, block_.end());
+        }
+
+    public:
+        /**
          * @brief Get the next transmission time.
          * @return The next transmission time.
          */
         uint32_t nextTx() const
         {
             return nextTx_;
+        }
+
+        /**
+         * @brief Get the ID of this TX packet
+         * @return The ID
+         */
+        uint16_t id() const
+        {
+            return id_;
+        }
+
+        /**
+         * @brief Get the number of transmissions.
+         * @return The number of transmissions.
+         */
+        uint8_t numTx() const
+        {
+            return numTx_;
         }
 
         /**
@@ -163,22 +197,6 @@ namespace FANET
         }
 
         /**
-         * @brief Set or reset the forward bit.
-         * @param forward True to set the forward bit, false to reset it.
-         */
-        void forward(bool forward)
-        {
-            if (forward)
-            {
-                block_[0] |= 0x40; // Set bit 6
-            }
-            else
-            {
-                block_[0] &= ~0x40; // Clear bit 6
-            }
-        }
-
-        /**
          * @brief Get the acknowledgment type.
          * @return The acknowledgment type.
          */
@@ -189,21 +207,6 @@ namespace FANET
                 return static_cast<ExtendedHeader::AckType>(block_[4] >> 6);
             }
             return ExtendedHeader::AckType::NONE;
-        }
-
-        /**
-         * @brief Get the payload data.
-         * @return The payload data as a span.
-         */
-        etl::span<uint8_t> payload()
-        {
-            // Position of the payload in the packet based on the various bits in the header
-            uint8_t payloadPosition[] = {4, 4, 4, 4, 5, 9, 8, 12};
-            uint8_t extended = (block_[0] & 0x80) ? 4 : 0;
-            uint8_t cast = ((block_[4] & 0x20) && extended) ? 2 : 0;
-            uint8_t sig = ((block_[4] & 0x10)) && extended ? 1 : 0;
-            uint8_t pos = payloadPosition[extended | cast | sig];
-            return etl::span<uint8_t>(block_.data() + pos, block_.end());
         }
 
     public:

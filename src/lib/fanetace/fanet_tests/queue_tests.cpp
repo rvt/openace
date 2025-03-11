@@ -73,12 +73,15 @@ TEST_CASE("Queue tests Monkey", "[BlockAllocator]")
         }
 
         // Randomly delete some blocks
-        for (auto b : test.getAllocatedBlocks())
+        for (auto it = test.begin(); it != test.end();)
         {
-            auto isDelete = binaryGen(rng);
-            if (isDelete)
+            if (binaryGen(rng)) 
             {
-                test.remove(b);
+                it = test.remove(it);
+            }
+            else
+            {
+                ++it; // Move to the next element if not deleted
             }
         }
         // printf("Deleted: ");

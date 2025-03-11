@@ -35,8 +35,8 @@ namespace FANET {
         // virtual Frame *get_frame() = 0;
     
         // /* air -> device */
-        virtual void acked(uint16_t id, const Address &addr) = 0;
-        virtual void nacked(bool id, const Address &addr) = 0;
+        // virtual void acked(uint16_t id, const Address &addr) = 0;
+        // virtual void nacked(bool id, const Address &addr) = 0;
         // virtual void handle_frame(Frame *frm) = 0;
 
         

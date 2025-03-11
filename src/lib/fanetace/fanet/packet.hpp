@@ -60,17 +60,28 @@ namespace FANET
         const etl::optional<uint32_t> &signature() const { return signature_; }
         const etl::optional<PayloadVariant<MESSAGESIZE, NAMESIZE>> &payload() const { return payload_; }
 
-        void source(const Address &source)
+        Packet &source(const Address &source)
         {
             source_ = source;
+            return *this;
         }
 
-        void ack(ExtendedHeader::AckType ackType)
+        Packet &singleHop()
+        {
+            return ack(ExtendedHeader::AckType::SINGLEHOP);
+        }
+
+        Packet &twoHop()
+        {
+            return ack(ExtendedHeader::AckType::TWOHOP);
+        }
+
+        Packet &ack(ExtendedHeader::AckType ackType)
         {
             // Ack::NONE does not require an extended header
             if (ackType == ExtendedHeader::AckType::NONE)
             {
-                return;
+                return *this;
             }
             if (extendedHeader_)
             {
@@ -80,10 +91,11 @@ namespace FANET
             {
                 extendedHeader_ = ExtendedHeader{ackType, false, false, false};
             }
-            return;
+            header_.extended(true);
+            return *this;
         }
 
-        void destination(const Address &destination)
+        Packet &destination(const Address &destination)
         {
             destination_ = destination;
             if (extendedHeader_)
@@ -95,14 +107,16 @@ namespace FANET
                 extendedHeader_ = ExtendedHeader{ExtendedHeader::AckType::NONE, true, false, false};
             }
             header_.extended(true);
+            return *this;
         }
 
-        void destination(uint32_t dest)
+        Packet &destination(uint32_t dest)
         {
             return destination(Address(dest));
+            return *this;
         }
 
-        void signature(uint32_t signature)
+        Packet &signature(uint32_t signature)
         {
             if (extendedHeader_)
             {
@@ -114,9 +128,10 @@ namespace FANET
             }
             signature_ = signature;
             header_.extended(true);
+            return *this;
         }
 
-        void isGeoForward()
+        Packet &isGeoForward()
         {
             if (extendedHeader_)
             {
@@ -127,11 +142,13 @@ namespace FANET
                 extendedHeader_ = ExtendedHeader{ExtendedHeader::AckType::NONE, false, false, true};
             }
             header_.extended(true);
+            return *this;
         }
 
-        void forward()
+        Packet &forward()
         {
             header_.forward(true);
+            return *this;
         }
 
         // void payload(const PayloadVariant<MESSAGESIZE, NAMESIZE> &payload)
@@ -141,31 +158,35 @@ namespace FANET
         //     //            header_.type(payload..type());
         // }
 
-        void payload(const TrackingPayload &trackingPayload)
+        Packet &payload(const TrackingPayload &trackingPayload)
         {
             header_.type(trackingPayload.type());
             payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(trackingPayload);
+            return *this;
         }
 
-        void payload(const GroundTrackingPayload &groundTrackingPayload)
+        Packet &payload(const GroundTrackingPayload &groundTrackingPayload)
         {
             header_.type(groundTrackingPayload.type());
             payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(groundTrackingPayload);
+            return *this;
         }
 
-        void payload(const MessagePayload<MESSAGESIZE> &messagePayload)
+        Packet &payload(const MessagePayload<MESSAGESIZE> &messagePayload)
         {
             header_.type(messagePayload.type());
             payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(messagePayload);
+            return *this;
         }
 
-        void payload(const NamePayload<NAMESIZE> &namePayload)
+        Packet &payload(const NamePayload<NAMESIZE> &namePayload)
         {
             header_.type(namePayload.type());
             payload_ = PayloadVariant<MESSAGESIZE, NAMESIZE>(namePayload);
+            return *this;
         }
 
-        RadioPacket build()
+        RadioPacket build() const
         {
             RadioPacket buffer;
 
@@ -197,6 +218,17 @@ namespace FANET
             buffer.resize(writer.size_bytes());
             return buffer;
         }
-    };
 
+        void print() const
+        {
+            printf("Packet [Type: %d, Src: 0x%6X, Dest: 0x%6X] ",
+                   static_cast<int>(header_.type()),
+                   source_.asUint(),
+                   destination_.value_or(Address{}).asUint());
+
+            extendedHeader_.value_or(ExtendedHeader{}).print();
+
+            printf("\n");
+        }
+    };
 }

@@ -30,8 +30,6 @@ namespace FANET
         {
             // THis is to simply the code, and 1ms is not a concern
             // So that lastSeen will always return a value
-            if (lastSeen==0) lastSeen++;
-
             if (neighborTable.full())
             {
                 removeOldest();
@@ -56,7 +54,7 @@ namespace FANET
                                 neighborTable.end());
         }
 
-        uint32_t lastSeen(const Address &address)
+        uint32_t lastSeen(const Address &address) const
         {
             auto it = std::find_if(neighborTable.begin(), neighborTable.end(), [&address](const Neighbour &neighbour)
                                    { return neighbour.address == address; });
@@ -66,7 +64,6 @@ namespace FANET
             }
             return 0;
         }
-
 
 
         void removeOldest()
@@ -84,8 +81,8 @@ namespace FANET
         {
             neighborTable.erase(std::remove_if(neighborTable.begin(), neighborTable.end(), [&timeMs](const Neighbour &neighbour)
                                                { 
-                                                int32_t diff = neighbour.lastSeen - timeMs;
-                                                return diff <  -NEIGHBOR_MAX_TIMEOUT_MS; }),
+                                                uint32_t diff = timeMs - neighbour.lastSeen;
+                                                return diff >  NEIGHBOR_MAX_TIMEOUT_MS; }),
                                 neighborTable.end());
         }
     };

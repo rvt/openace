@@ -149,5 +149,19 @@ namespace FANET
             eHeader.isGeoForward = reader.read_unchecked<bool>();
             return eHeader;
         }
+
+        void print() const
+        {
+            printf("ExtendedHeader [AckType: %d (%s), Unicast: %s, Signature: %s, GeoForward: %s] ",
+                static_cast<int>(ackType),
+                ackType == AckType::NONE ? "NONE     " : ackType == AckType::SINGLEHOP ? "SINGLEHOP"
+                                                : ackType == AckType::TWOHOP      ? "TWOHOP   "
+                                                                                    : "RESERVED ",
+                isUnicast ? "Yes" : "No ",
+                hasSignature ? "Yes" : "No ",
+                isGeoForward ? "Yes" : "No ");
+        }
     };
+
+    
 }

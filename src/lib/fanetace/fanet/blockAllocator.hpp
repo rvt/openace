@@ -25,7 +25,8 @@ class BlockAllocator
 private:
     etl::vector<uint8_t, MAX_BLOCKS * BLOCK_SIZE> memoryPool; // Fixed memory pool
     etl::bitset<MAX_BLOCKS> allocationMap;                    // Bit array for tracking used blocks
-    etl::vector<T, MAX_BLOCKS> allocatedBlocks;               // Stores allocated objects
+    using BLOCK_STORE = etl::vector<T, MAX_BLOCKS>;
+    BLOCK_STORE allocatedBlocks;               // Stores allocated objects
 
 public:
     /**
@@ -96,31 +97,25 @@ public:
      * @param data The object to remove.
      * @return True if the object was successfully removed, false otherwise.
      */
-    bool remove(T &data)
+    auto remove(typename BLOCK_STORE::iterator it)
     {
         bool deAllocated = false;
-        uintptr_t offset = data.data().data() - memoryPool.data();
+        uintptr_t offset = it->data().data() - memoryPool.data();
         size_t index = offset / BLOCK_SIZE;
-        size_t blocksToFree = (data.data().size() + BLOCK_SIZE - 1) / BLOCK_SIZE;
-        
+        size_t blocksToFree = (it->data().size() + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    
         if (index < MAX_BLOCKS)
         {
             for (size_t j = 0; j < blocksToFree; ++j)
             {
                 allocationMap.reset(index + j);
             }
-            
-            for (auto it = allocatedBlocks.begin(); it != allocatedBlocks.end(); ++it)
-            {
-                if (it->data().data() == data.data().data())
-                {
-                    allocatedBlocks.erase(it);
-                    deAllocated = true;
-                    break;
-                }
-            }
+    
+            it = allocatedBlocks.erase(it); // Erase and return next valid iterator
+            deAllocated = true;
         }
-        return deAllocated;
+    
+        return it; // Return the next valid iterator
     }
 
     /**
@@ -163,7 +158,7 @@ public:
      * @brief Get the allocated blocks.
      * @return A reference to the vector of allocated blocks.
      */
-    etl::vector<T, MAX_BLOCKS> &getAllocatedBlocks()
+    const etl::vector<T, MAX_BLOCKS> &getAllocatedBlocks() const
     {
         return allocatedBlocks;
     }
