@@ -21,6 +21,10 @@ namespace FANET
         etl::vector<Neighbour, FANET_MAX_NEIGHBORS> neighborTable;
 
     public:
+        void clear()
+        {
+            return neighborTable.clear();
+        }
         size_t size() const
         {
             return neighborTable.size();

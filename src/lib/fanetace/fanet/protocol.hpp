@@ -78,13 +78,23 @@ namespace FANET
         // This is like CSMA in the old protocol.
         uint32_t carrierReceivedTime = 0;
         uint8_t carrierBackoffExp = 0;
-        float airTime = 0;
+        float airTime_ = 0;
         // Last time TX was done
         uint32_t lastTx = 0;
         // Connector for the application, e.g., the interface between the FANET protocol and the application
         Connector &connector;
 
+    protected:
+        /**
+        * @brief set airtime. Not used in production code and only during tests
+        */
+        void airTime(float at) {
+            airTime_ = at;
+        }
+
     private:
+
+
         /**
          * @brief Build an acknowledgment packet from an existing packet.
          * @tparam MESSAGESIZE The size of the message payload.
@@ -148,6 +158,8 @@ namespace FANET
         void init()
         {
             random.initialise(connector.getTick());
+            neighborTable_.clear();
+            txPool.clear();
         }
 
         /**
@@ -158,9 +170,18 @@ namespace FANET
          * @param id ID of this packet, can be used if you request an ack and to know if the packet was received
          */
         template <size_t MESSAGESIZE, size_t NAMESIZE>
-        void sendPacket(Packet<MESSAGESIZE, NAMESIZE> &packet, uint16_t id = 0)
+        void sendPacket(Packet<MESSAGESIZE, NAMESIZE> &packet, uint16_t id = 0, bool strict=true)
         {
-            auto v = packet.source(ownAddress_).build();
+            if (strict) {
+                // Ensure source is always our own address
+                packet.source(ownAddress_);
+                auto eh = packet.extendedHeader().value_or(ExtendedHeader{});
+                // Forward must be true when extended header has a ackType none NONE
+                if (eh.ack() != ExtendedHeader::AckType::NONE) {
+                    packet.forward();
+                }
+            }
+            auto v = packet.build();
             auto txFrame = TxFrame{{v.data(), v.size()}}.id(id);
             txPool.add(txFrame);
         }
@@ -230,7 +251,12 @@ namespace FANET
                     if (packet.header().type() == Header::MessageType::ACK)
                     {
                         // fmac.cpp 356
-                        removeDeleteAckedFrame(packet.source());
+                        auto id = removeDeleteAckedFrame(packet.source());
+
+                        // Inform the application only if the id is != 0
+                        if (id) {
+                            connector.ackReceived(id);
+                        }
                     }
                     else
                     {
@@ -240,8 +266,7 @@ namespace FANET
                         {
                             // fmac.362
                             auto v = buildAck(packet);
-                            // TODO: Check if destination is already IN the packet
-                            txPool.add(TxFrame{/*destination,*/ v});
+                            txPool.add(TxFrame{v});
                         }
 
                         // fmac.366
@@ -252,13 +277,12 @@ namespace FANET
                 // fmac.371
                 if (doForward && packet.header().forward() &&
                     rssddBm <= MAC_FORWARD_MAX_RSSI_DBM &&
-                    (broadcastOrOwn(destination) || neighborTable_.lastSeen(destination) &&
-                                                     calculate3MinAirTime(airTime) < 0.5f))
+                    (destination == Address{} || neighborTable_.lastSeen(destination) &&
+                                                     calculate3MinAirTime(airTime_) < 0.5f))
                 {
-
                     /* generate new tx time */
                     auto nextTx = timeMs + random.range(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
-                    auto numTx = extendedHeader.ack() == ExtendedHeader::AckType::NONE ? 0 : 1;
+                    auto numTx = extendedHeader.ack() != ExtendedHeader::AckType::NONE ? 1 : 0;
 
                     /* add to list */
                     // fmac.368
@@ -306,7 +330,7 @@ namespace FANET
 
             // fmac.428
             // Apparently FANET wants to send APP packets without consideration of airtime
-            if (calculate3MinAirTime(airTime) > 0.9f && !frm->isPriorityPacket())
+            if (calculate3MinAirTime(airTime_) > 0.9f && !frm->isPriorityPacket())
             {
                 return 100;
             }
@@ -345,7 +369,7 @@ namespace FANET
             connector.sendFrame(cr, frm->data());
             lastTx = connector.getTick();
 
-            airTime += FANET::calculateAirtime(frameLength, 7, 250, cr - 4);
+            airTime_ += FANET::calculateAirtime(frameLength, 7, 250, cr - 4);
 
             // fmac.522
             if (frm->ackType() != ExtendedHeader::AckType::NONE || frm->source() != ownAddress_)
@@ -398,25 +422,25 @@ namespace FANET
     private:
         /**
          * @brief Calculate the 3-minute average airtime.
-         * @param airTime The current airtime.
+         * @param airTime_ The current airtime.
          * @return The 3-minute average airtime.
          */
-        float calculate3MinAirTime(float airTime)
+        float calculate3MinAirTime(float airTime_)
         {
-            static uint32_t last = 0;
+            static auto last = connector.getTick();
             uint32_t current = connector.getTick();
             uint32_t dt = current - last;
             last = current;
 
             /* reduce airtime by 1% */
-            airTime -= dt * 10.f;
-            if (airTime < 0.0f)
+            airTime_ -= dt * 10.f;
+            if (airTime_ < 0.0f)
             {
-                airTime = 0.0f;
+                airTime_ = 0.0f;
             }
 
             /* air time over 3min average -> 1800ms air time allowed in 1% terms */
-            return airTime / 1.8f;
+            return airTime_ / 1.8f;
         }
 
         /**
@@ -524,16 +548,50 @@ namespace FANET
             return nullptr;
         }
 
+        const FANET::TxFrame * findByAddress(Header::MessageType type, Address destination) {
+            auto own = ownAddress_;
+            auto it = etl::find_if(txPool.begin(), txPool.end(),
+            [&type, &destination, &own](auto block)
+            {
+                if (block.type() != type)
+                {
+                    return false;
+                }
+        
+                if (block.destination() != destination)
+                {
+                    return false;
+                }
+        
+                if (block.source() != own)
+                {
+                    return false;
+                }
+        
+                return true;
+            });
+        
+            if (it != txPool.end())
+            {
+                return &(*it);
+            }
+        
+            return nullptr;
+        }
+
         /**
          * @brief Remove any pending frame that waits on an ACK from a host
-         * @param destination The destination address of the acknowledged frames.
+         * @param destination The destination address of the acknowledged frames
+         * @return The id if the package in the pool, 0 if nothing found or the packet did not have an id
          */
-        void removeDeleteAckedFrame(const Address &destination)
+        uint16_t removeDeleteAckedFrame(const Address &destination)
         {
+            uint16_t id = 0;
             for (auto it = txPool.begin(); it != txPool.end();)
             {
                 if (it->destination() == destination && it->ackType() != ExtendedHeader::AckType::NONE)
                 {
+                    id = it->id();
                     it = txPool.remove(it);
                 }
                 else
@@ -541,6 +599,7 @@ namespace FANET
                     ++it;
                 }
             }
+            return id;
         }
     };
 
