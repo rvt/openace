@@ -1,5 +1,6 @@
 #pragma once
 #include "../fanet/fanet.hpp"
+#include "../fanet/protocol.hpp"
 
 #include "etl/vector.h"
 #include "etl/bit_stream.h"
@@ -12,21 +13,21 @@ void dumpHex(const etl::ivector<uint8_t> &buffer) {
     for (uint8_t byte : buffer) {
         printf("0x%02X, ", byte); // Print each byte in 2-digit uppercase hex
     }
-    printf("\n"); // Newline for formatting
+    printf("\n");
 }
 
 void dumpHex(const etl::array<uint8_t, 16> &buffer) {
     for (uint8_t byte : buffer) {
         printf("0x%02X, ", byte); // Print each byte in 2-digit uppercase hex
     }
-    printf("\n"); // Newline for formatting
+    printf("\n");
 }
 
 void dumpHex(const etl::span<uint8_t> &buffer) {
     for (uint8_t byte : buffer) {
         printf("0x%02X, ", byte); // Print each byte in 2-digit uppercase hex
     }
-    printf("\n"); // Newline for formatting
+    printf("\n");
 }
 
 template <size_t N>
@@ -119,3 +120,65 @@ int16_t altitude_Origional(float altitude)
         return alt;    
 }
 
+
+auto OWN_ADDRESS = Address{0x11,0x1111};
+auto OTHER_ADDRESS_55 = Address{0x55,0x5555};
+auto OTHER_ADDRESS_66 = Address{0x66,0x6666};
+auto OTHER_ADDRESS_UNR = Address{0xEE,0xEEEE};
+auto BROADCAST_ADDRESS = Address{};
+auto IGNORING_ADDRESS = Address{0xff, 0xffff};
+
+const FANET::TxFrame * findByAddress(Protocol &protocol, Header::MessageType type, Address destination, Address source) {
+    auto it = etl::find_if(protocol.pool().begin(), protocol.pool().end(),
+    [&type, &destination, &source](auto block)
+    {
+        if (block.type() != type)
+        {
+            return false;
+        }
+
+        if (block.destination() != destination && destination != IGNORING_ADDRESS)
+        {
+            return false;
+        }
+
+        if (block.source() != source && source != IGNORING_ADDRESS)
+        {
+            return false;
+        }
+
+        return true;
+    });
+
+    if (it != protocol.pool().end())
+    {
+        return &(*it);
+    }
+
+    return nullptr;
+}
+
+ FANET::TxFrame * findByAddress(Protocol &protocol, Address destination, Address source = IGNORING_ADDRESS) {
+    auto * it = etl::find_if(protocol.pool().begin(), protocol.pool().end(),
+    [&destination, &source](auto block)
+    {
+        if (block.destination() != destination && destination != IGNORING_ADDRESS)
+        {
+            return false;
+        }
+
+        if (block.source() != source && source != IGNORING_ADDRESS)
+        {
+            return false;
+        }
+
+        return true;
+    });
+
+    if (it != protocol.pool().end())
+    {
+        return  const_cast<FANET::TxFrame *>(&(*it));
+    }
+
+    return nullptr;
+}

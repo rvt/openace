@@ -137,11 +137,10 @@ public:
     /**
      * Calculate the time from referenceUs to us
      * If referenceUs is in the past, the result is negative
-     *
      */
     __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
     {
-        return referenceUs - us;
+        return static_cast<int32_t>(referenceUs - us);
     }
 
     static int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
@@ -161,6 +160,7 @@ public:
     {
         return localTime(msSinceEpoch());
     }
+    
     static tm localTime(uint64_t msSinceEpoch)
     {
         time_t secondsSinceEpoch = msSinceEpoch / 1000;

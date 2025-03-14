@@ -99,7 +99,6 @@ public:
      */
     auto remove(typename BLOCK_STORE::iterator it)
     {
-        bool deAllocated = false;
         uintptr_t offset = it->data().data() - memoryPool.data();
         size_t index = offset / BLOCK_SIZE;
         size_t blocksToFree = (it->data().size() + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -112,9 +111,8 @@ public:
             }
     
             it = allocatedBlocks.erase(it); // Erase and return next valid iterator
-            deAllocated = true;
         }
-    
+        
         return it; // Return the next valid iterator
     }
 

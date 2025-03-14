@@ -88,7 +88,6 @@ public:
         ChannelMethod channelMethod;              // What method channel selection
     };
 
-    //        protocol_t protocol;
     static constexpr ProtocolTimeSlot NONE_DATASOURCE = ProtocolTimeSlot{0, 0, CountryRegulations::Zone::ZONE0, OpenAce::DataSource::NONE, Europe, PROTOCOL_NONE, 000, 0000, 000, 0000, 00, 000, ChannelMethod::CHANNEL_0};
 
     // Table with timings for each protocol needs to adhere to the following rules for optimalisation reasons

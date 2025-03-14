@@ -25,9 +25,7 @@ namespace FANET {
          */
         virtual uint32_t getTick() const = 0;
 
-        virtual void sendFrame(uint8_t codingRate, const etl::span<uint8_t> &data) const = 0;
-
-        virtual bool isBroadcastReady() const = 0;
+        virtual bool sendFrame(uint8_t codingRate, const etl::span<uint8_t> &data) = 0;
 
         /* device -> air */
         // virtual bool is_broadcast_ready(int num_neighbors) = 0;

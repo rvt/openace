@@ -30,7 +30,7 @@ namespace FANET
      */
     class Protocol
     {
-    private:
+    protected:
         static constexpr int32_t MAC_SLOT_MS = 20;
 
         static constexpr int32_t MAC_TX_MINPREAMBLEHEADERTIME_MS = 15;
@@ -47,9 +47,6 @@ namespace FANET
         static constexpr int32_t MAC_FORWARD_DELAY_MAX = 300;
         static constexpr int32_t FANET_MAX_NEIGHBORS = 30;
 
-        static constexpr int32_t APP_VALID_STATE_MS = 10'000;
-
-        static constexpr int32_t APP_TYPE1OR7_AIRTIME_MS = 40; // actually 20-30ms
         static constexpr int32_t APP_TYPE1OR7_MINTAU_MS = 250;
         static constexpr int32_t APP_TYPE1OR7_TAU_MS = 5'000;
 
@@ -58,6 +55,8 @@ namespace FANET
 
         static constexpr int32_t MAC_MAXNEIGHBORS_4_TRACKING_2HOP = 5;
         static constexpr int32_t MAC_CODING48_THRESHOLD = 8;
+
+        static constexpr int16_t MAC_DEFAULT_TX_BACKOFF = 1'000;
 
         // Random number generator for random times
         etl::random_xorshift random; // XOR-Shift PRNG from ETL
@@ -74,26 +73,21 @@ namespace FANET
         // When set to true, the protocol handler will forward received packages when applicable
         bool doForward = true;
 
-        // When carrierReceivedTime has been set, then this is taken into consideration when to send the next packet
+        // When has been set, then this is taken into consideration when to send the next packet
         // This is like CSMA in the old protocol.
-        uint32_t carrierReceivedTime = 0;
-        uint8_t carrierBackoffExp = 0;
-        float airTime_ = 0;
-        // Last time TX was done
-        uint32_t lastTx = 0;
+        uint32_t cmcaNextTx = 0;
+        uint8_t carrierBackoffExp = MAC_TX_BACKOFF_EXP_MIN;
         // Connector for the application, e.g., the interface between the FANET protocol and the application
         Connector &connector;
+        AirTime airtime;
 
-    protected:
         /**
-        * @brief set airtime. Not used in production code and only during tests
-        */
-        void airTime(float at) {
-            airTime_ = at;
+         * @brief set airtime. Not used in production code and only during tests 0..1000 => 0%..100%
+         */
+        void airTime(uint16_t average)
+        {
+            airtime.average(average);
         }
-
-    private:
-
 
         /**
          * @brief Build an acknowledgment packet from an existing packet.
@@ -120,8 +114,127 @@ namespace FANET
             return ack.buildAck();
         }
 
-        bool broadcastOrOwn(const Address &address) {
+        bool broadcastOrOwn(const Address &address)
+        {
             return address == Address{} || address == ownAddress_ || address == Address{0xFF, 0xFFFF};
+        }
+
+        /**
+         * @brief decide if the time is reached
+         */
+        bool timeReached(uint32_t tick, uint32_t time)
+        {
+            return static_cast<int32_t>(tick - time) >= 0;
+        }
+
+        /**
+         * @brief Find a frame in the TX pool that matches the given buffer.
+         * Matches are based on source, data.size, destination, type and the payload
+         *
+         * @param buffer The buffer to match.
+         * @return A pointer to the matching TX frame, or nullptr when no match is found.
+         */
+        TxFrame *frameInTxPool(const etl::span<uint8_t> buffer)
+        {
+            // clang-format off
+            auto it = etl::find_if(txPool.begin(), txPool.end(),
+                [&buffer](auto block)
+                {
+                    // frame.162
+                    auto other = TxFrame{buffer};
+                    if (block.source() != other.source()) {return false; }
+                    if (block.data().size() != buffer.size())  {return false; }
+                    if (block.destination() != other.destination())  {return false; }
+                    if (block.type() != other.type())  {return false; }
+                    if (!etl::equal(block.payload(), other.payload()))  {return false; }
+                    return true;
+                });
+
+            // clang-format on
+            if (it != txPool.end())
+            {
+                return &(*it);
+            }
+
+            return nullptr;
+        }
+
+        /**
+         * @brief Remove any pending frame that waits on an ACK from a host
+         *
+         * @param destination The destination address of the acknowledged frames
+         * @return The id if the package in the pool, 0 if nothing found or the packet did not have an id
+         */
+        uint16_t removeDeleteAckedFrame(const Address &destination)
+        {
+            uint16_t id = 0;
+            for (auto it = txPool.begin(); it != txPool.end();)
+            {
+                if (it->destination() == destination && it->ackType() != ExtendedHeader::AckType::NONE)
+                {
+                    id = it->id();
+                    it = txPool.remove(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+            return id;
+        }
+
+        /**
+         * @brief Get the next TX block that can be transmitted.
+         *
+         * This function finds the next TX block that can be transmitted in the following order:
+         * a) Find any self
+         * b) Find any priority packed (tracking packets)
+         * c) Find any acknowledgment packet.
+         * d) Find any other packet.
+         *
+         * Packages of equal priority will be ordered by nextTx time, lowest first
+         *
+         * @param timeMs The current time in milliseconds.
+         * @return A pointer to the next TX frame, or nullptr if no frame is available.
+         */
+        TxFrame *getNextTxFrame(uint32_t timeMs)
+        {
+            TxFrame *nextFrame = nullptr;
+            uint8_t highestPriority = 4; // 1 = self, 2 = priority, 3 = ack, 4 = other
+            uint32_t earliestTime = UINT32_MAX;
+
+            for (auto it = txPool.begin(); it != txPool.end(); ++it)
+            {
+                if (!timeReached(timeMs, it->nextTx()))
+                    continue;
+
+                int priorityLevel = 4;
+                if (it->self())
+                {
+                    priorityLevel = 1;
+                }
+                else if (it->isPriorityPacket())
+                {
+                    priorityLevel = 2;
+                }
+                else if (it->type() == Header::MessageType::ACK)
+                {
+                    priorityLevel = 3;
+                }
+
+                // Select frame if:
+                // 1. It has a higher priority, OR
+                // 2. It has the same priority but an earlier nextTx() time
+                if (priorityLevel < highestPriority ||
+                    (priorityLevel == highestPriority && it->nextTx() < earliestTime))
+                {
+                    nextFrame = &(*it);
+                    highestPriority = priorityLevel;
+                    earliestTime = it->nextTx();
+                }
+            }
+
+            return nextFrame;
         }
 
     public:
@@ -131,6 +244,14 @@ namespace FANET
          */
         Protocol(Connector &connector_) : connector(connector_)
         {
+            init();
+        }
+
+        void init()
+        {
+            random.initialise(connector.getTick());
+            neighborTable_.clear();
+            txPool.clear();
         }
 
         void ownAddress(const Address &adress)
@@ -148,18 +269,9 @@ namespace FANET
             return txPool;
         }
 
-        const NeighbourTable<100> &neighborTable() const {
-            return neighborTable_;
-        }
-
-        /**
-         * @brief Initialize the protocol.
-         */
-        void init()
+        const NeighbourTable<100> &neighborTable() const
         {
-            random.initialise(connector.getTick());
-            neighborTable_.clear();
-            txPool.clear();
+            return neighborTable_;
         }
 
         /**
@@ -170,19 +282,21 @@ namespace FANET
          * @param id ID of this packet, can be used if you request an ack and to know if the packet was received
          */
         template <size_t MESSAGESIZE, size_t NAMESIZE>
-        void sendPacket(Packet<MESSAGESIZE, NAMESIZE> &packet, uint16_t id = 0, bool strict=true)
+        void sendPacket(Packet<MESSAGESIZE, NAMESIZE> &packet, uint16_t id = 0, bool strict = true)
         {
-            if (strict) {
+            if (strict)
+            {
                 // Ensure source is always our own address
                 packet.source(ownAddress_);
                 auto eh = packet.extendedHeader().value_or(ExtendedHeader{});
                 // Forward must be true when extended header has a ackType none NONE
-                if (eh.ack() != ExtendedHeader::AckType::NONE) {
+                if (eh.ack() != ExtendedHeader::AckType::NONE)
+                {
                     packet.forward();
                 }
             }
             auto v = packet.build();
-            auto txFrame = TxFrame{{v.data(), v.size()}}.id(id);
+            auto txFrame = TxFrame{{v.data(), v.size()}}.self(true).id(id).nextTx(connector.getTick());
             txPool.add(txFrame);
         }
 
@@ -202,7 +316,7 @@ namespace FANET
             auto timeMs = connector.getTick();
 
             auto packet = PacketParser<MESSAGESIZE, NAMESIZE>::parse(buffer);
-            packet.print();
+            // packet.print();
 
             auto destination = packet.destination().value_or(Address{});
             auto extendedHeader = packet.extendedHeader().value_or(ExtendedHeader{});
@@ -254,7 +368,8 @@ namespace FANET
                         auto id = removeDeleteAckedFrame(packet.source());
 
                         // Inform the application only if the id is != 0
-                        if (id) {
+                        if (id)
+                        {
                             connector.ackReceived(id);
                         }
                     }
@@ -266,11 +381,8 @@ namespace FANET
                         {
                             // fmac.362
                             auto v = buildAck(packet);
-                            txPool.add(TxFrame{v});
+                            txPool.add(TxFrame{v}.nextTx(timeMs));
                         }
-
-                        // fmac.366
-                        // TODO: Inform app
                     }
                 }
 
@@ -278,7 +390,7 @@ namespace FANET
                 if (doForward && packet.header().forward() &&
                     rssddBm <= MAC_FORWARD_MAX_RSSI_DBM &&
                     (destination == Address{} || neighborTable_.lastSeen(destination) &&
-                                                     calculate3MinAirTime(airTime_) < 0.5f))
+                                                     airtime.get(timeMs) < 500))
                 {
                     /* generate new tx time */
                     auto nextTx = timeMs + random.range(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
@@ -306,98 +418,100 @@ namespace FANET
          *
          * @return The time in milliseconds until the next packet can be sent.
          */
-        uint32_t handletx()
+        uint32_t handleTx()
         {
             auto timeMs = connector.getTick();
 
-            if (carrierReceivedTime < timeMs)
+            // fmac.403
+            if (!timeReached(timeMs, cmcaNextTx))
             {
-                return carrierReceivedTime;
-            }
-            else
-            {
-                carrierReceivedTime = 0;
-                carrierBackoffExp = 0;
+                return cmcaNextTx;
             }
 
             // Get TxFrame if available
             // fmac.417
             auto frm = getNextTxFrame(timeMs);
-            if (frm == nullptr || !connector.isBroadcastReady())
+            if (frm == nullptr)
             {
-                return timeMs + 500;
+                return timeMs + MAC_DEFAULT_TX_BACKOFF;
             }
 
-            // fmac.428
-            // Apparently FANET wants to send APP packets without consideration of airtime
-            if (calculate3MinAirTime(airTime_) > 0.9f && !frm->isPriorityPacket())
+            // fmac.414
+            if (frm->self())
             {
-                return 100;
+                // fmac.421
+                // Note: I find it odd that we set forward based on neighborTable_ table
+                bool setForward = neighborTable_.size() < MAC_MAXNEIGHBORS_4_TRACKING_2HOP;
+                frm->forward(setForward);
             }
-
-            // fmac.421
-            if (neighborTable_.size() < MAC_MAXNEIGHBORS_4_TRACKING_2HOP)
+            else if (airtime.get(timeMs) < 900)
             {
-                frm->forward(true);
+                // fmac.446
+                // This just cleans up the TX queue of packages that where never acked
+                if (frm->ackType() != ExtendedHeader::AckType::NONE && frm->numTx() <= 0)
+                {
+                    txPool.remove(frm);
+                    return timeMs + MAC_DEFAULT_TX_BACKOFF;
+                }
+
+                // fmac.457
+                auto destination = frm->destination();
+                if (frm->forward() == false &&
+                    destination != Address{} &&
+                    neighborTable_.lastSeen(destination) == 0)
+                {
+                    frm->forward(true);
+                }
             }
             else
             {
-                frm->forward(false);
+                // No airtime
+                return timeMs + 100;
             }
 
-            // fmac.446
-            if (frm->ackType() != ExtendedHeader::AckType::NONE && frm->numTx() < 0)
-            {
-                // Why inform the app??
-                txPool.remove(frm);
-                return 0;
-            }
-
-            // fmac.457
-            auto destination = frm->destination();
-            if (frm->forward() &&
-                frm->destination() != Address{} &&
-                neighborTable_.lastSeen(destination) == 0)
-            {
-                frm->forward(true);
-            }
-
-            // Send data
+            /////////  Send data
             // fmac.502
-            auto frameLength = frm->data().end() - frm->data().begin();
             auto cr = neighborTable_.size() < MAC_CODING48_THRESHOLD ? 8 : 5;
-            connector.sendFrame(cr, frm->data());
-            lastTx = connector.getTick();
+            bool success = connector.sendFrame(cr, frm->data());
 
-            airTime_ += FANET::calculateAirtime(frameLength, 7, 250, cr - 4);
+            auto frameLength = frm->data().end() - frm->data().begin();
+            airtime.set(timeMs, FANET::LoraAirtime(frameLength, 7, 250, cr - 4));
 
-            // fmac.522
-            if (frm->ackType() != ExtendedHeader::AckType::NONE || frm->source() != ownAddress_)
+            if (success)
             {
-                // fmac.524
+                // fmac.522
+                // Remove from if no ACK was requested, and not ours
+                if (frm->ackType() == ExtendedHeader::AckType::NONE || !frm->self())
+                {
+                    // fmac.524
+                    txPool.remove(frm);
+                }
+                else
+                {
+                    // fmac.529
+                    if (frm->numTx() > 1)
+                    {
+                        // fmac.531
+                        frm->numTx(frm->numTx() - 1);
+                        frm->nextTx(timeMs + (MAC_TX_RETRANSMISSION_TIME * (MAC_TX_RETRANSMISSION_RETRYS - frm->numTx())));
+                    }
+                    else
+                    {
+                        // fmac.533
+                        frm->nextTx(timeMs + MAC_TX_ACKTIMEOUT);
+                    }
+                }
+            }
+            else if (frm->self())
+            {
+                // fmac 571/550
+                // Always remove packages from ourself if they were not successful
                 txPool.remove(frm);
             }
-            else if (frm->numTx() > 0)
-            {
-                // fmac.531
-                frm->numTx(frm->numTx() - 1);
-                frm->nextTx(connector.getTick() + (MAC_TX_RETRANSMISSION_TIME * (MAC_TX_RETRANSMISSION_RETRYS - frm->numTx())));
-            }
-            else
-            {
-                // fmac.53
-                frm->nextTx(connector.getTick() + MAC_TX_ACKTIMEOUT);
-            }
 
-            auto nextUp = getNextTxFrame(timeMs);
-            if (nextUp)
-            {
-                return connector.getTick() + MAC_TX_MINPREAMBLEHEADERTIME_MS + (frameLength * MAC_TX_TIMEPERBYTE_MS);
-            }
-            else
-            {
-                return connector.getTick() + 500;
-            }
+            carrierBackoffExp = MAC_TX_BACKOFF_EXP_MIN;
+            cmcaNextTx = timeMs + MAC_TX_MINPREAMBLEHEADERTIME_MS + (frameLength * MAC_TX_TIMEPERBYTE_MS);
+            return cmcaNextTx;
         }
 
         /**
@@ -405,201 +519,11 @@ namespace FANET
          */
         void carrierDetected()
         {
-            if (carrierReceivedTime == 0)
+            if (carrierBackoffExp < MAC_TX_BACKOFF_EXP_MAX)
             {
-                carrierReceivedTime = connector.getTick() + MAC_TX_MINPREAMBLEHEADERTIME_MS + (255 * MAC_TX_TIMEPERBYTE_MS);
+                carrierBackoffExp++;
             }
-            else
-            {
-                if (carrierBackoffExp < MAC_TX_BACKOFF_EXP_MAX)
-                {
-                    carrierBackoffExp++;
-                }
-                carrierReceivedTime = connector.getTick() + random.range(1 << (MAC_TX_BACKOFF_EXP_MIN - 1), 1 << carrierBackoffExp);
-            }
-        }
-
-    private:
-        /**
-         * @brief Calculate the 3-minute average airtime.
-         * @param airTime_ The current airtime.
-         * @return The 3-minute average airtime.
-         */
-        float calculate3MinAirTime(float airTime_)
-        {
-            static auto last = connector.getTick();
-            uint32_t current = connector.getTick();
-            uint32_t dt = current - last;
-            last = current;
-
-            /* reduce airtime by 1% */
-            airTime_ -= dt * 10.f;
-            if (airTime_ < 0.0f)
-            {
-                airTime_ = 0.0f;
-            }
-
-            /* air time over 3min average -> 1800ms air time allowed in 1% terms */
-            return airTime_ / 1.8f;
-        }
-
-        /**
-         * @brief Get the next TX block that can be transmitted.
-         *
-         * This function finds the next TX block that can be transmitted in the following order:
-         * a) Find any tracking packet.
-         * b) Find any acknowledgment packet.
-         * c) Find any other packet.
-         *
-         * @param timeMs The current time in milliseconds.
-         * @return A pointer to the next TX frame, or nullptr if no frame is available.
-         */
-        TxFrame *getNextTxFrame(uint32_t timeMs)
-        {
-            // Find Tracking packet
-            auto trackIt = std::min_element(txPool.begin(), txPool.end(), [timeMs](auto &a, auto &b)
-                                            {
-        
-                                              if (a.isPriorityPacket() && b.isPriorityPacket()) 
-                                                  return a.nextTx() < b.nextTx();
-                                              if (a.isPriorityPacket()) 
-                                                  return true;
-                                              return false; });
-
-            if (trackIt != txPool.end() &&
-                trackIt->isPriorityPacket() &&
-                trackIt->nextTx() <= timeMs)
-            {
-                return &(*trackIt);
-            }
-
-            // Find the ACK packet with the earliest nextTx() time
-            auto ackIt = std::min_element(txPool.begin(), txPool.end(), [timeMs](auto &a, auto &b)
-                                          {
-                                              bool aIsAck = a.type() == Header::MessageType::ACK;
-                                              bool bIsAck = b.type() == Header::MessageType::ACK;
-        
-                                              if (aIsAck && bIsAck) 
-                                                  return a.nextTx() < b.nextTx();
-                                              if (aIsAck) 
-                                                  return true;
-                                              return false; });
-
-            if (ackIt != txPool.end() && ackIt->type() == Header::MessageType::ACK && ackIt->nextTx() <= timeMs)
-            {
-                return &(*ackIt);
-            }
-
-            // Otherwise, find the packet with the earliest nextTx() time
-            auto it = std::min_element(txPool.begin(), txPool.end(), [](const auto &a, const auto &b)
-                                       { return a.nextTx() < b.nextTx(); });
-
-            if (it != txPool.end() && it->nextTx() <= timeMs)
-            {
-                return &(*it);
-            }
-
-            return nullptr;
-        }
-
-        /**
-         * @brief Find a frame in the TX pool that matches the given buffer.
-         * @param buffer The buffer to match.
-         * @return A pointer to the matching TX frame, or nullptr if no match is found.
-         */
-        TxFrame *frameInTxPool(const etl::span<uint8_t> buffer)
-        {
-            auto it = etl::find_if(txPool.begin(), txPool.end(),
-                                   [&buffer](auto block)
-                                   {
-                                       // frame.162
-                                       auto other = TxFrame{buffer};
-
-                                       if (block.source() != other.source())
-                                       {
-                                           return false;
-                                       }
-                                       if (block.data().size() != buffer.size())
-                                       {
-                                           return false;
-                                       }
-                                       if (block.destination() != other.destination())
-                                       {
-                                           return false;
-                                       }
-                                       if (block.type() != other.type())
-                                       {
-                                           return false;
-                                       }
-
-                                       if (!etl::equal(block.payload(), other.payload()))
-                                       {
-                                           return false;
-                                       }
-
-                                       return true;
-                                   });
-
-            if (it != txPool.end())
-            {
-                return &(*it);
-            }
-
-            return nullptr;
-        }
-
-        const FANET::TxFrame * findByAddress(Header::MessageType type, Address destination) {
-            auto own = ownAddress_;
-            auto it = etl::find_if(txPool.begin(), txPool.end(),
-            [&type, &destination, &own](auto block)
-            {
-                if (block.type() != type)
-                {
-                    return false;
-                }
-        
-                if (block.destination() != destination)
-                {
-                    return false;
-                }
-        
-                if (block.source() != own)
-                {
-                    return false;
-                }
-        
-                return true;
-            });
-        
-            if (it != txPool.end())
-            {
-                return &(*it);
-            }
-        
-            return nullptr;
-        }
-
-        /**
-         * @brief Remove any pending frame that waits on an ACK from a host
-         * @param destination The destination address of the acknowledged frames
-         * @return The id if the package in the pool, 0 if nothing found or the packet did not have an id
-         */
-        uint16_t removeDeleteAckedFrame(const Address &destination)
-        {
-            uint16_t id = 0;
-            for (auto it = txPool.begin(); it != txPool.end();)
-            {
-                if (it->destination() == destination && it->ackType() != ExtendedHeader::AckType::NONE)
-                {
-                    id = it->id();
-                    it = txPool.remove(it);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-            return id;
+            cmcaNextTx = connector.getTick() + random.range(1 << (MAC_TX_BACKOFF_EXP_MIN - 1), 1 << carrierBackoffExp);
         }
     };
 
