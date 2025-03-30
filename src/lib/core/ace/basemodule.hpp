@@ -327,7 +327,6 @@ public:
         RadioParameters radioParameters;
         uint8_t length;
         OpenAce::TxPacketType data;
-        TxPacket() = default;
         TxPacket(const RadioParameters &radioParameters_, etl::span<const uint8_t> dataSpan)
             : radioParameters(radioParameters_), length(static_cast<uint8_t>(dataSpan.size()))
         {

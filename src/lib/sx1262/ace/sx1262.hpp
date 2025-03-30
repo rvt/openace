@@ -208,8 +208,8 @@ public:
 
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
     void on_receive(const OpenAce::RadioTxFrameMsg &msg);
-    void on_receive(const OpenAce::RadioControlMsg &msg);    
-    void on_receive(const  OpenAce::GpsStatsMsg &msg);   
+    void on_receive(const OpenAce::RadioControlMsg &msg);
+    void on_receive(const  OpenAce::GpsStatsMsg &msg);
 
     void radioInit();
     void checkAndClearDeviceErrors();

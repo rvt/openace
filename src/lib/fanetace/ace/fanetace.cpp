@@ -110,7 +110,7 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
     (void)data;
     statistics.send++;
     radioParameters.config.codingRate = codingRate;
-    
+
     getBus().receive(OpenAce::RadioTxFrameMsg{
         Radio::TxPacket{radioParameters, data},
         radioNo});

@@ -477,20 +477,20 @@ void Sx1262::sx1262Task(void *arg)
             {
                 currentModeIsTX = false;
             }
-            
+
             if (currentModeIsTX)
             {
                 continue;
             }
-            
+
             if (TxPacket txPacket; sx1262->txQueue.pop(txPacket))
             {
                 // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
                 // clang-format off
                 aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, &txPacket, &currentModeIsTX]()
-                { 
+                {
                     currentModeIsTX = true;
-                    sx1262->sendPacket(txPacket); 
+                    sx1262->sendPacket(txPacket);
                 });
                 // clang-format on
             }

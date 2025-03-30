@@ -132,7 +132,7 @@ void DataPort::getPFLAAClimbRate(const OpenAce::AircraftPositionInfo &position, 
 etl::string_view DataPort::getPFLAAAircraftCategory(const OpenAce::AircraftPositionInfo &position) const
 {
     static constexpr etl::string_view hexLookup[] = {
-        "0", "1", "2", "3", "4", "5", "6", "7", 
+        "0", "1", "2", "3", "4", "5", "6", "7",
         "8", "9", "A", "B", "C", "D", "E", "F"
     };
     auto aircraftTypeHex = static_cast<uint8_t>(position.aircraftType);
