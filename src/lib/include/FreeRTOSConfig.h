@@ -88,7 +88,7 @@
 #define configUSE_APPLICATION_TASK_TAG          0
 
 // When configGENERATE_RUN_TIME_STATS is enabled, additional data is dumpted to the UART
-#define configGENERATE_RUN_TIME_STATS           1
+#define configGENERATE_RUN_TIME_STATS           0
 
 #ifdef configGENERATE_RUN_TIME_STATS
 #define configUSE_TRACE_FACILITY                1
