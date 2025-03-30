@@ -132,12 +132,9 @@ void RadioTunerRx::radioTuneTask(void *arg)
                     auto frequency = CountryRegulations::determineFrequency(thisTimeSlot);
     
                     // Send a message to the radio to indicate to switch and listen to a different protocol
-                    taskCtx->radio->rxMode(
-                        {Radio::RadioParameters{
-                            thisTimeSlot.radioConfig,
-                            frequency,
-                            thisTimeSlot.frequency.powerdBm}});
-    
+                    taskCtx->controller->getBus().receive(OpenAce::RadioControlMsg{
+                        Radio::RadioParameters{thisTimeSlot.radioConfig, frequency, thisTimeSlot.frequency.powerdBm}, taskCtx->radio->radio()});
+
                     auto delay = taskCtx->advanceReceiveSlot() - OPENACE_RX_OFFSET;
                     xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay < 1 ? 1 : delay), TASK_DELAY_MS(1));
     

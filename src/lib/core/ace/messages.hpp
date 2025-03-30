@@ -226,6 +226,13 @@ namespace OpenAce
         RadioTxFrameMsg(const Radio::TxPacket &txPacket_, uint8_t radioNo_) : txPacket(txPacket_), radioNo(radioNo_) {}
     };
 
+    struct RadioControlMsg : public etl::message<28>
+    {
+        const Radio::RadioParameters radioParameters;
+        uint8_t radioNo;
+        RadioControlMsg(const Radio::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
+    };
+
     struct ConfigUpdatedMsg : public etl::message<20> /* Don't change from 20!!!! They are used in MessageRouter*/
     {
         const Configuration &config;

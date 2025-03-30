@@ -19,7 +19,7 @@
 
 #include "etl/delegate.h"
 
-// TODO: CHange to a etl::delegate
+// TODO: Change to a etl::delegate
 typedef std::function<void(const uint32_t)> pinIntrCallback_t;
 
 // function to transform a reason into text
@@ -175,7 +175,7 @@ public:
      * Register a pin interrupt handler with callback function
      */
     void disablePinInterrupt(uint8_t pin);
-    void enablePinInterrupt(uint8_t pin);
+    void enablePinInterrupt(uint8_t pin, uint32_t notificationValue);
 
     /**
      * Unregister a pin interrupt handler
@@ -327,6 +327,7 @@ public:
         RadioParameters radioParameters;
         uint8_t length;
         OpenAce::TxPacketType data;
+        TxPacket() = default;
         TxPacket(const RadioParameters &radioParameters_, etl::span<const uint8_t> dataSpan)
             : radioParameters(radioParameters_), length(static_cast<uint8_t>(dataSpan.size()))
         {
@@ -349,9 +350,6 @@ public:
     };
 
     virtual ~Radio() = default;
-    // TODO: Consider moving these to a databus thsi will remove some weird hard coupling between tuners and hardware radio
-    virtual void rxMode(const RxMode &rxMode) = 0;
-    virtual void txPacket(const TxPacket &txpacket) = 0;
     virtual uint8_t radio() const = 0;
 };
 

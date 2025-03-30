@@ -69,7 +69,7 @@ OpenAce::PostConstruct Sx1262::postConstruct()
     {
         return OpenAce::PostConstruct::TASK_ERROR;
     }
-    registerPinInterrupt(dio1Pin, GPIO_IRQ_EDGE_RISE, taskHandle, TASK_VALUE_DIO1_INTERRUPT);
+    registerPinInterrupt(dio1Pin, GPIO_IRQ_EDGE_RISE, taskHandle, 0);
 
     printf("Initialised on cs:%d busy:%d dio1:%d ", csPin, busyPin, dio1Pin);
 
@@ -87,12 +87,11 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << "{";
     stream << "\"deviceErrors\":" << statistics.deviceErrors;
     stream << ",\"spiNo\":" << spiHall->spiNum();
-    stream << ",\"waitPacketTimeout\":" << statistics.waitPacketTimeout;
+    stream << ",\"taskTimeout\":" << statistics.taskTimeout;
     stream << ",\"receivedPackets\":" << statistics.receivedPackets;
     stream << ",\"buzyWaitsTimeout\":" << statistics.buzyWaitsTimeout;
-    stream << ",\"queueFull\":" << statistics.queueFull;
-    stream << ",\"txTimeout\":" << statistics.txTimeout;
-    stream << ",\"txOk\":" << statistics.txOk;
+    stream << ",\"txQueueFull\":" << statistics.queueFull;
+    stream << ",\"txQueueSize\":" << txQueue.size();
     stream << ",\"mode\":" << "\"" << Radio::modeString(currentRadioParameters.config.mode) << "\"";
     stream << ",\"dataSource\":" << "\"" << OpenAce::dataSourceToString(currentRadioParameters.config.dataSource) << "\"";
     stream << ",\"frequency\":" << currentRadioParameters.frequency;
@@ -108,7 +107,15 @@ void Sx1262::on_receive(const OpenAce::RadioTxFrameMsg &msg)
 {
     if (msg.radioNo == radioNo && txEnabled)
     {
-        txPacket(msg.txPacket);
+        if (txQueue.full())
+        {
+            statistics.queueFull++;
+        }
+        else
+        {
+            txQueue.push(msg.txPacket);
+        }
+        xTaskNotify(taskHandle, TaskState::HANDLETX, eSetBits);
     }
 }
 
@@ -123,7 +130,7 @@ void Sx1262::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 
 void Sx1262::on_receive(const OpenAce::GpsStatsMsg &msg)
 {
-   hasGpsFix = msg.fixType == 3;
+    hasGpsFix = msg.fixType == 3;
 }
 
 /**
@@ -174,12 +181,12 @@ void Sx1262::radioInit()
     sx126x_set_ocp_value(this, (uint8_t)(120.0 / 2.5));
 }
 
-void Sx1262::configureSx1262(const RadioParameters &newParameters)
+void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
 {
     // 9.8 Transceiver Circuit Modes Graphical Illustration
     standBy();
     // This routines takes about 250us
-    if (newParameters.config.mode == Radio::Mode::GFSK && newParameters.config.dataSource != currentRadioParameters.config.dataSource)
+    if (newParameters.config.mode == Radio::Mode::GFSK)
     {
         sx126x_set_pkt_type(this, SX126X_PKT_TYPE_GFSK);
         sx126x_set_gfsk_mod_params(this, &DEFAULT_MOD_PARAMS_GFSK);
@@ -194,20 +201,19 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters)
         sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data() + newParameters.config.preambleLength / 8, newParameters.config.syncLength);
         // printf("Radio %d changed from %s to %s\n", radioNo, OpenAce::dataSourceToString(lastParameters.config.dataSource), OpenAce::dataSourceToString(newParameters.config.dataSource));
     }
-    else if (newParameters.config.mode == Radio::Mode::LORA && newParameters.config.dataSource != currentRadioParameters.config.dataSource)
+    else if (newParameters.config.mode == Radio::Mode::LORA)
     {
         sx126x_set_pkt_type(this, SX126X_PKT_TYPE_LORA);
-        // LORA_PARAMS.bw = static_cast<sx126x_lora_bw_t>(newParameters.config.bandwidth); // TODO based on zone
-        sx126x_set_lora_mod_params(this, &DEFAULT_MOD_PARAMS_LORA);
-
-        sx126x_set_lora_pkt_params(this, &DEFAULT_PKG_PARAMS_LORA);
-
+        if (!forTx)
+        {
+            sx126x_set_lora_mod_params(this, &DEFAULT_MOD_PARAMS_LORA);
+            sx126x_set_lora_pkt_params(this, &DEFAULT_PKG_PARAMS_LORA);
+        }
         sx126x_write_register(this, 0x0740, newParameters.config.syncWord.data(), newParameters.config.syncLength);
         // printf("Radio %d changed frequency from %ld to %ld\n", radioNo, lastParameters.frequency, newParameters.frequency);
     }
-    sx126x_set_tx_params(this, newParameters.powerdBm, SX126X_RAMP_200_US);
 
-    if (newParameters.frequency != currentRadioParameters.frequency)
+    if (newParameters.frequency != currentRadioParameters.frequency || true)
     {
         sx126x_set_rf_freq(this, newParameters.frequency + offsetHz);
     }
@@ -216,18 +222,16 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters)
     checkAndClearDeviceErrors();
 }
 
-void Sx1262::Listen()
+void Sx1262::listen()
 {
-    sx126x_set_dio_irq_params(this, SX126X_IRQ_RX_DONE, SX126X_IRQ_RX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
-    sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
-    enablePinInterrupt(dio1Pin);
-
     // https://forum.lora-developers.semtech.com/t/sx1262-reduced-rx-sensitivity-packet-reception-fails/162/12
     // Need to call SetFs() and then RxBoosted() periodically to fix a issue with receiver gain
+    sx126x_set_fs(this);
     sx126x_cfg_rx_boosted(this, true);
 
-    //  Device is out into listen with timeout because there where reports
-    //  that sensitivity goes down at some point
+    sx126x_set_dio_irq_params(this, SX126X_IRQ_RX_DONE, SX126X_IRQ_RX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
+    sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
+    enablePinInterrupt(dio1Pin, DIO1_RX_DONE);
     sx126x_set_rx(this, SX126X_MAX_TIMEOUT_IN_MS);
     // printf("Radio %d set to listen\n", radioNo);
 }
@@ -237,30 +241,12 @@ void Sx1262::sendGFSKPacket(const RadioParameters &parameters, const uint8_t *da
     (void)parameters;
     sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
+    enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
 
+    sx126x_set_tx_params(this, parameters.powerdBm, SX126X_RAMP_200_US);
     sx126x_write_buffer(this, 0x00, data, length);
     // 13.1.14 SetTx
     sx126x_set_tx(this, SX126X_MAX_TIMEOUT_IN_MS);
-
-    // 8.3
-    // In TX, BUSY will go low when the PA has ramped-up and transmission of preamble starts.
-    // So wait until busy get's high first
-    // From STBY_XOSC to TX around 105us
-    // 13.3.2.1 DioxMask
-    // Wait for rising edge when TX is done
-    while (!gpio_get(busyPin))
-    {
-        tight_loop_contents();
-    }
-
-    // Sending a packet takes around 4..5ms so allow RTOS to switch
-    vTaskDelay(pdMS_TO_TICKS(5));
-
-    // Wait until raising edge for TX to be done
-    while (!gpio_get(dio1Pin))
-    {
-        tight_loop_contents();
-    }
 }
 
 void Sx1262::sendLORAPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length)
@@ -291,52 +277,32 @@ void Sx1262::sendLORAPacket(const RadioParameters &parameters, const uint8_t *da
     pkg.pld_len_in_bytes = length;
     sx126x_set_lora_pkt_params(this, &pkg);
 
+    sx126x_set_tx_params(this, parameters.powerdBm, SX126X_RAMP_200_US);
+
     // Wait until CAD done
-    uint32_t start = CoreUtils::timeUs32();
-    sx126x_set_dio_irq_params(this, SX126X_IRQ_CAD_DONE | SX126X_IRQ_TX_DONE | SX126X_IRQ_CAD_DETECTED, SX126X_IRQ_CAD_DONE | SX126X_IRQ_TX_DONE | SX126X_IRQ_CAD_DETECTED, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
+    // uint32_t start = CoreUtils::timeUs32();
+    // disablePinInterrupt(dio1Pin); // We are just waiting for CAD
+    sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
-    sx126x_set_cad(this);
-    while (!gpio_get(dio1Pin))
-    {
-        tight_loop_contents();
-    }
-    auto irqStatus = getIrqStatus();
-    if (irqStatus & SX126X_IRQ_CAD_DETECTED)
-    {
-        // CAD detected, bail out
-        printf("CAD detected, aborting TX took: %ld\n", CoreUtils::timeUs32() - start);
-        return;
-    }
+    enablePinInterrupt(dio1Pin, DIO1_TX_DONE); // Disable interrupt because sending is aSync
+
+    // sx126x_set_cad(this);
+    // while (!gpio_get(dio1Pin))
+    // {
+    //     tight_loop_contents();
+    // }
+
+    // auto irqStatus = getIrqStatus();
+    // if (irqStatus & SX126X_IRQ_CAD_DETECTED)
+    // {
+    //     // CAD detected, bail out
+    //     printf("CAD detected, aborting TX took: %ld\n", CoreUtils::timeUs32() - start);
+    //     return;
+    // }
+
     // 13.1.14 SetTx
-    sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
     sx126x_write_buffer(this, 0x00, data, length);
     sx126x_set_tx(this, SX126X_MAX_TIMEOUT_IN_MS);
-
-    // 8.3
-    // In TX, BUSY will go low when the PA has ramped-up and transmission of preamble starts.
-    // So wait until busy get's high first
-    // From STBY_XOSC to TX around 105us
-    // 13.3.2.1 DioxMask
-    // Wait for rising edge when TX is done
-    start = CoreUtils::timeUs32();
-    while (!gpio_get(busyPin))
-    {
-        tight_loop_contents();
-    }
-    printf("1 Took %ld us\n", (uint32_t)(CoreUtils::timeUs32() - start));
-    start = CoreUtils::timeUs32();
-
-    // Sending a packet takes around 4..5ms so allow RTOS to switch
-    // make a better guess for LORA packets in regards to timing
-    vTaskDelay(pdMS_TO_TICKS(42)); // LORA packets seem to take this long
-
-    // Wait until raising edge for TX to be done
-    while (!gpio_get(dio1Pin))
-    {
-        tight_loop_contents();
-    }
-
-    printf("2 Took %ld us\n", (uint32_t)(CoreUtils::timeUs32() - start));
 }
 
 void Sx1262::receiveGFSKPacket()
@@ -354,7 +320,7 @@ void Sx1262::receiveGFSKPacket()
             uint8_t data[maxFrameLength];
             sx126x_read_buffer(this, 0x80, data, receivedFrameLength);
 
-            OpenAce::RadioRxGfskMsg RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), (int8_t)(-pkt_status.rssi_sync / 2), currentRadioParameters.frequency, currentRadioParameters.config.dataSource};
+            OpenAce::RadioRxGfskMsg RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), pkt_status.rssi_avg, currentRadioParameters.frequency, currentRadioParameters.config.dataSource};
 
             // Seems like all GFSK packets are Manchester encoded, so we just decode here directly
             manchesterDecode((uint8_t *)RadioRxGfskMsg.frame, (uint8_t *)RadioRxGfskMsg.err, data, receivedFrameLength);
@@ -439,31 +405,26 @@ sx126x_irq_mask_t Sx1262::getIrqStatus()
     return mask;
 }
 
-void Sx1262::rxMode(const RxMode &rxMode)
+void Sx1262::on_receive(const OpenAce::RadioControlMsg &msg)
 {
-    if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
+    if (msg.radioNo == radioNo)
     {
-        configureSx1262(rxMode.radioParameters);
-        Listen();
-        currentRadioParameters = rxMode.radioParameters;
-        // Note: Takes about 5ms to set the radio
-        // printf("Set Radio %d RX: %s timeMs:%d\n", radioNo, OpenAce::dataSourceToString(currentRadioParameters.config.dataSource), CoreUtils::msInSecond());
-        spiHall->releaseSlotSync();
-    }
-    else
-    {
-        // puts("Missed");
+        if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
+        {
+            currentRadioParameters = msg.radioParameters;
+            spiHall->releaseSlotSync();
+            xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
+        }
     }
 }
 
-void Sx1262::txPacket(const TxPacket &txPacket)
+void Sx1262::sendPacket(const TxPacket &txPacket)
 {
 
-    if (hasGpsFix && spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
+    if (hasGpsFix)
     {
         // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
-        disablePinInterrupt(dio1Pin);
-        configureSx1262(txPacket.radioParameters);
+        configureSx1262(txPacket.radioParameters, true);
 
         if (txPacket.radioParameters.config.mode == Radio::Mode::GFSK)
         {
@@ -475,15 +436,6 @@ void Sx1262::txPacket(const TxPacket &txPacket)
         {
             sendLORAPacket(txPacket.radioParameters, txPacket.data.data(), txPacket.length);
         }
-
-        configureSx1262(currentRadioParameters);
-
-        Listen();
-        spiHall->releaseSlotSync();
-    }
-    else
-    {
-        // puts("Missed");
     }
 }
 
@@ -491,7 +443,7 @@ void Sx1262::sx1262Task(void *arg)
 {
     Sx1262 *sx1262 = static_cast<Sx1262 *>(arg);
     SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*sx1262, SpiModule::NAME));
-
+    uint32_t currentModeIsTX = false;
     while (true)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(10000)))
@@ -502,40 +454,61 @@ void Sx1262::sx1262Task(void *arg)
                 return;
             }
 
-            aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, notifyValue]()
-                                      {
-                                          // Read device status to validate if there is anything to do
-                                          auto irqStatus = sx1262->getIrqStatus();
-                                          // printf("Radio %d IRQ Status: %d %ld\n", sx1262->radioNo, irqStatus, notifyValue);
-                                          if (irqStatus & SX126X_IRQ_RX_DONE)
-                                          {
-                                              // Reading the data takes about 4ms
-                                              //                    printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->currentRadioParameters.config.dataSource), CoreUtils::msInSecond());
-                                              if (sx1262->currentRadioParameters.config.mode == Radio::Mode::GFSK)
-                                              {
-                                                  sx1262->receiveGFSKPacket();
-                                              }
-                                              else if (sx1262->currentRadioParameters.config.mode == Radio::Mode::LORA)
-                                              {
-                                                  sx1262->receiveLORAPacket();
-                                              }
-                                              sx1262->Listen();
-                                          }
+            if (notifyValue & TaskState::DIO1_RX_DONE)
+            {
+                // clang-format off
+                aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, notifyValue]()
+                {
+                    // Reading the data takes about 4ms
+                    // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->currentRadioParameters.config.dataSource), CoreUtils::msInSecond());
+                    if (sx1262->currentRadioParameters.config.mode == Radio::Mode::GFSK)
+                    {
+                        sx1262->receiveGFSKPacket();
+                    }
+                    else if (sx1262->currentRadioParameters.config.mode == Radio::Mode::LORA)
+                    {
+                        sx1262->receiveLORAPacket();
+                    }
+                });
+                // clang-format on
+            }
 
-                                          // if ((notifyValue & TaskState::FAILSAVE_LISTEN_MODE) && (sx1262->currentRadioParameters.config.dataSource != OpenAce::DataSource::NONE))
-                                          // {
-                                          //     sx1262->configureSx1262(sx1262->currentRadioParameters);
-                                          //     sx1262->Listen();
-                                          //     // printf("Radio %d FailSafe %d\n", sx1262->radioNo, CoreUtils::msInSecond());
-                                          // }
-                                      });
+            if (notifyValue & TaskState::DIO1_TX_DONE)
+            {
+                currentModeIsTX = false;
+            }
+            
+            if (currentModeIsTX)
+            {
+                continue;
+            }
+            
+            if (TxPacket txPacket; sx1262->txQueue.pop(txPacket))
+            {
+                // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
+                // clang-format off
+                aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, &txPacket, &currentModeIsTX]()
+                { 
+                    currentModeIsTX = true;
+                    sx1262->sendPacket(txPacket); 
+                });
+                // clang-format on
+            }
+
+            // clang-format off
+            aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262]()
+            {
+                sx1262->configureSx1262(sx1262->currentRadioParameters);
+                sx1262->listen();
+            });
+            // clang-format on
         }
         else
         {
             // End up here when timeout, only count in statistics so we know this is happening
             if (sx1262->currentRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
             {
-                sx1262->statistics.waitPacketTimeout++;
+                sx1262->statistics.taskTimeout++;
             }
         }
     }

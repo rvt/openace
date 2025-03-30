@@ -2,8 +2,6 @@
 
 #include "pico/stdlib.h"
 
-// #include "../fanet/fanet_common.hpp"
-// #include "../fanet/fanet_packet.hpp"
 #include "fanet/fanet.hpp"
 #include "fanet/packetParser.hpp"
 
@@ -12,6 +10,7 @@
 #include "ace/messagerouter.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/semaphoreguard.hpp"
+#include "ace/measure.hpp"
 
 void FanetAce::start()
 {
@@ -111,9 +110,10 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
     (void)data;
     statistics.send++;
     radioParameters.config.codingRate = codingRate;
-    // getBus().receive(OpenAce::RadioTxFrameMsg{
-    //     Radio::TxPacket{radioParameters, data},
-    //     radioNo});
+    
+    getBus().receive(OpenAce::RadioTxFrameMsg{
+        Radio::TxPacket{radioParameters, data},
+        radioNo});
 
     return true;
 }
@@ -125,7 +125,7 @@ void FanetAce::fanet_ackReceived(uint16_t id)
 
 void FanetAce::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
-    if (auto guard = SemaphoreGuard<1>(mutex))
+    if (auto guard = SemaphoreGuard<5>(mutex))
     {
         ownshipPosition = msg.position;
     }

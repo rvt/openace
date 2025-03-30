@@ -20,6 +20,7 @@
 /* Vendor. */
 #include "etl/message_bus.h"
 #include "etl/pseudo_moving_average.h"
+#include "etl/queue_spsc_atomic.h"
 
 /* OpenAce Libraries */
 #include "ace/constants.hpp"
@@ -33,7 +34,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTxFrameMsg, OpenAce::ConfigUpdatedMsg, OpenAce::GpsStatsMsg>
+class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTxFrameMsg, OpenAce::ConfigUpdatedMsg, OpenAce::GpsStatsMsg, OpenAce::RadioControlMsg>
 {
     static constexpr uint32_t MAX_LISTEN_TIMEOUT = 150000; // maximum time we listen for packages before we timeout and reset the Sx1262
     static constexpr uint8_t MANCHESTER = 2;               // Used to just clarify why we sometime multiply by 2
@@ -41,19 +42,20 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
 
     enum TaskState : uint8_t
     {
-        DELETE = 1 << 0,
-        TASK_VALUE_DIO1_INTERRUPT = 1 << 2
+        DELETE = 1,
+        DIO1_TX_DONE = 2,
+        DIO1_RX_DONE = 4,
+        HANDLETX = 8,
+        HANDLE_NEW_CONFIG = 16,
     };
 
     mutable struct
     {
         uint16_t deviceErrors = 0;
-        uint32_t waitPacketTimeout = 0; // THis is more of a indication that we did not receive a packet within OPENACE_SX126X_MAX_RX_TIME, not an error
+        uint32_t taskTimeout = 0; // THis is more of a indication that we did not receive a packet within OPENACE_SX126X_MAX_RX_TIME, not an error
         uint32_t receivedPackets = 0;
         uint32_t buzyWaitsTimeout = 0;
         uint32_t queueFull = 0;
-        uint32_t txTimeout = 0;
-        uint32_t txOk = 0;
     } statistics;
 
     // ************************************************************************************
@@ -136,6 +138,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     volatile bool hasGpsFix;
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
+    etl::queue_spsc_atomic<TxPacket, 4, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
     Radio::RadioParameters currentRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
 
 public:
@@ -203,10 +206,10 @@ public:
         (void)msg;
     }
 
-    void on_receive(const OpenAce::RadioTxFrameMsg &msg);
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
-    void on_receive(const  OpenAce::GpsStatsMsg &msg);
-   
+    void on_receive(const OpenAce::RadioTxFrameMsg &msg);
+    void on_receive(const OpenAce::RadioControlMsg &msg);    
+    void on_receive(const  OpenAce::GpsStatsMsg &msg);   
 
     void radioInit();
     void checkAndClearDeviceErrors();
@@ -214,18 +217,17 @@ public:
     void receiveLORAPacket();
     void sendGFSKPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length);
     void sendLORAPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length);
-    void configureSx1262(const RadioParameters &newParameters);
+    void configureSx1262(const RadioParameters &newParameters, bool forTx=false);
     sx126x_irq_mask_t getIrqStatus();
 
-    void Listen();
+    void listen();
     void standBy();
 
     static void sx1262Task(void *arg);
 
     uint8_t receivedPacketLength() const;
 
-    virtual void rxMode(const RxMode &rxMode) override;
-    virtual void txPacket(const TxPacket &txpacket) override;
+    void sendPacket(const TxPacket &txpacket);
 
     void waitBusy(uint16_t minimumDelay=0) const;
 };

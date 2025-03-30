@@ -109,7 +109,7 @@ bool AceSpi::acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void
 
 bool AceSpi::acquireSlotSync(uint8_t busFrequencyMhz)
 {
-    if (xSemaphoreTake(mutex, TASK_DELAY_MS(10)) == pdTRUE)
+    if (xSemaphoreTake(mutex, TASK_DELAY_MS(10)) == pdTRUE) // Short wait time, as it's ok to loose some packets once a while
     {
         if (lastBusFrequency != busFrequencyMhz)
         {

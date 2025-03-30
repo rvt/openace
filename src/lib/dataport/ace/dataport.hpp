@@ -81,7 +81,7 @@ public:
 
     void getPFLAAClimbRate(const OpenAce::AircraftPositionInfo &position, etl::string<7> &verticalSpeed);
 
-    char getPFLAAAircraftCategory(const OpenAce::AircraftPositionInfo &position) const;
+    etl::string_view getPFLAAAircraftCategory(const OpenAce::AircraftPositionInfo &position) const;
 
     /**
      * PFLAU – Heartbeat, status, and basic alarms
