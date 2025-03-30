@@ -56,7 +56,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     } statistics;
 
     // ************************************************************************************
-    // 13.1.14 SetPaConfig
+    // 13.1.14.1 SetPaConfig
     // Table 13-21: PA Operating Modes with Optimal Settings
     static constexpr sx126x_pa_cfg_params_s DEFAULT_HIGH_POWER_PA_CFG =
         {
@@ -99,13 +99,14 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     // CAD is only used by LORA
     static constexpr sx126x_cad_params_t DEFAULT_CAD_PARAMS =
         {
-            .cad_symb_nb = SX126X_CAD_08_SYMB,
+            .cad_symb_nb = SX126X_CAD_16_SYMB,
             .cad_detect_peak = 0x14,
             .cad_detect_min = 0X0A,
             .cad_exit_mode = SX126X_CAD_ONLY,
-            .cad_timeout = 0x00000000,
+            .cad_timeout = 0,
         };
 
+    // 13.67
     static constexpr sx126x_pkt_params_lora_t DEFAULT_PKG_PARAMS_LORA =
         {
             .preamble_len_in_symb = 12,
@@ -123,7 +124,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
             .ldro = 0,
         };
 
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::NONE, OpenAce::DataSource::NONE, 0, 1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0, 1*8, 0, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
@@ -221,5 +222,5 @@ public:
     virtual void rxMode(const RxMode &rxMode) override;
     virtual void txPacket(const TxPacket &txpacket) override;
 
-    void waitBusy(uint16_t minimumDelay) const;
+    void waitBusy(uint16_t minimumDelay=0) const;
 };

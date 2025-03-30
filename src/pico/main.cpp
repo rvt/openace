@@ -208,7 +208,7 @@ static void loadModules(void *arch)
     (void)arch;
     vTaskDelay(5000);
     load(WifiService::NAME, bus, config, true);
-    load(ModuleManager::NAME, bus, config);
+    // load(ModuleManager::NAME, bus, config);
 
     WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME));
     if (client != nullptr)
@@ -237,19 +237,19 @@ static void loadModules(void *arch)
     load(RadioTunerTx::NAME, bus, config);
     load(RadioTunerRx::NAME, bus, config);
 
-    load(Bmp280::NAME, bus, config);
-    load(Gdl90Service::NAME, bus, config);
+    // load(Bmp280::NAME, bus, config);
+    // load(Gdl90Service::NAME, bus, config);
     load(ADSBDecoder::NAME, bus, config);
-    load(ADSL::NAME, bus, config);
+    // load(ADSL::NAME, bus, config);
     load(FanetAce::NAME, bus, config);
-    load(Flarm2024::NAME, bus, config);
-    load(Ogn1::NAME, bus, config);
-    load(GDLoverUDP::NAME, bus, config);
+    // load(Flarm2024::NAME, bus, config);
+    // load(Ogn1::NAME, bus, config);
+    // load(GDLoverUDP::NAME, bus, config);
     load(GpsDecoder::NAME, bus, config);
     load(UbloxM8N::NAME, bus, config);
-    load(L76B::NAME, bus, config);
+    // load(L76B::NAME, bus, config);
     load(DataPort::NAME, bus, config);
-    load(AirConnect::NAME, bus, config);
+    // load(AirConnect::NAME, bus, config);
     load(Dump1090Client::NAME, bus, config);
 
     // SerialADSB messes up the serial terminal, but it will load beyond this point
@@ -341,7 +341,7 @@ void vDiagnosticsTask(void *pvParameters) {
         }
 
         // Run every 5 seconds (adjust as needed)
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(50000));
     }
 }
 #endif

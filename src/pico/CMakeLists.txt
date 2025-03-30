@@ -121,6 +121,7 @@ target_link_libraries(
           GDL90
           minmea
           etl::etl
+          fanet::fanet
           ArduinoJson
           # /lib
           core

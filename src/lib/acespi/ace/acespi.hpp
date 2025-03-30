@@ -21,7 +21,7 @@
 
 /**
  * Class that is responsible for managing the Single SPI bus between various devices
- * TODO: Add support for two CPI buses
+ * TODO: Add support for two SPI buses
  */
 class AceSpi : public SpiModule, public etl::message_router<AceSpi>
 {

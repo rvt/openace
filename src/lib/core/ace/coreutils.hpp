@@ -430,7 +430,7 @@ public:
         (void)addressType;
         OpenAce::IcaoAddress icaoAddress;
         etl::string_stream stream(icaoAddress);
-        stream << etl::hex << etl::uppercase << aircraftID;
+        stream << etl::hex <<  etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID;
         return icaoAddress;
     }
 

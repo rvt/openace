@@ -53,7 +53,7 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     (void)path;
     stream << "{";
     stream << "\"queueFullErr\":" << statistics.queueFullErr;
-    stream << ",\"numberOfPlanesTracking\":" << trackedAircraft.size();
+    stream << ",\"numberOfObjectsTracking\":" << trackedAircraft.size();
     stream << ",\"positionsProcessed\":" << statistics.positionsProcessed;
     stream << ",\"adaptiveRadius\":" << trackedAircraft.radius();
     stream << "}\n";

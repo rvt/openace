@@ -9,6 +9,7 @@ set(MODULE_SOURCE_FILES
 
 set(MODULE_TARGET_LINK
     utils
+    fanet
 )
 
 set(PICO_EXTRA_LIBS
