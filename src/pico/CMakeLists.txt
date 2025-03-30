@@ -6,7 +6,7 @@ set(PICO_CXX_ENABLE_EXCEPTIONS 0)
 set(PICO_CXX_ENABLE_RTTI 0)
 
 set(OPTIMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
-                    openace_default_config.json default_config.hpp)
+                    openace_default_config.json ${CMAKE_BINARY_DIR}/default_config.hpp)
 execute_process(
   COMMAND ${OPTIMIZE_SCRIPT}
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} ECHO_OUTPUT_VARIABLE

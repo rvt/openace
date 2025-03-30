@@ -147,8 +147,8 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 
                 getBus().receive(
                     OpenAce::GpsStatsMsg{
-                        fixQuality,
-                        (uint8_t)frame.fix_type,
+                        fixQuality, // 0:Fix Not Valid 1:GPS fix 2:DGPS SBAS etc.. 3..6:NA
+                        (uint8_t)frame.fix_type, // 1:NA 2:2D 3:3D
                         satellitesTracked,
                         pDop,
                         hDop

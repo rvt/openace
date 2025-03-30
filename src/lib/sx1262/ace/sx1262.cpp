@@ -99,6 +99,8 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << ",\"powerdBm\":" << currentRadioParameters.powerdBm;
     stream << ",\"txEnabled\":" << txEnabled;
     stream << ",\"radio\":" << radioNo;
+    stream << ",\"hasGpsFix\":" << hasGpsFix;
+    stream << ",\"isTransmitting\":" << (hasGpsFix && txEnabled);
     stream << "}\n";
 }
 
@@ -117,6 +119,11 @@ void Sx1262::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
         txEnabled = msg.config.valueByPath(true, NAMES[radioNo], "txEnabled");
         offsetHz = msg.config.valueByPath(true, NAMES[radioNo], "offset");
     }
+}
+
+void Sx1262::on_receive(const OpenAce::GpsStatsMsg &msg)
+{
+   hasGpsFix = msg.fixType == 3;
 }
 
 /**
@@ -452,7 +459,7 @@ void Sx1262::rxMode(const RxMode &rxMode)
 void Sx1262::txPacket(const TxPacket &txPacket)
 {
 
-    if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
+    if (hasGpsFix && spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
     {
         // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
         disablePinInterrupt(dio1Pin);
