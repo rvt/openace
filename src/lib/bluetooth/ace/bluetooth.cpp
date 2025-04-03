@@ -2,6 +2,8 @@
 
 #include "bluetooth.hpp"
 #include "ace/semaphoreguard.hpp"
+#include "ace/measure.hpp"
+#include "ace/coreutils.hpp"
 #include "openace_gatt.h"
 
 #include "ble/gatt-service/battery_service_server.h"
@@ -104,9 +106,11 @@ void Bluetooth::start()
     Bluetooth::smEventCallback.callback = &smPacketHandler;
     sm_add_event_handler(&smEventCallback);
 
-    // Registration for callback into bluetooth task
-    Bluetooth::pushIntoQueueReg.callback = &pushQueueIntoConnectionBuffers;
-    Bluetooth::pushIntoQueueReg.context = nullptr;
+    // set one-shot btstack timer
+    Bluetooth::heartbeat.process = &heartbeat_handler;
+    Bluetooth::heartbeat.context = nullptr;
+    btstack_run_loop_set_timer(&heartbeat, 250);
+    btstack_run_loop_add_timer(&heartbeat);
 
     // Configuration
 
@@ -132,12 +136,13 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    if (auto guard = SemaphoreGuard<5>(mutex))
+    if (auto guard = SemaphoreGuard<2>(mutex))
     {
         (void)path;
         stream << "{";
         stream << "\"connections\":" << connections.size();
-        stream << ",\"ctxBufferOverrunErr\":[" ;
+        stream << ",\"dataPortMsgMissedErr\":" << statistics.dataPortMsgMissedErr;
+        stream << ",\"ctxBufferOverrunErr\":[";
         for (auto &it : Bluetooth::connections)
         {
             stream << it.bufferOverrunErr << ",";
@@ -166,27 +171,20 @@ void Bluetooth::on_receive(const OpenAce::IdleMsg &msg)
  */
 void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
 {
-    bool requiresPush = false;
-    if (auto guard = SemaphoreGuard<20>(mutex))
+    if (auto guard = SemaphoreGuard<5>(mutex))
     {
         for (auto &ctx : Bluetooth::connections)
         {
-            if (ctx.buffer.available() >= msg.sentence.size())
-            {
-                ctx.buffer.push(msg.sentence.c_str(), msg.sentence.size());
-            }
-            else
+            if (!ctx.buffer.push(msg.sentence.c_str(), msg.sentence.size()))
             {
                 ctx.bufferOverrunErr++;
             }
-            requiresPush |= ctx.requiresNotification;
         }
     }
-
-    if (requiresPush) {
-        btstack_run_loop_execute_on_main_thread(&pushIntoQueueReg);
+    else
+    {
+        statistics.dataPortMsgMissedErr++;
     }
-
 }
 
 bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
@@ -218,6 +216,16 @@ void Bluetooth::removeConnection(uint16_t handle)
     }
 }
 
+void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
+{
+    (void)ts;
+
+    notifyAttServer();
+
+    btstack_run_loop_set_timer(ts, 250);
+    btstack_run_loop_add_timer(ts);
+}
+
 /**
  * Moved data from the queue into the buffers of each connection
  * Note: a bit of a hack on arg, when arg is null, it was called via btstack_run_loop_execute_on_main_thread.
@@ -226,32 +234,72 @@ void Bluetooth::removeConnection(uint16_t handle)
  * att_server_request_can_send_now_event will only be called when requiresNotification, eg, the buffers where exhausted
  * and thus the stack willbe informed via btstack_run_loop_execute_on_main_thread to continue sending data.
  */
-void Bluetooth::pushQueueIntoConnectionBuffers(void *arg)
+void Bluetooth::notifyAttServer()
 {
-    (void)arg;
-
-    if (arg == nullptr)
+    for (auto &ctx : Bluetooth::connections)
     {
-        for (auto &ctx : Bluetooth::connections)
+        bool requiresNotification = true;
+        if (ctx.requiresNotification)
         {
-            if (ctx.requiresNotification)
+            if ((ctx.readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
             {
-                if ((ctx.readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-                {
-                    ctx.requiresNotification = false; // Since rfcomm_request_can_send_now_event can call directly the callback, we have to reset before rfcomm_request_can_send_now_event
-                    rfcomm_request_can_send_now_event(ctx.rfcommChannelId);
-                }
-                else if ((ctx.readyState & ATT_READYSTATE) == ATT_READYSTATE)
-                {
-                    ctx.requiresNotification = false; // Since att_server_request_to_send_notification can call directly the callback, we have to reset before att_server_request_to_send_notification
-                    if (att_server_request_to_send_notification(&ctx.callBack, ctx.handle) != ERROR_CODE_SUCCESS)
-                    {
-                        ctx.requiresNotification = true;
-                    }
-                }
+                rfcomm_request_can_send_now_event(ctx.rfcommChannelId);
+                requiresNotification = false;
+            }
+            else if ((ctx.readyState & ATT_READYSTATE) == ATT_READYSTATE)
+            {
+                att_server_request_to_send_notification(&ctx.callBack, ctx.handle);
+                requiresNotification = false;
             }
         }
+        ctx.requiresNotification = requiresNotification;
     }
+}
+
+void Bluetooth::attContextCallback(void *context)
+{
+    (void)context;
+
+//    sendNotification(static_cast<Bluetooth::BtContext *>(context));
+    auto btContext = static_cast<Bluetooth::BtContext *>(context);
+
+    auto handle = btContext->handle;
+
+    auto [part, sendLength] = btContext->buffer.peek();
+    sendLength = etl::min(sendLength, static_cast<size_t>(btContext->mtu / 2));
+
+    if (sendLength > 0)
+    {
+        if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+        {
+            rfcomm_send(handle, (uint8_t *)part, sendLength);
+        }
+        else if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+        {
+            att_server_notify(handle, btContext->attrHandle, reinterpret_cast<const uint8_t *>(part), sendLength);
+        }
+        btContext->buffer.accepted(sendLength);
+
+        // As long as there is data in the connections buffer, immediately request for sending for more data,
+        // otherwise request set requireForNotification so the request will be done as soon as new data will be available
+        if (!btContext->buffer.empty())
+        {
+            btContext->requiresNotification = false;
+            if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+            {
+                rfcomm_request_can_send_now_event(handle);
+            }
+            else if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+            {
+                if (att_server_request_to_send_notification(&btContext->callBack, handle) != ERROR_CODE_SUCCESS)
+                {
+                    btContext->requiresNotification = true;
+                }
+            }
+            return;
+        }
+    }
+    btContext->requiresNotification = true;
 }
 
 /*
@@ -296,7 +344,7 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
             Bluetooth::withHandle(att_event_mtu_exchange_complete_get_handle(packet), 
                 etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
                 {
-                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16; // 11 bytes might be enough
+                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16;
                 })
             );
             // clang-format on
@@ -391,57 +439,6 @@ void Bluetooth::rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8
     default:
         break;
     }
-}
-
-void Bluetooth::attContextCallback(void *context)
-{
-    (void)context;
-
-    sendNotification(static_cast<Bluetooth::BtContext *>(context));
-}
-
-void Bluetooth::sendNotification(Bluetooth::BtContext *it)
-{
-    pushQueueIntoConnectionBuffers((void *)1);
-    auto handle = it->handle;
-
-    auto [part, sendLength] = it->buffer.peek();
-    sendLength = etl::min(sendLength, static_cast<size_t>(it->mtu / 2));
-
-    if (sendLength > 0)
-    {
-        if ((it->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-        {
-            rfcomm_send(handle, (uint8_t *)part, sendLength);
-        }
-        else if ((it->readyState & ATT_READYSTATE) == ATT_READYSTATE)
-        {
-            att_server_notify(handle, it->attrHandle, reinterpret_cast<const uint8_t *>(part), sendLength);
-        }
-        it->buffer.accepted(sendLength);
-
-        // As long as there is data in the connections buffer, immediately request for sending for more data,
-        // otherwise request set requireForNotification so the request will be done as soon as new data will be available
-        if (!it->buffer.empty())
-        {
-            if ((it->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-            {
-                it->requiresNotification = false; // See previous note
-                rfcomm_request_can_send_now_event(handle);
-            }
-            else if ((it->readyState & ATT_READYSTATE) == ATT_READYSTATE)
-            {
-                it->requiresNotification = false; // See previous note
-                if (att_server_request_to_send_notification(&it->callBack, handle) != ERROR_CODE_SUCCESS)
-                {
-                    it->requiresNotification = true;
-                }
-            }
-
-            return;
-        }
-    }
-    it->requiresNotification = true;
 }
 
 int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size)
