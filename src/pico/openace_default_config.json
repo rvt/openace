@@ -62,6 +62,9 @@
     "Flarm": {
         "distanceIgnore": 25000
     },
+    "Fanet": {
+        "distanceIgnore": 25000
+    },
     "Ogn1": {
         "distanceIgnore": 25000
     },

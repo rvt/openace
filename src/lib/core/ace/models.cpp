@@ -77,6 +77,10 @@ namespace OpenAce
         {DataSource::PAW, "P"}
     };
 
+    const char *dataSourceIntToString(uint8_t ds)
+    {
+        return dataSourceToString(static_cast<DataSource>(ds));
+    }
     const char *dataSourceToString(DataSource ds)
     {
         return enumToString(dataSourceMappings1, ds, "UNKNOWN");

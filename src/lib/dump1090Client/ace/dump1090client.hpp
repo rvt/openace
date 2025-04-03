@@ -25,6 +25,7 @@ class Dump1090Client : public BaseModule,
     struct
     {
         uint32_t totalReceived = 0;
+        uint32_t reConnects = 0;
     } statistics;
 
     etl::imessage_bus *bus;

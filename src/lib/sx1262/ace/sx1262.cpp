@@ -12,6 +12,7 @@
 /* OpenACE. */
 #include "ace/manchester.hpp"
 #include "ace/coreutils.hpp"
+#include "ace/measure.hpp"
 
 /* PICO */
 #include "hardware/spi.h"
@@ -89,6 +90,7 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << ",\"spiNo\":" << spiHall->spiNum();
     stream << ",\"taskTimeout\":" << statistics.taskTimeout;
     stream << ",\"receivedPackets\":" << statistics.receivedPackets;
+    stream << ",\"transmittedPackets\":" << statistics.transmittedPackets;
     stream << ",\"buzyWaitsTimeout\":" << statistics.buzyWaitsTimeout;
     stream << ",\"txQueueFull\":" << statistics.queueFull;
     stream << ",\"txQueueSize\":" << txQueue.size();
@@ -131,6 +133,20 @@ void Sx1262::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 void Sx1262::on_receive(const OpenAce::GpsStatsMsg &msg)
 {
     hasGpsFix = msg.fixType == 3;
+}
+
+void Sx1262::on_receive(const OpenAce::RadioControlMsg &msg)
+{
+    if (msg.radioNo == radioNo)
+    {
+        auto m = Measure("Sx1262::RadioControlMsg", 5000);
+        if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
+        {
+            currentRadioParameters = msg.radioParameters;
+            spiHall->releaseSlotSync();
+        }
+        xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
+    }
 }
 
 /**
@@ -320,11 +336,10 @@ void Sx1262::receiveGFSKPacket()
             uint8_t data[maxFrameLength];
             sx126x_read_buffer(this, 0x80, data, receivedFrameLength);
 
-            OpenAce::RadioRxGfskMsg RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), pkt_status.rssi_avg, currentRadioParameters.frequency, currentRadioParameters.config.dataSource};
+            rxGfskMsg = OpenAce::RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), pkt_status.rssi_avg, currentRadioParameters.frequency, currentRadioParameters.config.dataSource};
 
             // Seems like all GFSK packets are Manchester encoded, so we just decode here directly
-            manchesterDecode((uint8_t *)RadioRxGfskMsg.frame, (uint8_t *)RadioRxGfskMsg.err, data, receivedFrameLength);
-            sendToBus(RadioRxGfskMsg);
+            manchesterDecode((uint8_t *)rxGfskMsg.frame, (uint8_t *)rxGfskMsg.err, data, receivedFrameLength);
             // dumpBuffer((uint8_t *)RadioRxGfskMsg.frame, RadioRxGfskMsg.length);
         }
         else
@@ -350,10 +365,9 @@ void Sx1262::receiveLORAPacket()
         uint8_t receivedFrameLength = receivedPacketLength();
         if (receivedFrameLength > 0 && receivedFrameLength <= OpenAce::MAX_LORA_MSG_SIZE)
         {
-            OpenAce::RadioRxLoraMsg radioRxLoraMsg(CoreUtils::secondsSinceEpoch(), pkt_status.signal_rssi_pkt_in_dbm, currentRadioParameters.frequency, currentRadioParameters.config.dataSource);
-            radioRxLoraMsg.frame.resize(receivedFrameLength);
-            sx126x_read_buffer(this, 0x80, radioRxLoraMsg.frame.data(), receivedFrameLength);
-            sendToBus(radioRxLoraMsg);
+            rxLoraMsg = OpenAce::RadioRxLoraMsg(CoreUtils::secondsSinceEpoch(), pkt_status.signal_rssi_pkt_in_dbm, currentRadioParameters.frequency, currentRadioParameters.config.dataSource);
+            rxLoraMsg.frame.resize(receivedFrameLength);
+            sx126x_read_buffer(this, 0x80, rxLoraMsg.frame.data(), receivedFrameLength);
             // dumpBuffer((uint8_t *)RadioRxGfskMsg.frame, RadioRxGfskMsg.length);
         }
     }
@@ -405,37 +419,21 @@ sx126x_irq_mask_t Sx1262::getIrqStatus()
     return mask;
 }
 
-void Sx1262::on_receive(const OpenAce::RadioControlMsg &msg)
-{
-    if (msg.radioNo == radioNo)
-    {
-        if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
-        {
-            currentRadioParameters = msg.radioParameters;
-            spiHall->releaseSlotSync();
-            xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
-        }
-    }
-}
-
 void Sx1262::sendPacket(const TxPacket &txPacket)
 {
 
-    if (hasGpsFix)
-    {
-        // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
-        configureSx1262(txPacket.radioParameters, true);
+    // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
+    configureSx1262(txPacket.radioParameters, true);
 
-        if (txPacket.radioParameters.config.mode == Radio::Mode::GFSK)
-        {
-            uint8_t frame[OpenAce::RADIO_MAX_FRAME_LENGTH * 2];
-            manchesterEncode(frame, txPacket.data.data(), txPacket.length);
-            sendGFSKPacket(txPacket.radioParameters, frame, txPacket.length * 2);
-        }
-        else if (txPacket.radioParameters.config.mode == Radio::Mode::LORA)
-        {
-            sendLORAPacket(txPacket.radioParameters, txPacket.data.data(), txPacket.length);
-        }
+    if (txPacket.radioParameters.config.mode == Radio::Mode::GFSK)
+    {
+        uint8_t frame[OpenAce::RADIO_MAX_FRAME_LENGTH * 2];
+        manchesterEncode(frame, txPacket.data.data(), txPacket.length);
+        sendGFSKPacket(txPacket.radioParameters, frame, txPacket.length * 2);
+    }
+    else if (txPacket.radioParameters.config.mode == Radio::Mode::LORA)
+    {
+        sendLORAPacket(txPacket.radioParameters, txPacket.data.data(), txPacket.length);
     }
 }
 
@@ -443,7 +441,7 @@ void Sx1262::sx1262Task(void *arg)
 {
     Sx1262 *sx1262 = static_cast<Sx1262 *>(arg);
     SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*sx1262, SpiModule::NAME));
-    uint32_t currentModeIsTX = false;
+    uint32_t currentModeIsTX = 0;
     while (true)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(10000)))
@@ -456,43 +454,60 @@ void Sx1262::sx1262Task(void *arg)
 
             if (notifyValue & TaskState::DIO1_RX_DONE)
             {
-                // clang-format off
-                aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, notifyValue]()
+
+                // Reading the data takes about 4ms
+                // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->currentRadioParameters.config.dataSource), CoreUtils::msInSecond());
+                if (sx1262->currentRadioParameters.config.mode == Radio::Mode::GFSK)
                 {
-                    // Reading the data takes about 4ms
-                    // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->currentRadioParameters.config.dataSource), CoreUtils::msInSecond());
-                    if (sx1262->currentRadioParameters.config.mode == Radio::Mode::GFSK)
-                    {
-                        sx1262->receiveGFSKPacket();
-                    }
-                    else if (sx1262->currentRadioParameters.config.mode == Radio::Mode::LORA)
-                    {
-                        sx1262->receiveLORAPacket();
-                    }
-                });
+                    auto m = Measure("Receive receiveGFSKPacket", 0);
+                    // clang-format off
+                    aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, notifyValue]()
+                        {
+                            sx1262->receiveGFSKPacket();
+                        });
+                    sx1262->sendToBus(sx1262->rxGfskMsg);
+                }
                 // clang-format on
-            }
+                else if (sx1262->currentRadioParameters.config.mode == Radio::Mode::LORA)
+                {
+                    {
+                        //                        auto m = Measure("Receive receiveLORAPacket", 0);
+                        // clang-format off
+                    aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, notifyValue]()
+                        {
+                            sx1262->receiveLORAPacket();
+                        });
+                        // clang-format on
+                    }
+                    sx1262->sendToBus(sx1262->rxLoraMsg);
+                }
+            };
 
             if (notifyValue & TaskState::DIO1_TX_DONE)
             {
-                currentModeIsTX = false;
+                currentModeIsTX = 0;
             }
 
-            if (currentModeIsTX)
+            if (currentModeIsTX && ((CoreUtils::timeUs32() - currentModeIsTX) < 20000))
             {
                 continue;
             }
 
-            if (TxPacket txPacket; sx1262->txQueue.pop(txPacket))
+            if (sx1262->hasGpsFix)
             {
-                // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
-                // clang-format off
-                aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, &txPacket, &currentModeIsTX]()
+                if (TxPacket txPacket; sx1262->txQueue.pop(txPacket))
                 {
-                    currentModeIsTX = true;
-                    sx1262->sendPacket(txPacket);
-                });
-                // clang-format on
+                    // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
+                    // clang-format off
+                    aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, &txPacket, &currentModeIsTX]()
+                    {
+                        auto m = Measure("Send Packet");
+                        currentModeIsTX = CoreUtils::timeUs32();
+                        sx1262->sendPacket(txPacket);    
+                        sx1262->statistics.transmittedPackets++;
+                    });
+                    // clang-format on
+                }
             }
 
             // clang-format off

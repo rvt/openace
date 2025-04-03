@@ -7,10 +7,6 @@
 #include <stdint.h>
 
 // ==========================================================================
-// a table for fast bit counting
-extern const uint8_t ByteCount1s[256];
-
-// ==========================================================================
 
 inline uint8_t Count1s(uint8_t Byte)
 {

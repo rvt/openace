@@ -135,6 +135,7 @@ void Bmp280::on_receive(const OpenAce::IdleMsg &msg)
     static uint8_t everyOnceAWhile = 0;
     (void)msg;
 
+    bool sendData = false;
     if (everyOnceAWhile % 30 == 0)
     {
         SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
@@ -151,10 +152,14 @@ void Bmp280::on_receive(const OpenAce::IdleMsg &msg)
             temperature = compensate_temp(temperature);
             pressure = compensate_pressure(pressure);
 
-            auto value = (pressure + compensation) / 100.0f;
-            statistics.lastPressurehPa = value;
-            getBus().receive(OpenAce::BarometricPressureMsg{value, CoreUtils::timeUs32()});
+            statistics.lastPressurehPa = (pressure + compensation) / 100.0f;;
+            sendData = true;
         };
+
+        if (sendData) {
+            getBus().receive(OpenAce::BarometricPressureMsg{statistics.lastPressurehPa, CoreUtils::timeUs32()});
+        }
+
     }
     everyOnceAWhile++;
 }

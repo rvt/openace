@@ -152,15 +152,16 @@ namespace OpenAce
         ADSL = 1,
         FANET = 2,
         OGN1 = 3,
+        _TRANSPROTOCOLS = 4, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         PAW = 4,
-        _TRANSPROTOCOLS = 5, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
-        MODES = 6,
-        ADSB = 8,
-        NONE = 9,
-        _ITEMS = 10   // Maximum number of items eg last item + 1
+        MODES = 5,
+        ADSB = 6,
+        NONE = 7,
+        _ITEMS = 8   // Maximum number of items eg last item + 1
     };
 
     // Get a string representation of a datasource
+    const char *dataSourceIntToString(uint8_t ds);
     const char *dataSourceToString(DataSource ds);
     DataSource stringToDataSource(const char *str);
 

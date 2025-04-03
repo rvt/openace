@@ -13,3 +13,6 @@
 [submodule "enclosure/NopSCADlib"]
 	path = enclosure/NopSCADlib
 	url = https://github.com/nophead/NopSCADlib
+[submodule "src/vendor/FANET"]
+	path = src/vendor/FANET
+	url = https://github.com/rvt/FANET

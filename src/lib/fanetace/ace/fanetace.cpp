@@ -125,6 +125,7 @@ void FanetAce::fanet_ackReceived(uint16_t id)
 
 void FanetAce::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
+    auto m = Measure("FanetAce::OwnshipPositionMsg", 5000);
     if (auto guard = SemaphoreGuard<5>(mutex))
     {
         ownshipPosition = msg.position;
@@ -160,7 +161,7 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
         FANET::TrackingPayload tp = etl::get<FANET::TrackingPayload>(packet.payload().value());
         auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, tp.latitude(), tp.longitude());
 
-        if (fromOwn.distance > 50000)
+        if (fromOwn.distance > distanceIgnore)
         {
             statistics.outOfDistance++;
             return;
@@ -197,7 +198,7 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
         FANET::GroundTrackingPayload tp = etl::get<FANET::GroundTrackingPayload>(packet.payload().value());
         auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, tp.latitude(), tp.longitude());
 
-        if (fromOwn.distance > 50000)
+        if (fromOwn.distance > distanceIgnore)
         {
             statistics.outOfDistance++;
             return;

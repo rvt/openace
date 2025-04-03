@@ -74,7 +74,7 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 /* OpenACE: Changed from 128 to 115 to 112*/
 /* ArduinoJson is memory hungry, need to change that for something else, but for now just lowered memory */
-#define configTOTAL_HEAP_SIZE                   (65*1024)
+#define configTOTAL_HEAP_SIZE                   (75*1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */

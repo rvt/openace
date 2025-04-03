@@ -24,10 +24,10 @@ Radio Protocol is the method used to communicate with other conspicuity devices
 | -------------- | ------------------ | ------------------ | ------------------ |
 | OGN            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ADS-L          | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| Flarm (2024)   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| FLARM (2024)   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| FANET          | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ADS-B out      | :no_entry:         | :heavy_check_mark: | :heavy_minus_sign: |
 | PAW            | :construction:     | :construction:     | :construction:     |
-| FANET          | :construction:     | :construction:     | :construction:     |
 
 \* Multi Protocol is a feature of OpenAce that allows to enable multiple protocols both send and receive on a single transceiver my sharing the air time. The Tranceiver will alternate between the different protocols and prioritice a specific protocol when it receives data for that protocol.
 

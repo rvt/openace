@@ -54,6 +54,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
         uint16_t deviceErrors = 0;
         uint32_t taskTimeout = 0; // THis is more of a indication that we did not receive a packet within OPENACE_SX126X_MAX_RX_TIME, not an error
         uint32_t receivedPackets = 0;
+        uint32_t transmittedPackets = 0;
         uint32_t buzyWaitsTimeout = 0;
         uint32_t queueFull = 0;
     } statistics;
@@ -140,7 +141,11 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<TxPacket, 4, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
     Radio::RadioParameters currentRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
+    Radio::RadioParameters newRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
 
+    // Keep two packages around that will get reasued and send to the message bus outside of a SPI block
+    OpenAce::RadioRxLoraMsg rxLoraMsg;
+    OpenAce::RadioRxGfskMsg rxGfskMsg;
 public:
     static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
 

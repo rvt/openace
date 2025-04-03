@@ -51,10 +51,18 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
     {
         stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",";
     }
+
+    stream << "\"relay\":[";
     for (uint8_t idx = 0; idx < 4; idx++)
     {
-        stream << "\"relay" << idx << "\":" << statistics.relay[idx] << ",";
+        stream << statistics.relay[idx];
+        if (idx < 3)
+        {
+            stream << ","; // Add a comma between elements
+        }
     }
+    stream << "],";
+
     stream << "\"receivedAircraftPositions\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
     stream << ",\"fecErr\":" << statistics.fecErr;
