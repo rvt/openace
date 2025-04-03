@@ -266,7 +266,7 @@ void Bluetooth::attContextCallback(void *context)
     auto handle = btContext->handle;
 
     auto [part, sendLength] = btContext->buffer.peek();
-    sendLength = etl::min(sendLength, static_cast<size_t>(btContext->mtu / 2));
+    sendLength = etl::min(sendLength, static_cast<size_t>(btContext->mtu / 4));
 
     if (sendLength > 0)
     {
