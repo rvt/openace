@@ -28,7 +28,7 @@ private:
         EXIT = 1 << 0,
         NEW = 1 << 2,
     };
-        struct
+    struct
     {
         uint32_t totalReceived=0;
         uint32_t baudrate = 0;
