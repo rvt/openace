@@ -29,7 +29,6 @@ struct AdsbCombinedDataStatus
     int16_t baro_gnss_diff;     // Difference between barometric altitude and GNSS altitude
     float lat;                  // lat
     float lon;                  // lon
-    uint8_t vert_rate_sign;     // Vert Rate Sign
     int16_t vert_rate;          // Vertical Rate
     bool airborne;              // true when airplane is airborne
     bool evict;                 // When set to true, the aircraft needs to be removed from cache in the next evict cycle
@@ -43,7 +42,7 @@ struct AdsbCombinedDataStatus
         : icao(icao_), icaoAddress("-"), messageStatus(0), lastSeen(0),
           velocity(0.0f), category(0), heading(0), gnsAltitude(0), raw_even_latitude(0),
           raw_even_longitude(0), raw_odd_latitude(0), raw_odd_longitude(0), baro_gnss_diff(0),
-          lat(0.0f), lon(0.0f), vert_rate_sign(0), vert_rate(0.0f), airborne(false), evict(false)
+          lat(0.0f), lon(0.0f), vert_rate(0.0f), airborne(false), evict(false)
     {
     }
 
@@ -52,7 +51,7 @@ struct AdsbCombinedDataStatus
         : icao(icao_), icaoAddress("-"), messageStatus(0), lastSeen(lastSeen_),
           velocity(0.0f), category(0), heading(0), gnsAltitude(0), raw_even_latitude(0),
           raw_even_longitude(0), raw_odd_latitude(0), raw_odd_longitude(0), baro_gnss_diff(0),
-          lat(0.0f), lon(0.0f), vert_rate_sign(0), vert_rate(0.0f), airborne(false), evict(false)
+          lat(0.0f), lon(0.0f), vert_rate(0.0f), airborne(false), evict(false)
     {
     }
 
@@ -234,12 +233,11 @@ public:
         currentDataStatus->heading = heading;
     }
 
-    void updateVelocityHeadingBaroDiff(uint16_t velocity, int16_t vert_rate, uint8_t vert_rate_sign, int16_t heading, int16_t baro_gnss_diff)
+    void updateVelocityHeadingBaroDiff(uint16_t velocity, int16_t vert_rate, int16_t heading, int16_t baro_gnss_diff)
     {
         currentDataStatus->messageStatus |= HAS_HEADING | HAS_VELOCITY;
         currentDataStatus->velocity = velocity;
         currentDataStatus->vert_rate = vert_rate;
-        currentDataStatus->vert_rate_sign = vert_rate_sign;
         currentDataStatus->heading = heading;
         currentDataStatus->baro_gnss_diff = baro_gnss_diff;
     }
