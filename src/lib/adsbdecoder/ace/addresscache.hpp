@@ -58,7 +58,7 @@ public:
 
     size_t size() const
     {
-        return SIZE;
+        return cache.size();
     }
 
     /**
