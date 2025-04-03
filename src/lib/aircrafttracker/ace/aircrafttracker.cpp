@@ -1,6 +1,6 @@
 #include "aircrafttracker.hpp"
 #include "ace/coreutils.hpp"
-#include "ace/coreutils.hpp"
+#include "ace/models.hpp"
 
 #include "etl/algorithm.h"
 
@@ -52,6 +52,11 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 {
     (void)path;
     stream << "{";
+    for (uint8_t i=0; i< static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS); i++) {
+        stream << "\"" << OpenAce::dataSourceIntToString(i) << "\":";
+        antennaRadiationPattern[i].serialize(stream);
+        stream << ",";
+    }
     stream << "\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"numberOfObjectsTracking\":" << trackedAircraft.size();
     stream << ",\"positionsProcessed\":" << statistics.positionsProcessed;
@@ -61,6 +66,12 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 
 void AircraftTracker::on_receive(const OpenAce::AircraftPositionMsg &msg)
 {
+    uint8_t dataSource = static_cast<uint8_t>(msg.position.dataSource);
+    if (dataSource < antennaRadiationPattern.size())
+    {
+        antennaRadiationPattern[dataSource].put(msg);
+    }
+
     if (!queue.full())
     {
         queue.push(msg.position);
@@ -129,9 +140,7 @@ void AircraftTracker::handleNew()
 void AircraftTracker::sendEligibleAircraft()
 {
     auto delay = trackedAircraft.next([this](const OpenAce::AircraftPositionInfo &position)
-        {
-            getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
-        });
+                                      { getBus().receive(OpenAce::TrackedAircraftPositionMsg(position)); });
     xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay == 0 ? 1 : delay), portMAX_DELAY);
 }
 
