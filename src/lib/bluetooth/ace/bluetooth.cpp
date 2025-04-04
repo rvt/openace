@@ -193,21 +193,19 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t 
     {
         if (!Bluetooth::connections.full())
         {
-            btstack_context_callback_registration_t callBack;
-            callBack.callback = &Bluetooth::attContextCallback;
-            Bluetooth::connections.emplace_back(handle, mtu, readyState, callBack);
+            Bluetooth::connections.emplace_back(handle, mtu, readyState, &Bluetooth::attContextCallback);
             return true;
         }
     }
     return false;
 }
 
-void Bluetooth::removeConnection(uint16_t handle)
+void Bluetooth::removeConnection(uint16_t hciHandle)
 {
     if (auto guard = SemaphoreGuard<portMAX_DELAY>(Bluetooth::mutex))
     {
-        Bluetooth::connections.remove_if([handle](const BtContext &ctx)
-                                         { return ctx.handle == handle; });
+        Bluetooth::connections.remove_if([hciHandle](const BtContext &ctx)
+                                         { return ctx.hciHandle == hciHandle; });
     }
 }
 
@@ -246,9 +244,9 @@ void Bluetooth::notifyAttServer()
         {
             bool requestSuccess = false;
             
-            if (btContext.handle)
+            if (btContext.hciHandle)
             {
-                requestSuccess = (att_server_request_to_send_notification(&btContext.callBack, btContext.handle) == ERROR_CODE_SUCCESS);
+                requestSuccess = (att_server_request_to_send_notification(&btContext.callBack, btContext.hciHandle) == ERROR_CODE_SUCCESS);
             }
             else if (btContext.rfcommChannelId)
             {
@@ -287,9 +285,10 @@ void Bluetooth::attContextCallback(void *context)
     {
         bool sendSuccess = false;
         
-        if (btContext->handle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+        if (btContext->hciHandle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
         {
-            sendSuccess = (att_server_notify(btContext->handle, btContext->attrHandle, 
+            // I think we need to use 
+            sendSuccess = (att_server_notify(btContext->hciHandle, btContext->attrHandle, 
                            reinterpret_cast<const uint8_t *>(part), sendLength) == ERROR_CODE_SUCCESS);
         }
         else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
@@ -313,7 +312,8 @@ void Bluetooth::attContextCallback(void *context)
                 
                 if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
                 {
-                    if (att_server_request_to_send_notification(&btContext->callBack, btContext->handle) != ERROR_CODE_SUCCESS)
+                    // I think we need to use att_server_request_can_send_now_event
+                    if (att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle) != ERROR_CODE_SUCCESS)
                     {
                         btContext->requiresNotification = true;
                     }

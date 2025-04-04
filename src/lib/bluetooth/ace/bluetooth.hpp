@@ -64,7 +64,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
     {
         union
         {
-            hci_con_handle_t handle;
+            hci_con_handle_t hciHandle;
             uint16_t rfcommChannelId;
         };
         uint8_t readyState; // Simple binary state machine, 0b01 = notification enabled, 0b100 = rfcomm channel opened, 0b010 = att channel open
@@ -74,15 +74,15 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
         uint16_t bufferOverrunErr;
         btstack_context_callback_registration_t callBack;
         CircularBuffer<CONNECTIONS_BUFFER_SIZE> buffer; // connection private data
-        BtContext(hci_con_handle_t handle_, uint16_t mtu_, uint8_t readyState_, btstack_context_callback_registration_t callBack_) : handle(handle_),
+        BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void * context)) : hciHandle(hciHandle_),
                                                                                                                                      readyState(readyState_),
                                                                                                                                      requiresNotification(true),
                                                                                                                                      mtu(mtu_),
                                                                                                                                      attrHandle(0),
-                                                                                                                                     bufferOverrunErr(0),
-                                                                                                                                     callBack(callBack_)
+                                                                                                                                     bufferOverrunErr(0)
         {
             callBack.context = this;
+            callBack.callback = callBack_;
         };
 
         // Disallow copy
@@ -130,13 +130,13 @@ private:
     /**
      * Get the connections context by Bluetooth handle
      */
-    static BluetoothConnections::iterator ctxByHandle(hci_con_handle_t handle)
+    static BluetoothConnections::iterator ctxByHandle(hci_con_handle_t hciHandle)
     {
         // clang-format off
         return etl::find_if(connections.begin(), connections.end(),
-            [handle](const BtContext &ctx)
+            [hciHandle](const BtContext &ctx)
             {
-                return ctx.handle == handle;
+                return ctx.hciHandle == hciHandle;
             });
         // clang-format on 
         }

@@ -1,9 +1,6 @@
 [submodule "src/vendor/ArduinoJson"]
 	path = src/vendor/ArduinoJson
 	url = https://github.com/bblanchon/ArduinoJson
-[submodule "src/vendor/etl"]
-	path = src/vendor/etl
-	url = https://github.com/ETLCPP/etl
 [submodule "enclosure/BOSL2"]
 	path = enclosure/BOSL2
 	url = https://github.com/revarbat/BOSL2
@@ -13,3 +10,6 @@
 [submodule "src/vendor/FANET"]
 	path = src/vendor/FANET
 	url = https://github.com/rvt/FANET
+[submodule "src/vendor/etl"]
+	path = src/vendor/etl
+	url = https://github.com/ETLCPP/etl/tree/20.40.0
