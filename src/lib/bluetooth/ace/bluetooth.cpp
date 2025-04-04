@@ -136,7 +136,7 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    if (auto guard = SemaphoreGuard<2>(mutex))
+    if (auto guard = SemaphoreGuard<5>(mutex))
     {
         (void)path;
         stream << "{";
@@ -195,7 +195,7 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t 
         {
             btstack_context_callback_registration_t callBack;
             callBack.callback = &Bluetooth::attContextCallback;
-            Bluetooth::connections.emplace_back(BtContext{handle, mtu, readyState, callBack});
+            Bluetooth::connections.emplace_back(handle, mtu, readyState, callBack);
             return true;
         }
     }
@@ -206,13 +206,8 @@ void Bluetooth::removeConnection(uint16_t handle)
 {
     if (auto guard = SemaphoreGuard<portMAX_DELAY>(Bluetooth::mutex))
     {
-        Bluetooth::connections.erase(
-            etl::remove_if(
-                Bluetooth::connections.begin(),
-                Bluetooth::connections.end(),
-                [handle](const BtContext &ctx)
-                { return ctx.handle == handle; }),
-            Bluetooth::connections.end());
+        Bluetooth::connections.remove_if([handle](const BtContext &ctx)
+                                         { return ctx.handle == handle; });
     }
 }
 
@@ -222,7 +217,7 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
 
     notifyAttServer();
 
-    btstack_run_loop_set_timer(ts, 250);
+    btstack_run_loop_set_timer(ts, 50);
     btstack_run_loop_add_timer(ts);
 }
 
@@ -236,23 +231,23 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
  */
 void Bluetooth::notifyAttServer()
 {
-    for (auto &ctx : Bluetooth::connections)
+    for (auto &btContext : Bluetooth::connections)
     {
         bool requiresNotification = true;
-        if (ctx.requiresNotification)
+        if (btContext.requiresNotification)
         {
-            if ((ctx.readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+            if (btContext.handle)
             {
-                rfcomm_request_can_send_now_event(ctx.rfcommChannelId);
+                att_server_request_to_send_notification(&btContext.callBack, btContext.handle);
                 requiresNotification = false;
             }
-            else if ((ctx.readyState & ATT_READYSTATE) == ATT_READYSTATE)
+            else if (btContext.rfcommChannelId)
             {
-                att_server_request_to_send_notification(&ctx.callBack, ctx.handle);
+                rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
                 requiresNotification = false;
             }
         }
-        ctx.requiresNotification = requiresNotification;
+        btContext.requiresNotification = requiresNotification;
     }
 }
 
@@ -260,41 +255,53 @@ void Bluetooth::attContextCallback(void *context)
 {
     (void)context;
 
-//    sendNotification(static_cast<Bluetooth::BtContext *>(context));
+    //    sendNotification(static_cast<Bluetooth::BtContext *>(context));
     auto btContext = static_cast<Bluetooth::BtContext *>(context);
 
-    auto handle = btContext->handle;
+    const char *part = nullptr;
+    size_t sendLength = 0;
 
-    auto [part, sendLength] = btContext->buffer.peek();
-    sendLength = etl::min(sendLength, static_cast<size_t>(btContext->mtu / 4));
+    if (auto guard = SemaphoreGuard<10>(mutex))
+    {
+        auto [peekPart, peekLength] = btContext->buffer.peek();
+        part = peekPart;
+        sendLength = static_cast<uint8_t>(etl::min(peekLength, static_cast<size_t>(btContext->mtu)));
+    }
 
     if (sendLength > 0)
     {
-        if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+        if (btContext->handle)
         {
-            rfcomm_send(handle, (uint8_t *)part, sendLength);
+            att_server_notify(btContext->handle, btContext->attrHandle, reinterpret_cast<const uint8_t *>(part), sendLength);
         }
-        else if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+        else if (btContext->rfcommChannelId)
         {
-            att_server_notify(handle, btContext->attrHandle, reinterpret_cast<const uint8_t *>(part), sendLength);
+            rfcomm_send(btContext->rfcommChannelId, (uint8_t *)part, sendLength);
         }
-        btContext->buffer.accepted(sendLength);
+
+        bool empty = true;
+        if (auto guard = SemaphoreGuard<10>(mutex))
+        {
+            btContext->buffer.accepted(sendLength);
+            empty = btContext->buffer.empty();
+        }
 
         // As long as there is data in the connections buffer, immediately request for sending for more data,
         // otherwise request set requireForNotification so the request will be done as soon as new data will be available
-        if (!btContext->buffer.empty())
+        if (!empty)
         {
             btContext->requiresNotification = false;
-            if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+
+            if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
             {
-                rfcomm_request_can_send_now_event(handle);
-            }
-            else if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
-            {
-                if (att_server_request_to_send_notification(&btContext->callBack, handle) != ERROR_CODE_SUCCESS)
+                if (att_server_request_to_send_notification(&btContext->callBack, btContext->handle) != ERROR_CODE_SUCCESS)
                 {
                     btContext->requiresNotification = true;
                 }
+            }
+            else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+            {
+                rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
             }
             return;
         }

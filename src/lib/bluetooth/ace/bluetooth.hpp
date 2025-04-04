@@ -85,40 +85,13 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
             callBack.context = this;
         };
 
+        // Disallow copy
         BtContext(const BtContext &) = delete;
         BtContext &operator=(const BtContext &) = delete;
 
-        // Move constructor
-        BtContext(BtContext &&other) noexcept
-            : handle(other.handle),
-              readyState(other.readyState),
-              requiresNotification(other.requiresNotification),
-              mtu(other.mtu),
-              attrHandle(other.attrHandle),
-              bufferOverrunErr(other.bufferOverrunErr),
-              callBack(other.callBack),
-              buffer(etl::move(other.buffer))
-        {
-            callBack.context = this;
-        }
-
-        // Move assignment operator
-        BtContext &operator=(BtContext &&other) noexcept
-        {
-            if (this != &other)
-            {
-                handle = other.handle;
-                readyState = other.readyState;
-                requiresNotification = other.requiresNotification;
-                mtu = other.mtu;
-                attrHandle = other.attrHandle;
-                bufferOverrunErr = other.bufferOverrunErr;
-                callBack = other.callBack;
-                buffer = etl::move(other.buffer);
-                callBack.context = this;
-            }
-            return *this;
-        }
+        // Disallow move
+        BtContext(BtContext &&) = delete;
+        BtContext &operator=(BtContext &&) = delete;
     };
 
 private:
