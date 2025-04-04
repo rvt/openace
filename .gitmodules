@@ -12,4 +12,4 @@
 	url = https://github.com/rvt/FANET
 [submodule "src/vendor/etl"]
 	path = src/vendor/etl
-	url = https://github.com/ETLCPP/etl/tree/20.40.0
+	url = https://github.com/ETLCPP/etl.git
