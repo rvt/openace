@@ -19,7 +19,7 @@ struct Measure
         auto duration = time_us_32() - start_;
         if (duration > alert_)
         {
-            printf("%s %ldus id:%ld\n", name_.begin(), duration, id_);
+            printf("%s %ldus id:%08lX\n", name_.begin(), duration, id_);
         }
     }
 

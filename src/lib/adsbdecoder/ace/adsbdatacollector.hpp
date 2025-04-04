@@ -13,7 +13,7 @@
 struct AdsbCombinedDataStatus
 {
     uint32_t icao; // ICAO address
-    OpenAce::IcaoAddress icaoAddress;
+    OpenAce::CallSign callSign;
     uint8_t messageStatus; // How complete this message is
     uint32_t lastSeen;
 
@@ -39,7 +39,7 @@ struct AdsbCombinedDataStatus
 
     // Constructor with icao for search functions.
     AdsbCombinedDataStatus(uint32_t icao_)
-        : icao(icao_), icaoAddress("-"), messageStatus(0), lastSeen(0),
+        : icao(icao_), callSign(""), messageStatus(0), lastSeen(0),
           velocity(0.0f), category(0), heading(0), gnsAltitude(0), raw_even_latitude(0),
           raw_even_longitude(0), raw_odd_latitude(0), raw_odd_longitude(0), baro_gnss_diff(0),
           lat(0.0f), lon(0.0f), vert_rate(0.0f), airborne(false), evict(false)
@@ -48,7 +48,7 @@ struct AdsbCombinedDataStatus
 
     // Constructor with icao and lastSeen parameters
     AdsbCombinedDataStatus(uint32_t icao_, uint32_t lastSeen_)
-        : icao(icao_), icaoAddress("-"), messageStatus(0), lastSeen(lastSeen_),
+        : icao(icao_), callSign(""), messageStatus(0), lastSeen(lastSeen_),
           velocity(0.0f), category(0), heading(0), gnsAltitude(0), raw_even_latitude(0),
           raw_even_longitude(0), raw_odd_latitude(0), raw_odd_longitude(0), baro_gnss_diff(0),
           lat(0.0f), lon(0.0f), vert_rate(0.0f), airborne(false), evict(false)
@@ -85,7 +85,7 @@ class AdsbDataCollector
     static constexpr uint8_t HAS_VELOCITY = 1 << 3;
     static constexpr uint8_t HAS_ALTITUDE = 1 << 4; //
     static constexpr uint8_t HAS_POSITION_UPDATED = 1 << 5;
-    static constexpr uint8_t CHECK_HAS_ICAOADDRESS = 1 << 6;
+    static constexpr uint8_t CHECK_HAS_CALLSIGN = 1 << 6;
     static constexpr uint8_t VALID_MASK = HAS_POSITION_ODD | HAS_POSITION_EVEN | HAS_HEADING | HAS_VELOCITY | HAS_ALTITUDE | HAS_POSITION_UPDATED;
 
     static constexpr uint32_t CLEAR_UP_SIZE = (SIZE * 90) / 100;
@@ -195,13 +195,14 @@ public:
         currentDataStatus->gnsAltitude = altitude;
     }
 
-    void updateIcaoAddress(const OpenAce::IcaoAddress &flight, uint8_t aircraft_type)
+    void updateCallsign(const OpenAce::IcaoAddress &flight, uint8_t aircraft_type)
     {
         (void)flight;
-        if (!(currentDataStatus->messageStatus & CHECK_HAS_ICAOADDRESS))
+        if (!(currentDataStatus->messageStatus & CHECK_HAS_CALLSIGN))
         {
-            currentDataStatus->messageStatus |= CHECK_HAS_ICAOADDRESS;
-            // currentDataStatus->icaoAddress = ""; // flight; For consistency current icao. When flight is needed, properly an exception for ADSB needs to be made in aircraftTracker
+            currentDataStatus->messageStatus |= CHECK_HAS_CALLSIGN;
+            currentDataStatus->callSign = flight;
+            etl::trim_whitespace(currentDataStatus->callSign);
             currentDataStatus->category = aircraft_type;
         }
     }

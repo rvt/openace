@@ -136,7 +136,7 @@ public:
 
     /**
      * Calculate the time from referenceUs to us
-     * If referenceUs is in the past, the result is negative
+     * If referenceUs is in the past, the result is negative, eg the event happened
      */
     __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
     {
@@ -425,13 +425,14 @@ public:
      * Later the idea is that it will use DDB to get the registration based on aircraftID and addressType
      *
      */
-    static OpenAce::IcaoAddress makeIcaoAddress(uint32_t aircraftID, OpenAce::AddressType addressType)
+    static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, OpenAce::AddressType addressType, etl::string_view callSign="")
     {
         (void)addressType;
-        OpenAce::IcaoAddress icaoAddress;
-        etl::string_stream stream(icaoAddress);
-        stream << etl::hex <<  etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID;
-        return icaoAddress;
+        stream << etl::hex <<  etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << OpenAce::RESET_FORMAT;
+        if (callSign.size() > 0)
+        {
+            stream << "!" <<  callSign;
+        }
     }
 
     static uint8_t getHexVal(char hex)

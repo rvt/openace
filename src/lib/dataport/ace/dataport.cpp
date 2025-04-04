@@ -65,8 +65,9 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
            << position.relNorthFromOwn << ","                                 // Relative North Meters
            << position.relEastFromOwn << ","                                  // Relative East Meters
            << (position.altitudeWgs84 - ownshipPosition.altitudeWgs84) << "," // Relative Vertical Meters
-           << getPFLAAAddressType(position.addressType) << ","                // ID Type
-           << position.icaoAddress << ","                                     // HEXCode example 484FB3!PH-DHA
+           << getPFLAAAddressType(position.addressType) << ",";                // ID Type
+           CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
+    stream << ","                                              // HEXCode example 484FB3!PH-DHA
            << position.course << ","                                          // Heading
            << ","                                                             // TurnRate kept empty
            << groundSpeed << ","                                              // Ground Speed
@@ -77,7 +78,7 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
            << "";                                                             // RSSI
 
     CoreUtils::addChecksumToNMEA(pflaa);
-    // printf("pflaa t:%08ld %s\n", CoreUtils::timeUs32() / 1'000, pflaa.c_str());
+    // printf("t:%08ld %s", CoreUtils::timeMs32(), pflaa.c_str());
     getBus().receive(OpenAce::DataPortMsg{pflaa});
     statistics.messages++;
 }

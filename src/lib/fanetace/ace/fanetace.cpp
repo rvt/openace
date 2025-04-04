@@ -90,7 +90,7 @@ void FanetAce::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
                           .payload(payload)
                           .forward(true);
 
-        if (auto guard = SemaphoreGuard<1>(mutex))
+        if (auto guard = SemaphoreGuard<5>(mutex))
         {
             radioParameters = msg.radioParameters;
             radioNo = msg.radioNo;
@@ -138,7 +138,7 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
     statistics.received++;
 
     FANET::Header::MessageType messageType;
-    if (auto guard = SemaphoreGuard<1>(mutex))
+    if (auto guard = SemaphoreGuard<5>(mutex))
     {
         messageType = protocol.handleRx(msg.rssidBm, msg.frame);
     }

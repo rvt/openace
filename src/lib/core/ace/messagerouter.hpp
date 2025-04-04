@@ -60,6 +60,7 @@ namespace OpenAce
         //*******************************************
         virtual void receive(const etl::imessage &message) override
         {
+            static uint32_t previous;
             /**
              * Specify extra delay for configuration changes to ensure they are delivered
              * TODO: For development purpose create statistics of the message ID's per
@@ -70,7 +71,8 @@ namespace OpenAce
 
             if constexpr (SHOW_MESSAGEBUS_TIMING)
             {
-                auto m = Measure("Message bus", 15000, message.get_message_id() );
+                auto m = Measure("Message bus", 15000, previous | message.get_message_id() );
+                previous = message.get_message_id() << 8;
                 processMessage(message);        
             }
             else

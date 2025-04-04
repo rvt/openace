@@ -117,11 +117,9 @@ private:
     bool removeExpired()
     {
         bool cleaned = false;
-        auto timeStamp = CoreUtils::timeUs32();
-
         for (auto it = trackedAircraft.cbegin(); it != trackedAircraft.cend();)
         {
-            if (it->position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC <= timeStamp)
+            if (CoreUtils::isUsReached((it->position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC)))
             {
                 // printf("Erase     t:%08ld %06lX\n", timeStamp / 1'000'000, it->position.address);
                 it = trackedAircraft.erase(it);
@@ -210,15 +208,12 @@ public:
         // Add/update entry
         auto it = trackedAircraft.find({0, OpenAce::AircraftPositionInfo{position.address}});
         if (it == trackedAircraft.end()) {
-            position.icaoAddress = CoreUtils::makeIcaoAddress(position.address, position.addressType);
             trackedAircraft.insert(TrackerEntry{position.timestamp, position});
         } else {
-            position.icaoAddress = it->position.icaoAddress;
             it->position  = position;
             it->sendTime  = position.timestamp;
         }
 
-        // printf("Insert    t:%08ld %06lX\n", CoreUtils::timeUs32() / 1'000'000, position.address);
         return true;
     }
 
@@ -229,18 +224,17 @@ public:
      */
     uint16_t next(const etl::delegate<void(const OpenAce::AircraftPositionInfo &)> &msg)
     {
-        auto currentTime = CoreUtils::timeUs32();
+       auto currentTime = CoreUtils::timeUs32();
        for (auto it = trackedAircraft.begin(); it != trackedAircraft.end(); ++it)
         {
-            if (CoreUtils::isUsReached(it->sendTime, currentTime))
-            {
+           if (CoreUtils::isUsReached(it->sendTime, currentTime))
+           {
                 msg(it->position);
                 it->sendTime = currentTime + HEARTBEAT_TIME;
-            }
+           }
         }
     
-        uint8_t currentSlice = (CoreUtils::timeMs32() % 1'000) / SLICE_SIZE_MS;
-        return CoreUtils::msDelayToReference((currentSlice + 1) * SLICE_SIZE_MS);
+        return SLICE_SIZE_MS;
     }
 
     /**

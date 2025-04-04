@@ -38,6 +38,7 @@ namespace OpenAce
     // @todo: added one extra word because 'somwhere' I think there is an issue where we corrupt the stack
     using NMEAString = etl::string<NMEA_MAX_LENGTH>; // NMEA sentence
     using IcaoAddress = etl::string<8>;              // ICAO Address as hex string
+    using CallSign    = etl::string<8>;              // ICAO Address as hex string
     using ADSBString = etl::string<MAX_LENGTH_ADSB>; // ADSB message, similar as from dump1090
     using ConfigString = etl::string<25>;            // Maximum length of value from the configuration
     using Modulename = etl::string<17>;

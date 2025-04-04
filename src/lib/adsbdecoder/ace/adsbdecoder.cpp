@@ -74,7 +74,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         return;
     }
 
-    if (auto guard = SemaphoreGuard<100>(mutex))
+    if (auto guard = SemaphoreGuard<5>(mutex))
     {
         // printf("Processing  a:%06lX \n", mm.aa);
         auto usTime = CoreUtils::timeUs32();
@@ -98,7 +98,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         adsbDataCollector.updateAirborne(true);
         if (mm.metype >= 1 && mm.metype <= 4)
         {
-            adsbDataCollector.updateIcaoAddress(mm.flight, mm.aircraft_type);
+            adsbDataCollector.updateCallsign(mm.flight, mm.aircraft_type);
         }
         else if ((mm.metype >= 9 && mm.metype <= 18) || (mm.metype >= 20 && mm.metype <= 22))
         {
@@ -185,7 +185,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             // printf("Received  t:%06ld a:%06lX gnsAlt:%ldm gnsAlt:%0.2fft\n", usTime / 1'000'000, current.icao, current.gnsAltitude, current.gnsAltitude * M_TO_FT);
             getBus().receive(OpenAce::AircraftPositionMsg{
                 {usTime - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
-                 current.icaoAddress,
+                 current.callSign,
                  current.icao,
                  OpenAce::AddressType::ICAO,
                  OpenAce::DataSource::ADSB,
@@ -205,6 +205,8 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                  fromOwn.relEast,
                  fromOwn.bearing}});
         }
+    } else {
+        statistics.msgMissed++;
     }
 }
 
@@ -235,6 +237,7 @@ void ADSBDecoder::getData(etl::string_stream &stream, const etl::string_view pat
     stream << ",\"ignoredAircraftFull\":" << statistics.ignoredAircraftFull;
     stream << ",\"totalMsgReceived\":" << statistics.totalMsgReceived;
     stream << ",\"totalMsgIgnored\":" << statistics.totalMsgIgnored;
+    stream << ",\"msgMissed\":" << statistics.msgMissed;    
     stream << ",\"filterRadius\":" << filterRadius;
     stream << "}\n";
 }

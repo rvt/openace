@@ -15,7 +15,7 @@ namespace OpenAce
             int16_t maxRssiDbm; // the rssi that was received by maxDistance
             uint32_t avgDistance;
             uint32_t maxDistance;
-            Measurement() : avgRssiDbm(-128), maxRssiDbm(-100), avgDistance(0), maxDistance(0)
+            Measurement() : avgRssiDbm(-128), maxRssiDbm(-128), avgDistance(0), maxDistance(0)
             {
             }
 

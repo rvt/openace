@@ -15,6 +15,7 @@
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "pico/btstack_cyw43.h"
+#include "hardware/watchdog.h"
 
 /* Vendor. */
 #include "etl/list.h"
@@ -263,8 +264,10 @@ static void loadModules(void *arch)
 static void openAceIdlTask(void *arch)
 {
     (void)arch;
+    watchdog_enable(3000, 0);
     while (true)
     {
+        watchdog_update(); 
         if (cyw43_arch_async_context())
         {
             // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
@@ -277,7 +280,7 @@ static void openAceIdlTask(void *arch)
         }
         else
         {
-            vTaskDelay(5000);
+            vTaskDelay(2000);
             puts("Wifi module not yet enabled");
         }
     }

@@ -233,79 +233,101 @@ void Bluetooth::notifyAttServer()
 {
     for (auto &btContext : Bluetooth::connections)
     {
-        bool requiresNotification = true;
-        if (btContext.requiresNotification)
+        bool hasData = false;
+        
+        // Check if there's data in the buffer
+        if (auto guard = SemaphoreGuard<5>(mutex))
         {
+            hasData = !btContext.buffer.empty();
+        }
+        
+        // Only request notification if we have data to send or we're already flagged for notification
+        if (hasData || btContext.requiresNotification) 
+        {
+            bool requestSuccess = false;
+            
             if (btContext.handle)
             {
-                att_server_request_to_send_notification(&btContext.callBack, btContext.handle);
-                requiresNotification = false;
+                requestSuccess = (att_server_request_to_send_notification(&btContext.callBack, btContext.handle) == ERROR_CODE_SUCCESS);
             }
             else if (btContext.rfcommChannelId)
             {
                 rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
-                requiresNotification = false;
+                requestSuccess = true;
             }
+            
+            // Only mark as not requiring notification if request was successful
+            btContext.requiresNotification = !requestSuccess;
         }
-        btContext.requiresNotification = requiresNotification;
     }
 }
 
 void Bluetooth::attContextCallback(void *context)
 {
-    (void)context;
-
-    //    sendNotification(static_cast<Bluetooth::BtContext *>(context));
     auto btContext = static_cast<Bluetooth::BtContext *>(context);
-
+    
+    // Try to send as much data as possible up to the MTU
     const char *part = nullptr;
     size_t sendLength = 0;
+    bool bufferHasMoreData = false;
 
     if (auto guard = SemaphoreGuard<10>(mutex))
     {
         auto [peekPart, peekLength] = btContext->buffer.peek();
         part = peekPart;
-        sendLength = static_cast<uint8_t>(etl::min(peekLength, static_cast<size_t>(btContext->mtu)));
+        
+        // Ensure we don't exceed the MTU and we actually have data
+        if (peekPart && peekLength > 0) {
+            sendLength = static_cast<uint8_t>(etl::min(peekLength, static_cast<size_t>(btContext->mtu)));
+            bufferHasMoreData = (peekLength > sendLength);
+        }
     }
 
     if (sendLength > 0)
     {
-        if (btContext->handle)
+        bool sendSuccess = false;
+        
+        if (btContext->handle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
         {
-            att_server_notify(btContext->handle, btContext->attrHandle, reinterpret_cast<const uint8_t *>(part), sendLength);
+            sendSuccess = (att_server_notify(btContext->handle, btContext->attrHandle, 
+                           reinterpret_cast<const uint8_t *>(part), sendLength) == ERROR_CODE_SUCCESS);
         }
-        else if (btContext->rfcommChannelId)
+        else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
         {
-            rfcomm_send(btContext->rfcommChannelId, (uint8_t *)part, sendLength);
-        }
-
-        bool empty = true;
-        if (auto guard = SemaphoreGuard<10>(mutex))
-        {
-            btContext->buffer.accepted(sendLength);
-            empty = btContext->buffer.empty();
+            sendSuccess = (rfcomm_send(btContext->rfcommChannelId, (uint8_t *)part, sendLength) == ERROR_CODE_SUCCESS);
         }
 
-        // As long as there is data in the connections buffer, immediately request for sending for more data,
-        // otherwise request set requireForNotification so the request will be done as soon as new data will be available
-        if (!empty)
+        if (sendSuccess)
         {
-            btContext->requiresNotification = false;
-
-            if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+            // Only update the buffer if send was successful
+            if (auto guard = SemaphoreGuard<10>(mutex))
             {
-                if (att_server_request_to_send_notification(&btContext->callBack, btContext->handle) != ERROR_CODE_SUCCESS)
+                btContext->buffer.accepted(sendLength);
+                bufferHasMoreData = !btContext->buffer.empty();
+            }
+
+            // Immediately request to send more if we have more data
+            if (bufferHasMoreData)
+            {
+                btContext->requiresNotification = false;
+                
+                if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
                 {
-                    btContext->requiresNotification = true;
+                    if (att_server_request_to_send_notification(&btContext->callBack, btContext->handle) != ERROR_CODE_SUCCESS)
+                    {
+                        btContext->requiresNotification = true;
+                    }
                 }
+                else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+                {
+                    rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
+                }
+                return;
             }
-            else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-            {
-                rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
-            }
-            return;
         }
     }
+    
+    // If we reach here, either we couldn't send, had nothing to send, or emptied the buffer
     btContext->requiresNotification = true;
 }
 

@@ -42,6 +42,7 @@ private:
         uint32_t ignoredAircraftFull = 0;
         uint32_t totalMsgReceived = 0;
         uint32_t totalMsgIgnored = 0;
+        uint32_t msgMissed = 0;
     } statistics;
 
 

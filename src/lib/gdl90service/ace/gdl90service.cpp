@@ -108,7 +108,6 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
     const OpenAce::OwnshipPositionInfo &pos = msg.position;
 
-    OpenAce::IcaoAddress icaoAddress("");
     uint32_t latitude;
     uint32_t longitude;
     uint32_t altitude;
@@ -140,7 +139,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
             vert_velocity,
             track_hdg,
             aircraftTypeToEmitter(category),
-            icaoAddress, // [0-9A-Z]
+            "", // [0-9A-Z]
             GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
@@ -205,7 +204,7 @@ void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
                                                  vert_velocity,
                                                  track_hdg,
                                                  aircraftTypeToEmitter(pos.aircraftType),
-                                                 pos.icaoAddress, /* // [0-9A-Z] TODO: Can we use DDB ?? */
+                                                 pos.callSign, /* // [0-9A-Z] TODO: Can we use DDB ?? */
                                                  GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);

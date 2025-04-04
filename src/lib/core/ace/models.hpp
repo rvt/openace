@@ -189,8 +189,8 @@ namespace OpenAce
      */
     struct AircraftPositionInfo
     {
-        uint32_t timestamp; // DEPRECATED: We can just use relative times (to be added still) Timestamp when the position was received in ms Since Epoch
-        OpenAce::IcaoAddress icaoAddress;
+        uint32_t timestamp; 
+        OpenAce::CallSign callSign;
 
         AircraftAddress address;
         AddressType addressType;
@@ -213,12 +213,12 @@ namespace OpenAce
         int32_t relEastFromOwn;   // relEast to ownship in meters
         int16_t bearingFromOwn;   // Bearing to ownship in degrees
 
-        AircraftPositionInfo(uint32_t timestamp_, OpenAce::IcaoAddress icaoAddress_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeWgs84_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
-            : timestamp(timestamp_), icaoAddress(icaoAddress_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), altitudeWgs84(altitudeWgs84_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_), bearingFromOwn(bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, OpenAce::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeWgs84_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
+            : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), altitudeWgs84(altitudeWgs84_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_), bearingFromOwn(bearingFromOwn_)
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), icaoAddress(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeWgs84(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeWgs84(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
         {
         }
 
