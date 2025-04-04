@@ -4,9 +4,6 @@
 [submodule "src/vendor/etl"]
 	path = src/vendor/etl
 	url = https://github.com/ETLCPP/etl
-[submodule "src/vendor/Catch2"]
-	path = src/vendor/Catch2
-	url = https://github.com/catchorg/Catch2
 [submodule "enclosure/BOSL2"]
 	path = enclosure/BOSL2
 	url = https://github.com/revarbat/BOSL2
