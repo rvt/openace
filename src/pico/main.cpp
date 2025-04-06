@@ -1,6 +1,6 @@
 #include "main.h"
 #include "build_time.hpp"
-#include "default_config.hpp"
+#include "generated/default_config.hpp"
 
 /* System. */
 #include <stdio.h>

@@ -20,7 +20,7 @@ def write_cpp_header(data, file_path):
     with open(file_path, 'w') as file:
 
         file.write("#pragma once\n\n")
-        file.write("#include <stdint.h>\n\n")        
+        file.write("#include <stdint.h>\n\n")
 
         json_string = json.dumps(data, separators=(',', ':'))
         json_bytes = [f"0x{ord(char):02X}" for char in json_string]
@@ -30,8 +30,8 @@ def write_cpp_header(data, file_path):
 
         for i, byte in enumerate(json_bytes):
             if i % 20 == 0:
-                file.write("\n    ")
-            file.write(f"{byte}, ")
+                file.write("\n")
+            file.write(f"{byte},")
 
         file.write("0x00};\n")  # Null terminator
 
