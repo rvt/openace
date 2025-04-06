@@ -41,6 +41,11 @@ public:
         return time_us_32() - timeUs32PpsOffset;
     }
 
+    __force_inline static uint32_t timeUs32Raw()
+    {
+        return time_us_32();
+    }
+
     __force_inline static uint64_t timeUs64()
     {
         // time_us_64 and time_us_32 use the same hardware time, thus offset is also the same
@@ -74,6 +79,10 @@ public:
     __force_inline static bool isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
     {
         return usToReference(referenceUs, us) < 0;
+    }
+    __force_inline static bool isUsReachedRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
+    {
+        return usToReferenceRaw(referenceUs, us) < 0;
     }
 
     /**
@@ -139,6 +148,10 @@ public:
      * If referenceUs is in the past, the result is negative, eg the event happened
      */
     __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
+    {
+        return static_cast<int32_t>(referenceUs - us);
+    }
+    __force_inline static int32_t usToReferenceRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
     {
         return static_cast<int32_t>(referenceUs - us);
     }

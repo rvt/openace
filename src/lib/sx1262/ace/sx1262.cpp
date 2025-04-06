@@ -37,6 +37,12 @@ OpenAce::PostConstruct Sx1262::postConstruct()
         return OpenAce::PostConstruct::DEP_NOT_FOUND;
     }
 
+    xMutex = xSemaphoreCreateMutex();
+    if (xMutex == nullptr)
+    {
+        return OpenAce::PostConstruct::MUTEX_ERROR;
+    }
+
     // Chip select is active-low, so we'll initialise it to a driven-high state
     gpio_init(csPin);
     gpio_set_dir(csPin, GPIO_OUT);
@@ -94,10 +100,10 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << ",\"buzyWaitsTimeout\":" << statistics.buzyWaitsTimeout;
     stream << ",\"txQueueFull\":" << statistics.queueFull;
     stream << ",\"txQueueSize\":" << txQueue.size();
-    stream << ",\"mode\":" << "\"" << Radio::modeString(currentRadioParameters.config.mode) << "\"";
-    stream << ",\"dataSource\":" << "\"" << OpenAce::dataSourceToString(currentRadioParameters.config.dataSource) << "\"";
-    stream << ",\"frequency\":" << currentRadioParameters.frequency;
-    stream << ",\"powerdBm\":" << currentRadioParameters.powerdBm;
+    stream << ",\"mode\":" << "\"" << Radio::modeString(rxRadioParameters.config.mode) << "\"";
+    stream << ",\"dataSource\":" << "\"" << OpenAce::dataSourceToString(rxRadioParameters.config.dataSource) << "\"";
+    stream << ",\"frequency\":" << rxRadioParameters.frequency;
+    stream << ",\"powerdBm\":" << rxRadioParameters.powerdBm;
     stream << ",\"txEnabled\":" << txEnabled;
     stream << ",\"radio\":" << radioNo;
     stream << ",\"hasGpsFix\":" << hasGpsFix;
@@ -113,7 +119,7 @@ void Sx1262::on_receive(const OpenAce::RadioTxFrameMsg &msg)
         {
             statistics.queueFull++;
         }
-        else
+        else if (hasGpsFix)
         {
             txQueue.push(msg.txPacket);
         }
@@ -139,13 +145,11 @@ void Sx1262::on_receive(const OpenAce::RadioControlMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
-        auto m = Measure("Sx1262::RadioControlMsg", 5000);
-        if (spiHall->acquireSlotSync(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY))
+        if (auto guard = SemaphoreGuard<5>(xMutex))
         {
-            currentRadioParameters = msg.radioParameters;
-            spiHall->releaseSlotSync();
+            newRxRadioParameters = msg.radioParameters;
+            xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
         }
-        xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
     }
 }
 
@@ -229,7 +233,7 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
         // printf("Radio %d changed frequency from %ld to %ld\n", radioNo, lastParameters.frequency, newParameters.frequency);
     }
 
-    if (newParameters.frequency != currentRadioParameters.frequency || true)
+    if (newParameters.frequency != rxRadioParameters.frequency || true)
     {
         sx126x_set_rf_freq(this, newParameters.frequency + offsetHz);
     }
@@ -336,7 +340,7 @@ void Sx1262::receiveGFSKPacket()
             uint8_t data[maxFrameLength];
             sx126x_read_buffer(this, 0x80, data, receivedFrameLength);
 
-            rxGfskMsg = OpenAce::RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), pkt_status.rssi_avg, currentRadioParameters.frequency, currentRadioParameters.config.dataSource};
+            rxGfskMsg = OpenAce::RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), pkt_status.rssi_avg, rxRadioParameters.frequency, rxRadioParameters.config.dataSource};
 
             // Seems like all GFSK packets are Manchester encoded, so we just decode here directly
             manchesterDecode((uint8_t *)rxGfskMsg.frame, (uint8_t *)rxGfskMsg.err, data, receivedFrameLength);
@@ -365,7 +369,7 @@ void Sx1262::receiveLORAPacket()
         uint8_t receivedFrameLength = receivedPacketLength();
         if (receivedFrameLength > 0 && receivedFrameLength <= OpenAce::MAX_LORA_MSG_SIZE)
         {
-            rxLoraMsg = OpenAce::RadioRxLoraMsg(CoreUtils::secondsSinceEpoch(), pkt_status.signal_rssi_pkt_in_dbm, currentRadioParameters.frequency, currentRadioParameters.config.dataSource);
+            rxLoraMsg = OpenAce::RadioRxLoraMsg(CoreUtils::secondsSinceEpoch(), pkt_status.signal_rssi_pkt_in_dbm, rxRadioParameters.frequency, rxRadioParameters.config.dataSource);
             rxLoraMsg.frame.resize(receivedFrameLength);
             sx126x_read_buffer(this, 0x80, rxLoraMsg.frame.data(), receivedFrameLength);
             // dumpBuffer((uint8_t *)RadioRxGfskMsg.frame, RadioRxGfskMsg.length);
@@ -394,6 +398,7 @@ void Sx1262::waitBusy(uint16_t minimumDelay) const
 
 void Sx1262::standBy()
 {
+    // This takes about100us
     waitBusy();
 
     // .715
@@ -441,10 +446,11 @@ void Sx1262::sx1262Task(void *arg)
 {
     Sx1262 *sx1262 = static_cast<Sx1262 *>(arg);
     SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*sx1262, SpiModule::NAME));
-    uint32_t currentModeIsTX = 0;
+    uint32_t txExpiration = 0;
+    bool hasNewConfig = false;
     while (true)
     {
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(10000)))
+        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(2000)))
         {
             if (notifyValue & TaskState::DELETE)
             {
@@ -452,76 +458,110 @@ void Sx1262::sx1262Task(void *arg)
                 return;
             }
 
-            if (notifyValue & TaskState::DIO1_RX_DONE)
+            // When a new configuration mark it with a boolean as it needs to be processed later
+            if (notifyValue & TaskState::HANDLE_NEW_CONFIG)
             {
+                hasNewConfig = true;
+            }
 
-                // Reading the data takes about 4ms
-                // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->currentRadioParameters.config.dataSource), CoreUtils::msInSecond());
-                if (sx1262->currentRadioParameters.config.mode == Radio::Mode::GFSK)
-                {
-                    auto m = Measure("Receive receiveGFSKPacket", 0);
-                    // clang-format off
-                    aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, notifyValue]()
-                        {
-                            sx1262->receiveGFSKPacket();
-                        });
-                    sx1262->sendToBus(sx1262->rxGfskMsg);
-                }
-                // clang-format on
-                else if (sx1262->currentRadioParameters.config.mode == Radio::Mode::LORA)
-                {
-                    {
-                        //                        auto m = Measure("Receive receiveLORAPacket", 0);
-                        // clang-format off
-                    aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, notifyValue]()
-                        {
-                            sx1262->receiveLORAPacket();
-                        });
-                        // clang-format on
-                    }
-                    sx1262->sendToBus(sx1262->rxLoraMsg);
-                }
-            };
-
+            // After TX, go back to RX
             if (notifyValue & TaskState::DIO1_TX_DONE)
             {
-                currentModeIsTX = 0;
-            }
-
-            if (currentModeIsTX && ((CoreUtils::timeUs32() - currentModeIsTX) < 20000))
-            {
-                continue;
-            }
-
-            if (sx1262->hasGpsFix)
-            {
-                if (TxPacket txPacket; sx1262->txQueue.pop(txPacket))
+                bool _;
+                if (auto guard = aceSpi->getLock(_))
                 {
-                    // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
-                    // clang-format off
-                    aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262, &txPacket, &currentModeIsTX]()
+                    // printf("%8ld Listen Packet after TX ds:%s\n", CoreUtils::timeUs32() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+                    sx1262->configureSx1262(sx1262->rxRadioParameters);
+                    sx1262->listen();
+                }
+                txExpiration = 0;
+            }
+
+            // When in TX mode, the tranceiver cannot be reconfigured and we need to wait for the TX to finish
+            if (txExpiration)
+            {
+                // Test for TX in progress, if so continue and wait until DIO1_TX_DONE or any other notification and this will be tested
+                if (!CoreUtils::isUsReachedRaw(txExpiration))
+                {
+                    continue;
+                }
+                txExpiration = 0;
+            }
+
+            // When a packet is received, receive it and directly reconfigure the transceiver.. then send it to the bus
+            if (notifyValue & TaskState::DIO1_RX_DONE)
+            {
+                // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource), CoreUtils::msInSecond());
+                if (sx1262->rxRadioParameters.config.mode == Radio::Mode::GFSK)
+                {
+                    auto m = Measure("Receive receiveGFSKPacket", 0);
+                    bool doSend;
+                    if (auto guard = aceSpi->getLock(doSend))
                     {
-                        auto m = Measure("Send Packet");
-                        currentModeIsTX = CoreUtils::timeUs32();
-                        sx1262->sendPacket(txPacket);    
-                        sx1262->statistics.transmittedPackets++;
-                    });
-                    // clang-format on
+                        sx1262->receiveGFSKPacket();
+                        sx1262->configureSx1262(sx1262->rxRadioParameters);
+                        sx1262->listen();
+                    }
+                    if (doSend)
+                    {
+                        sx1262->sendToBus(sx1262->rxGfskMsg);
+                    }
+                }
+                // clang-format on
+                else if (sx1262->rxRadioParameters.config.mode == Radio::Mode::LORA)
+                {
+                    auto m = Measure("Receive receiveLoraPacket", 0);
+                    bool doSend;
+                    if (auto guard = aceSpi->getLock(doSend))
+                    {
+                        sx1262->receiveLORAPacket();
+                        sx1262->configureSx1262(sx1262->rxRadioParameters);
+                        sx1262->listen();
+                    }
+                    if (doSend)
+                    {
+                        sx1262->sendToBus(sx1262->rxLoraMsg);
+                    }
+                }
+                // printf("%8ld RX Packet ds:%s\n", CoreUtils::timeUs32() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+            };
+
+            // Only in TX 
+            if (TxPacket txPacket; sx1262->txQueue.pop(txPacket))
+            {
+                bool _;
+                if (auto guard = aceSpi->getLock(_))
+                {
+                    auto m = Measure("Send Packet");
+                    // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32() / 1000, OpenAce::dataSourceToString(txPacket.radioParameters.config.dataSource));
+                    txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
+                    sx1262->sendPacket(txPacket);
+                    sx1262->statistics.transmittedPackets++;
+                    continue; // Need to wait for TX done
                 }
             }
 
-            // clang-format off
-            aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&sx1262]()
+            // Finally, if only a new configuration was set, reconfigure the tranceiver
+            if (hasNewConfig)
             {
-                sx1262->configureSx1262(sx1262->currentRadioParameters);
-                sx1262->listen();
-            });
-            // clang-format on
+                if (auto g = SemaphoreGuard<5>(sx1262->xMutex))
+                {
+                    sx1262->rxRadioParameters = sx1262->newRxRadioParameters;
+                    // printf("%8ld New Config ds:%s\n", CoreUtils::timeUs32() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+                    hasNewConfig = false;
+                }
+                bool _;
+                if (auto guard = aceSpi->getLock(_))
+                {
+                    sx1262->configureSx1262(sx1262->rxRadioParameters);
+                    sx1262->listen();
+                }
+            }
         }
         else
         {
             // End up here when timeout, only count in statistics so we know this is happening
-            if (sx1262->currentRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
+            if (sx1262->rxRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
             {
                 sx1262->statistics.taskTimeout++;
             }

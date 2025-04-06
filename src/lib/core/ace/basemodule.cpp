@@ -87,9 +87,6 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
             if (strcmp(it->second.module->name().cbegin(), requesting.cbegin()) == 0)
             {
                 return it->second.module;
-                // if (it->second.result == OpenAce::PostConstruct::OK) {
-                //     return it->second.module;
-                // }
             }
         }
         printf("Module %s requests dependecy on %s but it is not registered\n", that.name().cbegin(), requesting.cbegin());

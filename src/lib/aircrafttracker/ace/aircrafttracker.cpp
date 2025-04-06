@@ -139,12 +139,10 @@ void AircraftTracker::handleNew()
 
 void AircraftTracker::sendEligibleAircraft()
 {
-    // clang-format off
-    auto delay = trackedAircraft.next([this](const OpenAce::AircraftPositionInfo &position)
-        { 
-            getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
-        });
-    // clang-format on                                    
+    auto delay = trackedAircraft.next(
+        etl::delegate<void(const OpenAce::AircraftPositionInfo&)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this)
+    );
+    
     xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay == 0 ? 1 : delay), portMAX_DELAY);
 }
 

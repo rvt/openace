@@ -2,6 +2,7 @@
 
 #include "constants.hpp"
 #include "models.hpp"
+#include "semaphoreguard.hpp"
 
 #include "pico.h"
 
@@ -16,8 +17,8 @@
 #include "etl/string.h"
 #include "etl/message_bus.h"
 #include "etl/span.h"
-
 #include "etl/delegate.h"
+
 
 // TODO: Change to a etl::delegate
 typedef std::function<void(const uint32_t)> pinIntrCallback_t;
@@ -59,10 +60,9 @@ public:
     using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
     struct ModuleStatus
     {
-        ModuleLoadFunction loadFunction;
         OpenAce::PostConstruct result;
-        BaseModule *module;
         bool hwCheck;
+        BaseModule *module;
     };
 
 protected:
@@ -83,19 +83,25 @@ public:
 
     static BaseModule *moduleByName(const BaseModule &that, const etl::string_view requesting);
 
-    static void registerModule(const etl::string_view name, bool hwCheck, ModuleLoadFunction loader)
+    static void registerModule(const etl::string_view name, bool hwCheck)
     {
-        moduleLoaderMap[name] = {loader, OpenAce::PostConstruct::NA, nullptr, hwCheck};
+        moduleLoaderMap[name] = {OpenAce::PostConstruct::NA, hwCheck, nullptr};
     }
 
     /**
      * Set the final evaluation of the module. b
      */
-    static void setModuleStatus(const etl::string_view name, BaseModule *base, OpenAce::PostConstruct result)
+    static void setModuleStatus(const etl::string_view name, BaseModule *base)
     {
-        moduleLoaderMap[name].result = result;
+        moduleLoaderMap[name].result = OpenAce::PostConstruct::OK;
         moduleLoaderMap[name].module = base;
     }
+    static void setModuleStatus(const etl::string_view name, OpenAce::PostConstruct result)
+    {
+        moduleLoaderMap[name].result = result;
+        moduleLoaderMap[name].module = nullptr;
+    }
+    
     static const ModuleLoadMap &registeredModules()
     {
         return moduleLoaderMap;
@@ -239,18 +245,7 @@ public:
     virtual void write_array(uint8_t cs, uint8_t *data, uint8_t length, uint8_t delayMs) const = 0;
     virtual void write_byte(uint8_t cs, uint8_t data, uint8_t delayMs) const = 0;
 
-    /**
-     * Squire access to the SPI buss
-     * \sa acquireSlotSyncCb()
-     * \sa releaseSlotSync()
-     */
-    virtual bool acquireSlotSync(uint8_t busFrequencyMhz) = 0;
-    /**
-     * Alternative to acquireSlotSync that will acquire access to the SPI bus, calls the delegate and release it in one function call
-     * \sa releaseSlotSync()
-     */
-    virtual bool acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()> &delegate) = 0;
-    virtual void releaseSlotSync() = 0;
+    virtual SpiGuard getLock(bool &locked) = 0;
     virtual uint8_t spiNum() const = 0;
 };
 

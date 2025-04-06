@@ -140,12 +140,13 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<TxPacket, 4, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
-    Radio::RadioParameters currentRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
-    Radio::RadioParameters newRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
-
+    Radio::RadioParameters rxRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
+    Radio::RadioParameters newRxRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
+    
     // Keep two packages around that will get reasued and send to the message bus outside of a SPI block
     OpenAce::RadioRxLoraMsg rxLoraMsg;
     OpenAce::RadioRxGfskMsg rxGfskMsg;
+    SemaphoreHandle_t xMutex;
 public:
     static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
 

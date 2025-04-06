@@ -2,9 +2,10 @@
 
 #include "ace/coreutils.hpp"
 #include "ace/constants.hpp"
+#include "ace/measure.hpp"
 #include "ace/models.hpp"
 
-#include "etl/unordered_set.h"
+#include "etl/forward_list.h"
 #include "etl/scaled_rounding.h"
 
 /**
@@ -44,20 +45,27 @@ private:
         uint32_t sendTime;
         OpenAce::AircraftPositionInfo position;
 
-        bool operator==(const TrackerEntry& other) const {
-            return position.address == other.position.address; // Compare objects by ID
+        // Add this constructor:
+        TrackerEntry(uint32_t time, const OpenAce::AircraftPositionInfo &pos)
+            : sendTime(time), position(pos) {}
+
+        TrackerEntry(const TrackerEntry &) = delete;
+        TrackerEntry &operator=(const TrackerEntry &) = delete;
+        TrackerEntry(TrackerEntry &&) = delete;
+        TrackerEntry &operator=(TrackerEntry &&) = delete;
+
+        bool operator==(const TrackerEntry &other) const
+        {
+            return position.address == other.position.address;
+        }
+
+        bool operator<(const TrackerEntry &other) const
+        {
+            return position.address < other.position.address;
         }
     };
 
-    struct TrackerEntryHash {
-        size_t operator()(const TrackerEntry& entry) const {
-            return etl::hash<int>()(entry.position.address); // Hash by ID
-        }
-    };
-
-    etl::unordered_set<TrackerEntry, SIZE, SIZE, TrackerEntryHash> trackedAircraft;
-
-    // A Value of a radius around our aircraft that increase and decrease based on the number of aircraft within
+    etl::forward_list<TrackerEntry, SIZE> trackedAircraft;
     uint32_t adaptiveRadius;
 
     /**
@@ -117,16 +125,19 @@ private:
     bool removeExpired()
     {
         bool cleaned = false;
-        for (auto it = trackedAircraft.cbegin(); it != trackedAircraft.cend();)
+        auto prev = trackedAircraft.before_begin();
+        auto it = trackedAircraft.begin();
+
+        while (it != trackedAircraft.end())
         {
             if (CoreUtils::isUsReached((it->position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC)))
             {
-                // printf("Erase     t:%08ld %06lX\n", timeStamp / 1'000'000, it->position.address);
-                it = trackedAircraft.erase(it);
+                it = trackedAircraft.erase_after(prev);
                 cleaned = true;
             }
             else
             {
+                prev = it;
                 ++it;
             }
         }
@@ -136,27 +147,28 @@ private:
 
     /**
      * Remove all aircraft that are outside the adaptive radius
-     * Returns true if any aircraft have been removed
      */
     void removeOutsideAdaptiveRadius()
     {
-        for (auto it = trackedAircraft.cbegin(); it != trackedAircraft.cend();)
+        auto prev = trackedAircraft.before_begin();
+        auto it = trackedAircraft.begin();
+
+        while (it != trackedAircraft.end())
         {
             if (it->position.distanceFromOwn >= adaptiveRadius)
             {
-                it = trackedAircraft.erase(it);
+                it = trackedAircraft.erase_after(prev);
             }
             else
             {
+                prev = it;
                 ++it;
             }
         }
     }
 
 public:
-    TrackerData() : adaptiveRadius(75000)
-    {
-    }
+    TrackerData() : adaptiveRadius(75000) {}
 
     bool full() const
     {
@@ -176,9 +188,11 @@ public:
     void dump() const
     {
         int c = 0;
-        for (auto it : trackedAircraft)
+        for (const auto &it : trackedAircraft)
         {
-            printf("%3d icao:%6lX sendTime:%8ld time:%8ld  dist:%ld lat:%.6f lon:%.6f\n", c, it.position.address, it.sendTime, CoreUtils::timeUs32(), it.position.distanceFromOwn, it.position.lat, it.position.lon);
+            printf("%3d icao:%6lX sendTime:%8ld time:%8ld  dist:%ld lat:%.6f lon:%.6f\n",
+                   c, it.position.address, it.sendTime, CoreUtils::timeUs32(),
+                   it.position.distanceFromOwn, it.position.lat, it.position.lon);
             c++;
         }
     }
@@ -188,6 +202,7 @@ public:
      */
     bool insert(OpenAce::AircraftPositionInfo &position)
     {
+        auto m = Measure("TrackerData::insert", 400);
         // Never insert outside of adaptive radius
         if (position.distanceFromOwn > adaptiveRadius)
         {
@@ -205,15 +220,24 @@ public:
             }
         }
 
-        // Add/update entry
-        auto it = trackedAircraft.find({0, OpenAce::AircraftPositionInfo{position.address}});
-        if (it == trackedAircraft.end()) {
-            trackedAircraft.insert(TrackerEntry{position.timestamp, position});
-        } else {
-            it->position  = position;
-            it->sendTime  = position.timestamp;
+        // Check if the aircraft already exists (update instead of insert)
+        auto prev = trackedAircraft.before_begin();
+        auto it = trackedAircraft.begin();
+        while (it != trackedAircraft.end())
+        {
+            if (it->position.address == position.address)
+            {
+                // Update existing entry
+                it->sendTime = CoreUtils::timeUs32Raw();
+                it->position = position;
+                return true;
+            }
+            prev = it;
+            ++it;
         }
 
+        // Insert new entry at the front (O(1))
+        trackedAircraft.emplace_front(CoreUtils::timeUs32Raw(), position);
         return true;
     }
 
@@ -224,16 +248,15 @@ public:
      */
     uint16_t next(const etl::delegate<void(const OpenAce::AircraftPositionInfo &)> &msg)
     {
-       auto currentTime = CoreUtils::timeUs32();
-       for (auto it = trackedAircraft.begin(); it != trackedAircraft.end(); ++it)
+        auto currentTime = CoreUtils::timeUs32Raw();
+        for (auto &it : trackedAircraft)
         {
-           if (CoreUtils::isUsReached(it->sendTime, currentTime))
-           {
-                msg(it->position);
-                it->sendTime = currentTime + HEARTBEAT_TIME;
-           }
+            if (CoreUtils::isUsReached(it.sendTime, currentTime))
+            {
+                msg(it.position);
+                it.sendTime = currentTime + HEARTBEAT_TIME;
+            }
         }
-    
         return SLICE_SIZE_MS;
     }
 
