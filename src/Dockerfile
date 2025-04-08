@@ -23,8 +23,7 @@ RUN \
     git clone --branch 2.1.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git && \
     cd pico-sdk/ && \
     git config fetch.recurseSubmodules on-demand && \
-    git submodule update --init --depth 1 && \
-    cd /
+    git submodule update --init --depth 1
 
 RUN \
     cd ${PICO_SDK_PATH}/lib/btstack && \
@@ -36,8 +35,7 @@ RUN \
     git clone --branch V11.2.0 --depth 1 https://github.com/FreeRTOS/FreeRTOS-Kernel.git && \
     cd FreeRTOS-Kernel && \
     git config fetch.recurseSubmodules on-demand && \
-    git submodule update --init --depth 1 && \
-    cd /
+    git submodule update --init --depth 1
 
 RUN \
     cd /opt/ && \
@@ -47,7 +45,7 @@ RUN \
 COPY ./freertos.patch /opt
 
 RUN \
-    cd /opt/FreeRTOS-Kernel \
+    cd /opt/FreeRTOS-Kernel && \
     git apply /opt/freertos.patch
 
 RUN \
