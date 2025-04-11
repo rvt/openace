@@ -1,6 +1,6 @@
 #include "main.h"
 #include "build_time.hpp"
-#include "default_config.hpp"
+#include "generated/default_config.hpp"
 
 /* System. */
 #include <stdio.h>
@@ -15,6 +15,7 @@
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "pico/btstack_cyw43.h"
+#include "hardware/watchdog.h"
 
 /* Vendor. */
 #include "etl/list.h"
@@ -52,6 +53,7 @@
 #include "ace/dataport.hpp"
 #include "ace/airconnect.hpp"
 #include "ace/bluetooth.hpp"
+#include "ace/fanetace.hpp"
 
 const char *OpenAce_buildTime = BUILD_TIMESTAMP;
 
@@ -107,41 +109,73 @@ public:
 
 void registerModules()
 {
-    // *INDENT-OFF*
-    // clang-format off
-    BaseModule::registerModule(AceSpi::NAME, true, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new AceSpi(bus, config); });
-    BaseModule::registerModule(Bmp280::NAME, true, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Bmp280(bus, config); });
-    // BaseModule::registerModule(Config::NAME, [] (etl::imessage_bus &bus, const Configuration &config) -> BaseModule* { return new Config(bus, FlashStore, DEFAULT_OPENACE_CONFIG);});
-    BaseModule::registerModule(Gdl90Service::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Gdl90Service(bus, config); });
-    BaseModule::registerModule(WifiService::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new WifiService(bus, config); });
-    BaseModule::registerModule(Webserver::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Webserver(bus, config); });
-    BaseModule::registerModule(PicoRtc::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule *  { return new PicoRtc(bus, config); });
-    BaseModule::registerModule(Sx1262::NAMES[0], true, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Sx1262(bus, config, 0); });
-    BaseModule::registerModule(Sx1262::NAMES[1], true, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Sx1262(bus, config, 1); });
-    BaseModule::registerModule(RadioTunerTx::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new RadioTunerTx(bus, config); });
-    BaseModule::registerModule(RadioTunerRx::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new RadioTunerRx(bus, config); });
-    BaseModule::registerModule(ADSBDecoder::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new ADSBDecoder(bus, config); });
-    BaseModule::registerModule(Flarm2024::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Flarm2024(bus, config); });
-    BaseModule::registerModule(Ogn1::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Ogn1(bus, config); });
-    BaseModule::registerModule(ADSL::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new ADSL(bus, config); });
-    BaseModule::registerModule(GDLoverUDP::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new GDLoverUDP(bus, config); });
-    BaseModule::registerModule(GpsDecoder::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new GpsDecoder(bus, config); });
-    BaseModule::registerModule(UbloxM8N::NAME, true, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new UbloxM8N(bus, config); });
-    BaseModule::registerModule(L76B::NAME, true, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new L76B(bus, config); });
-    BaseModule::registerModule(SerialADSB::NAME, true, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new SerialADSB(bus, config); });
-    BaseModule::registerModule(Dump1090Client::NAME,false,  [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Dump1090Client(bus, config); });
-    BaseModule::registerModule(ModuleManager::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new ModuleManager(bus, config); });
-    BaseModule::registerModule(AircraftTracker::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new AircraftTracker(bus, config); });
-    BaseModule::registerModule(DataPort::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new DataPort(bus, config); });
-    BaseModule::registerModule(AirConnect::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new AirConnect(bus, config); });
-    BaseModule::registerModule(Bluetooth::NAME, false, [](etl::imessage_bus &bus, const Configuration &config) -> BaseModule * { return new Bluetooth(bus, config); });
-    // clang-format on
-    // *INDENT-ON*
+    BaseModule::registerModule(AceSpi::NAME, true);
+    BaseModule::registerModule(Bmp280::NAME, true);
+    // BaseModule::registerModule(Config::NAME, true); // Uncomment if needed
+    BaseModule::registerModule(Gdl90Service::NAME, false);
+    BaseModule::registerModule(WifiService::NAME, false);
+    BaseModule::registerModule(Webserver::NAME, false);
+    BaseModule::registerModule(PicoRtc::NAME, false);
+    BaseModule::registerModule(Sx1262::NAMES[0], true);
+    BaseModule::registerModule(Sx1262::NAMES[1], true);
+    BaseModule::registerModule(RadioTunerTx::NAME, false);
+    BaseModule::registerModule(RadioTunerRx::NAME, false);
+    BaseModule::registerModule(ADSBDecoder::NAME, false);
+    BaseModule::registerModule(Flarm2024::NAME, false);
+    BaseModule::registerModule(Ogn1::NAME, false);
+    BaseModule::registerModule(ADSL::NAME, false);
+    BaseModule::registerModule(GDLoverUDP::NAME, false);
+    BaseModule::registerModule(GpsDecoder::NAME, false);
+    BaseModule::registerModule(UbloxM8N::NAME, true);
+    BaseModule::registerModule(L76B::NAME, true);
+    BaseModule::registerModule(SerialADSB::NAME, true);
+    BaseModule::registerModule(Dump1090Client::NAME, false);
+    BaseModule::registerModule(ModuleManager::NAME, false);
+    BaseModule::registerModule(AircraftTracker::NAME, false);
+    BaseModule::registerModule(DataPort::NAME, false);
+    BaseModule::registerModule(AirConnect::NAME, false);
+    BaseModule::registerModule(Bluetooth::NAME, false);
+    BaseModule::registerModule(FanetAce::NAME, false);
 
     for (auto a : BaseModule::registeredModules())
     {
         printf("Registered %s\n", a.first.cbegin());
     }
+}
+
+BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, const Configuration &config)
+{
+    // clang-format off
+    if (name == Ogn1::NAME) return new Ogn1(bus, config);
+    if (name == FanetAce::NAME) return new FanetAce(bus, config);
+    if (name == AirConnect::NAME) return new AirConnect(bus, config);
+    if (name == Bluetooth::NAME) return new Bluetooth(bus, config);
+    if (name == DataPort::NAME) return new DataPort(bus, config);
+    if (name == AircraftTracker::NAME) return new AircraftTracker(bus, config);
+    if (name == ModuleManager::NAME) return new ModuleManager(bus, config);
+    if (name == Dump1090Client::NAME) return new Dump1090Client(bus, config);
+    if (name == SerialADSB::NAME) return new SerialADSB(bus, config);
+    if (name == L76B::NAME) return new L76B(bus, config);
+    if (name == UbloxM8N::NAME) return new UbloxM8N(bus, config);
+    if (name == GpsDecoder::NAME) return new GpsDecoder(bus, config);
+    if (name == GDLoverUDP::NAME) return new GDLoverUDP(bus, config);
+    if (name == ADSL::NAME) return new ADSL(bus, config);
+    if (name == Flarm2024::NAME) return new Flarm2024(bus, config);
+    if (name == ADSBDecoder::NAME) return new ADSBDecoder(bus, config);
+    if (name == RadioTunerRx::NAME) return new RadioTunerRx(bus, config);
+    if (name == RadioTunerTx::NAME) return new RadioTunerTx(bus, config);
+    if (name == Sx1262::NAMES[0]) return new Sx1262(bus, config, 0);
+    if (name == Sx1262::NAMES[1]) return new Sx1262(bus, config, 1);
+    if (name == PicoRtc::NAME) return new PicoRtc(bus, config);
+    if (name == Webserver::NAME) return new Webserver(bus, config);
+    if (name == WifiService::NAME) return new WifiService(bus, config);
+    if (name == Gdl90Service::NAME) return new Gdl90Service(bus, config);
+    if (name == Bmp280::NAME) return new Bmp280(bus, config);
+    if (name == AceSpi::NAME) return new AceSpi(bus, config);
+    // if (name == Config::NAME) return new Config(bus, FlashStore, DEFAULT_OPENACE_CONFIG); // Uncomment if needed
+    // clang-format on
+
+    return nullptr; // Unknown name
 }
 
 static InMemoryStore volatileStore;
@@ -152,53 +186,56 @@ static Config config(bus, volatileStore, permanentStore, DEFAULT_OPENACE_CONFIG)
 
 static void load(const etl::string_view str, etl::imessage_bus &bus, const Configuration &config, bool force = false)
 {
+    struct HeapLogger
+    {
+        ~HeapLogger() { printf("\nFree: %d\n\n", xPortGetFreeHeapSize()); }
+    } heapLogger;
+
     auto registeredModules = BaseModule::registeredModules();
 
-    if (registeredModules[str].hwCheck && config.pinMap(str).size() == 0) {
-        BaseModule::setModuleStatus(str, nullptr, OpenAce::PostConstruct::HARDWARE_NOT_CONFIGURED);
+    if (registeredModules[str].hwCheck && config.pinMap(str).empty())
+    {
+        BaseModule::setModuleStatus(str, OpenAce::PostConstruct::HARDWARE_NOT_CONFIGURED);
         printf("Module %s has no hardware configuration", str.cbegin());
-        goto endfunc;
+        return;
     }
 
     if (!(config.isModuleEnabled(str) || force))
     {
         printf("Module %s disabled", str.cbegin());
-        goto endfunc;
+        return;
     }
 
     printf("Loading %s ...", str.cbegin());
 
-    if (!BaseModule::registeredModules().contains(str)) {
-        printf(" -> not Found");
-        goto endfunc;
-    }
-
+    if (!registeredModules.contains(str))
     {
-        auto *client = registeredModules[str].loadFunction(bus, config);
-
-        if (!client)
-        {
-            printf(" -> out of memory");
-            goto endfunc;
-        }
-
-        printf(" -> PostConstruct() ");
-        auto result = client->postConstruct();
-        if (result == OpenAce::PostConstruct::OK)
-        {
-            BaseModule::setModuleStatus(str, client, result);
-            printf(" -> start() ");
-            client->start();
-        }
-        else
-        {
-            BaseModule::setModuleStatus(str, nullptr, result);
-            printf(" -> Unloading reason [%s]", postConstructToString(result));
-            delete client;
-        }
+        printf(" -> not Found");
+        return;
     }
-endfunc:
-    printf("\nFree: %d\n\n", xPortGetFreeHeapSize());
+
+    auto *client = loadModule(str, bus, config);
+
+    if (!client)
+    {
+        printf(" -> out of memory");
+        return;
+    }
+
+    printf(" -> PostConstruct() ");
+    auto result = client->postConstruct();
+    if (result == OpenAce::PostConstruct::OK)
+    {
+        BaseModule::setModuleStatus(str, client);
+        printf(" -> start() ");
+        client->start();
+    }
+    else
+    {
+        BaseModule::setModuleStatus(str, result);
+        printf(" -> Unloading reason [%s]", postConstructToString(result));
+        delete client;
+    }
 }
 
 static void loadModules(void *arch)
@@ -206,7 +243,7 @@ static void loadModules(void *arch)
     (void)arch;
     vTaskDelay(5000);
     load(WifiService::NAME, bus, config, true);
-    load(ModuleManager::NAME, bus, config);
+    // load(ModuleManager::NAME, bus, config);
 
     WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME));
     if (client != nullptr)
@@ -239,6 +276,7 @@ static void loadModules(void *arch)
     load(Gdl90Service::NAME, bus, config);
     load(ADSBDecoder::NAME, bus, config);
     load(ADSL::NAME, bus, config);
+    load(FanetAce::NAME, bus, config);
     load(Flarm2024::NAME, bus, config);
     load(Ogn1::NAME, bus, config);
     load(GDLoverUDP::NAME, bus, config);
@@ -260,8 +298,14 @@ static void loadModules(void *arch)
 static void openAceIdlTask(void *arch)
 {
     (void)arch;
+#ifdef NDEBUG
+    watchdog_enable(3000, 0);
+#endif
     while (true)
     {
+#ifdef NDEBUG
+        watchdog_update();
+#endif
         if (cyw43_arch_async_context())
         {
             // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
@@ -274,25 +318,27 @@ static void openAceIdlTask(void *arch)
         }
         else
         {
-            vTaskDelay(5000);
+            vTaskDelay(2000);
             puts("Wifi module not yet enabled");
         }
     }
 }
 
-#if configGENERATE_RUN_TIME_STATS == 1    
-void vDiagnosticsTask(void *pvParameters) {
-    constexpr size_t DIAG_STRING_SIZE = 2048;  // Adjust based on your needs
+#if configGENERATE_RUN_TIME_STATS == 1
+void vDiagnosticsTask(void *pvParameters)
+{
+    constexpr size_t DIAG_STRING_SIZE = 2048; // Adjust based on your needs
     (void)pvParameters;
-    while (true) {
-        char runTimeStats[DIAG_STRING_SIZE] = {0};  // Buffer for runtime stats
+    while (true)
+    {
+        char runTimeStats[DIAG_STRING_SIZE] = {0}; // Buffer for runtime stats
         bool hasRunTimeStats = false;
 
-        // Optional: Get CPU usage stats (needs run time counter)
-        #ifdef configGENERATE_RUN_TIME_STATS
+// Optional: Get CPU usage stats (needs run time counter)
+#ifdef configGENERATE_RUN_TIME_STATS
         vTaskGetRunTimeStats(runTimeStats);
         hasRunTimeStats = true;
-        #endif
+#endif
 
         // Clear screen and print header
         printf("\033[2J\033[H");
@@ -303,26 +349,29 @@ void vDiagnosticsTask(void *pvParameters) {
         UBaseType_t numTasks = uxTaskGetNumberOfTasks();
         TaskStatus_t *taskStatusArray = (TaskStatus_t *)pvPortMalloc(numTasks * sizeof(TaskStatus_t));
 
-        if (taskStatusArray) {
+        if (taskStatusArray)
+        {
             numTasks = uxTaskGetSystemState(taskStatusArray, numTasks, nullptr);
 
             // Sort tasks alphabetically by name
-            qsort(taskStatusArray, numTasks, sizeof(TaskStatus_t), [](const void *a, const void *b) {
-                return strcasecmp(((TaskStatus_t *)a)->pcTaskName, ((TaskStatus_t *)b)->pcTaskName);
-            });
+            qsort(taskStatusArray, numTasks, sizeof(TaskStatus_t), [](const void *a, const void *b)
+                  { return strcasecmp(((TaskStatus_t *)a)->pcTaskName, ((TaskStatus_t *)b)->pcTaskName); });
 
             // Parse CPU time stats if available
             char *line = runTimeStats;
-            for (UBaseType_t i = 0; i < numTasks; i++) {
+            for (UBaseType_t i = 0; i < numTasks; i++)
+            {
                 char taskName[configMAX_TASK_NAME_LEN + 1] = {0};
                 uint32_t absTime = 0;
                 float percentTime = 0.0;
 
                 // If runtime stats are available, extract the correct task data
-                if (hasRunTimeStats) {
+                if (hasRunTimeStats)
+                {
                     sscanf(line, "%s %lu %f", taskName, &absTime, &percentTime);
-                    line = strchr(line, '\n');  // Move to the next line
-                    if (line) line++;  // Skip newline
+                    line = strchr(line, '\n'); // Move to the next line
+                    if (line)
+                        line++; // Skip newline
                 }
 
                 // Print sorted task info in a single line
@@ -338,12 +387,12 @@ void vDiagnosticsTask(void *pvParameters) {
         }
 
         // Run every 5 seconds (adjust as needed)
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(50000));
     }
 }
 #endif
 
-//  WifiService::PostConstruct()...assertion "get_core_num() == async_context_core_num(cyw43_async_context)" failed: file "/opt/pico/pico-sdk/src/rp2_common/pico_cyw43_driver/cyw43_driver.c", line 54, function: cyw43_irq_init 
+//  WifiService::PostConstruct()...assertion "get_core_num() == async_context_core_num(cyw43_async_context)" failed: file "/opt/pico/pico-sdk/src/rp2_common/pico_cyw43_driver/cyw43_driver.c", line 54, function: cyw43_irq_init
 
 // #if PICO_CYW43_ARCH_DEBUG_ENABLED
 // #define CYW43_ARCH_DEBUG(...) printf(__VA_ARGS__)
@@ -351,16 +400,15 @@ void vDiagnosticsTask(void *pvParameters) {
 // #define CYW43_ARCH_DEBUG(...) ((void)0)
 // #endif
 
-
 void vLaunch(void)
 {
     // Bootstap
     BaseModule::initBase();
     puts("--");
-    auto status = config.postConstruct();
+    config.postConstruct();
     registerModules();
-    BaseModule::setModuleStatus(Configuration::NAME, &config, status);
-    BaseModule::setModuleStatus(Config::NAME, &config, status);
+    BaseModule::setModuleStatus(Configuration::NAME, &config);
+    BaseModule::setModuleStatus(Config::NAME, &config);
     config.start();
 
     // Load all the modules
@@ -373,8 +421,8 @@ void vLaunch(void)
     xTaskCreate(openAceIdlTask, "openAceIdlTask", configMINIMAL_STACK_SIZE + 2048, NULL, tskIDLE_PRIORITY + 1, nullptr);
 
     // Dump some CPU diagnostics to terminal of all running tasks
-#if configGENERATE_RUN_TIME_STATS == 1    
-    xTaskCreate(vDiagnosticsTask,  "DiagTask", configMINIMAL_STACK_SIZE + 2048, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+#if configGENERATE_RUN_TIME_STATS == 1
+    xTaskCreate(vDiagnosticsTask, "DiagTask", configMINIMAL_STACK_SIZE + 2048, nullptr, tskIDLE_PRIORITY + 1, nullptr);
 #endif
 
 #if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1
@@ -400,7 +448,9 @@ void overflowTest()
 
 int main()
 {
-    stdio_init_all();    
+    // Set CPU clock to 200 MHz
+    set_sys_clock_khz(200000, true);
+    stdio_init_all();
     printf(
         R"=(
 
@@ -447,13 +497,14 @@ int main()
 
 static uint32_t start_time_us = 0;
 
-void configureRuntimeStatsTimer() {
+void configureRuntimeStatsTimer()
+{
     // Capture the starting time in microseconds
     start_time_us = time_us_32();
 }
 
-uint32_t getRuntimeCounterValue() {
+uint32_t getRuntimeCounterValue()
+{
     // Return elapsed time in microseconds since FreeRTOS started
     return time_us_32() - start_time_us;
 }
-
