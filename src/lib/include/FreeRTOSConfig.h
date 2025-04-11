@@ -90,7 +90,7 @@
 // When configGENERATE_RUN_TIME_STATS is enabled, additional data is dumpted to the UART
 #define configGENERATE_RUN_TIME_STATS           0
 
-#ifdef configGENERATE_RUN_TIME_STATS
+#if configGENERATE_RUN_TIME_STATS == 1
 #define configUSE_TRACE_FACILITY                1
 #define configUSE_STATS_FORMATTING_FUNCTIONS    1
 extern void configureRuntimeStatsTimer();

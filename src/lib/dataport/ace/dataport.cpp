@@ -106,6 +106,7 @@ uint8_t DataPort::getPFLAAAddressType(const OpenAce::AddressType type)
     return itype > 2 ? 1 : itype;
 }
 
+// Groundspeed is in m/s for PFLAA
 void DataPort::getPFLAAGroundSpeed(const OpenAce::AircraftPositionInfo &position, etl::string<6> &speed)
 {
     // if (position.stealth /* || ownship.notrack */)

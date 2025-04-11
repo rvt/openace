@@ -97,7 +97,7 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
                 velocityNorth = relNorthrelEast.north;
                 velocityEast = relNorthrelEast.east;
 
-                groundSpeed = getFloat(frame.speed, groundSpeed);
+                groundSpeed = getFloat(frame.speed, groundSpeed) * KN_TO_MS; // Groundspeed in knt???
                 // Course might not always be available and will result in a inf values in the filter
                 if (frame.course.scale != 0)
                 {
