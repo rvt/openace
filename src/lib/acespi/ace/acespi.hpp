@@ -18,9 +18,11 @@
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
+#include "ace/semaphoreguard.hpp"
 
 /**
  * Class that is responsible for managing the Single SPI bus between various devices
+ * TODO: Add support for two SPI buses
  */
 class AceSpi : public SpiModule, public etl::message_router<AceSpi>
 {
@@ -77,10 +79,7 @@ public:
 
     virtual void write_byte(uint8_t cs, uint8_t data, uint8_t delayMs) const override;
 
-    virtual bool acquireSlotSync(uint8_t busFrequencyMhz) override;
-    virtual bool acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()>& delegate) override;
-
-    virtual void releaseSlotSync() override;
+    virtual SpiGuard getLock(bool &locked) override;
 
     virtual uint8_t spiNum() const;
 

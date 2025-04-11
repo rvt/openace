@@ -24,8 +24,8 @@ namespace OpenAce
         {PinType::P0, "P0"},
         {PinType::P1, "P1"},
         {PinType::P2, "P2"},
-        {PinType::SPI, "SPI"},
-        {PinType::AD0, "AD0"}
+        {PinType::AD0, "AD0"},
+        {PinType::SPI, "SPI"}
     };
 
     PinType stringToPinType(const char *str)
@@ -77,6 +77,10 @@ namespace OpenAce
         {DataSource::PAW, "P"}
     };
 
+    const char *dataSourceIntToString(uint8_t ds)
+    {
+        return dataSourceToString(static_cast<DataSource>(ds));
+    }
     const char *dataSourceToString(DataSource ds)
     {
         return enumToString(dataSourceMappings1, ds, "UNKNOWN");

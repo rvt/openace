@@ -21,18 +21,17 @@
  */
 uint8_t sx126x_buzy_wait(uint8_t busyPin)
 {
-    auto timeoutTime = CoreUtils::timeUs32() + 1'000'000;
+    auto timeoutTime = CoreUtils::timeUs32Raw() + 1'000'000;
     uint16_t counter = 1; // to reduce the number of calls to timer functions
     while (gpio_get(busyPin))
     {
         if (counter % 100 == 0) {
-            if (CoreUtils::isUsReached(timeoutTime))
+            if (CoreUtils::isUsReachedRaw(timeoutTime))
             {
                 return 1;
             }
         }
         counter++;
-        tight_loop_contents();
     }
     return 0;
 }

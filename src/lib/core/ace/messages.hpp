@@ -174,7 +174,7 @@ namespace OpenAce
         BarometricPressureMsg() : pressurehPa(0), usSinceBoot(0) {};
     };
 
-    struct RadioRxFrameMsg : public etl::message<16>
+    struct RadioRxGfskMsg : public etl::message<16>
     {
         // TODO: CHange to ETL::array
         uint32_t frame[OpenAce::RADIO_MAX_FRAME_WORD_LENGTH];
@@ -184,16 +184,31 @@ namespace OpenAce
         int8_t rssidBm;
         uint32_t frequency;
         OpenAce::DataSource dataSource;
-        RadioRxFrameMsg(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, OpenAce::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
+        RadioRxGfskMsg(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, OpenAce::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
         {
             // TODO: Decide if we need to do this
             memset(frame, 0, sizeof(frame));
             memset(err, 0, sizeof(frame));
         };
-        RadioRxFrameMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(OpenAce::DataSource::NONE)
+        RadioRxGfskMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(OpenAce::DataSource::NONE)
         {
             memset(frame, 0, sizeof(frame));
             memset(err, 0, sizeof(frame));
+        };
+    };
+
+    struct RadioRxLoraMsg : public etl::message<27>
+    {
+        etl::vector<uint8_t, OpenAce::MAX_LORA_MSG_SIZE> frame;
+        uint32_t epochSeconds;
+        int8_t rssidBm;
+        uint32_t frequency;
+        OpenAce::DataSource dataSource;
+        RadioRxLoraMsg(uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, OpenAce::DataSource dataSource_) : epochSeconds(epochSeconds_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
+        {
+        };
+        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(OpenAce::DataSource::NONE)
+        {
         };
     };
 
@@ -209,6 +224,13 @@ namespace OpenAce
         const Radio::TxPacket txPacket;
         uint8_t radioNo;
         RadioTxFrameMsg(const Radio::TxPacket &txPacket_, uint8_t radioNo_) : txPacket(txPacket_), radioNo(radioNo_) {}
+    };
+
+    struct RadioControlMsg : public etl::message<28>
+    {
+        const Radio::RadioParameters radioParameters;
+        uint8_t radioNo;
+        RadioControlMsg(const Radio::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
     };
 
     struct ConfigUpdatedMsg : public etl::message<20> /* Don't change from 20!!!! They are used in MessageRouter*/

@@ -43,24 +43,26 @@ public:
         uint32_t channelSeperation;
         uint8_t channels;
         int8_t powerdBm;
+        uint16_t bandwidth;
     };
 
     // From https://github.com/VirusPilot/esp32-ogn-tracker
-    static constexpr Frequency Europe{868'200'000, 200'000, 02, 14};
-    static constexpr Frequency NorthAmerica{902'200'000, 400'000, 65, 30};
-    static constexpr Frequency NewZealand{869'250'000, 200'000, 01, 10};
-    static constexpr Frequency Australia{917'000'000, 400'000, 24, 30};
-    static constexpr Frequency Israel{916'200'000, 200'000, 01, 22};
-    static constexpr Frequency SouthAmerica{917'000'000, 400'000, 24, 30};
-    static constexpr Frequency EuropeFanet{869'525'000, 000'000, 00, 14};
+    static constexpr Frequency Europe{868'200'000, 200'000, 02, 14, 250};
+    static constexpr Frequency NorthAmerica{902'200'000, 400'000, 65, 30, 0};
+    static constexpr Frequency NewZealand{869'250'000, 200'000, 01, 10, 0};
+    static constexpr Frequency Australia{917'000'000, 400'000, 24, 30, 0};
+    static constexpr Frequency Israel{916'200'000, 200'000, 01, 22, 0};
+    static constexpr Frequency SouthAmerica{917'000'000, 400'000, 24, 30, 0};
+//    static constexpr Frequency PawEurope{869'525'000, 000'000, 00, 14, 100};
+//    static constexpr Frequency EuropeFanet{868'200'000, 000'000, 01, 14, 250};
 
     // First byte of the syncWord is the preamble for TX
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0,          1, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
-    static constexpr Radio::ProtocolConfig PROTOCOL_FLARM{Radio::Mode::GFSK, OpenAce::DataSource::FLARM, 24 + 2,   1, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
-    static constexpr Radio::ProtocolConfig PROTOCOL_OGN1{Radio::Mode::GFSK, OpenAce::DataSource::OGN1, 20 + 6,     1, 7, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}}; // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
-    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL{Radio::Mode::GFSK, OpenAce::DataSource::ADSL, 24,         2, 6, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
-    static constexpr Radio::ProtocolConfig PROTOCOL_PAW{Radio::Mode::GFSK, OpenAce::DataSource::PAW, 00 + 0,       1, 8, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}}; // 4 PAW
-    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{Radio::Mode::LORA, OpenAce::DataSource::FANET, 00 + 0,   1, 8, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // 5 FANET 3
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0,        1*8, 0, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_FLARM{Radio::Mode::GFSK, OpenAce::DataSource::FLARM, 24 + 2, 1*8, 0, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
+    static constexpr Radio::ProtocolConfig PROTOCOL_OGN1{Radio::Mode::GFSK, OpenAce::DataSource::OGN1, 20 + 6,   1*8, 0, 7, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}}; // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
+    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL{Radio::Mode::GFSK, OpenAce::DataSource::ADSL, 24,       2*8, 0, 6, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
+    static constexpr Radio::ProtocolConfig PROTOCOL_PAW{Radio::Mode::GFSK, OpenAce::DataSource::PAW, 00 + 0,     1*8, 0, 8, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}}; // 4 PAW
+    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{Radio::Mode::LORA, OpenAce::DataSource::FANET, 0xff,    12, 8, 2, {0xF4, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // 5 FANET 3
 
     enum class ChannelMethod : uint8_t
     {
@@ -86,7 +88,6 @@ public:
         ChannelMethod channelMethod;              // What method channel selection
     };
 
-    //        protocol_t protocol;
     static constexpr ProtocolTimeSlot NONE_DATASOURCE = ProtocolTimeSlot{0, 0, CountryRegulations::Zone::ZONE0, OpenAce::DataSource::NONE, Europe, PROTOCOL_NONE, 000, 0000, 000, 0000, 00, 000, ChannelMethod::CHANNEL_0};
 
     // Table with timings for each protocol needs to adhere to the following rules for optimalisation reasons
@@ -117,7 +118,7 @@ public:
         ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
 
         // Fanet
-        ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 500, 1500, 00, 000, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 2000, 3000, 15, 000, ChannelMethod::CHANNEL_0},
     };
 
 private:

@@ -74,7 +74,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         return;
     }
 
-    if (auto guard = SemaphoreGuard<100>(mutex))
+    if (auto guard = SemaphoreGuard<5>(mutex))
     {
         // printf("Processing  a:%06lX \n", mm.aa);
         auto usTime = CoreUtils::timeUs32();
@@ -98,7 +98,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         adsbDataCollector.updateAirborne(true);
         if (mm.metype >= 1 && mm.metype <= 4)
         {
-            adsbDataCollector.updateIcaoAddress(mm.flight, mm.aircraft_type);
+            adsbDataCollector.updateCallsign(mm.flight, mm.aircraft_type);
         }
         else if ((mm.metype >= 9 && mm.metype <= 18) || (mm.metype >= 20 && mm.metype <= 22))
         {
@@ -113,13 +113,13 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
 
             int32_t altitude = (mm.unit == MODE_S_UNIT_METERS ? mm.altitude : mm.altitude * FT_TO_M);
             if (mm.metype >= 20 && mm.metype <= 22)
-            {                
+            {
                 adsbDataCollector.updateGnssAltitude(altitude); // GPS Altitude so far never seen this
             }
             else if (mm.metype >= 9 && mm.metype <= 18)
             {
-                //auto &current = adsbDataCollector.current();
-                //printf("%06lX Barometric: %ld Ellipsoid:%d\n", mm.aa, altitude, current.baro_gnss_diff);
+                // auto &current = adsbDataCollector.current();
+                // printf("%06lX Barometric: %ld Ellipsoid:%d\n", mm.aa, altitude, current.baro_gnss_diff);
                 adsbDataCollector.updateAltitude(altitude); // Barometric Altitude
             }
         }
@@ -128,8 +128,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             if (mm.mesub == 1 || mm.mesub == 2)
             {
                 // printf("%06lX Ellipsoid:%ldm\n", mm.aa, baro_gnss_diff);
-                adsbDataCollector.updateVelocityHeadingBaroDiff(mm.velocity, mm.vert_rate, mm.vert_rate_sign, mm.heading, mm.head * FT_TO_M); // mm.head is always in feet
-
+                adsbDataCollector.updateVelocityHeadingBaroDiff(mm.velocity, mm.vert_rate_sign ? -mm.vert_rate : mm.vert_rate, mm.heading, mm.head * FT_TO_M); // mm.head is always in feet
             }
             else if (mm.mesub == 3 || mm.mesub == 4)
             {
@@ -176,21 +175,28 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                 return;
             }
 
+            float vertical_rate = current.vert_rate;
+            if (vertical_rate > 0)
+            {
+                // https://mode-s.org/1090mhz/content/ads-b/5-airborne-velocity.html
+                vertical_rate = (current.vert_rate - 1) * 64.f * FTPMIN_TO_MS;
+            }
+
             // printf("Received  t:%06ld a:%06lX gnsAlt:%ldm gnsAlt:%0.2fft\n", usTime / 1'000'000, current.icao, current.gnsAltitude, current.gnsAltitude * M_TO_FT);
             getBus().receive(OpenAce::AircraftPositionMsg{
                 {usTime - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
-                 current.icaoAddress,
+                 current.callSign,
                  current.icao,
                  OpenAce::AddressType::ICAO,
                  OpenAce::DataSource::ADSB,
                  OpenAce::AircraftCategory::Unknown, // ADSB does not have type
                  false,                              // ADSB does not have privacy
-                 false,                              // Heading is always a known
+                 false,                              // No privacy
                  current.airborne,
                  current.lat,
                  current.lon,
                  current.gnsAltitude > INT16_MAX ? INT16_MAX : static_cast<int16_t>(current.gnsAltitude),
-                 (current.vert_rate - 1) * (current.vert_rate_sign ? -64.f * FTPMIN_TO_MS : 64.f * FTPMIN_TO_MS), // https://mode-s.org/decode/content/ads-b/5-airborne-velocity.html,
+                 vertical_rate, // https://mode-s.org/decode/content/ads-b/5-airborne-velocity.html,
                  (float)current.velocity * KN_TO_MS,
                  static_cast<int16_t>(current.heading),
                  0.0f,
@@ -199,6 +205,8 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                  fromOwn.relEast,
                  fromOwn.bearing}});
         }
+    } else {
+        statistics.msgMissed++;
     }
 }
 
@@ -223,14 +231,13 @@ void ADSBDecoder::getData(etl::string_stream &stream, const etl::string_view pat
     (void)path;
     stream << "{";
     stream << "\"crcErrors\":" << statistics.crcErrors;
-    stream << ",\"knownAircraftFull\":" << statistics.knownAircraftFull;
+    stream << ",\"adsbDataCollectorSize\":" << adsbDataCollector.size();
+    stream << ",\"adsbDataCollectorFull\":" << statistics.knownAircraftFull;
+    stream << ",\"ignoredAircraftSize\":" << ignoredAirplanes.size();
     stream << ",\"ignoredAircraftFull\":" << statistics.ignoredAircraftFull;
     stream << ",\"totalMsgReceived\":" << statistics.totalMsgReceived;
     stream << ",\"totalMsgIgnored\":" << statistics.totalMsgIgnored;
-    stream << ",\"totalMsgDF11\":" << statistics.totalMsgDF11;
-    stream << ",\"ignoredAircraft\":" << ignoredAirplanes.size();
-    stream << ",\"currentTracking\":" << adsbDataCollector.size();
-    stream << ",\"totalMsgDF11\":" << statistics.totalMsgDF11;
+    stream << ",\"msgMissed\":" << statistics.msgMissed;    
     stream << ",\"filterRadius\":" << filterRadius;
     stream << "}\n";
 }

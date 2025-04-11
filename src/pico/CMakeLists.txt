@@ -5,16 +5,17 @@ set(CMAKE_CXX_STANDARD 20)
 set(PICO_CXX_ENABLE_EXCEPTIONS 0)
 set(PICO_CXX_ENABLE_RTTI 0)
 
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/generated)
+set(DEFAULT_CONFIG_HEADER "${CMAKE_CURRENT_LIST_DIR}/generated/default_config.hpp")
 set(OPTIMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
-                    openace_default_config.json ${CMAKE_BINARY_DIR}/default_config.hpp)
+                    openace_default_config.json ${DEFAULT_CONFIG_HEADER})
 execute_process(
   COMMAND ${OPTIMIZE_SCRIPT}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} ECHO_OUTPUT_VARIABLE
-                    ECHO_ERROR_VARIABLE)
+  WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} ECHO_OUTPUT_VARIABLE ECHO_ERROR_VARIABLE)
 
 # All defines go in config.hpp that should not be configurable for the board
 # itself. Default configurations could go here if that makes sense
-set(CONFIG_HEADER "${CMAKE_BINARY_DIR}/config.hpp")
+set(CONFIG_HEADER "${CMAKE_CURRENT_LIST_DIR}/generated/config.hpp")
 configure_file(config.hpp.in ${CONFIG_HEADER} @ONLY)
 add_definitions(-include ${CONFIG_HEADER})
 
@@ -121,6 +122,7 @@ target_link_libraries(
           GDL90
           minmea
           etl::etl
+          fanet::fanet
           ArduinoJson
           # /lib
           core
@@ -141,6 +143,7 @@ target_link_libraries(
           sx1262
           adsl
           flarm
+          fanetace
           ogn
           radiotuner
           gdl90service
@@ -149,7 +152,8 @@ target_link_libraries(
           aircrafttracker
           dataport
           airconnect
-          bluetooth)
+          bluetooth
+          )
 
 target_compile_definitions(
   OpenAce

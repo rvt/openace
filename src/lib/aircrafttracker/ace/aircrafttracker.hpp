@@ -19,6 +19,7 @@
 #include "ace/messages.hpp"
 
 #include "trackerdata.hpp"
+#include "ace/antennaRadiationPattern.hpp"
 
 /**
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
@@ -36,7 +37,7 @@ private:
 
     struct
     {
-        uint32_t queueFullErr = 0;   // Might mean ther eis to much pressure on this system and the queue needs to be increased in size. But this will never work if trackedFullErr is also increasing
+        uint32_t queueFullErr = 0; // Might mean ther eis to much pressure on this system and the queue needs to be increased in size. But this will never work if trackedFullErr is also increasing
         uint32_t positionsProcessed = 0;
     } statistics;
 
@@ -59,6 +60,8 @@ private:
 
     // Producer Consumer queue to handle data between this task and the send task
     etl::queue_spsc_atomic<OpenAce::AircraftPositionInfo, 8, etl::memory_model::MEMORY_MODEL_SMALL> queue;
+    using ProtocolRadPattern = OpenAce::AntennaRadiationPattern<OPENACE_STATSCOLLECTOR_NUM_RADIALS>;
+    etl::array<ProtocolRadPattern, static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS)> antennaRadiationPattern;
 
     enum TaskState : uint32_t
     {
@@ -78,6 +81,11 @@ private:
     void handleNew();
     void sendEligibleAircraft();
     void maintenance();
+
+    void handleTrackedAircraft(const OpenAce::AircraftPositionInfo &position)
+    {
+        getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
+    }
 
 public:
     static constexpr const etl::string_view NAME = "AircraftTracker";

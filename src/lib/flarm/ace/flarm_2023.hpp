@@ -127,7 +127,7 @@ uint16_t flarmCalculateChecksum(uint8_t* flarm_pkt, uint8_t length);
 
 
 
-class Flarm_2023 : public BaseModule, public etl::message_router<Flarm_2023, OpenAce::RadioRxFrameMsg, OpenAce::OwnshipPositionMsg, OpenAce::RadioTxPositionRequestMsg>
+class Flarm_2023 : public BaseModule, public etl::message_router<Flarm_2023, OpenAce::RadioRxGfskMsg, OpenAce::OwnshipPositionMsg, OpenAce::RadioTxPositionRequestMsg>
 {
     static constexpr int32_t DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int32_t MAX_IGNORE_DISTANCE = 50000;
@@ -183,11 +183,11 @@ private:
      * Send a FreeRTOS message when a FlarmFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxFrameMsg &msg)
+    void on_receive(const OpenAce::RadioRxGfskMsg &msg)
     {
         if (msg.dataSource == OpenAce::DataSource::FLARM)
         {
-            const OpenAce::RadioRxFrameMsg cpy = msg;
+            const OpenAce::RadioRxGfskMsg cpy = msg;
             if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS )
             {
                 statistics.queueFull++;

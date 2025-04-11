@@ -13,29 +13,32 @@ runs:
       uses: actions/checkout@v4
       with:
         repository: raspberrypi/pico-sdk
-        ref: '2.1.0'
+        ref: '2.1.1'
         path: pico-sdk
         submodules: true
 
-    - name: Checkout FreeRTOS
-      uses: actions/checkout@v4
-      with:
-        repository: FreeRTOS/FreeRTOS-Kernel
-        ref: 'V11.1.0'
-        path: FreeRTOS-Kernel
-        submodules: true
-
-    - name:
+    - name: Checkout btstack
       shell: bash
       run: |
         git config pull.rebase false
         cd ${{github.workspace}}/pico-sdk/lib/btstack
         git fetch --all --tags --prune
         git fetch --unshallow
-        # Develop branch that contains gatt_client_init
-        git checkout 5d4d8cc7b1d35a90bbd6d5ffd2d3050b2bfc861c
-        cd ${{github.workspace}}/pico-sdk
-        git apply ${{github.workspace}}/src/pico-sdk.patch
+        git checkout v1.6.2
+
+    - name: Checkout FreeRTOS
+      uses: actions/checkout@v4
+      with:
+        repository: FreeRTOS/FreeRTOS-Kernel
+        ref: 'V11.2.0'
+        path: FreeRTOS-Kernel
+        submodules: true
+
+    - name: Patch FreeRTOS
+      shell: bash
+      run: |
+        cd ${{github.workspace}}/FreeRTOS-Kernel
+        git apply ${{github.workspace}}/src/freertos.patch
 
     - name: Show workspace
       shell: bash

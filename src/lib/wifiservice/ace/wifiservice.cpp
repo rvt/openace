@@ -19,7 +19,7 @@ OpenAce::PostConstruct WifiService::postConstruct()
 
 void WifiService::start()
 {
-    xTaskCreate(wifiTask, "wifiTask", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY, &taskHandle);
+    xTaskCreate(wifiTask, "wifiTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -68,7 +68,7 @@ void WifiService::wifiTask(void *arg)
                 break;
 
             case ConnectionState::WIFISCAN:
-                startScan = CoreUtils::timeUs32() + (OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS * 1'000);
+                startScan = CoreUtils::timeUs32Raw() + (OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS * 1'000);
                 wifiService->startWifiScan();
                 wifiService->connectionState = ConnectionState::WIFISCANNING;
                 break;
@@ -79,7 +79,7 @@ void WifiService::wifiTask(void *arg)
                     wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
                 }
                 // If for whatever reason WIFI scan does not find any network, then stop scanning after OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS
-                if (CoreUtils::isUsReached(startScan))
+                if (CoreUtils::isUsReachedRaw(startScan))
                 {
                     cyw43_wifi_leave(&cyw43_state, 0);
                     wifiService->disableSta();

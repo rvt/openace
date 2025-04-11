@@ -2,9 +2,9 @@
 
 #ifndef BITCOUNT_USE_BUILTIN
 #ifdef BITCOUNT_SAVE_FLASH
-const uint8_t ByteCount1s[ 16] = { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } ;
+static constexpr uint8_t ByteCount1s[ 16] = { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } ;
 #else
-const uint8_t ByteCount1s[256] =
+static constexpr uint8_t ByteCount1s[256] =
 {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
     1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,

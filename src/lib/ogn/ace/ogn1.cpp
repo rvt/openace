@@ -10,7 +10,7 @@ constexpr float POSITION_ENDECODE = 1.f / POSITION_DECODE;
 
 OpenAce::PostConstruct Ogn1::postConstruct()
 {
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrameMsg));
+    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxGfskMsg));
     if (frameConsumerQueue == nullptr)
     {
         return OpenAce::PostConstruct::XQUEUE_ERROR;
@@ -51,10 +51,18 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
     {
         stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",";
     }
+
+    stream << "\"relay\":[";
     for (uint8_t idx = 0; idx < 4; idx++)
     {
-        stream << "\"relay" << idx << "\":" << statistics.relay[idx] << ",";
+        stream << statistics.relay[idx];
+        if (idx < 3)
+        {
+            stream << ","; // Add a comma between elements
+        }
     }
+    stream << "],";
+
     stream << "\"receivedAircraftPositions\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
     stream << ",\"fecErr\":" << statistics.fecErr;
@@ -287,7 +295,7 @@ void Ogn1::ognReceiveTask(void *arg)
     while (true)
     {
         OGN1_Packet packet;
-        OpenAce::RadioRxFrameMsg msg;
+        OpenAce::RadioRxGfskMsg msg;
         // msg length expected to be 0x1a == 26byte
         if (xQueueReceive(ogn1->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
@@ -317,11 +325,11 @@ void Ogn1::ognReceiveTask(void *arg)
     }
 }
 
-void Ogn1::on_receive(const OpenAce::RadioRxFrameMsg &msg)
+void Ogn1::on_receive(const OpenAce::RadioRxGfskMsg &msg)
 {
     if (msg.dataSource == OpenAce::DataSource::OGN1)
     {
-        const OpenAce::RadioRxFrameMsg cpy = msg;
+        const OpenAce::RadioRxGfskMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;

@@ -3,6 +3,7 @@
 
 void Bmp280::start()
 {
+
     getBus().subscribe(*this);
 };
 
@@ -72,7 +73,6 @@ uint32_t Bmp280::compensate_pressure(int32_t adc_P)
 /* This function reads the manufacturing assigned compensation parameters from the device */
 void Bmp280::read_compensation_parameters()
 {
-    SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
     uint8_t buffer[26];
 
     aceSpi->read_registers(cs, 0x88, buffer, 24, 20);
@@ -94,7 +94,7 @@ void Bmp280::read_compensation_parameters()
 
 OpenAce::PostConstruct Bmp280::postConstruct()
 {
-    SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
+    aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
     if (aceSpi == nullptr)
     {
         return OpenAce::PostConstruct::DEP_NOT_FOUND;
@@ -135,15 +135,16 @@ void Bmp280::on_receive(const OpenAce::IdleMsg &msg)
     static uint8_t everyOnceAWhile = 0;
     (void)msg;
 
+    bool sendData;
     if (everyOnceAWhile % 30 == 0)
     {
-        SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
-
         uint8_t buffer[8]; // I think this can be buffer[6] (No humidity needed)
-        if (aceSpi->acquireSlotSyncCb(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY, [&aceSpi, &buffer, this]()
-                                      {
-                    aceSpi->read_registers_select(cs, 0xF7);
-                    aceSpi->read_registers_read(cs, buffer, sizeof(buffer)); }))
+        if (auto guard = aceSpi->getLock(sendData)) {
+            aceSpi->read_registers_select(cs, 0xF7);
+            aceSpi->read_registers_read(cs, buffer, sizeof(buffer));
+        }
+
+        if (sendData)
         {
             int32_t pressure = ((uint32_t)buffer[0] << 12) | ((uint32_t)buffer[1] << 4) | (buffer[2] >> 4);
             int32_t temperature = ((uint32_t)buffer[3] << 12) | ((uint32_t)buffer[4] << 4) | (buffer[5] >> 4);
@@ -151,10 +152,10 @@ void Bmp280::on_receive(const OpenAce::IdleMsg &msg)
             temperature = compensate_temp(temperature);
             pressure = compensate_pressure(pressure);
 
-            auto value = (pressure + compensation) / 100.0f;
-            statistics.lastPressurehPa = value;
-            getBus().receive(OpenAce::BarometricPressureMsg{value, CoreUtils::timeUs32()});
-        };
+            statistics.lastPressurehPa = (pressure + compensation) / 100.0f;
+            getBus().receive(OpenAce::BarometricPressureMsg{statistics.lastPressurehPa, CoreUtils::timeUs32()});
+        }
+
+        everyOnceAWhile++;
     }
-    everyOnceAWhile++;
 }

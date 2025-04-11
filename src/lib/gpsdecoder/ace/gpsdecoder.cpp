@@ -137,7 +137,7 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
     {
         statistics.receivedGSA++;
 
-        if (gpsStatsMsg.isItTime(CoreUtils::timeUs32()))
+        if (gpsStatsMsg.isItTime(CoreUtils::timeUs32Raw()))
         {
             struct minmea_sentence_gsa frame;
             if (minmea_parse_gsa(&frame, msg.sentence.c_str()))

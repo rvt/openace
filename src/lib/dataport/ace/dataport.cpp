@@ -56,11 +56,8 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
     etl::string<6> groundSpeed;
     getPFLAAGroundSpeed(position, groundSpeed);
 
-    etl::string<7> clibRate;
-    getPFLAAClimbRate(position, clibRate);
-
-    etl::string<2> aircraftType;
-    getPFLAAAircraftCategory(position, aircraftType);
+    etl::string<7> climbRate;
+    getPFLAAClimbRate(position, climbRate);
 
     // Example: PFLAA: $PFLAA,0,10,7,21,0,B1B1B1,0,,,-0.1,1,48,0,*23
     stream << "$PFLAA,"
@@ -68,19 +65,20 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
            << position.relNorthFromOwn << ","                                 // Relative North Meters
            << position.relEastFromOwn << ","                                  // Relative East Meters
            << (position.altitudeWgs84 - ownshipPosition.altitudeWgs84) << "," // Relative Vertical Meters
-           << getPFLAAAddressType(position.addressType) << ","                // ID Type
-           << position.icaoAddress << ","                                     // HEXCode example 484FB3!PH-DHA
+           << getPFLAAAddressType(position.addressType) << ",";                // ID Type
+           CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
+    stream << ","                                              // HEXCode example 484FB3!PH-DHA
            << position.course << ","                                          // Heading
            << ","                                                             // TurnRate kept empty
            << groundSpeed << ","                                              // Ground Speed
-           << clibRate << ","                                                 // Climb Rate
-           << aircraftType << ","                                             // Aircraft Type
+           << climbRate << ","                                                // Climb Rate
+           << getPFLAAAircraftCategory(position) << ","                       // Aircraft Type
            << position.noTrack << ","                                         // Tracking
            << getPFLAASourceType(position) << ","                             // Source Type
            << "";                                                             // RSSI
 
     CoreUtils::addChecksumToNMEA(pflaa);
-    // printf("pflaa t:%08ld %06lx\n", CoreUtils::timeUs32() / 1'000'000, position.address);
+    // printf("t:%08ld %s", CoreUtils::timeMs32(), pflaa.c_str());
     getBus().receive(OpenAce::DataPortMsg{pflaa});
     statistics.messages++;
 }
@@ -94,7 +92,7 @@ uint8_t DataPort::getPFLAASourceType(const OpenAce::AircraftPositionInfo &positi
     case OpenAce::DataSource::MODES:
         return 6;
     default:
-        // FLARM OGN
+        // FLARM OGN FANET
         return 0;
     }
 }
@@ -133,12 +131,20 @@ void DataPort::getPFLAAClimbRate(const OpenAce::AircraftPositionInfo &position, 
     etl::to_string(position.verticalSpeed, verticalSpeed, clibRateFormat);
 }
 
-void DataPort::getPFLAAAircraftCategory(const OpenAce::AircraftPositionInfo &position, etl::string<2> &type)
+etl::string_view DataPort::getPFLAAAircraftCategory(const OpenAce::AircraftPositionInfo &position) const
 {
-    // etl::format_spec  clibRateFormat = etl::format_spec().hex().upper_case(true);
+    static constexpr etl::string_view hexLookup[] = {
+        "0", "1", "2", "3", "4", "5", "6", "7",
+        "8", "9", "A", "B", "C", "D", "E", "F"
+    };
+    auto aircraftTypeHex = static_cast<uint8_t>(position.aircraftType);
 
-    // OpenAce aircraft type follow's FLARM's aircraft type
-    etl::to_string(static_cast<uint16_t>(position.aircraftType), type);
+    if (aircraftTypeHex > 0x0F)
+    {
+        return  hexLookup[0x0A];
+    }
+
+    return hexLookup[aircraftTypeHex];
 }
 
 /**

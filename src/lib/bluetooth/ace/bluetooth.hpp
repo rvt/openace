@@ -38,7 +38,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
     static constexpr uint8_t CONN_READY = 0b001;
-    static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 512; // TODO: Tune buffer, should be > MTU which seems to be 255
+    static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 1024; // TODO: Tune buffer, should be > MTU which seems to be 255
 
     // clang-format off
     // advertisement data, MAX 31 byte!
@@ -57,13 +57,14 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
     friend class message_router;
     struct
     {
+        uint32_t dataPortMsgMissedErr=0;
     } statistics;
 
     struct BtContext
     {
         union
         {
-            hci_con_handle_t handle;
+            hci_con_handle_t hciHandle;
             uint16_t rfcommChannelId;
         };
         uint8_t readyState; // Simple binary state machine, 0b01 = notification enabled, 0b100 = rfcomm channel opened, 0b010 = att channel open
@@ -73,51 +74,24 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
         uint16_t bufferOverrunErr;
         btstack_context_callback_registration_t callBack;
         CircularBuffer<CONNECTIONS_BUFFER_SIZE> buffer; // connection private data
-        BtContext(hci_con_handle_t handle_, uint16_t mtu_, uint8_t readyState_, btstack_context_callback_registration_t callBack_) : handle(handle_),
+        BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void * context)) : hciHandle(hciHandle_),
                                                                                                                                      readyState(readyState_),
                                                                                                                                      requiresNotification(true),
                                                                                                                                      mtu(mtu_),
                                                                                                                                      attrHandle(0),
-                                                                                                                                     bufferOverrunErr(0),
-                                                                                                                                     callBack(callBack_)
+                                                                                                                                     bufferOverrunErr(0)
         {
             callBack.context = this;
+            callBack.callback = callBack_;
         };
 
+        // Disallow copy
         BtContext(const BtContext &) = delete;
         BtContext &operator=(const BtContext &) = delete;
 
-        // Move constructor
-        BtContext(BtContext &&other) noexcept
-            : handle(other.handle),
-              readyState(other.readyState),
-              requiresNotification(other.requiresNotification),
-              mtu(other.mtu),
-              attrHandle(other.attrHandle),
-              bufferOverrunErr(other.bufferOverrunErr),
-              callBack(other.callBack),
-              buffer(etl::move(other.buffer))
-        {
-            callBack.context = this;
-        }
-
-        // Move assignment operator
-        BtContext &operator=(BtContext &&other) noexcept
-        {
-            if (this != &other)
-            {
-                handle = other.handle;
-                readyState = other.readyState;
-                requiresNotification = other.requiresNotification;
-                mtu = other.mtu;
-                attrHandle = other.attrHandle;
-                bufferOverrunErr = other.bufferOverrunErr;
-                callBack = other.callBack;
-                buffer = etl::move(other.buffer);
-                callBack.context = this;
-            }
-            return *this;
-        }
+        // Disallow move
+        BtContext(BtContext &&) = delete;
+        BtContext &operator=(BtContext &&) = delete;
     };
 
 private:
@@ -140,15 +114,15 @@ private:
     static void attContextCallback(void *context);
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
-    static void sendNotification(Bluetooth::BtContext *context);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
     static bool createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState);
     // Remove any old connections
     static void removeConnection(uint16_t handle);
-    static void pushQueueIntoConnectionBuffers(void *arg);
+    static void notifyAttServer();
     // END: methods within this block as running within the BLE task
     static void eraseBonding();
+    static void heartbeat_handler(struct btstack_timer_source *ts);
 
     // Lists of bluetooth contexts
     using BluetoothConnections = etl::list<BtContext, OPENACE_MAX_BLUETOOTH_CONNECTIONS>;
@@ -156,13 +130,13 @@ private:
     /**
      * Get the connections context by Bluetooth handle
      */
-    static BluetoothConnections::iterator ctxByHandle(hci_con_handle_t handle)
+    static BluetoothConnections::iterator ctxByHandle(hci_con_handle_t hciHandle)
     {
         // clang-format off
         return etl::find_if(connections.begin(), connections.end(),
-            [handle](const BtContext &ctx)
+            [hciHandle](const BtContext &ctx)
             {
-                return ctx.handle == handle;
+                return ctx.hciHandle == hciHandle;
             });
         // clang-format on 
         }
@@ -184,6 +158,9 @@ private:
     // THis queue seem to run ful with 8 items in the queue
     inline static btstack_context_callback_registration_t pushIntoQueueReg;
     inline static btstack_packet_callback_registration_t smEventCallback;
+    inline static btstack_timer_source_t heartbeat;
+
+
     inline static uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
 
     // Semaphore to ensure checking data and is synchronized with the BT thread.

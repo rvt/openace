@@ -87,9 +87,6 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
             if (strcmp(it->second.module->name().cbegin(), requesting.cbegin()) == 0)
             {
                 return it->second.module;
-                // if (it->second.result == OpenAce::PostConstruct::OK) {
-                //     return it->second.module;
-                // }
             }
         }
         printf("Module %s requests dependecy on %s but it is not registered\n", that.name().cbegin(), requesting.cbegin());
@@ -169,10 +166,12 @@ void BaseModule::disablePinInterrupt(uint8_t pin)
 /**
  * Re-Enable the interrupt that was previously disabled with \sa disablePinInterrupt()
  */
-void BaseModule::enablePinInterrupt(uint8_t pin)
+void BaseModule::enablePinInterrupt(uint8_t pin, uint32_t notificationValue)
 {
     pinInterruptHandlers[pin].enabled = true;
+    pinInterruptHandlers[pin].notificationValue = notificationValue;
 }
+
 
 /**
  * Unregister a pin interrupt handler.

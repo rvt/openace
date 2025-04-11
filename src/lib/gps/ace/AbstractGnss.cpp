@@ -29,12 +29,13 @@ OpenAce::PostConstruct AbstractGnss::postConstruct()
     }
 
     AbstractGnss_rtc = static_cast<RtcModule *>(moduleByName(*this, RtcModule::NAME));
-    if (AbstractGnss_rtc == nullptr) {
+    if (AbstractGnss_rtc == nullptr)
+    {
         return OpenAce::PostConstruct::DEP_NOT_FOUND;
     }
 
     gpio_init(ppsPin);
-    gpio_set_dir(ppsPin, GPIO_IN); 
+    gpio_set_dir(ppsPin, GPIO_IN);
     gpio_pull_up(ppsPin);
 
     return OpenAce::PostConstruct::OK;
@@ -42,12 +43,12 @@ OpenAce::PostConstruct AbstractGnss::postConstruct()
 
 void AbstractGnss::start()
 {
-    
+
     // TODO: Check if there is a better way to reduce stack size.
     // This seem to have because the ublox is the beginning of messages through the complete system?
     // Can we use a reference to strings instead of copy?
     xTaskCreate(receiveTask, "AbstractGnss"
-                              "Task",
+                             "Task",
                 configMINIMAL_STACK_SIZE + 768, this, tskIDLE_PRIORITY + 3, &taskHandle);
 
     pioSerial.start();
@@ -87,8 +88,9 @@ void AbstractGnss::receiveTask(void *arg)
             {
                 while (abstractGnss->queue.pop(sentence))
                 {
-                    if (abstractGnss->preProcessSentence(sentence)) {
-//                        puts(sentence.c_str());
+                    if (abstractGnss->preProcessSentence(sentence))
+                    {
+                        // puts(sentence.c_str());
                         abstractGnss->getBus().receive(OpenAce::GPSSentenceMsg{sentence});
                         abstractGnss->statistics.totalReceived++;
                     }
@@ -109,7 +111,7 @@ void AbstractGnss::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "}\n";
 }
 
-void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char>& sentence)
+void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char> &sentence)
 {
     // Note: if in case this get's removed because the messages are needed,
     // then this filter needs to be added in DataPort that passes through GPS messages
@@ -118,43 +120,40 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     // GSA : GPS DOP and active satellites
     // GSV : GPS Satellites in view
 
-    // Targets to remove
-    constexpr etl::string_view target1 = "$GPGSV";
-    constexpr etl::string_view target2 = "$GPVTG";
-    constexpr etl::string_view target3 = "$GPGLL";
-    // RMC target for for pushing to the queue. Since timings is based on RMC.
-    constexpr etl::string_view rmctarget = "$GNRMC";
-    
+    bool isRmc = false;
 
-    // Used to force a push to keep timing's
-    bool isRmc;
+    // Only check if the queue has room
     if (!queue.full())
     {
+        if (sentence.size() >= 6)
+        {
+            // Check the message type at position 3–5
+            char type[4] = {sentence[3], sentence[4], sentence[5], '\0'};
 
-        bool match1=true;
-        bool match2=true;
-        bool match3=true;
-        isRmc=true;
-        for (uint8_t i=3;i<6;i++) {
-            match1 = match1 && (sentence[i] == target1[i]);
-            match2 = match2 && (sentence[i] == target2[i]);
-            match3 = match3 && (sentence[i] == target3[i]);
-            isRmc = isRmc && (sentence[i] == rmctarget[i]);
-        }
+            if (etl::string_view(type) == "GSV" ||
+                etl::string_view(type) == "VTG" ||
+                etl::string_view(type) == "GLL")
+            {
+                // Ignore this sentence
+                return;
+            }
 
-        if (!(match1 || match2 || match3) || true) {
+            // Check for RMC
+            if (etl::string_view(type) == "RMC")
+            {
+                isRmc = true;
+            }
+
+            // Push the sentence
             queue.push(sentence.data());
         }
     }
     else
     {
-        isRmc = false;
         statistics.queueFullErr++;
     }
 
-    // To reduce some FreeRTOS switches only send when queue is nearly full
-    // Since this is a continues NMEA stream, this should be fine and accurate enough as
-    // longs as the queue is relative small
+    // Notify only when queue has enough items or it's an RMC
     if (queue.size() > 3 || isRmc)
     {
         xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);

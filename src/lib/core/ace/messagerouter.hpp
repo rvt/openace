@@ -4,7 +4,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-//#include "coreutils.hpp"
+#include "measure.hpp"
 
 /* Vendor. */
 #include "etl/message_router.h"
@@ -15,6 +15,7 @@
 // Should we use a queue ?? QueuedMessageRouter.cpp
 namespace OpenAce
 {
+    static constexpr uint8_t SHOW_MESSAGEBUS_TIMING = true;
 
     template <uint_least8_t MAX_ROUTERS_>
     class ThreadSafeBus : public etl::imessage_bus
@@ -39,9 +40,27 @@ namespace OpenAce
             vSemaphoreDelete(xMutex);
         }
 
+        void processMessage(const etl::imessage &message)
+        {
+            // Note: Skipping to mutex does not seem to harm performance
+            bool skipMutex = (message.get_message_id() == 20);
+            if (skipMutex || xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(50)) == pdTRUE)
+            {
+                etl::imessage_bus::receive(message);
+
+                if (!skipMutex)
+                {
+                    xSemaphoreGiveRecursive(xMutex);
+                }
+            } else {
+                puts("Message not send");
+            }
+        }
+
         //*******************************************
         virtual void receive(const etl::imessage &message) override
         {
+            static uint32_t previous;
             /**
              * Specify extra delay for configuration changes to ensure they are delivered
              * TODO: For development purpose create statistics of the message ID's per
@@ -49,14 +68,16 @@ namespace OpenAce
 
             // When updating configurations the mutex did not work, Not sure yet why this was
             // So it's now hacked to not use a mutex
-            auto skipMutex = message.get_message_id() == 20;
-            if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
+
+            if constexpr (SHOW_MESSAGEBUS_TIMING)
             {
-                etl::imessage_bus::receive(message);
-                if (!skipMutex)
-                {
-                    xSemaphoreGiveRecursive(xMutex);
-                }
+                auto m = Measure("Message bus", 15000, previous | message.get_message_id() );
+                previous = message.get_message_id() << 8;
+                processMessage(message);        
+            }
+            else
+            {
+                processMessage(message);
             }
         }
 

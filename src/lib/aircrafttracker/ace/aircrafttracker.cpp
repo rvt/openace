@@ -1,6 +1,6 @@
 #include "aircrafttracker.hpp"
 #include "ace/coreutils.hpp"
-#include "ace/coreutils.hpp"
+#include "ace/models.hpp"
 
 #include "etl/algorithm.h"
 
@@ -52,8 +52,13 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 {
     (void)path;
     stream << "{";
+    for (uint8_t i=0; i< static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS); i++) {
+        stream << "\"" << OpenAce::dataSourceIntToString(i) << "\":";
+        antennaRadiationPattern[i].serialize(stream);
+        stream << ",";
+    }
     stream << "\"queueFullErr\":" << statistics.queueFullErr;
-    stream << ",\"numberOfPlanesTracking\":" << trackedAircraft.size();
+    stream << ",\"numberOfObjectsTracking\":" << trackedAircraft.size();
     stream << ",\"positionsProcessed\":" << statistics.positionsProcessed;
     stream << ",\"adaptiveRadius\":" << trackedAircraft.radius();
     stream << "}\n";
@@ -61,6 +66,12 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 
 void AircraftTracker::on_receive(const OpenAce::AircraftPositionMsg &msg)
 {
+    uint8_t dataSource = static_cast<uint8_t>(msg.position.dataSource);
+    if (dataSource < antennaRadiationPattern.size())
+    {
+        antennaRadiationPattern[dataSource].put(msg);
+    }
+
     if (!queue.full())
     {
         queue.push(msg.position);
@@ -128,13 +139,10 @@ void AircraftTracker::handleNew()
 
 void AircraftTracker::sendEligibleAircraft()
 {
-    // puts("\033[2J\033[H");
-    // trackedAircraft.dump();
-    auto delay = trackedAircraft.next([this](const OpenAce::AircraftPositionInfo &position)
-        {
-            // printf("Send      t:%08ld %06lX\n", CoreUtils::timeUs32() / 1'000'000, position.address);
-            getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
-        });
+    auto delay = trackedAircraft.next(
+        etl::delegate<void(const OpenAce::AircraftPositionInfo&)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this)
+    );
+    
     xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay == 0 ? 1 : delay), portMAX_DELAY);
 }
 

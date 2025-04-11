@@ -41,6 +41,11 @@ public:
         return time_us_32() - timeUs32PpsOffset;
     }
 
+    __force_inline static uint32_t timeUs32Raw()
+    {
+        return time_us_32();
+    }
+
     __force_inline static uint64_t timeUs64()
     {
         // time_us_64 and time_us_32 use the same hardware time, thus offset is also the same
@@ -74,6 +79,10 @@ public:
     __force_inline static bool isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
     {
         return usToReference(referenceUs, us) < 0;
+    }
+    __force_inline static bool isUsReachedRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
+    {
+        return usToReferenceRaw(referenceUs, us) < 0;
     }
 
     /**
@@ -136,12 +145,15 @@ public:
 
     /**
      * Calculate the time from referenceUs to us
-     * If referenceUs is in the past, the result is negative
-     *
+     * If referenceUs is in the past, the result is negative, eg the event happened
      */
     __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
     {
-        return referenceUs - us;
+        return static_cast<int32_t>(referenceUs - us);
+    }
+    __force_inline static int32_t usToReferenceRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
+    {
+        return static_cast<int32_t>(referenceUs - us);
     }
 
     static int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
@@ -161,6 +173,7 @@ public:
     {
         return localTime(msSinceEpoch());
     }
+    
     static tm localTime(uint64_t msSinceEpoch)
     {
         time_t secondsSinceEpoch = msSinceEpoch / 1000;
@@ -425,13 +438,14 @@ public:
      * Later the idea is that it will use DDB to get the registration based on aircraftID and addressType
      *
      */
-    static OpenAce::IcaoAddress makeIcaoAddress(uint32_t aircraftID, OpenAce::AddressType addressType)
+    static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, OpenAce::AddressType addressType, etl::string_view callSign="")
     {
         (void)addressType;
-        OpenAce::IcaoAddress icaoAddress;
-        etl::string_stream stream(icaoAddress);
-        stream << etl::hex << etl::uppercase << aircraftID;
-        return icaoAddress;
+        stream << etl::hex <<  etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << OpenAce::RESET_FORMAT;
+        if (callSign.size() > 0)
+        {
+            stream << "!" <<  callSign;
+        }
     }
 
     static uint8_t getHexVal(char hex)
@@ -479,13 +493,13 @@ public:
     /**
      * Returns the pin number from the pin map, when not found returns -1 to indicate that
      */
-    static int8_t pinValue(const OpenAce::PinTypeMap& pm, const OpenAce::PinType &pinName)
+    static int8_t pinValue(const OpenAce::PinTypeMap& pm, const OpenAce::PinType &pinName, int8_t defaultValue=-1)
     {
         auto it = pm.find(pinName);
         if (it != pm.end())
         {
             return it->second;
         }
-        return -1;
+        return defaultValue;
     }
 };

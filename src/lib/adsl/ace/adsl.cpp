@@ -9,7 +9,7 @@ OpenAce::PostConstruct ADSL::postConstruct()
 {
     //    BaseModule::moduleByName(*this, Tuner::NAME);
 
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxFrameMsg));
+    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxGfskMsg));
     if (frameConsumerQueue == nullptr)
     {
         return OpenAce::PostConstruct::XQUEUE_ERROR;
@@ -75,11 +75,11 @@ void ADSL::addReceiveStat(uint32_t frequency)
         dataSourceTimeStats.back().timeTenthMs.set(msInSec);
     }
 }
-void ADSL::on_receive(const OpenAce::RadioRxFrameMsg &msg)
+void ADSL::on_receive(const OpenAce::RadioRxGfskMsg &msg)
 {
     if (msg.dataSource == OpenAce::DataSource::ADSL)
     {
-        const OpenAce::RadioRxFrameMsg cpy = msg;
+        const OpenAce::RadioRxGfskMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;
@@ -311,7 +311,7 @@ void ADSL::adslReceiveTask(void *arg)
 {
     ADSL *adsl = static_cast<ADSL *>(arg);
     ADSL_Packet packet;
-    OpenAce::RadioRxFrameMsg msg;
+    OpenAce::RadioRxGfskMsg msg;
     while (true)
     {
         // msg length expected to be 0x1b == 25byte

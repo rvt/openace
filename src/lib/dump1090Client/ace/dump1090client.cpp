@@ -60,6 +60,7 @@ void Dump1090Client::getData(etl::string_stream &stream, const etl::string_view 
     (void)path;
     stream << "{";
     stream << "\"totalReceived\":" << statistics.totalReceived;
+    stream << ",\"reConnects\":" << statistics.reConnects;
     stream << "}\n";
 }
 
@@ -76,6 +77,7 @@ void Dump1090Client::on_receive(const OpenAce::IdleMsg &msg)
     {
         stoppedCounter = 0;
         tcpClient.start();
+        statistics.reConnects++;
     }
     stoppedCounter++;
 }

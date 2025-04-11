@@ -2,6 +2,7 @@
 
 #include "constants.hpp"
 #include "models.hpp"
+#include "semaphoreguard.hpp"
 
 #include "pico.h"
 
@@ -15,10 +16,11 @@
 #include "etl/array.h"
 #include "etl/string.h"
 #include "etl/message_bus.h"
-
+#include "etl/span.h"
 #include "etl/delegate.h"
 
-// TODO: CHange to a etl::delegate
+
+// TODO: Change to a etl::delegate
 typedef std::function<void(const uint32_t)> pinIntrCallback_t;
 
 // function to transform a reason into text
@@ -30,7 +32,7 @@ class BaseModule
     static constexpr uint8_t MAX_MODULES = 40;
 
 private:
-// Mutex to be used during load/unloading and changes in interrupts
+    // Mutex to be used during load/unloading and changes in interrupts
     inline static SemaphoreHandle_t xMutex;
 
     struct pinInterruptHandler
@@ -58,10 +60,9 @@ public:
     using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
     struct ModuleStatus
     {
-        ModuleLoadFunction loadFunction;
         OpenAce::PostConstruct result;
-        BaseModule *module;
         bool hwCheck;
+        BaseModule *module;
     };
 
 protected:
@@ -82,19 +83,25 @@ public:
 
     static BaseModule *moduleByName(const BaseModule &that, const etl::string_view requesting);
 
-    static void registerModule(const etl::string_view name, bool hwCheck, ModuleLoadFunction loader)
+    static void registerModule(const etl::string_view name, bool hwCheck)
     {
-        moduleLoaderMap[name] = {loader, OpenAce::PostConstruct::NA, nullptr, hwCheck};
+        moduleLoaderMap[name] = {OpenAce::PostConstruct::NA, hwCheck, nullptr};
     }
 
     /**
      * Set the final evaluation of the module. b
      */
-    static void setModuleStatus(const etl::string_view name, BaseModule *base, OpenAce::PostConstruct result)
+    static void setModuleStatus(const etl::string_view name, BaseModule *base)
     {
-        moduleLoaderMap[name].result = result;
+        moduleLoaderMap[name].result = OpenAce::PostConstruct::OK;
         moduleLoaderMap[name].module = base;
     }
+    static void setModuleStatus(const etl::string_view name, OpenAce::PostConstruct result)
+    {
+        moduleLoaderMap[name].result = result;
+        moduleLoaderMap[name].module = nullptr;
+    }
+    
     static const ModuleLoadMap &registeredModules()
     {
         return moduleLoaderMap;
@@ -174,13 +181,12 @@ public:
      * Register a pin interrupt handler with callback function
      */
     void disablePinInterrupt(uint8_t pin);
-    void enablePinInterrupt(uint8_t pin);
+    void enablePinInterrupt(uint8_t pin, uint32_t notificationValue);
 
     /**
      * Unregister a pin interrupt handler
      */
     void unregisterPinInterrupt(uint8_t pin);
-
 };
 
 /**
@@ -239,18 +245,7 @@ public:
     virtual void write_array(uint8_t cs, uint8_t *data, uint8_t length, uint8_t delayMs) const = 0;
     virtual void write_byte(uint8_t cs, uint8_t data, uint8_t delayMs) const = 0;
 
-    /**
-     * Squire access to the SPI buss
-     * \sa acquireSlotSyncCb()
-     * \sa releaseSlotSync()
-     */
-    virtual bool acquireSlotSync(uint8_t busFrequencyMhz) = 0;
-    /**
-     * Alternative to acquireSlotSync that will acquire access to the SPI bus, calls the delegate and release it in one function call
-     * \sa releaseSlotSync()
-     */
-    virtual bool acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()> &delegate) = 0;
-    virtual void releaseSlotSync() = 0;
+    virtual SpiGuard getLock(bool &locked) = 0;
     virtual uint8_t spiNum() const = 0;
 };
 
@@ -290,18 +285,24 @@ public:
         Radio::Mode mode;               // Mode of the radio
         OpenAce::DataSource dataSource; // Data source
         uint8_t packetLength;           // Total packet length including CRC
-        uint8_t preambleLength;
+        uint8_t preambleLength;         // Preamble length in bits
+        uint8_t codingRate;             // Coding rate for LORA packages
         uint8_t syncLength;
         etl::array<uint8_t, 10> syncWord; // Sync word
-        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t preambleLength_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
-            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), preambleLength(preambleLength_), syncLength(syncLength_), syncWord(syncWord_) {}
+
+        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t preambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
+            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), preambleLength(preambleLength_), codingRate(codingRate_), syncLength(syncLength_), syncWord(syncWord_) {}
+
         constexpr ProtocolConfig(const ProtocolConfig &other)
             : mode(other.mode),
               dataSource(other.dataSource),
               packetLength(other.packetLength),
               preambleLength(other.preambleLength),
+              codingRate(other.codingRate),
               syncLength(other.syncLength),
               syncWord(other.syncWord) {}
+
+        ProtocolConfig() = default;
     };
 
     struct RadioParameters
@@ -312,6 +313,7 @@ public:
 
         constexpr RadioParameters(const Radio::ProtocolConfig &_config, uint32_t _frequency, int8_t _powerdBm) : config(_config), frequency(_frequency), powerdBm(_powerdBm) {}
         constexpr RadioParameters(const Radio::RadioParameters &_params) : config(_params.config), frequency(_params.frequency), powerdBm(_params.powerdBm) {}
+        RadioParameters() = default;
         RadioParameters &operator=(const RadioParameters &other) = default;
     };
 
@@ -320,14 +322,21 @@ public:
         RadioParameters radioParameters;
         uint8_t length;
         OpenAce::TxPacketType data;
-        TxPacket(const RadioParameters &radioParameters_, uint8_t length_, const void *data_) : radioParameters(radioParameters_), length(length_)
+        TxPacket() = default;
+        TxPacket(const RadioParameters &radioParameters_, etl::span<const uint8_t> dataSpan)
+            : radioParameters(radioParameters_), length(static_cast<uint8_t>(dataSpan.size()))
         {
-            if (length_ > data.size())
+            if (dataSpan.size() > data.size())
             {
-                panic("TxPacket: Frame length to large for this packet");
+                puts("TxPacket: Frame length too large for this packet, clearing out");
+                memset(data.data(), 0, data.size());
+            } else {
+                memcpy(data.data(), dataSpan.data(), dataSpan.size());
             }
-            memcpy(data.data(), data_, length < data.size() ? length : data.size());
         }
+
+        TxPacket(const RadioParameters &radioParameters_, uint8_t length_, const void *data_)
+            : TxPacket(radioParameters_, etl::span<const uint8_t>(static_cast<const uint8_t *>(data_), length_)) {}
     };
 
     struct RxMode
@@ -336,9 +345,6 @@ public:
     };
 
     virtual ~Radio() = default;
-    // TODO: Consider moving these to a databus thsi will remove some weird hard coupling between tuners and hardware radio
-    virtual void rxMode(const RxMode &rxMode) = 0;
-    virtual void txPacket(const TxPacket &txpacket) = 0;
     virtual uint8_t radio() const = 0;
 };
 

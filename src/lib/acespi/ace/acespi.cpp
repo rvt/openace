@@ -95,37 +95,14 @@ void AceSpi::resetDevices() const
     gpio_put(rst, 1);
 }
 
-bool AceSpi::acquireSlotSyncCb(uint8_t busFrequencyMhz, const etl::delegate<void()>& delegate) {
-    
-    if (acquireSlotSync(busFrequencyMhz))
-    {
-        delegate();
-        releaseSlotSync();
-        return true;
-    }
-
-    return false;
-}
-
-bool AceSpi::acquireSlotSync(uint8_t busFrequencyMhz)
-{
-    if (xSemaphoreTake(mutex, TASK_DELAY_MS(10)) == pdTRUE)
-    {
-        if (lastBusFrequency != busFrequencyMhz)
-        {
-            lastBusFrequency = busFrequencyMhz;
-            spi_init(spi?spi1:spi0, lastBusFrequency * 1'000'000);
-        }
-        return true;
-    }
-
-    return false;
-}
-
-void AceSpi::releaseSlotSync()
-{
-    xSemaphoreGive(mutex);
-}
+SpiGuard AceSpi::getLock(bool &locked){
+    // if (lastBusFrequency != busFrequencyMhz)
+    // {
+    //     lastBusFrequency = busFrequencyMhz;
+    //     spi_init(spi?spi1:spi0, lastBusFrequency * 1'000'000);
+    // }
+    return SpiGuard(mutex, locked);
+};
 
 void AceSpi::on_receive_unknown(const etl::imessage &msg)
 {
