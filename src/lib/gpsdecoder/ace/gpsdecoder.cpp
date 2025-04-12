@@ -59,15 +59,41 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
     {
     case MINMEA_SENTENCE_RMC:
     {
+        static bool forceSendTime = true;
         statistics.receivedRMC++;
         struct minmea_sentence_rmc frame;
         if (minmea_parse_rmc(&frame, msg.sentence.c_str()))
         {
             uint16_t millis = frame.time.microseconds / 1000;
 
-            // Send only 2 times per minute
-            if ((frame.time.seconds == 0 || frame.time.seconds == 30) && millis == 0)
+#ifndef NDEBUG
+            // Print the time difference between the RMC and the local time
+            // It's required to have this within a second accurate since some protocols like FLARM
+            // depends on high accurate seconds since EPOCH
+            auto msSinceEpoch = static_cast<uint32_t>(CoreUtils::msSinceEpoch() % 1000);
+            auto secondsSinceEpoch = CoreUtils::secondsSinceEpoch();
+            auto msInSecond = CoreUtils::msInSecond();
+
+            time_t t = (time_t)secondsSinceEpoch;
+            struct tm *timeinfo = localtime(&t); // or gmtime() for UTC
+
+            if ((timeinfo->tm_hour != frame.time.hours ||
+                 timeinfo->tm_min != frame.time.minutes ||
+                 timeinfo->tm_sec != frame.time.seconds) &&
+                CoreUtils::secondsSinceEpoch() > 1000000000)
             {
+
+                printf("CoreUtils::secondsSinceEpoch(): %02d:%02d:%02d.%03ld RMC:%02d:%02d:%02d.%03d\n",
+                       timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, msSinceEpoch,
+                       frame.time.hours, frame.time.minutes, frame.time.seconds, msInSecond);
+            }
+#endif
+
+            // Send only 2 times per minute
+            if ((frame.time.seconds == 0 || frame.time.seconds == 30 || forceSendTime) && millis == 0 )
+            {
+                forceSendTime = fixType == 0;
+
                 // The time in a RMC sentence is the UTC time, not GPS time
                 getBus().receive(
                     OpenAce::UtcTimeMsg{
@@ -83,7 +109,8 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
             // Update planes position when fix is valid
             if (frame.valid)
             {
-                if (frame.latitude.scale == 0 || frame.longitude.scale == 0) {
+                if (frame.latitude.scale == 0 || frame.longitude.scale == 0)
+                {
                     return;
                 }
 
@@ -142,18 +169,16 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
             struct minmea_sentence_gsa frame;
             if (minmea_parse_gsa(&frame, msg.sentence.c_str()))
             {
+                fixType = (uint8_t)frame.fix_type;
                 pDop = getFloat(frame.pdop, 100);
                 auto hDop = getFloat(frame.hdop, 100);
-
                 getBus().receive(
                     OpenAce::GpsStatsMsg{
-                        fixQuality, // 0:Fix Not Valid 1:GPS fix 2:DGPS SBAS etc.. 3..6:NA
+                        fixQuality,              // 0:Fix Not Valid 1:GPS fix 2:DGPS SBAS etc.. 3..6:NA
                         (uint8_t)frame.fix_type, // 1:NA 2:2D 3:3D
                         satellitesTracked,
                         pDop,
-                        hDop
-                    }
-                );
+                        hDop});
             }
         }
     }
@@ -171,7 +196,8 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
  */
 float GpsDecoder::convertToMeters(const minmea_float &f, char unit, float defaultValue) const
 {
-    if (f.scale == 0) {
+    if (f.scale == 0)
+    {
         return defaultValue;
     }
     float meters = minmea_tofloat(&f);
@@ -215,15 +241,12 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .lon = longitude,
                     .altitudeWgs84 = static_cast<int16_t>(alt),
                     .verticalSpeed = altitudeWgs84.perSecond(), // vertical speed
-                    .groundSpeed = groundSpeed,               // Ground Speed
+                    .groundSpeed = groundSpeed,                 // Ground Speed
                     .course = course(),
                     .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
                     .velocityNorth = velocityNorth,
                     .velocityEast = velocityEast,
                     .heightEgm96 = static_cast<int16_t>(alt - height),
-                    .geoidOffset = static_cast<int16_t>(height)
-                }
-            }
-        );
+                    .geoidOffset = static_cast<int16_t>(height)}});
     }
 }

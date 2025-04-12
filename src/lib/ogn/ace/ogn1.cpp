@@ -211,7 +211,7 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
             speed0d1ms * .1f,
             static_cast<int16_t>(packet.DecodeHeading() * .1f),
             packet.DecodeTurnRate() * .1f,
-            static_cast<uint16_t>(fromOwn.distance),
+            fromOwn.distance,
             fromOwn.relNorth,
             fromOwn.relEast,
             fromOwn.bearing},

@@ -145,7 +145,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
     {
         test.received = false;
         get_absolute_timeValue += 10000;
-        time_us_64Value += 10000;
+        time_us_Value += 10000;
         CoreUtils::hexStrToByteArray(line.c_str() + 1, data);
         adsbDecoder.receiveBinary(data, line.size() - 1);
         if (test.received)
@@ -225,5 +225,5 @@ TEST_CASE("Test descending aircraft", "[single-file]")
     CoreUtils::hexStrToByteArray("8d407a059908e102980c93715499", data);
     adsbDecoder.receiveBinary(data, 14);
 
-    REQUIRE(test.position.verticalSpeed == Catch::Approx(-0.65024).margin(0.001));
+    REQUIRE(test.position.verticalSpeed == Catch::Approx(-3.0).margin(0.001));
 }

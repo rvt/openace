@@ -221,7 +221,7 @@ int8_t Flarm::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rssiDb
             speedM4S / 4.0f,                         // Speed was send as meters per 4 seconds/ scale back to m/s
             static_cast<int16_t>(track),
             0.0f,
-            static_cast<uint16_t>(fromOwn.distance),
+            fromOwn.distance,
             fromOwn.relNorth,
             fromOwn.relEast,
             fromOwn.bearing

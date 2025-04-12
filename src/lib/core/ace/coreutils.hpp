@@ -15,8 +15,9 @@
 
 class CoreUtils
 {
-    inline static uint64_t __scratch_y("OpenAceMem") offsetTimeToAbsolute = 0;
-    inline static uint32_t __scratch_y("OpenAceMem") timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
+    // Putting these in scratch mem does work __scratch_y("OpenAceMem") 
+    inline static uint64_t offsetTimeToAbsolute = 0;
+    inline static uint32_t timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
 
 public:
     /**
@@ -71,6 +72,24 @@ public:
     }
 
     /**
+     * Calculate the time from referenceUs to us
+     * If referenceUs is in the past, the result is negative, eg the event happened
+     */
+    __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
+    {
+        return static_cast<int32_t>(referenceUs - us);
+    }
+    __force_inline static int32_t usToReferenceRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
+    {
+        return static_cast<int32_t>(referenceUs - us);
+    }
+
+    static int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
+    {
+        return etl::absolute(usToReference(referenceUs, us));
+    }
+
+    /**
      * Decide if the referenced time is reached
      * Use this to measure short time differences of less then 71minutes
      * It will properly handle wraparounds if the time is less than 35 minutes in difference
@@ -78,22 +97,11 @@ public:
      */
     __force_inline static bool isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
     {
-        return usToReference(referenceUs, us) < 0;
+        return usToReference(referenceUs, us) <= 0;
     }
     __force_inline static bool isUsReachedRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
     {
-        return usToReferenceRaw(referenceUs, us) < 0;
-    }
-
-    /**
-     * Set's the offset to the current time in ms since epoch.
-     * THis function should be called to sync GPS time to the PICO's time using the PPS from the GPS
-     * and is given the exact epochoffset when received from PPS this will calibrate the epoch function to exact ms
-     * See RTC::on_receive(const OpenAce::UtcTimeMsg& msg)
-     */
-    static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
-    {
-        CoreUtils::offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1'000;
+        return usToReferenceRaw(referenceUs, us) <= 0;
     }
 
     /**
@@ -103,14 +111,6 @@ public:
     static void __time_critical_func(setPPS)()
     {
         timeUs32PpsOffset = time_us_32() % 1'000'000;
-    }
-
-    /**
-     * Returns the current time in ms since epoch
-     */
-    static uint64_t msSinceEpoch()
-    {
-        return (time_us_64() / 1'000) + CoreUtils::offsetTimeToAbsolute;
     }
 
     /**
@@ -143,24 +143,25 @@ public:
         }
     }
 
+    //////////////// EPOCH functions ////////////////
     /**
-     * Calculate the time from referenceUs to us
-     * If referenceUs is in the past, the result is negative, eg the event happened
+     * Set's the offset to the current time in ms since epoch.
+     * THis function should be called to sync GPS time to the PICO's time using the PPS from the GPS
+     * and is given the exact epochoffset when received from PPS this will calibrate the epoch function to exact ms
+     * See RTC::on_receive(const OpenAce::UtcTimeMsg& msg)
      */
-    __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
+    static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
     {
-        return static_cast<int32_t>(referenceUs - us);
-    }
-    __force_inline static int32_t usToReferenceRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
-    {
-        return static_cast<int32_t>(referenceUs - us);
+        CoreUtils::offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1'000;
     }
 
-    static int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
+    /**
+     * Returns the current time in ms since epoch
+     */
+    static uint64_t msSinceEpoch()
     {
-        return etl::absolute(usToReference(referenceUs, us));
+        return (time_us_64() / 1'000) + CoreUtils::offsetTimeToAbsolute;
     }
-
     /**
      * Seconds since EPOCH, like unix time
      */
@@ -173,7 +174,7 @@ public:
     {
         return localTime(msSinceEpoch());
     }
-    
+
     static tm localTime(uint64_t msSinceEpoch)
     {
         time_t secondsSinceEpoch = msSinceEpoch / 1000;
@@ -181,19 +182,19 @@ public:
         localtime_r(&secondsSinceEpoch, &timeinfo);
         return timeinfo;
     }
-
-    struct HourMinuteSeconds
-    {
-        uint8_t hour;
-        uint8_t minute;
-        uint8_t second;
-    };
+    //////////////// EPOCH functions ////////////////
 
     /**
      * Get the current time in hours, minutes and seconds since mightnight UTC based on epoch
      */
-    static HourMinuteSeconds hourMinutesSeconds(uint32_t now = secondsSinceEpoch())
+    static auto hourMinutesSeconds(uint32_t now = secondsSinceEpoch())
     {
+        struct HourMinuteSeconds
+        {
+            uint8_t hour;
+            uint8_t minute;
+            uint8_t second;
+        };
 
         uint8_t h = (uint8_t)((now / 3600) % 24);
         uint8_t m = (uint8_t)((now / 60) % 60);
@@ -223,17 +224,19 @@ public:
         return d * DIAMETER_EARTH_M;
     }
 
-    struct relNorthRllEast
+
+    static auto northEastDistance(float fromLat, float fromLon, float toLat, float toLon)
     {
-        float north;
-        float east;
-    };
-    static relNorthRllEast northEastDistance(float fromLat, float fromLon, float toLat, float toLon)
-    {
+        struct relNorthRllEast
+        {
+            float north;
+            float east;
+        };
+
         float kx = cosf(fromLat * DEG_TO_RADS) * 111321;
         float dx = (fromLon - toLon) * kx;
         float dy = (fromLat - toLat) * 111139;
-        return {dy, dx};
+        return relNorthRllEast{dy, dx};
     }
 
     /**
@@ -248,7 +251,7 @@ public:
      */
     static float distanceFast(float fromLat, float fromLon, float toLat, float toLon)
     {
-        auto const &ne = northEastDistance(fromLat, fromLon, toLat, toLon);
+        auto ne = northEastDistance(fromLat, fromLon, toLat, toLon);
         return sqrtf((ne.north * ne.north) + (ne.east * ne.east));
     }
 
@@ -328,7 +331,7 @@ public:
 
     static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(float fromLat, float fromLon, float toLat, float toLon)
     {
-        auto const &drne = getDistanceRelNorthRelEastFloat(fromLat, fromLon, toLat, toLon);
+        auto drne = getDistanceRelNorthRelEastFloat(fromLat, fromLon, toLat, toLon);
         // float fbearing = CoreUtils::bearingFromInRad(fromLat, fromLon, toLat, toLon);
         // float fdistance = CoreUtils::distanceFast(fromLat, fromLon, toLat, toLon);
         // int32_t relNorth = static_cast<int32_t>(cosf(fbearing) * fdistance + 0.5f);
@@ -393,7 +396,7 @@ public:
 
     /**
      * Add's the checksum and postfix characters to a NMEA string. It may contain an existing checksum that will be overwritten
-     * When the capacity is not enough, the result is undefined 
+     * When the capacity is not enough, the result is undefined
      * Note: Must start with the prefix character $
      * @param nmea example '$PFEC,GPint,RMC05'
      * @return             '$PFEC,GPint,RMC05*2D\r\n'
@@ -421,14 +424,13 @@ public:
         nmea[i++] = '\0';
     }
 
-    template<size_t Array_Size>
-    static etl::string<Array_Size + 6> createNmeaChecksum(const char(&text)[Array_Size])
+    template <size_t Array_Size>
+    static etl::string<Array_Size + 6> createNmeaChecksum(const char (&text)[Array_Size])
     {
         etl::string<Array_Size + 6> nmea(text, etl::strlen(text, Array_Size - 1));
         addChecksumToNMEA(nmea);
         return nmea;
     }
-
 
     static uint32_t getTotalHeap(void);
     static uint32_t getFreeHeap(void);
@@ -438,13 +440,13 @@ public:
      * Later the idea is that it will use DDB to get the registration based on aircraftID and addressType
      *
      */
-    static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, OpenAce::AddressType addressType, etl::string_view callSign="")
+    static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, OpenAce::AddressType addressType, etl::string_view callSign = "")
     {
         (void)addressType;
-        stream << etl::hex <<  etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << OpenAce::RESET_FORMAT;
+        stream << etl::hex << etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << OpenAce::RESET_FORMAT;
         if (callSign.size() > 0)
         {
-            stream << "!" <<  callSign;
+            stream << "!" << callSign;
         }
     }
 
@@ -470,7 +472,7 @@ public:
         }
     }
 
-     static void hexStrToByteArray(const char *hex, uint8_t byteArray[])
+    static void hexStrToByteArray(const char *hex, uint8_t byteArray[])
     {
         auto hexLength = strlen(hex);
         hexStrToByteArray(hex, hexLength, byteArray);
@@ -493,7 +495,7 @@ public:
     /**
      * Returns the pin number from the pin map, when not found returns -1 to indicate that
      */
-    static int8_t pinValue(const OpenAce::PinTypeMap& pm, const OpenAce::PinType &pinName, int8_t defaultValue=-1)
+    static int8_t pinValue(const OpenAce::PinTypeMap &pm, const OpenAce::PinType &pinName, int8_t defaultValue = -1)
     {
         auto it = pm.find(pinName);
         if (it != pm.end())

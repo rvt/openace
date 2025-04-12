@@ -86,6 +86,7 @@ private:
         uint32_t crcErr = 0;
         uint32_t outOfDistance = 0;
         uint32_t queueFullErr = 0;
+        uint32_t messageTypeNot0x02 = 0;
     } statistics;
 
     struct DataSourceTimeStats

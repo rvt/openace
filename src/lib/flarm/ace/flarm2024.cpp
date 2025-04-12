@@ -50,7 +50,6 @@ void Flarm2024::bteaDecode(uint32_t *data) const
     } while (--rounds);
 }
 
-
 void Flarm2024::scramble(uint32_t *data, uint32_t timestamp) const
 {
     constexpr uint8_t numKeys = 4;
@@ -101,7 +100,7 @@ OpenAce::PostConstruct Flarm2024::postConstruct()
 
 void Flarm2024::start()
 {
-    xTaskCreate(flarmReceiveTask, "flarmReceiveTask", configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(flarmReceiveTask, "flarmReceiveTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -126,6 +125,7 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"ownshipAddress\":" << openAceConfiguration.address;
     stream << ",\"queueFullErr\":" << statistics.queueFullErr;
+    stream << ",\"messageTypeNot0x02\":" << statistics.messageTypeNot0x02;
     stream << "}\n";
 }
 
@@ -159,29 +159,26 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
     RadioPacket *radioPacket = (RadioPacket *)packet;
 
 #if !defined(UNIT_TESTING)
-
     bteaDecode(packet + 2);
     scramble(packet, epochSeconds);
-    uint32_t packetCpy[sizeof(RadioPacket)];
+
     // Algorithm to find a possible epochTime where the received packed was scrambled at
     // It currently assumes that only when the epochSec & 0x0F rolls over there is a potential
     // This assumes the received packages is always send 'back' in time, echt current Epoch is always > epoch where
     // the packages was scrambled at.
-    if (radioPacket->flarmTimestampLSB > ((uint8_t)(epochSeconds & 0x0F)))
+    if (radioPacket->messageType != 0x02)
     {
-        constexpr int8_t timeOffsets[] = {-1, -2, 1};
-        RadioPacket *radioPacket = (RadioPacket *)packetCpy;
         scramble(packet, epochSeconds);
-        bteaDecode(packet + 2);
-
-        for (auto offset : timeOffsets)
+        uint32_t packetCpy[sizeof(RadioPacket)];
+        RadioPacket *radioPacketCpy = (RadioPacket *)packetCpy;
+        for (auto offset : {-7, 7})
         {
             memcpy(packetCpy, packet, sizeof(RadioPacket));
-            bteaDecode(packetCpy + 2);
             scramble(packetCpy, epochSeconds + offset);
-            if (radioPacket->flarmTimestampLSB - ((uint8_t)((epochSeconds + offset) & 0x0F)) >= 14)
+            if (radioPacketCpy->messageType == 0x02)
             {
-                // printf(" Match found at %d", offset);
+                // printf("Found time:%6ld LSB %d offset %d\n", CoreUtils::timeMs32(), radioPacketCpy->flarmTimestampLSB, offset);
+                memcpy(packet, packetCpy, sizeof(RadioPacket));
                 break;
             }
         }
@@ -191,6 +188,7 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
     // If it's not 0x02, it's not position data
     if (radioPacket->messageType != 0x02)
     {
+        statistics.messageTypeNot0x02++;
         return -2;
     }
 
@@ -224,7 +222,7 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
 
     auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownlat, ownLon, aircraftLat, aircraftLon);
 
-    // printf("Distance from own: %ldm epoch:%ld flarmLSB:%d ownLSB:%d \n", fromOwn.distance, epochSeconds, radioPacket->flarmTimestampLSB, (uint8_t)(epochSeconds & 0x0F));
+    // printf("Distance from own: %ldm epoch:%ld flarmLSB:%d ownLSB:%d lat%2f, long%2f\n", fromOwn.distance, epochSeconds, radioPacket->flarmTimestampLSB, (uint8_t)(epochSeconds & 0x0F), aircraftLat, aircraftLon);
     if (fromOwn.distance > distanceIgnore)
     {
         statistics.outOfDistance++;
@@ -233,8 +231,8 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
 
     float groundSpeed = descale<8, 2, false>(radioPacket->groundSpeed) / 10.0f;
 
-//    printf("FLARM: time:%d address:%06X latitude:%0.6f longitude:%0.6f altitude:%d climbRate:%0.2f speed:%0.2f heading:%d turnRate:%0.2f\n",
-//       (uint16_t)(CoreUtils::msSinceEpoch() % 1000), radioPacket->aircraftID, aircraftLat, aircraftLon, descale<12, 1, false>(radioPacket->altitude) - 1000, descale<6, 2, true>(radioPacket->verticalSpeed) / 10.0f, groundSpeed, static_cast<int16_t>(radioPacket->course >> 1), descale<6, 2, true>(radioPacket->turnRate) / 20.0f);
+    //    printf("FLARM: time:%d address:%06X latitude:%0.6f longitude:%0.6f altitude:%d climbRate:%0.2f speed:%0.2f heading:%d turnRate:%0.2f\n",
+    //       (uint16_t)(CoreUtils::msSinceEpoch() % 1000), radioPacket->aircraftID, aircraftLat, aircraftLon, descale<12, 1, false>(radioPacket->altitude) - 1000, descale<6, 2, true>(radioPacket->verticalSpeed) / 10.0f, groundSpeed, static_cast<int16_t>(radioPacket->course >> 1), descale<6, 2, true>(radioPacket->turnRate) / 20.0f);
 
     statistics.receivedAircraftPositions++;
     OpenAce::AircraftPositionMsg aircraftPosition{
@@ -255,7 +253,7 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
             groundSpeed,
             static_cast<int16_t>(radioPacket->course >> 1),
             descale<6, 2, true>(radioPacket->turnRate) / 20.0f,
-            static_cast<uint16_t>(fromOwn.distance),
+            fromOwn.distance,
             fromOwn.relNorth,
             fromOwn.relEast,
             fromOwn.bearing},
@@ -384,7 +382,7 @@ void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
 #if !defined(UNIT_TESTING)
         scramble(data, epochSeconds);
         bteaEncode(data + 2);
-        //btea2(data, true);
+        // btea2(data, true);
 #endif
 
         uint16_t calculatedChecksum = flarmCalculateChecksum(reinterpret_cast<uint8_t *>(data), RadioPacket::packetLength);

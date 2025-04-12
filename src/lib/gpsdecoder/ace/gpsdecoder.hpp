@@ -56,7 +56,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, Ope
     minmea_time lastRMCTimestamp;
     minmea_time lastGGATimestamp;
     const uint32_t taskStartTime;
-
+    uint8_t fixType=0;
 private:
     void on_receive(const OpenAce::GPSSentenceMsg& msg);
 

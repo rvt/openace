@@ -9,34 +9,34 @@
 
 TEST_CASE( "msSinceEpoch", "[single-file]" )
 {
-    time_us_64Value = 0;
+    time_us_Value = 0;
     CoreUtils::setOffsetMsSinceEpoch(0);
-    time_us_64Value = 1000000;
+    time_us_Value = 1000000;
     REQUIRE( CoreUtils::msSinceEpoch() == 1000 );
 
-    time_us_64Value = 1200'000;
+    time_us_Value = 1200'000;
     CoreUtils::setOffsetMsSinceEpoch(1210);
     REQUIRE( CoreUtils::msSinceEpoch() == 1210 );
 
-    time_us_64Value = 2500'000;
+    time_us_Value = 2500'000;
     REQUIRE( CoreUtils::msSinceEpoch() == 2510 );
 }
 
 TEST_CASE( "msInSecond", "[single-file]" )
 {
-    time_us_64Value = 23456623;
+    time_us_Value = 23456623;
     CoreUtils::setPPS();
     REQUIRE( CoreUtils::msInSecond() == 0 );
 
-    time_us_64Value = time_us_64Value + 1758'000;
+    time_us_Value = time_us_Value + 1758'000;
     REQUIRE( CoreUtils::msInSecond() == 758 );
 }
 
 TEST_CASE( "timeUs32 must be alliged with PPS", "[single-file]" )
 {
-    time_us_64Value = 23'456'623;
+    time_us_Value = 23'456'623;
     CoreUtils::setPPS();
-    time_us_64Value = time_us_64Value+216500;
+    time_us_Value = time_us_Value+216500;
     REQUIRE( CoreUtils::timeUs32() == 23216500 );
 }
 
@@ -66,23 +66,23 @@ TEST_CASE( "usDiff must handle wraparounds", "[single-file]" )
 
 TEST_CASE( "isUsReached", "[single-file]" )
 {
-    time_us_64Value = 0;
+    time_us_Value = 0;
     CoreUtils::setPPS();
     REQUIRE( CoreUtils::isUsReached(10000) == false );
 
-    time_us_64Value = 10001;
+    time_us_Value = 10001;
     REQUIRE( CoreUtils::isUsReached(10000) == true );
 
-    time_us_64Value = 1000000;
+    time_us_Value = 1000000;
     REQUIRE( CoreUtils::isUsReached(10000) == true );
 }
 
 TEST_CASE( "msDelayToReference", "[single-file]" )
 {
-    time_us_64Value = 0;
-    time_us_64Value = 23456623;
+    time_us_Value = 0;
+    time_us_Value = 23456623;
     CoreUtils::setPPS();
-    time_us_64Value = time_us_64Value + 313'000;
+    time_us_Value = time_us_Value + 313'000;
     REQUIRE( CoreUtils::msDelayToReference(411, 123) == 288 ); // 123ms into whole second
 
     REQUIRE( CoreUtils::msDelayToReference(123, 411) == 712 );  // 411ms into whole second
@@ -93,7 +93,7 @@ TEST_CASE( "msDelayToReference", "[single-file]" )
 
 TEST_CASE( "secondsSinceEpoch", "[single-file]" )
 {
-    time_us_64Value = 0;
+    time_us_Value = 0;
     CoreUtils::setOffsetMsSinceEpoch(1698800584010);
     REQUIRE( CoreUtils::secondsSinceEpoch() == 1698800584 );
 
@@ -105,7 +105,7 @@ TEST_CASE( "secondsSinceEpoch", "[single-file]" )
 TEST_CASE( "distanceAccurate", "[single-file]" )
 {
     using namespace Catch::literals;
-    time_us_64Value = 0;
+    time_us_Value = 0;
     REQUIRE( CoreUtils::distanceAccurate(54, 4, 54, 4) == 0 );
 
     REQUIRE( CoreUtils::distanceAccurate(0, 4, 0, 5) == 111206_a );
@@ -124,7 +124,7 @@ TEST_CASE( "distanceAccurate", "[single-file]" )
 TEST_CASE( "distanceFast", "[single-file]" )
 {
     using namespace Catch::literals;
-    time_us_64Value = 0;
+    time_us_Value = 0;
     REQUIRE( CoreUtils::distanceFast(54, 4, 54, 4) == 0 );
 
     REQUIRE( CoreUtils::distanceFast(0, 4, 0, 5) == 111321_a );
@@ -143,7 +143,7 @@ TEST_CASE( "distanceFast", "[single-file]" )
 TEST_CASE( "bearingFromInRad", "[single-file]" )
 {
     using namespace Catch::literals;
-    time_us_64Value = 0;
+    time_us_Value = 0;
 
     int lat, lon;
 
@@ -179,7 +179,7 @@ TEST_CASE( "bearingFromInRad", "[single-file]" )
 TEST_CASE( "getDistanceRelNorthRelEastFloat", "[single-file]" )
 {
     using namespace Catch::literals;
-    time_us_64Value = 0;
+    time_us_Value = 0;
 
     int lat, lon;
 

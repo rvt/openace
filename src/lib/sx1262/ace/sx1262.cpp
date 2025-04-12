@@ -494,7 +494,7 @@ void Sx1262::sx1262Task(void *arg)
                 // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource), CoreUtils::msInSecond());
                 if (sx1262->rxRadioParameters.config.mode == Radio::Mode::GFSK)
                 {
-                    auto m = Measure("Receive receiveGFSKPacket", 0);
+                    auto m = Measure("Receive receiveGFSKPacket (takes about 1.4ms)", 0);
                     bool doSend;
                     if (auto guard = aceSpi->getLock(doSend))
                     {

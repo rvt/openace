@@ -52,26 +52,26 @@ TEST_CASE("AdsbDataCollector start", "[single-file]")
 //     AdsbDataCollector<100, 15'000'000> collector;
 
 //     // Insert entry will into future
-//     time_us_64Value = 1'000'000 * 10;
-//     REQUIRE(collector.start(0xffffff, time_us_64Value + 10'000 * 0) == true);
+//     time_us_Value = 1'000'000 * 10;
+//     REQUIRE(collector.start(0xffffff, time_us_Value + 10'000 * 0) == true);
 //     collector.updateAltitude(1234);
 
 //     // Insert 100*100ms == 10 seconds of inserts
 //     int i;
 //     for (i = 0; i < 99; i++)
 //     {
-//         REQUIRE(collector.start(i, time_us_64Value + 10'000 * i) == true);
+//         REQUIRE(collector.start(i, time_us_Value + 10'000 * i) == true);
 //         collector.updateAltitude(i);
 //     }
 //     // Eviction will clean up every 25 entries, so left over with left, in this situation 56
 //     REQUIRE(collector.size() == 100);
 
 //     // Existing entry still exists
-//     REQUIRE(collector.start(0xffffff, time_us_64Value + 10'000 * (i + 5)) == true);
+//     REQUIRE(collector.start(0xffffff, time_us_Value + 10'000 * (i + 5)) == true);
 //     REQUIRE(collector.current().gnsAltitude == 1234);
 
 //     // One additional entry later, eviction starts and left with one entry
-//     REQUIRE(collector.start(i+5, time_us_64Value + 1'000'000 * 30) == true);
+//     REQUIRE(collector.start(i+5, time_us_Value + 1'000'000 * 30) == true);
 //     REQUIRE(collector.size() == 1);
 
 //     collector.dump();

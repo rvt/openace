@@ -187,7 +187,7 @@ to exclude the API function. */
 #define TASK_DELAY_MIN( x )    ( ( x ) * 60 * 1000 / portTICK_PERIOD_MS )
 
 /* Task priority and stack sizes that needed to be changed */
-#define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 5120 )
+#define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 6144 )
 #define CYW43_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 1024 )
 #define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 5 )
 #endif /* FREERTOS_CONFIG_H */

@@ -297,7 +297,7 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
             packet.getGroundSpeed(),
             static_cast<int16_t>(packet.getTrack()),
             0.0,
-            static_cast<uint16_t>(fromOwn.distance),
+            fromOwn.distance,
             fromOwn.relNorth,
             fromOwn.relEast,
             fromOwn.bearing},

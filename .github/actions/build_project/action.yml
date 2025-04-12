@@ -13,12 +13,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # - name: Run Tests
-    #   if: ${{ inputs.test == 'true' }}
-    #   shell: bash
-    #   run: |
-    #     cd src
-    #     cmake -B build_test -G Ninja && ninja -C build_test
+    - name: Run Tests
+      if: ${{ inputs.test == 'true' }}
+      shell: bash
+      run: |
+        cd src
+        cmake -B build_test -G Ninja && ninja -C build_test
 
     - name: Build Project
       if: ${{ inputs.build == 'true' }}

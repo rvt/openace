@@ -8,6 +8,7 @@ add_definitions(-DCATCH_CONFIG_NO_POSIX_SIGNALS)
 add_definitions(-DUNIT_TESTING)
 add_definitions(-DOPENACE_MAXIMUM_TCP_CLIENTS=4)
 add_definitions(-DOPENACE_MAX_RADIOS=2)
+add_definitions(-DOPENACE_STATSCOLLECTOR_NUM_RADIALS=8)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -42,6 +43,7 @@ set(ACE_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/constants.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/models.cpp
     # ${CMAKE_CURRENT_SOURCE_DIR}/mocks/pico/time.c
     ../ace/aircrafttracker.cpp)
 
