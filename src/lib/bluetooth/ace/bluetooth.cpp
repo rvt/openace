@@ -276,7 +276,7 @@ void Bluetooth::attContextCallback(void *context)
         {
             // Try to send as much data as possible up to the MTU
             uint16_t length = 0;
-            const char* data;
+            const char *data = nullptr;
 
             if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
             {
@@ -289,44 +289,45 @@ void Bluetooth::attContextCallback(void *context)
                 }
             }
 
+            if (data!=nullptr)
+            {
 
-            uint8_t sendStatus=!ERROR_CODE_SUCCESS;
-            if (btContext->hciHandle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
-            {
-                sendStatus = att_server_notify(btContext->hciHandle, btContext->attrHandle,
-                                               reinterpret_cast<const uint8_t *>(data), length);
-            }
-            else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-            {
-                sendStatus = rfcomm_send(btContext->rfcommChannelId, const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(data)), length);
-            }
+                uint8_t sendStatus = !ERROR_CODE_SUCCESS;
+                if (btContext->hciHandle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+                {
+                    sendStatus = att_server_notify(btContext->hciHandle, btContext->attrHandle,
+                                                   reinterpret_cast<const uint8_t *>(data), length);
+                }
+                else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+                {
+                    sendStatus = rfcomm_send(btContext->rfcommChannelId, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(data)), length);
+                }
 
-            if (sendStatus == ERROR_CODE_SUCCESS)
-            {
-                // Only update the buffer if send was successful
-                if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
+                if (sendStatus == ERROR_CODE_SUCCESS)
                 {
-                    btContext->buffer.accepted(length);
+                    // Only update the buffer if send was successful
+                    if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
+                    {
+                        btContext->buffer.accepted(length);
+                    }
                 }
-            }
 
-            // Immediately request to send more if we have more data
-            if (btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
-            {
-                if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+                // Immediately request to send more if we have more data
+                if (btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
                 {
-                    att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle);
+                    btContext->nextCheckNotification = CoreUtils::timeUs32Raw() + 250;
+                    if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+                    {
+                        att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle);
+                    }
+                    else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+                    {
+                        rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
+                    }
                 }
-                else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-                {
-                    rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
-                }
-                btContext->nextCheckNotification = CoreUtils::timeUs32Raw() + 1000;
-                return;
             }
         }
     }
-    // Always ensure notification check is done asap.
     btContext->nextCheckNotification = CoreUtils::timeUs32Raw();
 }
 
