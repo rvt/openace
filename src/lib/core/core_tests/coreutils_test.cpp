@@ -220,33 +220,38 @@ TEST_CASE( "addChecksumToNMEA", "[single-file]" )
     // Empty string stays empty
     OpenAce::NMEAString pflau="$";
     CoreUtils::addChecksumToNMEA(pflau);
-    REQUIRE( pflau.size() == 6  );
-    REQUIRE( pflau.compare("$*00") );
+    REQUIRE( pflau == "$*00\r\n" );
 
     // Should start from 1 because string must contain the $
     pflau="1234";
     CoreUtils::addChecksumToNMEA(pflau);
     REQUIRE( pflau.size() == 9  );
-    REQUIRE( pflau.compare("1234*35\r\n") == 0  );
+    REQUIRE( pflau == "1234*35\r\n" );
 
     // Add checksum
     pflau="$1234";
     CoreUtils::addChecksumToNMEA(pflau);
     REQUIRE( pflau.size() == 10  );
-    REQUIRE( pflau.compare("$1234*04\r\n") == 0 );
+    REQUIRE( pflau == "$1234*04\r\n" );
+
+    // Add checksum
+    pflau="$1234*";
+    CoreUtils::addChecksumToNMEA(pflau);
+    REQUIRE( pflau.size() == 10  );
+    REQUIRE( pflau == "$1234*04\r\n" );
 
     // Replace existing checksum
     pflau="$1234*35";
     CoreUtils::addChecksumToNMEA(pflau);
     REQUIRE( pflau.size() == 10  );
-    REQUIRE( pflau.compare("$1234*04\r\n") == 0 );
+    REQUIRE( pflau == "$1234*04\r\n" );
 }
 
 TEST_CASE( "createNmeaChecksum", "[single-file]" )
 {
     // Empty string stays empty
     auto checked = CoreUtils::createNmeaChecksum("$abds,2,3,4");
-    REQUIRE( checked.compare("$abds,2,3,4*0D\r\n") == 0 );
+    REQUIRE( checked == "$abds,2,3,4*0D\r\n" );
 }
 
 TEST_CASE( "hexStrToByteArray overflow", "[single-file]" )

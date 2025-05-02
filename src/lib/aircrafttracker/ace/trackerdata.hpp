@@ -128,9 +128,10 @@ private:
         auto prev = trackedAircraft.before_begin();
         auto it = trackedAircraft.begin();
 
+        uint32_t us = CoreUtils::timeUs32Raw();
         while (it != trackedAircraft.end())
         {
-            if (CoreUtils::isUsReached((it->position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC)))
+            if (CoreUtils::isUsReachedRaw(it->position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC, us))
             {
                 it = trackedAircraft.erase_after(prev);
                 cleaned = true;
@@ -191,7 +192,7 @@ public:
         for (const auto &it : trackedAircraft)
         {
             printf("%3d icao:%6lX sendTime:%8ld time:%8ld  dist:%ld lat:%.6f lon:%.6f\n",
-                   c, it.position.address, it.sendTime, CoreUtils::timeUs32(),
+                   c, it.position.address, it.sendTime, CoreUtils::timeUs32Raw(),
                    it.position.distanceFromOwn, it.position.lat, it.position.lon);
             c++;
         }
@@ -202,11 +203,11 @@ public:
      */
     bool insert(OpenAce::AircraftPositionInfo &position)
     {
-        auto m = Measure("TrackerData::insert", 400);
+        auto m = Measure("TrackerData::insert ", 400);
         // Never insert outside of adaptive radius
         if (position.distanceFromOwn > adaptiveRadius)
         {
-            // printf("Adaptive> t:%08ld %06lX\n", CoreUtils::timeUs32() / 1'000'000, position.address);
+            // printf("Adaptive> t:%08ld %06lX\n", CoreUtils::timeUs32Raw() / 1'000'000, position.address);
             return false;
         }
 
@@ -223,12 +224,13 @@ public:
         // Check if the aircraft already exists (update instead of insert)
         auto prev = trackedAircraft.before_begin();
         auto it = trackedAircraft.begin();
+        auto time = CoreUtils::timeUs32Raw();
         while (it != trackedAircraft.end())
         {
             if (it->position.address == position.address)
             {
                 // Update existing entry
-                it->sendTime = CoreUtils::timeUs32Raw();
+                it->sendTime = time;
                 it->position = position;
                 return true;
             }
@@ -237,7 +239,7 @@ public:
         }
 
         // Insert new entry at the front (O(1))
-        trackedAircraft.emplace_front(CoreUtils::timeUs32Raw(), position);
+        trackedAircraft.emplace_front(time, position);
         return true;
     }
 
@@ -251,7 +253,7 @@ public:
         auto currentTime = CoreUtils::timeUs32Raw();
         for (auto &it : trackedAircraft)
         {
-            if (CoreUtils::isUsReached(it.sendTime, currentTime))
+            if (CoreUtils::isUsReachedRaw(it.sendTime, currentTime))
             {
                 msg(it.position);
                 it.sendTime = currentTime + HEARTBEAT_TIME;

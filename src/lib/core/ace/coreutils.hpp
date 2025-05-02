@@ -411,17 +411,21 @@ public:
             i++;
         }
 
-        if (i > (nmea.capacity() - 6))
+        if (i > (nmea.capacity() - 5))
         {
             return;
         }
-        nmea.resize(i + 5);
-        nmea[i++] = '*';
-        nmea[i++] = hexChars[chk >> 4];
-        nmea[i++] = hexChars[chk & 0x0F];
-        nmea[i++] = '\r';
-        nmea[i++] = '\n';
-        nmea[i++] = '\0';
+        nmea.resize(i);
+
+        char checksumSuffix[] = {
+            '*',
+            hexChars[(chk >> 4) & 0x0F],
+            hexChars[chk & 0x0F],
+            '\r',
+            '\n',
+        };
+
+        nmea.append(checksumSuffix, 5);
     }
 
     template <size_t Array_Size>

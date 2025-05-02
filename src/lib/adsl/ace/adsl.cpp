@@ -219,6 +219,7 @@ ADSL_Packet::AircraftCategory ADSL::mapAircraftCategory(OpenAce::AircraftCategor
     }
 }
 
+
 void ADSL::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
 {
 
@@ -262,6 +263,8 @@ void ADSL::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
     }
 }
 
+
+
 int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
 {
     uint32_t positionTs = CoreUtils::timeUs32();
@@ -286,7 +289,7 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
             packet.address,
             addressMapToAddressType(packet.addressMapping),
             OpenAce::DataSource::ADSL,
-            static_cast<OpenAce::AircraftCategory>(packet.aircraftCategory),
+            mapAircraftCategory(packet.aircraftCategory),
             packet.addressMapping == 0x00,
             false,
             packet.flightState == ADSL_Packet::FlightState::FS_Airborne, // airBorn

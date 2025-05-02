@@ -2,6 +2,7 @@ import os
 import re
 from argparse import ArgumentParser
 
+# Not: On the PICO there apparently is pico_set_lwip_httpd_content
 # Overwrite specific settings per filename
 # The following can be overwritten
 #   content_type

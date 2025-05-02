@@ -38,21 +38,14 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
     static constexpr uint8_t CONN_READY = 0b001;
-    static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 1024; // TODO: Tune buffer, should be > MTU which seems to be 255
+    static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 1536; // TODO: Tune buffer, should be > MTU which is 255 bytes for BLE witj etxnded data length
+    static constexpr uint8_t MINIMUM_BLE_PACKET_SIZE = 180;   // Minimum size of a BLE packet, to optimise performance
+
+    inline static Bluetooth *instance;
 
     // clang-format off
     // advertisement data, MAX 31 byte!
-    static constexpr uint8_t leAdvData[] = {
-        2, BLUETOOTH_DATA_TYPE_FLAGS, 0x06, // https://tinyurl.com/yvvw6avx
-        8, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'O', 'p', 'e','n', 'A', 'c', 'e',
-        17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS, 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00,
-    };
-    static constexpr uint8_t rfCommAdvData[] = {
-        2, BLUETOOTH_DATA_TYPE_FLAGS, 0x02, // https://tinyurl.com/yvvw6avx
-        8, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'O', 'p', 'e','n', 'A', 'c', 'e',
-        17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS, 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00,
-    };
-    // clang-format on
+    etl::vector<uint8_t, 31> advertiseData;
 
     friend class message_router;
     struct
@@ -68,18 +61,18 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
             uint16_t rfcommChannelId;
         };
         uint8_t readyState; // Simple binary state machine, 0b01 = notification enabled, 0b100 = rfcomm channel opened, 0b010 = att channel open
-        bool requiresNotification;
         uint16_t mtu;
         uint16_t attrHandle; // Used for ATT connections only
         uint16_t bufferOverrunErr;
+        uint32_t nextCheckNotification;
         btstack_context_callback_registration_t callBack;
         CircularBuffer<CONNECTIONS_BUFFER_SIZE> buffer; // connection private data
         BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void * context)) : hciHandle(hciHandle_),
                                                                                                                                      readyState(readyState_),
-                                                                                                                                     requiresNotification(true),
                                                                                                                                      mtu(mtu_),
                                                                                                                                      attrHandle(0),
-                                                                                                                                     bufferOverrunErr(0)
+                                                                                                                                     bufferOverrunErr(0),
+                                                                                                                                     nextCheckNotification(0)
         {
             callBack.context = this;
             callBack.callback = callBack_;
@@ -107,6 +100,8 @@ private:
 
     void on_receive_unknown(const etl::imessage &msg);
 
+    void createAdvData();
+
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
     // START: methods within this block as running within the BLE task
@@ -115,14 +110,17 @@ private:
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
+    static uint16_t attReadCallback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t * buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
     static bool createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState);
     // Remove any old connections
     static void removeConnection(uint16_t handle);
-    static void notifyAttServer();
     // END: methods within this block as running within the BLE task
     static void eraseBonding();
     static void heartbeat_handler(struct btstack_timer_source *ts);
+
+    static void parseAircraftPosition( uint8_t* data, size_t size);
+    static void processIncomingBuffer( uint8_t* data, size_t size);
 
     // Lists of bluetooth contexts
     using BluetoothConnections = etl::list<BtContext, OPENACE_MAX_BLUETOOTH_CONNECTIONS>;
@@ -155,12 +153,8 @@ private:
         }
     }
 
-    // THis queue seem to run ful with 8 items in the queue
-    inline static btstack_context_callback_registration_t pushIntoQueueReg;
     inline static btstack_packet_callback_registration_t smEventCallback;
     inline static btstack_timer_source_t heartbeat;
-
-
     inline static uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
 
     // Semaphore to ensure checking data and is synchronized with the BT thread.
@@ -170,11 +164,14 @@ private:
     bool rfComm;
 
 public:
+
     static constexpr const char *NAME = "Bluetooth";
     Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), rfComm(false)
     {
+        instance = this;
         localName = config.strValueByPath("OpenAce", NAME, "localName");
         rfComm = config.valueByPath(0, NAME, "rfComm");
+        createAdvData();
     }
 
     virtual ~Bluetooth() = default;

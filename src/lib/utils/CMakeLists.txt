@@ -12,6 +12,7 @@ set(MODULE_SOURCE_FILES
     ace/ognconv.cpp
     ace/moreutils.cpp
     ace/manchester.cpp
+    ace/cobs.cpp
 )
 
 set(PICO_EXTRA_LIBS

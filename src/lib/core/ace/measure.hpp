@@ -41,7 +41,11 @@ struct Measure
         auto duration = CoreUtils::timeUs32Raw() - start_;
         if (duration > alertTimeout_)
         {
-            printf("%s %6ldus id:%08lX\n", name_.begin(), duration, id_);
+            if (id_) {
+                printf("%s %6ldus id:%08lX\n", name_.begin(), duration, id_);
+            } else {
+                printf("%s %6ldus\n", name_.begin(), duration);
+            }
         }
     }
 

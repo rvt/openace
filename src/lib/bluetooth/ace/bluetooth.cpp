@@ -2,8 +2,10 @@
 
 #include "bluetooth.hpp"
 #include "ace/semaphoreguard.hpp"
+#include "ace/recursiveguard.hpp"
 #include "ace/measure.hpp"
 #include "ace/coreutils.hpp"
+#include "ace/cobs.hpp"
 #include "openace_gatt.h"
 
 #include "ble/gatt-service/battery_service_server.h"
@@ -15,10 +17,10 @@
 
 #include "etl/algorithm.h"
 #include "etl/set.h"
+#include "etl/bit_stream.h"
+#include <etl/algorithm.h>
 
 #define RFCOMM_SERVER_CHANNEL 1
-
-extern const char *OpenAce_buildTime;
 
 OpenAce::PostConstruct Bluetooth::postConstruct()
 {
@@ -91,14 +93,7 @@ void Bluetooth::start()
     bd_addr_t null_addr;
     memset(null_addr, 0, 6);
     gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
-    if (rfComm)
-    {
-        gap_advertisements_set_data(sizeof(rfCommAdvData), (uint8_t *)rfCommAdvData);
-    }
-    else
-    {
-        gap_advertisements_set_data(sizeof(leAdvData), (uint8_t *)leAdvData);
-    }
+    gap_advertisements_set_data(advertiseData.size(), advertiseData.data());
     gap_advertisements_enable(1);
 
     gap_set_local_name(localName.c_str());
@@ -131,12 +126,13 @@ void Bluetooth::start()
 #endif
     hci_power_control(HCI_POWER_ON);
 
+    //    eraseBonding();
     getBus().subscribe(*this);
 };
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    if (auto guard = SemaphoreGuard<5>(mutex))
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
     {
         (void)path;
         stream << "{";
@@ -156,6 +152,27 @@ void Bluetooth::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
+void Bluetooth::createAdvData()
+{
+    // clang-format off
+    static const uint8_t serviceUUID[16] = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00};
+    // clang-format on
+
+    advertiseData.clear();
+    advertiseData.push_back(2); // length
+    advertiseData.push_back(BLUETOOTH_DATA_TYPE_FLAGS);
+    advertiseData.push_back(rfComm ? 0x02 : 0x06); // https://tinyurl.com/yvvw6avx
+
+    uint8_t maxSize = etl::min((size_t)8, localName.size());
+    advertiseData.push_back(static_cast<uint8_t>(1 + maxSize)); // length = type + name length
+    advertiseData.push_back(BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME);
+    advertiseData.insert(advertiseData.end(), localName.begin(), localName.begin() + maxSize);
+
+    advertiseData.push_back(1 + sizeof(serviceUUID));
+    advertiseData.push_back(BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS);
+    advertiseData.insert(advertiseData.end(), std::begin(serviceUUID), std::end(serviceUUID));
+}
+
 /**
  * Starts and stop LWiP when wifi connects or disconnects to cleanup any resources
  */
@@ -171,7 +188,7 @@ void Bluetooth::on_receive(const OpenAce::IdleMsg &msg)
  */
 void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
 {
-    if (auto guard = SemaphoreGuard<5>(mutex))
+    if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
     {
         for (auto &ctx : Bluetooth::connections)
         {
@@ -213,122 +230,104 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
 {
     (void)ts;
 
-    notifyAttServer();
-
-    btstack_run_loop_set_timer(ts, 50);
-    btstack_run_loop_add_timer(ts);
-}
-
-/**
- * Moved data from the queue into the buffers of each connection
- * Note: a bit of a hack on arg, when arg is null, it was called via btstack_run_loop_execute_on_main_thread.
- * When not null it came from sendNotify. However, from 'sendNotify' it's not good to call att_server_request_can_send_now_event
- * this is to reduce the number of calls to btstack_run_loop_execute_on_main_thread and att_server_request_can_send_now_event.
- * att_server_request_can_send_now_event will only be called when requiresNotification, eg, the buffers where exhausted
- * and thus the stack willbe informed via btstack_run_loop_execute_on_main_thread to continue sending data.
- */
-void Bluetooth::notifyAttServer()
-{
+    auto time = CoreUtils::timeUs32Raw();
     for (auto &btContext : Bluetooth::connections)
     {
-        bool hasData = false;
-        
-        // Check if there's data in the buffer
-        if (auto guard = SemaphoreGuard<5>(mutex))
+        // AFter att_server_request_to_send_notification is called, the bluetooth stack will send data.
+        // As long as we are sending data, we will call ourselve, but once done the time will be set to 'now' and new data will be send asap
+        if (CoreUtils::isUsReachedRaw(btContext.nextCheckNotification, time))
         {
-            hasData = !btContext.buffer.empty();
-        }
-        
-        // Only request notification if we have data to send or we're already flagged for notification
-        if (hasData || btContext.requiresNotification) 
-        {
-            bool requestSuccess = false;
-            
-            if (btContext.hciHandle)
+            if (btContext.buffer.length() > MINIMUM_BLE_PACKET_SIZE)
             {
-                requestSuccess = (att_server_request_to_send_notification(&btContext.callBack, btContext.hciHandle) == ERROR_CODE_SUCCESS);
+                btContext.nextCheckNotification = time + 1000;
+
+                // Request to send more data
+                if (btContext.hciHandle)
+                {
+                    att_server_request_to_send_notification(&btContext.callBack, btContext.hciHandle);
+                }
+                else if (btContext.rfcommChannelId)
+                {
+                    rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
+                }
             }
-            else if (btContext.rfcommChannelId)
-            {
-                rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
-                requestSuccess = true;
-            }
-            
-            // Only mark as not requiring notification if request was successful
-            btContext.requiresNotification = !requestSuccess;
         }
     }
+
+    btstack_run_loop_set_timer(ts, 250);
+    btstack_run_loop_add_timer(ts);
 }
 
 void Bluetooth::attContextCallback(void *context)
 {
+    static uint8_t guardCounter = 0;
+
     auto btContext = static_cast<Bluetooth::BtContext *>(context);
-    
-    // Try to send as much data as possible up to the MTU
-    const char *part = nullptr;
-    size_t sendLength = 0;
-    bool bufferHasMoreData = false;
-
-    if (auto guard = SemaphoreGuard<10>(mutex))
+    // This check is done because BlueKitchen can call us back recursivly. This has to side effect that sometimes the stack can run full when there is to much data
+    // This recursive check prevents deep recursions untill a proper fix is found
+    // 10 -> async_context_t
+    if (auto rGuard = RecursiveGuard<8>(guardCounter, "RecursiveGuard: attContextCallback"))
     {
-        auto [peekPart, peekLength] = btContext->buffer.peek();
-        part = peekPart;
-        
-        // Ensure we don't exceed the MTU and we actually have data
-        if (peekPart && peekLength > 0) {
-            sendLength = static_cast<uint8_t>(etl::min(peekLength, static_cast<size_t>(btContext->mtu)));
-            bufferHasMoreData = (peekLength > sendLength);
-        }
-    }
 
-    if (sendLength > 0)
-    {
-        bool sendSuccess = false;
-        
-        if (btContext->hciHandle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+        // Only send data when there is enough data in the buffer.
+        // there might be a packet smaller than `MINIMUM_BLE_PACKET_SIZE`, and we still need to send it.
+        // This could be optimized by using an intermediate buffer, but that seems like over-optimization for now.
+        if (btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
         {
-            // I think we need to use 
-            sendSuccess = (att_server_notify(btContext->hciHandle, btContext->attrHandle, 
-                           reinterpret_cast<const uint8_t *>(part), sendLength) == ERROR_CODE_SUCCESS);
-        }
-        else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-        {
-            sendSuccess = (rfcomm_send(btContext->rfcommChannelId, (uint8_t *)part, sendLength) == ERROR_CODE_SUCCESS);
-        }
+            // Try to send as much data as possible up to the MTU
+            uint16_t length = 0;
+            const char* data;
 
-        if (sendSuccess)
-        {
-            // Only update the buffer if send was successful
-            if (auto guard = SemaphoreGuard<10>(mutex))
+            if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
             {
-                btContext->buffer.accepted(sendLength);
-                bufferHasMoreData = !btContext->buffer.empty();
+                auto [peekPart, sendLength] = btContext->buffer.peek();
+                // Ensure we don't exceed the MTU and we actually have data
+                if (sendLength > 0)
+                {
+                    data = peekPart;
+                    length = static_cast<uint16_t>(etl::min(static_cast<uint16_t>(sendLength), static_cast<uint16_t>(btContext->mtu)));
+                }
+            }
+
+
+            uint8_t sendStatus=!ERROR_CODE_SUCCESS;
+            if (btContext->hciHandle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+            {
+                sendStatus = att_server_notify(btContext->hciHandle, btContext->attrHandle,
+                                               reinterpret_cast<const uint8_t *>(data), length);
+            }
+            else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+            {
+                sendStatus = rfcomm_send(btContext->rfcommChannelId, const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(data)), length);
+            }
+
+            if (sendStatus == ERROR_CODE_SUCCESS)
+            {
+                // Only update the buffer if send was successful
+                if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
+                {
+                    btContext->buffer.accepted(length);
+                }
             }
 
             // Immediately request to send more if we have more data
-            if (bufferHasMoreData)
+            if (btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
             {
-                btContext->requiresNotification = false;
-                
                 if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
                 {
-                    // I think we need to use att_server_request_can_send_now_event
-                    if (att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle) != ERROR_CODE_SUCCESS)
-                    {
-                        btContext->requiresNotification = true;
-                    }
+                    att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle);
                 }
                 else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
                 {
                     rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
                 }
+                btContext->nextCheckNotification = CoreUtils::timeUs32Raw() + 1000;
                 return;
             }
         }
     }
-    
-    // If we reach here, either we couldn't send, had nothing to send, or emptied the buffer
-    btContext->requiresNotification = true;
+    // Always ensure notification check is done asap.
+    btContext->nextCheckNotification = CoreUtils::timeUs32Raw();
 }
 
 /*
@@ -475,7 +474,7 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     UNUSED(offset);
     UNUSED(buffer_size);
 
-    if (transaction_mode != ATT_TRANSACTION_MODE_NONE)
+    if (transaction_mode != ATT_TRANSACTION_MODE_NONE || transaction_mode == ATT_TRANSACTION_MODE_CANCEL)
     {
         return 0;
     }
@@ -496,15 +495,209 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     }
     break;
     case ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE:
-        for (auto i = 0; i < buffer_size; i++)
-        {
-            putchar(buffer[i]);
-        }
-        break;
+    {
+        processIncomingBuffer(buffer, buffer_size);
+    }
+    break;
     default:
         break;
     }
     return 0;
+}
+
+uint16_t Bluetooth::attReadCallback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t *buffer, uint16_t buffer_size)
+{
+    UNUSED(connection_handle);
+    if (att_handle == ATT_CHARACTERISTIC_GAP_DEVICE_NAME_01_VALUE_HANDLE)
+    {
+        puts("Read requested");
+        return att_read_callback_handle_blob((const uint8_t *)Bluetooth::instance->localName.c_str(), Bluetooth::instance->localName.size(), offset, buffer, buffer_size);
+    }
+    return 0;
+}
+
+void Bluetooth::processIncomingBuffer(uint8_t *data, size_t size)
+{
+    constexpr size_t MAX_PACKET_SIZE = 64; // 30 bytes max, with headroom
+    static uint8_t carryBuffer[MAX_PACKET_SIZE];
+    static size_t carrySize = 0;
+
+    auto cursor = data;
+    auto remaining = size;
+    if (carrySize > 0)
+    {
+        auto packetEndlocation = memchr(cursor, 0, remaining);
+        if (!packetEndlocation)
+        {
+            if (remaining + carrySize < MAX_PACKET_SIZE)
+            {
+                memcpy(carryBuffer + carrySize, cursor, remaining);
+                carrySize += remaining;
+            }
+            else
+            {
+                carrySize = 0;
+            }
+            return;
+        }
+        else
+        {
+            auto toCopy = static_cast<uint8_t *>(packetEndlocation) - cursor + 1;
+            auto carryBufferSize = toCopy + carrySize;
+            if (carryBufferSize < MAX_PACKET_SIZE)
+            {
+                memcpy(carryBuffer + carrySize, cursor, toCopy);
+                auto packetSize = decodeCOBS_inplace(carryBuffer, carryBufferSize);
+                if (packetSize)
+                {
+                    Bluetooth::parseAircraftPosition(carryBuffer, carryBufferSize);
+                }
+                cursor += toCopy;
+                remaining = remaining - toCopy;
+            }
+            carrySize = 0;
+        }
+    }
+
+    // Parse remaining packets in de buffer
+    while (remaining > 0)
+    {
+        void *packetEndlocation = memchr(cursor, 0x00, remaining);
+        if (packetEndlocation != nullptr)
+        {
+            packetEndlocation = packetEndlocation;
+            size_t packetSize = static_cast<uint8_t *>(packetEndlocation) - cursor + 1;
+            if (packetSize > 0)
+            {
+                Bluetooth::parseAircraftPosition(cursor, packetSize);
+            }
+
+            size_t consumed = packetSize;
+            cursor += consumed;
+            remaining -= consumed;
+        }
+        else
+        {
+            // Incomplete packet left at end
+            if (remaining <= MAX_PACKET_SIZE)
+            {
+                memcpy(carryBuffer, cursor, remaining);
+                carrySize = remaining;
+            }
+            else
+            {
+                carrySize = 0; // too large, drop
+            }
+            break;
+        }
+    }
+}
+
+OpenAce::AircraftCategory mapAircraftCategoryToType(uint8_t category)
+{
+    switch (category)
+    {
+    case 4:
+        return OpenAce::AircraftCategory::GliderMotorGlider;
+
+    case 3:
+    case 10:
+        return OpenAce::AircraftCategory::Helicopter;
+
+    case 8:
+        return OpenAce::AircraftCategory::Skydiver;
+
+    case 5:
+        return OpenAce::AircraftCategory::Balloon; // Or Airship if needed
+
+    case 1:
+        return OpenAce::AircraftCategory::ReciprocatingEngine;
+
+    case 2:
+        return OpenAce::AircraftCategory::JetTurbopropEngine;
+
+    case 11:
+    case 12:
+    case 13:
+        return OpenAce::AircraftCategory::Uav;
+
+    case 7:
+        return OpenAce::AircraftCategory::Paraglider;
+
+    case 0:
+        return OpenAce::AircraftCategory::Unknown;
+
+    default:
+        return OpenAce::AircraftCategory::Reserved;
+    }
+}
+
+void Bluetooth::parseAircraftPosition(uint8_t *data, size_t size)
+{
+    auto MAX_CALLSIGN_LENGTH = 12;
+    auto packetSize = decodeCOBS_inplace(data, size);
+
+    if (packetSize == 0)
+    {
+        return;
+    }
+    auto timeStamp = CoreUtils::timeUs32();
+    etl::bit_stream_reader reader(data, packetSize, etl::endian::big);
+
+    // --- Decode fields inline ---
+    uint8_t frameType = reader.read_unchecked<uint8_t>(8U);
+    if (frameType != 1)
+    {
+        return;
+    }
+
+    int32_t lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
+    int32_t lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
+    int16_t altitude = reader.read_unchecked<int16_t>(16U);
+
+    int32_t relNorth = reader.read_unchecked<int32_t>(24U);
+    int32_t relEast = reader.read_unchecked<int32_t>(24U);
+    // int16_t relAltitude = reader.read_unchecked<int16_t>(16U);
+    int16_t bearing = reader.read_unchecked<int16_t>(16U);
+
+    float track = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
+    float turnRate = static_cast<float>(reader.read_unchecked<int8_t>(8U)) / 5.0f;
+    float groundSpeed = static_cast<float>(reader.read_unchecked<uint16_t>(16U)) / 10.f;
+    float verticalRate = static_cast<float>(reader.read_unchecked<int16_t>(16U)) / 100.f;
+    uint8_t aircraftTypeIndex = reader.read_unchecked<uint8_t>(8U);
+
+    uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
+
+    uint8_t callSignLen = etl::min((uint8_t)MAX_CALLSIGN_LENGTH, reader.read_unchecked<uint8_t>(8));
+    char callSignBuffer[MAX_CALLSIGN_LENGTH + 1] = {0};
+    for (int i = 0; i < callSignLen; ++i)
+    {
+        callSignBuffer[i] = static_cast<char>(reader.read_unchecked<uint8_t>(8));
+    }
+
+    auto api = OpenAce::AircraftPositionInfo(
+        timeStamp,
+        OpenAce::CallSign(callSignBuffer),
+        static_cast<OpenAce::AircraftAddress>(addressRaw),
+        OpenAce::AddressType::ICAO, // Assumed for now that all addresses are ICAO
+        OpenAce::DataSource::ADSB,
+        mapAircraftCategoryToType(aircraftTypeIndex),
+        false, // stealth
+        false, // noTrack
+        true,  // airborne
+        lat,
+        lon,
+        altitude,
+        verticalRate,
+        groundSpeed,
+        track,
+        turnRate,
+        static_cast<uint32_t>(sqrtf((relNorth * relNorth) + (relEast * relEast))),
+        relNorth,
+        relEast,
+        bearing);
+
+    Bluetooth::instance->getBus().receive(OpenAce::AircraftPositionMsg(api));
 }
 
 /*
@@ -524,7 +717,6 @@ void Bluetooth::smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *
 
     bd_addr_t addr;
     bd_addr_type_t addr_type;
-    //    uint8_t status;
 
     switch (hci_event_packet_get_type(packet))
     {
@@ -603,7 +795,8 @@ void Bluetooth::smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *
         }
         break;
     // case GATT_EVENT_QUERY_COMPLETE:
-    //     status = gatt_event_query_complete_get_att_status(packet);
+    // {
+    //     auto status = gatt_event_query_complete_get_att_status(packet);
     //     switch (status)
     //     {
     //     case ATT_ERROR_INSUFFICIENT_ENCRYPTION:
@@ -622,7 +815,8 @@ void Bluetooth::smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *
     //         printf("GATT Query failed, status 0x%02x\n", gatt_event_query_complete_get_att_status(packet));
     //         break;
     //     }
-    //     break;
+    // }
+    // break;
     default:
         break;
     }

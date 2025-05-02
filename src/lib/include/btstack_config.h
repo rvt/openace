@@ -5,7 +5,7 @@
 //#define ENABLE_LOG_INFO
 //#define ENABLE_LOG_ERROR
 #define ENABLE_PRINTF_HEXDUMP
-#define HCI_DUMP_STDOUT_MAX_SIZE_ACL ( 12 )
+// #define HCI_DUMP_STDOUT_MAX_SIZE_ACL ( 12 )
 
 #define MAX_NR_GATT_CLIENTS OPENACE_MAX_BLUETOOTH_CONNECTIONS
 
@@ -19,13 +19,13 @@
 #define MAX_NR_LE_DEVICE_DB_ENTRIES 16
 
 // Limit number of ACL/SCO Buffer to use by stack to avoid cyw43 shared bus overrun
-#define MAX_NR_CONTROLLER_ACL_BUFFERS 3
+#define MAX_NR_CONTROLLER_ACL_BUFFERS 9
 #define MAX_NR_CONTROLLER_SCO_PACKETS 3
 
 // Enable and configure HCI Controller to Host Flow Control to avoid cyw43 shared bus overrun
 #define ENABLE_HCI_CONTROLLER_TO_HOST_FLOW_CONTROL
 #define HCI_HOST_ACL_PACKET_LEN (255+4)
-#define HCI_HOST_ACL_PACKET_NUM 3
+#define HCI_HOST_ACL_PACKET_NUM 9
 #define HCI_HOST_SCO_PACKET_LEN 120
 #define HCI_HOST_SCO_PACKET_NUM 3
 

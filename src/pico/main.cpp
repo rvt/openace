@@ -448,7 +448,6 @@ void overflowTest()
 
 int main()
 {
-    // Set CPU clock to 200 MHz
     set_sys_clock_khz(200000, true);
     stdio_init_all();
     printf(
