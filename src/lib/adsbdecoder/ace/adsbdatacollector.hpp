@@ -165,7 +165,7 @@ public:
 
     void dump()
     {
-        auto usTime = CoreUtils::timeUs32();
+        auto usTime = CoreUtils::timeUs32Raw();
         for (const auto &entry : cache)
         {
             const auto &data = entry.second; // Access the value part of the pair

@@ -19,13 +19,15 @@ void DataPort::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
     static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
     ownshipPosition = msg.position;
-    if (sendValidGps.isItTime(CoreUtils::timeUs32())) {
+    if (sendValidGps.isItTime(CoreUtils::timeUs32Raw())) {
 
+        // START
+        // We properly do not need these sentences
         // sendGPRMC(message.position);
         // sendGPGSA(ownshipPosition);
         // sendGPGGA(ownshipPosition);
-
-        sendPGRMZ(msg.position);
+        // sendPGRMZ(msg.position);
+        // END
         sendPFLAU(msg.position);
     }
 }
@@ -160,21 +162,12 @@ void DataPort::sendPFLAU(const OpenAce::OwnshipPositionInfo &position)
         OpenAce::NMEAString pflau;
         etl::string_stream stream(pflau);
 
-        //  uint8_t neighbours=0;
-        uint8_t gpsState = 2;
+        // $PFLAU,5,1,1,1,0,,0,,,*
         stream << "$PFLAU,"
-                "1," // RX does skydemon need 1 here?
-                "1," // TX
-            << gpsState << ","
-                            "1,"                                              // Power   // Over or under voltage
-                            "0,"                                              // Alarm Level
-                            "0,"                                              // Relative Bearing
-                            "2,"                                              // Alarm Type 0=No aircraft ithin range, 2=Aircraft alarm, 3=Obstacle/Alert Zone Alarm
-                            "100,"                                            // Relative Vertical
-                            "1000,"                                           // Relative Distance
-            << OpenAce::ICAO_HEX_FORMAT << address << OpenAce::RESET_FORMAT; // ID
+                "0"  // Should be filled in with the number of aircraft we are tracking
+                ",1" // IDially should based on tranceiver status
+                ",1,1,0,,0,,,";
 
-        // example $PFLAU,1,1,2,1,0,,0,,,*4D
         CoreUtils::addChecksumToNMEA(pflau);
         getBus().receive(OpenAce::DataPortMsg{pflau});
         statistics.messages++;

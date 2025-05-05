@@ -300,7 +300,7 @@ void Sx1262::sendLORAPacket(const RadioParameters &parameters, const uint8_t *da
     sx126x_set_tx_params(this, parameters.powerdBm, SX126X_RAMP_200_US);
 
     // Wait until CAD done
-    // uint32_t start = CoreUtils::timeUs32();
+    // uint32_t start = CoreUtils::timeUs32Raw();
     // disablePinInterrupt(dio1Pin); // We are just waiting for CAD
     sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
@@ -316,7 +316,7 @@ void Sx1262::sendLORAPacket(const RadioParameters &parameters, const uint8_t *da
     // if (irqStatus & SX126X_IRQ_CAD_DETECTED)
     // {
     //     // CAD detected, bail out
-    //     printf("CAD detected, aborting TX took: %ld\n", CoreUtils::timeUs32() - start);
+    //     printf("CAD detected, aborting TX took: %ld\n", CoreUtils::timeUs32Raw() - start);
     //     return;
     // }
 
@@ -470,7 +470,7 @@ void Sx1262::sx1262Task(void *arg)
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
-                    // printf("%8ld Listen Packet after TX ds:%s\n", CoreUtils::timeUs32() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+                    // printf("%8ld Listen Packet after TX ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
                     sx1262->configureSx1262(sx1262->rxRadioParameters);
                     sx1262->listen();
                 }
@@ -523,7 +523,7 @@ void Sx1262::sx1262Task(void *arg)
                         sx1262->sendToBus(sx1262->rxLoraMsg);
                     }
                 }
-                // printf("%8ld RX Packet ds:%s\n", CoreUtils::timeUs32() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+                // printf("%8ld RX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
             };
 
             // Only in TX 
@@ -533,7 +533,7 @@ void Sx1262::sx1262Task(void *arg)
                 if (auto guard = aceSpi->getLock(_))
                 {
                     auto m = Measure("Send Packet");
-                    // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32() / 1000, OpenAce::dataSourceToString(txPacket.radioParameters.config.dataSource));
+                    // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(txPacket.radioParameters.config.dataSource));
                     txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     sx1262->sendPacket(txPacket);
                     sx1262->statistics.transmittedPackets++;
@@ -547,7 +547,7 @@ void Sx1262::sx1262Task(void *arg)
                 if (auto g = SemaphoreGuard<5>(sx1262->xMutex))
                 {
                     sx1262->rxRadioParameters = sx1262->newRxRadioParameters;
-                    // printf("%8ld New Config ds:%s\n", CoreUtils::timeUs32() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+                    // printf("%8ld New Config ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
                     hasNewConfig = false;
                 }
                 bool _;

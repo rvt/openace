@@ -94,7 +94,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
          REQUIRE(trackedAircraft.size() == 0);
      }
 
-     SECTION("Additional aircraft added and called first")
+     SECTION("Additional aircraft added ")
      {
          OpenAce::AircraftPositionInfo aircraftPosition;
          aircraftPosition.timestamp = 570'000;
@@ -107,10 +107,10 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
          auto delay = trackedAircraft.next([&callbacks](const OpenAce::AircraftPositionInfo &position)
                                            {
                                          if (callbacks == 0 ) {
-                                             REQUIRE (position.address == 1);
+                                             REQUIRE (position.address == 0);
                                          }
                                          if (callbacks == 1 ) {
-                                             REQUIRE (position.address == 0);
+                                             REQUIRE (position.address == 1);
                                          }
                                          callbacks++; });
          REQUIRE(callbacks == 2);

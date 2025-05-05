@@ -34,7 +34,6 @@ public:
         count = 0;
     }
 
-    // 2️⃣ Pushes `len` bytes from `data` into the buffer
     bool push(const char* data, size_t len)
     {
         if (len > available())
@@ -79,7 +78,7 @@ public:
     //     return to_read;
     // }
 
-    // 3️⃣ Returns a direct pointer to the internal buffer and the length of contiguous data
+    // Returns a direct pointer to the internal buffer and the length of contiguous data
     auto peek() const
     {
         struct PeekResult {

@@ -77,7 +77,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     if (auto guard = SemaphoreGuard<5>(mutex))
     {
         // printf("Processing  a:%06lX \n", mm.aa);
-        auto usTime = CoreUtils::timeUs32();
+        auto usTime = CoreUtils::timeUs32Raw();
         if (ignoredAirplanes.ifContainsThenUpdate(mm.aa, usTime))
         {
             statistics.totalMsgIgnored++;
@@ -140,7 +140,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         }
 
         // Used to take specific performance measurements
-        // auto usDuration = CoreUtils::timeUs32();
+        // auto usDuration = CoreUtils::timeUs32Raw();
         // const static int EVERY = 250;
         // static int count = 0;
         // static uint32_t duration = 0;
@@ -215,7 +215,7 @@ void ADSBDecoder::on_receive(const OpenAce::IdleMsg &msg)
     (void)msg;
     if (auto guard = SemaphoreGuard<5>(mutex))
     {
-        auto usTime = CoreUtils::timeUs32();
+        auto usTime = CoreUtils::timeUs32Raw();
         ignoredAirplanes.evictOldEntries(usTime);
         adsbDataCollector.evictOldEntries(usTime);
     }
