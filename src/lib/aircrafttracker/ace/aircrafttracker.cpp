@@ -132,7 +132,7 @@ void AircraftTracker::handleNew()
 
 void AircraftTracker::sendEligibleAircraft()
 {
-    auto delay = trackedAircraft.next(
+    trackedAircraft.next(
         etl::delegate<void(const OpenAce::AircraftPositionInfo &)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this));
 }
 
