@@ -34,7 +34,7 @@ private:
     static constexpr uint32_t CLEAR_UP_SIZE = (MAX_TRACKING_PLANES * 95) / 100;
     static constexpr uint32_t AUTO_DISTANCE_TRACK_UPPER = (MAX_TRACKING_PLANES * 90) / 100;
     static constexpr uint32_t AUTO_DISTANCE_TRACK_LOWER = (MAX_TRACKING_PLANES * 80) / 100;
-
+    static constexpr uint8_t TIMESLICES = 10;
     struct
     {
         uint32_t queueFullErr = 0; // Might mean ther eis to much pressure on this system and the queue needs to be increased in size. But this will never work if trackedFullErr is also increasing
@@ -54,10 +54,8 @@ private:
     };
 
     TaskHandle_t taskHandle;
-    TimerHandle_t transmitTimerHandle;
 
-
-    TrackerData<MAX_TRACKING_PLANES, 10> trackedAircraft;
+    TrackerData<MAX_TRACKING_PLANES, TIMESLICES> trackedAircraft;
 
     // Producer Consumer queue to handle data between this task and the send task
     etl::queue_spsc_atomic<OpenAce::AircraftPositionInfo, 8, etl::memory_model::MEMORY_MODEL_SMALL> queue;
@@ -91,7 +89,7 @@ private:
 public:
     static constexpr const etl::string_view NAME = "AircraftTracker";
     AircraftTracker(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                           taskHandle(nullptr), transmitTimerHandle(nullptr)
+                                                                           taskHandle(nullptr)
     {
         (void)config;
     }

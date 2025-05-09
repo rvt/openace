@@ -38,24 +38,21 @@ public:
     {
         if (len > available())
         {
-            return false; // Not enough space
+            return false;
         }
 
         size_t end_space = BUFFER_SIZE - head;
         if (len <= end_space)
         {
-            // Data fits in the remaining space at the end
             memcpy(buffer.data() + head, data, len);
-            head = (head + len) % BUFFER_SIZE;
         }
         else
         {
-            // Split the data into two parts
             memcpy(buffer.data() + head, data, end_space);
             memcpy(buffer.data(), data + end_space, len - end_space);
-            head = len - end_space;
         }
 
+        head = (head + len) % BUFFER_SIZE;
         count += len;
         return true;
     }
@@ -108,8 +105,9 @@ public:
         }
 
         auto size = std::min(count, BUFFER_SIZE - tail);
+        auto mTail = tail;
         accepted(size);
-        return PeekResult{buffer.data() + tail, size};
+        return PeekResult{buffer.data() + mTail, size};
     }
 
     // 4️⃣ Advances the "read pointer" by `len` bytes

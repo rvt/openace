@@ -6,7 +6,6 @@
 
 OpenAce::PostConstruct AircraftTracker::postConstruct()
 {
-    transmitTimerHandle = xTimerCreate("aircraftTimerTask", TASK_DELAY_MS(1'000), pdFALSE /* Must not be autostart */, this, aircraftTimerTask);
     return OpenAce::PostConstruct::OK;
 }
 
@@ -24,7 +23,6 @@ void AircraftTracker::stop()
     {
         vTaskDelay(TASK_DELAY_MS(50));
     }
-    xTimerDelete(transmitTimerHandle, TASK_DELAY_MS(250));
 };
 
 void AircraftTracker::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
@@ -52,7 +50,8 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 {
     (void)path;
     stream << "{";
-    for (uint8_t i=0; i< static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS); i++) {
+    for (uint8_t i = 0; i < static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS); i++)
+    {
         stream << "\"" << OpenAce::dataSourceIntToString(i) << "\":";
         antennaRadiationPattern[i].serialize(stream);
         stream << ",";
@@ -93,36 +92,30 @@ void AircraftTracker::aircraftTimerTask(TimerHandle_t timer)
 void AircraftTracker::aircraftTrackerTask(void *arg)
 {
     AircraftTracker *at = static_cast<AircraftTracker *>(arg);
-    xTimerChangePeriod(at->transmitTimerHandle, TASK_DELAY_MS(1'000), TASK_DELAY_MS(25));
     while (true)
     {
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
+        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1000 / TIMESLICES));
+        if (notifyValue & TaskState::EXIT)
         {
-            if (notifyValue & TaskState::EXIT)
-            {
-                vTaskDelete(nullptr);
-                return;
-            }
+            vTaskDelete(nullptr);
+            return;
+        }
+        // Handle timers
+        if (notifyValue & TaskState::MAINTAIN)
+        {
+            at->maintenance();
+        }
 
-            // Only do work at each begin which should be around ever HEARTBEAT_TIME
+        // Handle timers
+        if (notifyValue == 0 || notifyValue & TaskState::TIMER)
+        {
+            at->sendEligibleAircraft();
+        }
 
-            // Handle timers
-            if (notifyValue & TaskState::MAINTAIN)
-            {
-                at->maintenance();
-            }
-
-            // Handle timers
-            if (notifyValue & TaskState::TIMER)
-            {
-                at->sendEligibleAircraft();
-            }
-
-            // Handle new aircraft
-            if (notifyValue & TaskState::NEW)
-            {
-                at->handleNew();
-            }
+        // Handle new aircraft
+        if (notifyValue & TaskState::NEW)
+        {
+            at->handleNew();
         }
     }
 }
@@ -140,10 +133,7 @@ void AircraftTracker::handleNew()
 void AircraftTracker::sendEligibleAircraft()
 {
     auto delay = trackedAircraft.next(
-        etl::delegate<void(const OpenAce::AircraftPositionInfo&)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this)
-    );
-    
-    xTimerChangePeriod(transmitTimerHandle, TASK_DELAY_MS(delay == 0 ? 1 : delay), portMAX_DELAY);
+        etl::delegate<void(const OpenAce::AircraftPositionInfo &)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this));
 }
 
 void AircraftTracker::maintenance()

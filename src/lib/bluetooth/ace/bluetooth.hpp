@@ -33,7 +33,7 @@
  * The only one that requires a mutex is to see if we need a notification in on_receive(const OpenAce::DataPortMsg &msg)
  * The queue is a lock free queue so no mutex needed
  */
-class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenAce::DataPortMsg, OpenAce::IdleMsg>
+class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenAce::DataPortMsg>
 {
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
@@ -95,8 +95,6 @@ private:
     virtual void stop() override;
 
     void on_receive(const OpenAce::DataPortMsg &msg);
-
-    void on_receive(const OpenAce::IdleMsg &msg);
 
     void on_receive_unknown(const etl::imessage &msg);
 

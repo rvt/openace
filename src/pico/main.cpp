@@ -261,7 +261,16 @@ static void loadModules(void *arch)
     load(Bluetooth::NAME, bus, config);
     load(AircraftTracker::NAME, bus, config, true);
     load(AceSpi::NAME, bus, config, true);
+
+    // HArdware timi ngs, GPS and connectivity
     load(PicoRtc::NAME, bus, config, true);
+    load(GpsDecoder::NAME, bus, config);
+    load(UbloxM8N::NAME, bus, config);
+    load(L76B::NAME, bus, config);
+    load(Gdl90Service::NAME, bus, config);
+    load(GDLoverUDP::NAME, bus, config);
+    load(DataPort::NAME, bus, config);
+    load(AirConnect::NAME, bus, config);
 
     for (uint8_t i = 0; i < OPENACE_MAX_RADIOS; i++)
     {
@@ -269,22 +278,17 @@ static void loadModules(void *arch)
     }
     // Other for these two are currently important to ensure configuration on TX is set before RX
     // see RadioTunerRx::enableDisableDatasources()
+    // Data sources
     load(RadioTunerTx::NAME, bus, config);
     load(RadioTunerRx::NAME, bus, config);
-
     load(Bmp280::NAME, bus, config);
-    load(Gdl90Service::NAME, bus, config);
     load(ADSBDecoder::NAME, bus, config);
+
+    // Protocols
     load(ADSL::NAME, bus, config);
     load(FanetAce::NAME, bus, config);
     load(Flarm2024::NAME, bus, config);
     load(Ogn1::NAME, bus, config);
-    load(GDLoverUDP::NAME, bus, config);
-    load(GpsDecoder::NAME, bus, config);
-    load(UbloxM8N::NAME, bus, config);
-    load(L76B::NAME, bus, config);
-    load(DataPort::NAME, bus, config);
-    load(AirConnect::NAME, bus, config);
     load(Dump1090Client::NAME, bus, config);
 
     // SerialADSB messes up the serial terminal, but it will load beyond this point

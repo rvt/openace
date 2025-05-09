@@ -138,7 +138,7 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
                 return;
             }
 
-            // Check for RMC
+            // Check for RMC to give it more priority
             if (etl::string_view(type) == "RMC")
             {
                 isRmc = true;

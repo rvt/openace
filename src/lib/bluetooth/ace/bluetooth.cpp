@@ -174,20 +174,18 @@ void Bluetooth::createAdvData()
 }
 
 /**
- * Starts and stop LWiP when wifi connects or disconnects to cleanup any resources
- */
-void Bluetooth::on_receive(const OpenAce::IdleMsg &msg)
-{
-    (void)msg;
-}
-
-/**
  * Receive dataport messages and send it to all clients
  * Only process data if there are any actual clients and when all client
  * buffers are empty, send a trigger to the BT thread to process the data.
  */
 void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
 {
+    // Some code to do some visual checking - Disabled for production
+    // char type[4] = {msg.sentence[3], msg.sentence[4], msg.sentence[5], '\0'};
+    // if (etl::string_view(type) == "RMC") {
+    //     printf("RMC: %d %s\n", CoreUtils::msInSecond(), msg.sentence.c_str());
+    // }
+
     if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
     {
         for (auto &ctx : Bluetooth::connections)
@@ -239,7 +237,7 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
         {
             if (btContext.buffer.length() > MINIMUM_BLE_PACKET_SIZE)
             {
-                btContext.nextCheckNotification = time + 1000;
+                btContext.nextCheckNotification = time + 1'000'000;
 
                 // Request to send more data
                 if (btContext.hciHandle)
@@ -254,68 +252,73 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
         }
     }
 
-    btstack_run_loop_set_timer(ts, 250);
+    btstack_run_loop_set_timer(ts, 100);
     btstack_run_loop_add_timer(ts);
 }
+// static char intermediateBuffer[255]; // assumes MTU <= 512
 
 void Bluetooth::attContextCallback(void *context)
 {
     static uint8_t guardCounter = 0;
-
     auto btContext = static_cast<Bluetooth::BtContext *>(context);
-    // This check is done because BlueKitchen can call us back recursivly. This has to side effect that sometimes the stack can run full when there is to much data
-    // This recursive check prevents deep recursions untill a proper fix is found
-    // 10 -> async_context_t
+
     if (auto rGuard = RecursiveGuard<8>(guardCounter, "RecursiveGuard: attContextCallback"))
     {
-
-        // Only send data when there is enough data in the buffer.
-        // there might be a packet smaller than `MINIMUM_BLE_PACKET_SIZE`, and we still need to send it.
-        // This could be optimized by using an intermediate buffer, but that seems like over-optimization for now.
         if (btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
         {
-            // Try to send as much data as possible up to the MTU
-            uint16_t length = 0;
-            const char *data = nullptr;
+            static char intermediateBuffer[255]; 
+            size_t writePos = 0;
 
             if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
             {
-                auto [peekPart, sendLength] = btContext->buffer.peek();
-                // Ensure we don't exceed the MTU and we actually have data
-                if (sendLength > 0)
+                // SkyDemon requires per message to be full sentence
+                while (writePos + OpenAce::NMEA_MAX_LENGTH <= sizeof(intermediateBuffer))
                 {
-                    data = peekPart;
-                    length = static_cast<uint16_t>(etl::min(static_cast<uint16_t>(sendLength), static_cast<uint16_t>(btContext->mtu)));
+                    const auto [peekPart, peekLen] = btContext->buffer.peek();
+                    if (peekLen == 0)
+                        break;
+            
+                    size_t sentenceEnd = 0;
+                    for (size_t i = 0; i + 1 < peekLen; ++i)
+                    {
+                        if (peekPart[i] == '\r' && peekPart[i + 1] == '\n')
+                        {
+                            sentenceEnd = i + 2;
+                            break;
+                        }
+                    }
+            
+                    size_t copyLen = (sentenceEnd == 0) ? peekLen : sentenceEnd;
+            
+                    // ✅ Check if this chunk fits in the remaining space
+                    if (writePos + copyLen > sizeof(intermediateBuffer))
+                        break;
+            
+                    memcpy(intermediateBuffer + writePos, peekPart, copyLen);
+                    btContext->buffer.accepted(copyLen);
+                    writePos += copyLen;
                 }
             }
 
-            if (data!=nullptr)
+            if (writePos > 0)
             {
-
                 uint8_t sendStatus = !ERROR_CODE_SUCCESS;
+
                 if (btContext->hciHandle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
                 {
                     sendStatus = att_server_notify(btContext->hciHandle, btContext->attrHandle,
-                                                   reinterpret_cast<const uint8_t *>(data), length);
+                                                   reinterpret_cast<const uint8_t *>(intermediateBuffer), writePos);
                 }
                 else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
                 {
-                    sendStatus = rfcomm_send(btContext->rfcommChannelId, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(data)), length);
+                    sendStatus = rfcomm_send(btContext->rfcommChannelId,
+                                             reinterpret_cast<uint8_t *>(intermediateBuffer), writePos);
                 }
 
-                if (sendStatus == ERROR_CODE_SUCCESS)
+                if (sendStatus == ERROR_CODE_SUCCESS &&
+                    btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
                 {
-                    // Only update the buffer if send was successful
-                    if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
-                    {
-                        btContext->buffer.accepted(length);
-                    }
-                }
-
-                // Immediately request to send more if we have more data
-                if (btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
-                {
-                    btContext->nextCheckNotification = CoreUtils::timeUs32Raw() + 250;
+                    btContext->nextCheckNotification = CoreUtils::timeUs32Raw() + 1'000'000;
                     if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
                     {
                         att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle);
@@ -324,10 +327,12 @@ void Bluetooth::attContextCallback(void *context)
                     {
                         rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
                     }
+                    return;
                 }
             }
         }
     }
+
     btContext->nextCheckNotification = CoreUtils::timeUs32Raw();
 }
 
@@ -530,6 +535,7 @@ void Bluetooth::processIncomingBuffer(uint8_t *data, size_t size)
         auto packetEndlocation = memchr(cursor, 0, remaining);
         if (!packetEndlocation)
         {
+            // When this package does not contain a cobs end sigature \0
             if (remaining + carrySize < MAX_PACKET_SIZE)
             {
                 memcpy(carryBuffer + carrySize, cursor, remaining);
@@ -543,16 +549,14 @@ void Bluetooth::processIncomingBuffer(uint8_t *data, size_t size)
         }
         else
         {
+            // When this cobs package does contain a \0 parse the carryBuffer
             auto toCopy = static_cast<uint8_t *>(packetEndlocation) - cursor + 1;
             auto carryBufferSize = toCopy + carrySize;
             if (carryBufferSize < MAX_PACKET_SIZE)
             {
                 memcpy(carryBuffer + carrySize, cursor, toCopy);
-                auto packetSize = decodeCOBS_inplace(carryBuffer, carryBufferSize);
-                if (packetSize)
-                {
-                    Bluetooth::parseAircraftPosition(carryBuffer, carryBufferSize);
-                }
+                // Number of bytes is somehwat variable depending on callsign length
+                Bluetooth::parseAircraftPosition(carryBuffer, toCopy);
                 cursor += toCopy;
                 remaining = remaining - toCopy;
             }
@@ -568,7 +572,7 @@ void Bluetooth::processIncomingBuffer(uint8_t *data, size_t size)
         {
             packetEndlocation = packetEndlocation;
             size_t packetSize = static_cast<uint8_t *>(packetEndlocation) - cursor + 1;
-            if (packetSize > 0)
+            if (packetSize > 0) // Number of bytes is somehwat variable depending on callsign length
             {
                 Bluetooth::parseAircraftPosition(cursor, packetSize);
             }
