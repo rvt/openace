@@ -67,7 +67,7 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
            << position.relNorthFromOwn << ","                                 // Relative North Meters
            << position.relEastFromOwn << ","                                  // Relative East Meters
            << (position.altitudeWgs84 - ownshipPosition.altitudeWgs84) << "," // Relative Vertical Meters
-           << getPFLAAAddressType(position.addressType) << ",";                // ID Type
+           << getPFLAAAddressType(position.addressType) << ",";               // ID Type
            CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
     stream << ","                                              // HEXCode example 484FB3!PH-DHA
            << position.course << ","                                          // Heading

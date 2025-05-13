@@ -206,8 +206,8 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
             1,                                      // airBorn
             fLatitude,
             fLongitude,
-            packet.DecodeAltitude() * 10 + ownshipPosition.geoidOffset,        // relative to WGS84 ellipsoid
-            packet.DecodeClimbRate() * .1f, // Climbrate is send s 0.1m/s (10 means 1/ms)
+            packet.DecodeAltitude() + ownshipPosition.geoidSeparation, // OGN sends EGM96 so we need to add ownshipPosition.geoidSeparation
+            packet.DecodeClimbRate() * .1f,         // Climb Rate is send s 0.1m/s (10 means 1/ms)
             speed0d1ms * .1f,
             static_cast<int16_t>(packet.DecodeHeading() * .1f),
             packet.DecodeTurnRate() * .1f,
@@ -244,7 +244,7 @@ void Ogn1::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
         packet.EncodeHeading(ownshipPosition.course * 10.f);
         packet.EncodeClimbRate(ownshipPosition.verticalSpeed * 10.f);
         packet.EncodeTurnRate(ownshipPosition.hTurnRate * 10.f);
-        packet.EncodeAltitude((ownshipPosition.heightEgm96) + 5 / 10);
+        packet.EncodeAltitude(ownshipPosition.heightEgm96);              // OGN seems to use EGM96 / eg ortho height
         packet.EncodeDOP(gpsStats.pDop + 0.5f);
 
         // TODO: Understand how baro Altitude really works in OGN

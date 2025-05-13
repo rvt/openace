@@ -220,8 +220,8 @@ public:
     }
     void setAltitudeWGS84(int32_t altitude)                                                                   // [m]
     {
-        if (altitude<-316) altitude = -316;
-        altitudeWGS84 = UnsVRencode<int32_t,12>(altitude + 316);
+        if (altitude<-320) altitude = -320;
+        altitudeWGS84 = UnsVRencode<int32_t,12>(altitude + 320);
     }
 
     float getLatitude() const

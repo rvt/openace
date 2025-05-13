@@ -180,7 +180,7 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
                 tp.speed() > (OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN * MS_TO_KPH),
                 tp.latitude(),
                 tp.longitude(),
-                tp.altitude(),
+                tp.altitude() + ownshipPosition.geoidSeparation, // We receive EGM96, but we need WGS84
                 tp.climbRate(),
                 tp.speed() * KPH_TO_MS,
                 static_cast<int16_t>(tp.groundTrack()),

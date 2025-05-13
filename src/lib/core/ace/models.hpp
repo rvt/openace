@@ -241,7 +241,7 @@ namespace OpenAce
         float velocityNorth;     // North velocity in m/s
         float velocityEast;      // East velocity in m/s
         int16_t heightEgm96;     // Height above egm96, eg MSL
-        int16_t geoidOffset;     // Height of geoid above WGS84 ellipsoid
+        int16_t geoidSeparation; // The distance from the surface of an ellipsoid to the surface of the geoid.
     };
 
     namespace Config

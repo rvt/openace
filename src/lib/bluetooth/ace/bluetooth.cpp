@@ -658,7 +658,7 @@ void Bluetooth::parseAircraftPosition(uint8_t *data, size_t size)
 
     int32_t lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
     int32_t lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
-    int16_t altitude = reader.read_unchecked<int16_t>(16U);
+    int16_t altitude = reader.read_unchecked<int16_t>(16U);      // Assumed WGS84 or as close as possible
 
     int32_t relNorth = reader.read_unchecked<int32_t>(24U);
     int32_t relEast = reader.read_unchecked<int32_t>(24U);

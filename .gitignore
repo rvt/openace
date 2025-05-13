@@ -9,13 +9,8 @@ private.data/
 *-backups/
 
 # Builds
-release_build/
-release/
-docker_build/
 build/
-build_test/
 ./default_config.hpp
-./config.hpp
 ./build_time.hpp
 
 # VSCode + Python

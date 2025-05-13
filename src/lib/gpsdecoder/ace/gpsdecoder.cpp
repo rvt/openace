@@ -34,7 +34,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude;
     stream << ",\"longitude\":" << longitude << etl::format_spec{}.precision(1);
     stream << ",\"altitudeWgs84\":" << altitudeWgs84();
-    stream << ",\"heightGeoidWGS84\":" << heightGeoidWGS84;
+    stream << ",\"geoidSeparation\":" << geoidSeparation;
     stream << ",\"groundspeed\":" << groundSpeed;
     stream << ",\"track\":" << course();
     stream << ",\"pDop\":" << pDop << OpenAce::RESET_FORMAT;
@@ -145,11 +145,10 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
         if (minmea_parse_gga(&frame, msg.sentence.c_str()))
         {
 
-            heightGeoidWGS84 = convertToMeters(frame.height, frame.height_units, heightGeoidWGS84);
-            altitude = convertToMeters(frame.altitude, frame.height_units, altitude);
-
             // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
-            altitudeWgs84(altitude + heightGeoidWGS84);
+            auto wgs84Altitude = convertToMeters(frame.altitude, frame.altitude_units, altitudeWgs84()); // Field 9 (MSL)
+            geoidSeparation = convertToMeters(frame.height, frame.height_units, geoidSeparation); // Field 11 (Undulation)
+            altitudeWgs84(wgs84Altitude);
 
             satellitesTracked = frame.satellites_tracked;
             fixQuality = frame.fix_quality;
@@ -229,7 +228,6 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
     if (lastGGATimestamp.microseconds == lastRMCTimestamp.microseconds && lastGGATimestamp.seconds == lastRMCTimestamp.seconds)
     {
         auto alt = altitudeWgs84();
-        auto height = heightGeoidWGS84;
 
         // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
         getBus().receive(
@@ -243,10 +241,10 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .verticalSpeed = altitudeWgs84.perSecond(), // vertical speed
                     .groundSpeed = groundSpeed,                 // Ground Speed
                     .course = course(),
-                    .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
+                    .hTurnRate = course.perSecond(),            // hTurnRate   // degrees per second
                     .velocityNorth = velocityNorth,
                     .velocityEast = velocityEast,
-                    .heightEgm96 = static_cast<int16_t>(alt - height),
-                    .geoidOffset = static_cast<int16_t>(height)}});
+                    .heightEgm96 = static_cast<int16_t>(alt - geoidSeparation),
+                    .geoidSeparation = static_cast<int16_t>(geoidSeparation)}});
     }
 }

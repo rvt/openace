@@ -295,7 +295,7 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
             packet.flightState == ADSL_Packet::FlightState::FS_Airborne, // airBorn
             fLatitude,
             fLongitude,
-            packet.getAltitudeWGS84(), // relative to WGS84 ellipsoid
+            packet.getAltitudeWGS84(),              // relative to WGS84 ellipsoid
             packet.getVerticalRate(),
             packet.getGroundSpeed(),
             static_cast<int16_t>(packet.getTrack()),
