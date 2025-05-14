@@ -216,7 +216,7 @@ public:
 
     int32_t getAltitudeWGS84(void) const                                                                  // [m]
     {
-        return UnsVRdecode<int32_t,12>(altitudeWGS84) - 316;
+        return UnsVRdecode<int32_t,12>(altitudeWGS84) - 320;
     }
     void setAltitudeWGS84(int32_t altitude)                                                                   // [m]
     {
