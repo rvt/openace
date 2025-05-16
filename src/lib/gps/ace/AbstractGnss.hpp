@@ -42,6 +42,7 @@ private:
     int8_t ppsPin;
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<OpenAce::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
+        static constexpr const etl::string_view NAME = "Gnss";
 protected:
     PioSerial &getSerial() {
         return pioSerial;

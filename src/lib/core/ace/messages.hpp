@@ -238,6 +238,7 @@ namespace OpenAce
         const Configuration &config;
         const OpenAce::Modulename moduleName;
         ConfigUpdatedMsg(const Configuration &config_, const OpenAce::Modulename &moduleName_) : config(config_), moduleName(moduleName_) {};
+        ConfigUpdatedMsg(const Configuration &config_, const etl::string_view &moduleName_) : config(config_), moduleName(moduleName_) {};
     };
 
     /**

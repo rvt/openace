@@ -14,9 +14,9 @@ void Bmp280::stop()
 
 void Bmp280::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == NAME)
+    if (msg.moduleName == Bmp280::NAME)
     {
-        compensation = msg.config.valueByPath(0, NAME, "compensation");
+        compensation = msg.config.valueByPath(0, Bmp280::NAME, "compensation");
     }
 }
 

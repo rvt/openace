@@ -132,7 +132,7 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
+    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
     {
         (void)path;
         stream << "{";
@@ -186,7 +186,7 @@ void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
     //     printf("RMC: %d %s\n", CoreUtils::msInSecond(), msg.sentence.c_str());
     // }
 
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
+    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
     {
         for (auto &ctx : Bluetooth::connections)
         {
@@ -204,7 +204,7 @@ void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
 
 bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
     {
         if (!Bluetooth::connections.full())
         {
@@ -217,7 +217,7 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t 
 
 void Bluetooth::removeConnection(uint16_t hciHandle)
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
     {
         Bluetooth::connections.remove_if([hciHandle](const BtContext &ctx)
                                          { return ctx.hciHandle == hciHandle; });
@@ -266,10 +266,10 @@ void Bluetooth::attContextCallback(void *context)
     {
         if (btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
         {
-            static char intermediateBuffer[255]; 
+            static char intermediateBuffer[255];
             size_t writePos = 0;
 
-            if (auto guard = SemaphoreGuard<portMAX_DELAY>(mutex))
+            if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
             {
                 // SkyDemon requires per message to be full sentence
                 while (writePos + OpenAce::NMEA_MAX_LENGTH <= sizeof(intermediateBuffer))
@@ -277,7 +277,7 @@ void Bluetooth::attContextCallback(void *context)
                     const auto [peekPart, peekLen] = btContext->buffer.peek();
                     if (peekLen == 0)
                         break;
-            
+
                     size_t sentenceEnd = 0;
                     for (size_t i = 0; i + 1 < peekLen; ++i)
                     {
@@ -287,13 +287,13 @@ void Bluetooth::attContextCallback(void *context)
                             break;
                         }
                     }
-            
+
                     size_t copyLen = (sentenceEnd == 0) ? peekLen : sentenceEnd;
-            
+
                     // ✅ Check if this chunk fits in the remaining space
                     if (writePos + copyLen > sizeof(intermediateBuffer))
                         break;
-            
+
                     memcpy(intermediateBuffer + writePos, peekPart, copyLen);
                     btContext->buffer.accepted(copyLen);
                     writePos += copyLen;
@@ -656,9 +656,9 @@ void Bluetooth::parseAircraftPosition(uint8_t *data, size_t size)
         return;
     }
 
-    int32_t lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
-    int32_t lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
-    int16_t altitude = reader.read_unchecked<int16_t>(16U);      // Assumed WGS84 or as close as possible
+    float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
+    float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
+    int16_t altitude = reader.read_unchecked<int16_t>(16U); // Assumed WGS84 or as close as possible
 
     int32_t relNorth = reader.read_unchecked<int32_t>(24U);
     int32_t relEast = reader.read_unchecked<int32_t>(24U);

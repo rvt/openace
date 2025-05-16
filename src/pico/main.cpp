@@ -82,30 +82,6 @@ uint32_t getFreeHeap(void)
     return getTotalHeap() - m.uordblks;
 }
 
-/**
- * Module Manager will be responsible at a later stage to re-load modules during runtime
- */
-class ModuleManager : public BaseModule, public etl::message_router<ModuleManager>
-{
-
-public:
-    static constexpr const etl::string_view NAME = "ModuleManager";
-    ModuleManager(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
-    {
-        (void)config;
-    }
-    virtual ~ModuleManager() = default;
-    virtual OpenAce::PostConstruct postConstruct() override
-    {
-        return OpenAce::PostConstruct::OK;
-    }
-    virtual void start() override {}
-    virtual void stop() override {}
-    void on_receive_unknown(const etl::imessage &msg)
-    {
-        (void)msg;
-    }
-};
 
 void registerModules()
 {
@@ -130,7 +106,6 @@ void registerModules()
     BaseModule::registerModule(L76B::NAME, true);
     BaseModule::registerModule(SerialADSB::NAME, true);
     BaseModule::registerModule(Dump1090Client::NAME, false);
-    BaseModule::registerModule(ModuleManager::NAME, false);
     BaseModule::registerModule(AircraftTracker::NAME, false);
     BaseModule::registerModule(DataPort::NAME, false);
     BaseModule::registerModule(AirConnect::NAME, false);
@@ -152,7 +127,6 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, const Conf
     if (name == Bluetooth::NAME) return new Bluetooth(bus, config);
     if (name == DataPort::NAME) return new DataPort(bus, config);
     if (name == AircraftTracker::NAME) return new AircraftTracker(bus, config);
-    if (name == ModuleManager::NAME) return new ModuleManager(bus, config);
     if (name == Dump1090Client::NAME) return new Dump1090Client(bus, config);
     if (name == SerialADSB::NAME) return new SerialADSB(bus, config);
     if (name == L76B::NAME) return new L76B(bus, config);
@@ -243,7 +217,6 @@ static void loadModules(void *arch)
     (void)arch;
     vTaskDelay(5000);
     load(WifiService::NAME, bus, config, true);
-    // load(ModuleManager::NAME, bus, config);
 
     WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME));
     if (client != nullptr)

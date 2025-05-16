@@ -10,7 +10,7 @@
         "aircraftId": "XX-XXX"
     },
     "_comment_modules": "All modules that will be loaded when OpenACE starts up",
-    "modules": "Ogn1,Flarm,GDLoverUDP,Gdl90Service,ADSL,_SerialADSB,Sx1262_1,Sx1262_0,WifiClient,GpsDecoder,ADSBDecoder,RadioTunerRx,RadioTunerTx,DataPort",
+    "modules": "Ogn1,Flarm,GDLoverUDP,Gdl90Service,ADSL,_SerialADSB,Sx1262_1,Sx1262_0,WifiClient,GpsDecoder,RadioTunerRx,RadioTunerTx,DataPort",
     "aircraft": {
         "_comment": "All aircrafts and their configurations settings, config::aircraftId will be used to setup the hardware and load the configuration for that aircraft",
         "XX-XXX": {
@@ -60,16 +60,16 @@
         "offset": 0
     },
     "Flarm": {
-        "distanceIgnore": 25000
+        "distanceIgnore": 50000
     },
     "Fanet": {
-        "distanceIgnore": 25000
+        "distanceIgnore": 50000
     },
     "Ogn1": {
-        "distanceIgnore": 25000
+        "distanceIgnore": 50000
     },
     "ADSL": {
-        "distanceIgnore": 25000
+        "distanceIgnore": 50000
     },
     "Dump1090Client": {
         "ip": "192.168.178.105",

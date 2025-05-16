@@ -47,8 +47,7 @@ void AbstractGnss::start()
     // TODO: Check if there is a better way to reduce stack size.
     // This seem to have because the ublox is the beginning of messages through the complete system?
     // Can we use a reference to strings instead of copy?
-    xTaskCreate(receiveTask, "AbstractGnss"
-                             "Task",
+    xTaskCreate(receiveTask, AbstractGnss::NAME.cbegin(),
                 configMINIMAL_STACK_SIZE + 768, this, tskIDLE_PRIORITY + 3, &taskHandle);
 
     pioSerial.start();

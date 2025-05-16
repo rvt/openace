@@ -13,7 +13,7 @@ OpenAce::PostConstruct Gdl90Service::postConstruct()
 
 void Gdl90Service::start()
 {
-    xTaskCreate(gdl90ServiceTask, "gdl90ServiceTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(gdl90ServiceTask, Gdl90Service::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -93,15 +93,13 @@ GDL90::EMITTER aircraftTypeToEmitter(OpenAce::AircraftCategory at)
 
 void Gdl90Service::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName != Gdl90Service::NAME)
+    if (msg.moduleName == Gdl90Service::NAME)
     {
-        return;
+        auto openAceConfiguration = msg.config.openAceConfig();
+        type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+        address = openAceConfiguration.address;
+        category = openAceConfiguration.category;
     }
-
-    auto openAceConfiguration = msg.config.openAceConfig();
-    type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
-    address = openAceConfiguration.address;
-    category = openAceConfiguration.category;
 }
 
 void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
@@ -117,11 +115,11 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, pos.altitudeWgs84 * M_TO_FT);
+    gdl90.altitude_encode(altitude, pos.heightEgm96 * M_TO_FT);     // GDL90 specifies Pressure Altitude, Egm96 comes closest 
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
-
+    geoidSeparation = msg.position.geoidSeparation;
     GDL90::RawBytes unpacked;
     if (gdl90.ownership_or_traffic_report_encode(
             unpacked,
@@ -155,7 +153,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     bool vertical_warning = true;
     float vertical_figure_of_merit_f = 0;
     uint32_t vertical_figure_of_merit;
-    gdl90.geo_altitude_encode(geo_altitude, pos.altitudeWgs84 * M_TO_FT);
+    gdl90.geo_altitude_encode(geo_altitude, pos.altitudeWgs84 * M_TO_FT); // set to WGS84 using capability 
     gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
     if (gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
     {
@@ -178,34 +176,35 @@ void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
     uint32_t vert_velocity;
     uint32_t track_hdg;
 
-    // printf("lat:%f lon:%f alt:%d addr:%d\n", pos.lat, pos.lon, pos.altitudeWgs84, pos.address);
+    //printf("lat:%f lon:%f alt:%d addr:%ld\n", pos.lat, pos.lon, pos.altitudeWgs84, pos.address);
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, pos.altitudeWgs84 * M_TO_FT);
+    gdl90.altitude_encode(altitude, (pos.altitudeWgs84 - geoidSeparation) * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
     GDL90::ADDR_TYPE type = pos.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
 
     GDL90::RawBytes unpacked;
-    if (gdl90.ownership_or_traffic_report_encode(unpacked,
-                                                 false,
-                                                 GDL90::ALERT_STATUS::ACTIVE,
-                                                 type,
-                                                 pos.address,
-                                                 latitude,
-                                                 longitude,
-                                                 altitude,
-                                                 GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_REPORT_UPDATED_MASK | (pos.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
-                                                 GDL90::NIC::HPL_LT_25_VPL_LT_37_5,
-                                                 GDL90::NACP::HFOM_LT_30_VFOM_LT_45, /* Integrity | Accuracy We do not really have this information from the GPS */
-                                                 horiz_velocity,
-                                                 vert_velocity,
-                                                 track_hdg,
-                                                 aircraftTypeToEmitter(pos.aircraftType),
-                                                 pos.callSign, /* // [0-9A-Z] TODO: Can we use DDB ?? */
-                                                 GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
+    if (gdl90.ownership_or_traffic_report_encode(
+            unpacked,
+            false,
+            GDL90::ALERT_STATUS::ACTIVE,
+            type,
+            pos.address,
+            latitude,
+            longitude,
+            altitude,
+            GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_REPORT_UPDATED_MASK | (pos.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
+            GDL90::NIC::UNKNOWN,
+            GDL90::NACP::UNKNOWN, /* Integrity | Accuracy We do not really have this information from the GPS */
+            horiz_velocity,
+            vert_velocity,
+            track_hdg,
+            aircraftTypeToEmitter(pos.aircraftType),
+            "", // pos.callSign, /* // [0-9A-Z] TODO: Can we use DDB ?? */
+            GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
         statistics.trackingAircraftPosTx++;
@@ -248,7 +247,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
     }
 
     // Send ForeFLight heartbeat
-    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 12345, "OpenAce", "OpenAce Device", 1))
+    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 12345, "OpenAce", "OpenAce Device", 0)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 0 0 set to 1, MSL
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx++;

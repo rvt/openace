@@ -5,6 +5,7 @@
 /* OpenACE */
 #include "ace/coreutils.hpp"
 #include "ace/semaphoreguard.hpp"
+#include "ace/measure.hpp"
 
 /* LwIP */
 #include "lwip/ip_addr.h"
@@ -51,6 +52,12 @@ OpenAce::PostConstruct GDLoverUDP::postConstruct()
     {
         return OpenAce::PostConstruct::NETWORK_ERROR;
     }
+    mutex = xSemaphoreCreateMutex();
+    if (mutex == nullptr)
+    {
+        return OpenAce::PostConstruct::MUTEX_ERROR;
+    }
+    xTaskCreate(gdlOverUDPTask, GDLoverUDP::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 3, &taskHandle);
 
     return OpenAce::PostConstruct::OK;
 }
@@ -65,6 +72,21 @@ void GDLoverUDP::getData(etl::string_stream &stream, const etl::string_view path
     stream << "}\n";
 }
 
+void GDLoverUDP::start()
+{
+    getBus().subscribe(*this);
+};
+
+void GDLoverUDP::stop()
+{
+    getBus().unsubscribe(*this);
+    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
+    while (eTaskGetState(taskHandle) != eDeleted)
+    {
+        vTaskDelay(TASK_DELAY_MS(50));
+    }
+};
+
 void GDLoverUDP::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
@@ -77,58 +99,121 @@ void GDLoverUDP::on_receive(const OpenAce::AccessPointClientsMsg &msg)
 
 void GDLoverUDP::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    getConfiguration(msg.config);
+    if (msg.moduleName == GDLoverUDP::NAME)
+    {
+        getConfiguration(msg.config);
+    }
+}
+
+void GDLoverUDP::gdlOverUDPTask(void *arg)
+{
+    GDLoverUDP *at = static_cast<GDLoverUDP *>(arg);
+    while (true)
+    {
+        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1000));
+        if (notifyValue & TaskState::EXIT)
+        {
+            vTaskDelete(nullptr);
+            return;
+        }
+
+        // Handle TRANSMIT
+        if (notifyValue == 0 || notifyValue & TaskState::TRANSMIT)
+        {
+            at->transmitBuffer();
+        }
+    }
 }
 
 void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
 {
-    // Send to the connect clients and the defined ports
-    for (auto ip : connectedClients)
-    {
-        // Connected clients are always on the accesspoint, 
-        // thus we don't need to test for the networkAddress            
-        for (auto port : udpPorts)
-        {
-            sendTo(msg, ip, port);
-        }
-    }
 
-    for (const auto &client : customClients)
+    if (auto guard = SemaphoreGuard<10>(mutex))
     {
-        // Custom clients can have any netmask and thus need to be tested if they are on the local net            
-        if ((client.ip & 0xFFFFFF) == networkAddress)
+        gdlDataBuffer.push(reinterpret_cast<const char *>(msg.msg.cbegin()), msg.msg.size());
+
+        // When the buffer is nearly full, request for immediate send
+        if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - NUM_GDL_PACKETS / 4) * sizeof(OpenAce::GDLData))
         {
-            sendTo(msg, client.ip, client.port); 
+            xTaskNotify(taskHandle, TaskState::TRANSMIT, eSetBits);
         }
     }
 }
 
-void GDLoverUDP::sendTo(const OpenAce::GdlMsg &msg, uint32_t ip, int16_t port)
+void GDLoverUDP::transmitBuffer()
+{
+    //    if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - 1) * sizeof(OpenAce::GDLData))
+    {
+        auto m = Measure("GDLoverUDP::transmitBuffer ", 5000);
+
+        const char *part = nullptr;
+        size_t size = 0;
+        if (auto guard = SemaphoreGuard<10>(mutex))
+        {
+            auto buffer = gdlDataBuffer.peek();
+            part = buffer.part;
+            size = buffer.size;
+        }
+        if (size == 0 || part == nullptr)
+        {
+            return;
+        }
+
+        cyw43_arch_lwip_begin();
+        // Send to the connect clients and the defined ports
+        for (auto ip : connectedClients)
+        {
+            // Connected clients are always on the accesspoint,
+            // thus we don't need to test for the networkAddress
+            for (auto port : udpPorts)
+            {
+                sendTo(part, size, ip, port);
+            }
+        }
+
+        // Custom clients can have any netmask and thus need to be tested if they are on the local net
+        for (const auto &client : customClients)
+        {
+            if ((client.ip & 0xFFFFFF) == networkAddress)
+            {
+                sendTo(part, size, client.ip, client.port);
+            }
+        }
+
+        cyw43_arch_lwip_end();
+        if (auto guard = SemaphoreGuard<10>(mutex))
+        {
+            // printf("GDLoverUDP: %zu bytes sent\n", size);
+            gdlDataBuffer.accepted(size);
+            gdlDataBuffer.compact();
+        }
+    }
+}
+
+void GDLoverUDP::sendTo(const char *part, size_t size, uint32_t ip, int16_t port)
 {
     ip_addr_t addr;
     ip4_addr_set_u32(&addr, ip);
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, msg.msg.size(), PBUF_RAM);
-    if (p != NULL)
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, size, PBUF_RAM);
+    if (!p)
     {
-        memcpy(p->payload, msg.msg.data(), msg.msg.size());
-        // printf("IP:%d.%d.%d.%d:%d  %02d:%02d:%02d\n",  ip4_addr1(&addr), ip4_addr2(&addr), ip4_addr3(&addr), ip4_addr4(&addr), port, time.hour, time.minute, time.second);
-        cyw43_arch_lwip_begin();
-        err_t err = udp_sendto(pcb, p, &addr, port);
-        pbuf_free(p);
-        cyw43_arch_lwip_end();
-        if (err == ERR_OK)
-        {
-            statistics.heartbeatTx++;
-        }
-        else
-        {
-            statistics.sendFailureErr++;
-        }
+        statistics.bufferAllocErr++;
+        return;
+    }
+
+    // printf("IP:%d.%d.%d.%d:%d  %02d:%02d:%02d\n",  ip4_addr1(&addr), ip4_addr2(&addr), ip4_addr3(&addr), ip4_addr4(&addr), port, time.hour, time.minute, time.second);
+    memcpy(p->payload, part, size);
+    err_t err = udp_sendto(pcb, p, &addr, port);
+    pbuf_free(p);
+
+    if (err == ERR_OK)
+    {
+        statistics.heartbeatTx++;
     }
     else
     {
-        statistics.bufferAllocErr++;
+        statistics.sendFailureErr++;
     }
 }
 

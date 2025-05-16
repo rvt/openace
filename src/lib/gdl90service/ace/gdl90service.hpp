@@ -52,6 +52,8 @@ private:
     GDL90::ADDR_TYPE type;
     OpenAce::AircraftAddress address;
     OpenAce::AircraftCategory category;
+    int16_t geoidSeparation=0;
+
 private:
     static void gdl90ServiceTask(void *arg);
 

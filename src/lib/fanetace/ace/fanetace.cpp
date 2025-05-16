@@ -14,7 +14,7 @@
 
 void FanetAce::start()
 {
-    xTaskCreate(FanetAceTask, "FanetAceTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(FanetAceTask, FanetAce::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -64,7 +64,7 @@ void FanetAce::FanetAceTask(void *arg)
 
 void FanetAce::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == "config")
+    if (msg.moduleName == Configuration::CONFIG)
     {
         openAceConfiguration = msg.config.openAceConfig();
         protocol.ownAddress(FANET::Address{openAceConfiguration.address});
@@ -82,7 +82,7 @@ void FanetAce::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
             .speed(ownshipPosition.groundSpeed * MS_TO_KPH)
             .groundTrack(ownshipPosition.course)
             .climbRate(ownshipPosition.verticalSpeed)
-            .tracking(true)
+            .tracking(!openAceConfiguration.noTrack)
             .turnRate(ownshipPosition.hTurnRate)
             .aircraftType(mapAircraftCategory(openAceConfiguration.category));
 
@@ -90,7 +90,7 @@ void FanetAce::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
                           .payload(payload)
                           .forward(true);
 
-        if (auto guard = SemaphoreGuard<5>(mutex))
+        if (auto guard = SemaphoreGuard<10>(mutex))
         {
             radioParameters = msg.radioParameters;
             radioNo = msg.radioNo;
@@ -126,7 +126,7 @@ void FanetAce::fanet_ackReceived(uint16_t id)
 void FanetAce::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
     auto m = Measure("FanetAce::OwnshipPositionMsg", 5000);
-    if (auto guard = SemaphoreGuard<5>(mutex))
+    if (auto guard = SemaphoreGuard<10>(mutex))
     {
         ownshipPosition = msg.position;
     }
@@ -138,7 +138,7 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
     statistics.received++;
 
     FANET::Header::MessageType messageType;
-    if (auto guard = SemaphoreGuard<5>(mutex))
+    if (auto guard = SemaphoreGuard<10>(mutex))
     {
         messageType = protocol.handleRx(msg.rssidBm, msg.frame);
     }

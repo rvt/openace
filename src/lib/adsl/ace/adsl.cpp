@@ -20,7 +20,7 @@ OpenAce::PostConstruct ADSL::postConstruct()
 
 void ADSL::start()
 {
-    xTaskCreate(adslReceiveTask, "adslReceiveTask", configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(adslReceiveTask, ADSL::NAME.cbegin(), configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
     // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
     // tuner->startListen(OpenAce::DataSource::ADSL);
     getBus().subscribe(*this);
@@ -99,7 +99,7 @@ void ADSL::on_receive(const OpenAce::GpsStatsMsg &msg)
 
 void ADSL::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == "config")
+    if (msg.moduleName == Configuration::CONFIG)
     {
         openAceConfiguration = msg.config.openAceConfig();
     }

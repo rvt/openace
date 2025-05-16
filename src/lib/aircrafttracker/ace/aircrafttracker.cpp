@@ -11,7 +11,7 @@ OpenAce::PostConstruct AircraftTracker::postConstruct()
 
 void AircraftTracker::start()
 {
-    xTaskCreate(aircraftTrackerTask, "AircraftTracker", configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 3, &taskHandle);
+    xTaskCreate(aircraftTrackerTask, AircraftTracker::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 3, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -27,9 +27,9 @@ void AircraftTracker::stop()
 
 void AircraftTracker::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == NAME)
+    if (msg.moduleName == Configuration::CONFIG)
     {
-        // No configuraiton yet
+        ownshipAddress = msg.config.openAceConfig().address;
     }
 }
 
@@ -65,6 +65,12 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 
 void AircraftTracker::on_receive(const OpenAce::AircraftPositionMsg &msg)
 {
+    if (ownshipAddress == msg.position.address)
+    {
+        // Ignore ownship so we don't get our own plane on EFB's
+        return;
+    }
+
     uint8_t dataSource = static_cast<uint8_t>(msg.position.dataSource);
     if (dataSource < antennaRadiationPattern.size())
     {
@@ -79,15 +85,11 @@ void AircraftTracker::on_receive(const OpenAce::AircraftPositionMsg &msg)
     {
         statistics.queueFullErr++;
     }
+
     // Always notify
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
 }
 
-void AircraftTracker::aircraftTimerTask(TimerHandle_t timer)
-{
-    AircraftTracker *at = (AircraftTracker *)pvTimerGetTimerID(timer);
-    xTaskNotify(at->taskHandle, TaskState::TIMER, eSetBits);
-}
 
 void AircraftTracker::aircraftTrackerTask(void *arg)
 {

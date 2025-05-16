@@ -36,7 +36,8 @@ OpenAce::RadioRxGfskMsg, OpenAce::OwnshipPositionMsg, OpenAce::RadioTxPositionRe
 {
     friend class message_router;
 
-    static constexpr int32_t DEFAULT_IGNORE_DISTANCE = 25000;
+    static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
+    static constexpr int MAX_IGNORE_DISTANCE = 50000;
 
     static constexpr etl::array<uint32_t, 4> BTEA_KEYS = {0xa5f9b21c, 0xab3f9d12, 0xc6f34e34, 0xd72fa378};
     static constexpr uint32_t BTEA_DELTA = 0x9e3779b9;
@@ -111,8 +112,8 @@ public:
         ownshipPosition(),
         deltaCourse(0.f)
     {
-        int32_t di = config.valueByPath(25000, "Flarm", "distanceIgnore");
-        distanceIgnore = etl::max((int32_t)0, etl::min(di, DEFAULT_IGNORE_DISTANCE));
+        auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Flarm", "distanceIgnore");
+        distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
         openAceConfiguration = config.openAceConfig();
     }
 

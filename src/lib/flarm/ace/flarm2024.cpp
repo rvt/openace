@@ -100,7 +100,7 @@ OpenAce::PostConstruct Flarm2024::postConstruct()
 
 void Flarm2024::start()
 {
-    xTaskCreate(flarmReceiveTask, "flarmReceiveTask", configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(flarmReceiveTask, Flarm2024::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -312,7 +312,7 @@ void Flarm2024::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 
 void Flarm2024::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == "config")
+    if (msg.moduleName == Configuration::CONFIG)
     {
         openAceConfiguration = msg.config.openAceConfig();
     }

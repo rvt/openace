@@ -6,20 +6,20 @@
 
 void DataPort::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName != DataPort::NAME)
+    if (msg.moduleName == Configuration::CONFIG)
     {
-        return;
+        auto newConfig = msg.config.openAceConfig();
+        address = newConfig.address;
+        category = newConfig.category;
     }
-
-    address = openAceConfiguration.address;
-    category = openAceConfiguration.category;
 }
 
 void DataPort::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
     static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
     ownshipPosition = msg.position;
-    if (sendValidGps.isItTime(CoreUtils::timeUs32Raw())) {
+    if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
+    {
 
         // START
         // We properly do not need these sentences
@@ -68,16 +68,16 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
            << position.relEastFromOwn << ","                                  // Relative East Meters
            << (position.altitudeWgs84 - ownshipPosition.altitudeWgs84) << "," // Relative Vertical Meters
            << getPFLAAAddressType(position.addressType) << ",";               // ID Type
-           CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
-    stream << ","                                              // HEXCode example 484FB3!PH-DHA
-           << position.course << ","                                          // Heading
-           << ","                                                             // TurnRate kept empty
-           << groundSpeed << ","                                              // Ground Speed
-           << climbRate << ","                                                // Climb Rate
-           << getPFLAAAircraftCategory(position) << ","                       // Aircraft Type
-           << position.noTrack << ","                                         // Tracking
-           << getPFLAASourceType(position) << ","                             // Source Type
-           << "";                                                             // RSSI
+    CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
+    stream << ","                                       // HEXCode example 484FB3!PH-DHA
+           << position.course << ","                    // Heading
+           << ","                                       // TurnRate kept empty
+           << groundSpeed << ","                        // Ground Speed
+           << climbRate << ","                          // Climb Rate
+           << getPFLAAAircraftCategory(position) << "," // Aircraft Type
+           << position.noTrack << ","                   // Tracking
+           << getPFLAASourceType(position) << ","       // Source Type
+           << "";                                       // RSSI
 
     CoreUtils::addChecksumToNMEA(pflaa);
     // printf("t:%08ld %s", CoreUtils::timeMs32(), pflaa.c_str());
@@ -137,13 +137,12 @@ etl::string_view DataPort::getPFLAAAircraftCategory(const OpenAce::AircraftPosit
 {
     static constexpr etl::string_view hexLookup[] = {
         "0", "1", "2", "3", "4", "5", "6", "7",
-        "8", "9", "A", "B", "C", "D", "E", "F"
-    };
+        "8", "9", "A", "B", "C", "D", "E", "F"};
     auto aircraftTypeHex = static_cast<uint8_t>(position.aircraftType);
 
     if (aircraftTypeHex > 0x0F)
     {
-        return  hexLookup[0x0A];
+        return hexLookup[0x0A];
     }
 
     return hexLookup[aircraftTypeHex];
@@ -157,20 +156,20 @@ etl::string_view DataPort::getPFLAAAircraftCategory(const OpenAce::AircraftPosit
  */
 
 void DataPort::sendPFLAU(const OpenAce::OwnshipPositionInfo &position)
-{    
+{
     (void)position;
-        OpenAce::NMEAString pflau;
-        etl::string_stream stream(pflau);
+    OpenAce::NMEAString pflau;
+    etl::string_stream stream(pflau);
 
-        // $PFLAU,5,1,1,1,0,,0,,,*
-        stream << "$PFLAU,"
-                "0"  // Should be filled in with the number of aircraft we are tracking
-                ",1" // IDially should based on tranceiver status
-                ",1,1,0,,0,,,";
+    // $PFLAU,5,1,1,1,0,,0,,,*
+    stream << "$PFLAU,"
+              "0"  // Should be filled in with the number of aircraft we are tracking
+              ",1" // IDially should based on tranceiver status
+              ",1,1,0,,0,,,";
 
-        CoreUtils::addChecksumToNMEA(pflau);
-        getBus().receive(OpenAce::DataPortMsg{pflau});
-        statistics.messages++;
+    CoreUtils::addChecksumToNMEA(pflau);
+    getBus().receive(OpenAce::DataPortMsg{pflau});
+    statistics.messages++;
 }
 
 /**
@@ -368,8 +367,8 @@ void DataPort::sendGPGSA()
     statistics.messages++;
 }
 
-
-void DataPort::sendLK8EX1() {
+void DataPort::sendLK8EX1()
+{
     OpenAce::NMEAString gpgsa;
     etl::string_stream stream(gpgsa);
     stream << "$LK8EX1,999999,999999,9999,99,999";

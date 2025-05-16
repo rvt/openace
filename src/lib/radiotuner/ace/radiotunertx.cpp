@@ -159,10 +159,10 @@ void RadioTunerTx::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 
 void RadioTunerTx::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == "config")
+    if (msg.moduleName == Configuration::CONFIG)
     {
-        const auto aceConfig = msg.config.openAceConfig();
-        enableDisableDatasources(aceConfig.protocols);
+        const auto openAceConfiguration = msg.config.openAceConfig();
+        enableDisableDatasources(openAceConfiguration.protocols);
     }
 }
 
@@ -224,7 +224,7 @@ void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
                 }
 
                 // HAd to increase this due to FANET
-                xTaskCreate(radioTxTask, "txTask", configMINIMAL_STACK_SIZE + 512, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
+                xTaskCreate(radioTxTask, RadioTunerTx::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
                 if (ref.taskHandle == nullptr)
                 {
                     xTimerDelete(ref.timerHandle, TASK_DELAY_MS(250));

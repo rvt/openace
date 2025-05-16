@@ -154,7 +154,6 @@ private:
     const uint8_t *defaultConfig;
 
 public:
-    static constexpr const etl::string_view NAME = "Config";
     Config(etl::imessage_bus &bus, ConfigStore &volatileStore_, ConfigStore &permanentStore_, const uint8_t *defaultConfig_) : Configuration(bus), volatileStore(volatileStore_), permanentStore(permanentStore_), defaultConfig(defaultConfig_)
     {
     }

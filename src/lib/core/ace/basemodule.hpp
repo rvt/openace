@@ -353,6 +353,7 @@ class Configuration : public BaseModule
 
 public:
     static constexpr const etl::string_view NAME = "_Configuration";
+    static constexpr const etl::string_view CONFIG = "config";
     Configuration(etl::imessage_bus &bus) : BaseModule(bus, NAME)
     {
     }

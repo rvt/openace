@@ -65,7 +65,7 @@ void RadioTunerRx::addRadioTasks(uint8_t numRadios)
             continue;
         }
 
-        xTaskCreate(radioTuneTask, "rxTask", configMINIMAL_STACK_SIZE + 128, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
+        xTaskCreate(radioTuneTask, RadioTunerRx::NAME.cbegin(), configMINIMAL_STACK_SIZE + 128, &ref, tskIDLE_PRIORITY + 2, &ref.taskHandle);
         if (ref.taskHandle == nullptr)
         {
             radioTasks.pop_back();
@@ -199,10 +199,10 @@ void RadioTunerRx::on_receive_unknown(const etl::imessage &msg)
 
 void RadioTunerRx::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == "config")
+    if (msg.moduleName == Configuration::CONFIG)
     {
-        const auto aceConfig = msg.config.openAceConfig();
-        enableDisableDatasources(aceConfig.protocols);
+        const auto openAceConfiguration = msg.config.openAceConfig();
+        enableDisableDatasources(openAceConfiguration.protocols);
     }
 }
 

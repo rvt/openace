@@ -18,7 +18,8 @@ public:
         return BUFFER_SIZE - count;
     }
 
-    size_t length() const {
+    size_t length() const
+    {
         return count;
     }
 
@@ -27,14 +28,14 @@ public:
         return count == 0;
     }
 
-    void clear() 
+    void clear()
     {
         head = 0;
         tail = 0;
         count = 0;
     }
 
-    bool push(const char* data, size_t len)
+    bool push(const char *data, size_t len)
     {
         if (len > available())
         {
@@ -78,8 +79,9 @@ public:
     // Returns a direct pointer to the internal buffer and the length of contiguous data
     auto peek() const
     {
-        struct PeekResult {
-            const char* part;
+        struct PeekResult
+        {
+            const char *part;
             size_t size;
         };
 
@@ -94,8 +96,9 @@ public:
     // Similar to peek, but will directly accept the data
     auto get()
     {
-        struct PeekResult {
-            const char* part;
+        struct PeekResult
+        {
+            const char *part;
             size_t size;
         };
 
@@ -119,6 +122,31 @@ public:
         }
         tail = (tail + len) % BUFFER_SIZE;
         count -= len;
+    }
+
+    /**
+     * Compact the buffer. At this moment it does not yet support wrapped buffer and will return false
+     * It will move all remaining data to the beginning of the buffer
+     */
+    bool compact()
+    {
+        if (count == 0 || tail == 0)
+        {
+            // Nothing to do — already compact or empty
+            return true;
+        }
+
+        if (tail < head)
+        {
+            // Data is linear, safe to shift
+            memmove(buffer.data(), buffer.data() + tail, count);
+            tail = 0;
+            head = count;
+            return true;
+        }
+
+        // Buffer is wrapped — not supported without a temporary buffer
+        return false;
     }
 
     // Debug utility to print internal buffer state

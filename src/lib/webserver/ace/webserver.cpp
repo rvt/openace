@@ -23,8 +23,8 @@ extern struct tcp_pcb *tcp_input_pcb;
 inline etl::map<uint32_t, uint32_t, 4> captiveCheck;
 
 /* Other consts */
-constexpr char X_OPENACE_METHOD[] = "X-Method: ";    // A method to tel our custom POST received what we actually wanted to do
-constexpr char CONFIGPATH[] = "/api/_Configuration"; // Should be the same as api/<Configuration::NAME>
+constexpr etl::string_view X_OPENACE_METHOD_DELETE = "X-Method: DELETE";    // Custom HTTP header for method intent
+constexpr etl::string_view CONFIGPATH = "/api/_Configuration"; // Endpoint path
 
 static struct RequestContext_t
 {
@@ -49,18 +49,18 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
                        u16_t response_uri_len, u8_t *post_auto_wnd)
 {
     LWIP_UNUSED_ARG(connection);
-    LWIP_UNUSED_ARG(http_request);
     LWIP_UNUSED_ARG(http_request_len);
     LWIP_UNUSED_ARG(content_len);
     LWIP_UNUSED_ARG(post_auto_wnd);
     LWIP_UNUSED_ARG(response_uri);
     LWIP_UNUSED_ARG(response_uri_len);
-    if (strncmp(uri, CONFIGPATH, sizeof(CONFIGPATH) - 1) == 0)
+    etl::string_view sv_uri(uri);
+    etl::string_view sv_http_request(http_request);
+    if (sv_uri.starts_with(CONFIGPATH))
     {
         if (RequestContext.current_connection != connection)
         {
             *post_auto_wnd = 1; // Must be set to 1
-
             RequestContext =
                 {
                     .current_connection = connection,
@@ -68,15 +68,9 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
                     .method = RequestContext_t::POST,
                     .response = false};
 
-            //            etl::string_ext text(const_cast<char*>(http_request), http_request, http_request_len);
-            auto method = strstr(http_request, X_OPENACE_METHOD);
-            if (method)
+            if (sv_http_request.find(X_OPENACE_METHOD_DELETE) != etl::string_view::npos)
             {
-                method += sizeof(X_OPENACE_METHOD) - 1;
-                if (strncmp(method, "DELETE", sizeof("DELETE") - 1) == 0)
-                {
-                    RequestContext.method = RequestContext_t::DELETE;
-                }
+                RequestContext.method = RequestContext_t::DELETE;
             }
             return ERR_OK;
         }
@@ -110,7 +104,6 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
             }
 
             // Inform the module that the configuration has been updated
-            // TODO: Is RequestContext.response sometimes false??
             if (RequestContext.response)
             {
                 auto pathParsed = CoreUtils::parsePath(RequestContext.uri);
@@ -118,11 +111,23 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
                 // FInd some way to stop all tasks and continue where they left off
                 // Note to self: vTaskSuspendAll(); won't work here
                 // TODO: FInd a way to correctly hold locks on data
+                // printf("Sending config update to %s\n", pathParsed[2].c_str());
                 configModule->getBus().receive(
                     OpenAce::ConfigUpdatedMsg{
                         *configModule,
                         pathParsed[2],
                     });
+
+                // When 'just' the aircraft is changed, no modules will pick up 
+                // changes so an additional config message is send
+                if (pathParsed[2] == "aircraft") 
+                {
+                    configModule->getBus().receive(
+                        OpenAce::ConfigUpdatedMsg{
+                            *configModule,
+                            Configuration::CONFIG,
+                        });
+                }
             }
         }
     }

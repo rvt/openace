@@ -37,8 +37,8 @@
 class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioRxGfskMsg, OpenAce::OwnshipPositionMsg,
     OpenAce::RadioTxPositionRequestMsg, OpenAce::BarometricPressureMsg, OpenAce::GpsStatsMsg, OpenAce::ConfigUpdatedMsg>
 {
-    static constexpr int32_t DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr int32_t MAX_IGNORE_DISTANCE = 50000;
+    static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
+    static constexpr int MAX_IGNORE_DISTANCE = 50000;
     friend class message_router;
     static constexpr uint8_t OGN_PACKET_LENGTH = 20;
     static constexpr uint8_t OGN_PACKET_LENGTH_FEC = 26;
@@ -80,8 +80,8 @@ public:
         gpsStats(),
         openAceConfiguration(config.openAceConfig())
     {
-        int32_t v = config.valueByPath(25000, "Ogn1", "distanceIgnore");
-        distanceIgnore = etl::max((int32_t)0, etl::min(v, MAX_IGNORE_DISTANCE));
+        auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Ogn1", "distanceIgnore");
+        distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
     }
 
     virtual ~Ogn1() = default;

@@ -18,7 +18,6 @@ class DataPort : public BaseModule, public etl::message_router<DataPort, OpenAce
 {
     friend class message_router;
     OpenAce::OwnshipPositionInfo ownshipPosition;
-    OpenAce::Config::OpenAceConfiguration openAceConfiguration;
     OpenAce::AircraftAddress address;
     OpenAce::AircraftCategory category;
 
@@ -33,7 +32,9 @@ public:
     static constexpr const etl::string_view NAME = "DataPort";
     DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
-        (void)config;
+        auto newConfig = config.openAceConfig();
+        address = newConfig.address;
+        category = newConfig.category;
     }
 
     virtual ~DataPort() = default;

@@ -72,7 +72,7 @@ OpenAce::PostConstruct Sx1262::postConstruct()
     radioInit();
 
     // Added 512byte because Fanet can be up to 256 byte
-    if (xTaskCreate(sx1262Task, "sx1262Task", configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
+    if (xTaskCreate(sx1262Task, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
     {
         return OpenAce::PostConstruct::TASK_ERROR;
     }
@@ -129,10 +129,10 @@ void Sx1262::on_receive(const OpenAce::RadioTxFrameMsg &msg)
 
 void Sx1262::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == NAMES[radioNo])
+    if (msg.moduleName == Sx1262::NAMES[radioNo])
     {
-        txEnabled = msg.config.valueByPath(true, NAMES[radioNo], "txEnabled");
-        offsetHz = msg.config.valueByPath(true, NAMES[radioNo], "offset");
+        txEnabled = msg.config.valueByPath(true, Sx1262::NAMES[radioNo], "txEnabled");
+        offsetHz = msg.config.valueByPath(true, Sx1262::NAMES[radioNo], "offset");
     }
 }
 
@@ -145,7 +145,7 @@ void Sx1262::on_receive(const OpenAce::RadioControlMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
-        if (auto guard = SemaphoreGuard<5>(xMutex))
+        if (auto guard = SemaphoreGuard<10>(xMutex))
         {
             newRxRadioParameters = msg.radioParameters;
             xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
@@ -544,7 +544,7 @@ void Sx1262::sx1262Task(void *arg)
             // Finally, if only a new configuration was set, reconfigure the tranceiver
             if (hasNewConfig)
             {
-                if (auto g = SemaphoreGuard<5>(sx1262->xMutex))
+                if (auto g = SemaphoreGuard<10>(sx1262->xMutex))
                 {
                     sx1262->rxRadioParameters = sx1262->newRxRadioParameters;
                     // printf("%8ld New Config ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));

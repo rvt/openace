@@ -40,8 +40,8 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
     OpenAce::GpsStatsMsg,
     OpenAce::ConfigUpdatedMsg>
 {
-    static constexpr int32_t DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr int32_t MAX_IGNORE_DISTANCE = 50000;
+    static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
+    static constexpr int MAX_IGNORE_DISTANCE = 50000;
 
     friend class message_router;
     mutable struct
@@ -76,8 +76,8 @@ public:
         frameConsumerQueue(nullptr),
         ownshipPosition()
     {
-        int32_t v = config.valueByPath(25000, "ADSL", "distanceIgnore");
-        distanceIgnore = etl::max((int32_t)0, etl::min(v, MAX_IGNORE_DISTANCE));
+        auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "ADSL", "distanceIgnore");
+        distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
         openAceConfiguration = config.openAceConfig();
     }
 

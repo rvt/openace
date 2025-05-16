@@ -27,7 +27,7 @@ OpenAce::PostConstruct Ogn1::postConstruct()
 
 void Ogn1::start()
 {
-    xTaskCreate(ognReceiveTask, "ognReceiveTask", configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(ognReceiveTask, Ogn1::NAME.cbegin(), configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
     // auto tuner = static_cast<Tuner *>(BaseModule::moduleByName(*this, Tuner::NAME));
     // tuner->startListen(OpenAce::DataSource::OGN1);
     getBus().subscribe(*this);
@@ -354,7 +354,7 @@ void Ogn1::on_receive(const OpenAce::GpsStatsMsg &msg)
 
 void Ogn1::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == "config")
+    if (msg.moduleName == Configuration::CONFIG)
     {
         openAceConfiguration = msg.config.openAceConfig();
     }

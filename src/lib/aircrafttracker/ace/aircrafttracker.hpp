@@ -54,8 +54,8 @@ private:
     };
 
     TaskHandle_t taskHandle;
-
     TrackerData<MAX_TRACKING_PLANES, TIMESLICES> trackedAircraft;
+    OpenAce::AircraftAddress ownshipAddress;
 
     // Producer Consumer queue to handle data between this task and the send task
     etl::queue_spsc_atomic<OpenAce::AircraftPositionInfo, 8, etl::memory_model::MEMORY_MODEL_SMALL> queue;
@@ -71,12 +71,10 @@ private:
     };
 
     void on_receive_unknown(const etl::imessage &msg);
-
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
     void on_receive(const OpenAce::AircraftPositionMsg &msg);
     void on_receive(const OpenAce::IdleMsg &msg);
     static void aircraftTrackerTask(void *arg);
-    static void aircraftTimerTask(TimerHandle_t timer);
     void handleNew();
     void sendEligibleAircraft();
     void maintenance();
@@ -91,7 +89,7 @@ public:
     AircraftTracker(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                            taskHandle(nullptr)
     {
-        (void)config;
+        ownshipAddress = config.openAceConfig().address;
     }
 
     virtual ~AircraftTracker() = default;
