@@ -32,18 +32,18 @@ Heights and reference systems in geodesy and aviation can be confusing. Here is 
 
 | Protocol       | Altitude Reference        |
 |----------------|---------------------------|
-| FLARM          | WGS84 Ellipsoid           |
-| OGN            | Ortho height              |
-| ADS-L          | WGS84 Ellipsoid           |
-| FANET          | WGS84 Ellipsoid (not 100% confirmed) |
-| ADS-B (online) | WGS84 or Barometric, with QNH if available |
-| GDL90 (e.g., ForeFlight) | Can specify either WGS84 or MSL (via capability flags). OpenAce uses bit 0 = 0 to indicate WGS84 Ellipsoid. |
+| FLARM          | MSL          |
+| OGN            | Ellipsoid WGS84             |
+| ADS-L          | MSL          |
+| FANET          | MSL  |
+| ADS-B (online) | Ellipsoid WGS84 or Barometric, when QNH if available |
+| GDL90 (e.g., ForeFlight) | Can specify either WGS84 or MSL (via capability flags). OpenAce uses bit 0 = 0 to indicate WGS84 Ellipsoid. Howdver SkyDemon seems to want |
 
 ---
 
 ## Calculating Altitudes
 
-For OpenAce, GGA messages should report altitude in meters relative to the WGS84 ellipsoid. To convert ellipsoidal height to mean sea level (MSL):
+For OpenAce, GGA messages we use altitude MSL and the geodicHight
 
 MSL (Orthometric Height) = Ellipsoid Height − Geoid Separation
 Ellipsoid Height = MSL (Orthometric Height) + Geoid Separation
@@ -62,3 +62,6 @@ Most Electronic Flight Bags (EFBs) prefer to receive **altitudes relative to mea
 
 - [Mean Sea Level, GPS, and the Geoid – Esri](https://www.esri.com/about/newsroom/arcuser/mean-sea-level-gps-geoid)
 - [UNAVCO Geoid Height Calculator](https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html)
+- [CalTopo](https://caltopo.com/map.html#ll=53.33415,6.06445&z=7&b=mbt)
+- [what is the geoid](https://support.virtual-surveyor.com/support/solutions/articles/1000261346-what-is-the-geoid-
+- [gps versus barometric altitude the definitive answer](https://xcmag.com/news/gps-versus-barometric-altitude-the-definitive-answer/)
