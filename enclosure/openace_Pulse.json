@@ -1,0 +1,18 @@
+{
+    "fileFormatVersion": "1",
+    "parameterSets": {
+        "New set 1": {
+            "BOTTOM_THICKNESS": "2.5",
+            "ROCKER_SWITCH": "false",
+            "SWITCH_IN_LID": "true",
+            "TOP_THICKNESS": "2",
+            "VISUALIZE_CUT": "false",
+            "VISUALIZE_LID_ON_TOP": "true",
+            "VISUALIZE_LID_POSITION": "0",
+            "VISUALIZE_MAIN_CASE": "true",
+            "VISUALIZE_X_CUT_POS": "-16",
+            "VISUALIZE_Y_CUT_POS": "0",
+            "WALL_THICKNESS": "2.3999999999999999"
+        }
+    }
+}
