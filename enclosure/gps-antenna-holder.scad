@@ -238,12 +238,12 @@ module casing() {
         color([1,1,1])
         for (n = SCREWS) {
           left(n.x) back(n.y)
-          {
+          union() {
             // Structure
             position(BOTTOM) {
               cyl(d=SCREWD+0.4*5,l=BHEIGHT, anchor=BOTTOM); // d Should be the same as top case
               cyl(d=SCREWHD+0.4*4,l=BHEIGHT-4, anchor=BOTTOM) {
-                position(TOP) cyl(d1=SCREWHD+0.4*4,d2=4, l=1, anchor=BOTTOM);
+                position(TOP) cyl(d1=SCREWHD+0.4*4,d2=SCREWD+0.4*5, l=1, anchor=BOTTOM);
               }
             }
 
