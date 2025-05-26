@@ -24,7 +24,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * TODO: de-Couple UDP from the GDL90 so this service send GDL Message over the messagebus which can then be send over UDP or Serial or BlueToolh
  */
-class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, OpenAce::TrackedAircraftPositionMsg, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg>
+class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, OpenAce::TrackedAircraftPositionMsg, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg, OpenAce::GpsStatsMsg>
 {
     friend class message_router;
 
@@ -53,6 +53,7 @@ private:
     OpenAce::AircraftAddress address;
     OpenAce::AircraftCategory category;
     int16_t geoidSeparation=0;
+    bool gpsStatusValid=false;
 
 private:
     static void gdl90ServiceTask(void *arg);
@@ -62,6 +63,9 @@ private:
     void on_receive(const OpenAce::OwnshipPositionMsg &msg);
 
     void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const OpenAce::GpsStatsMsg &msg);
+
+    
 
     void packAndSend(const GDL90::RawBytes &unpacked);
 
@@ -70,7 +74,7 @@ private:
       (void)msg;   
     }
 
-    static void sendHeartBeat(Gdl90Service &gdl90Service);
+    void sendHeartBeat(Gdl90Service &gdl90Service);
 
 public:
     static constexpr const etl::string_view NAME = "Gdl90Service";

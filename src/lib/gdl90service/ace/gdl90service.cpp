@@ -49,7 +49,7 @@ void Gdl90Service::gdl90ServiceTask(void *arg)
         }
         else
         {
-            sendHeartBeat(*gdl90Service);
+            gdl90Service->sendHeartBeat(*gdl90Service);
         }
     }
 }
@@ -105,6 +105,7 @@ void Gdl90Service::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
 void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 {
     const OpenAce::OwnshipPositionInfo &pos = msg.position;
+    geoidSeparation = pos.geoidSeparation;
 
     uint32_t latitude;
     uint32_t longitude;
@@ -115,11 +116,10 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, pos.heightEgm96 * M_TO_FT);     // GDL90 specifies Pressure Altitude, Egm96 comes closest 
+    gdl90.altitude_encode(altitude, pos.heightElipsoid() * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
-    geoidSeparation = msg.position.geoidSeparation;
     GDL90::RawBytes unpacked;
     if (gdl90.ownership_or_traffic_report_encode(
             unpacked,
@@ -137,7 +137,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
             vert_velocity,
             track_hdg,
             aircraftTypeToEmitter(category),
-            "", // [0-9A-Z]
+            "", // [0-9A-Z ]
             GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
@@ -148,21 +148,27 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
         statistics.ownEncodingFailureErr++;
     }
 
-    // Send Geo Altitude
-    uint32_t geo_altitude;
-    bool vertical_warning = true;
-    float vertical_figure_of_merit_f = 0;
-    uint32_t vertical_figure_of_merit;
-    gdl90.geo_altitude_encode(geo_altitude, pos.altitudeWgs84 * M_TO_FT); // set to WGS84 using capability 
-    gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
-    if (gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
-    {
-        packAndSend(unpacked);
+    if (gpsStatusValid) {
+        // Send Geo Altitude
+        uint32_t geo_altitude;
+        bool vertical_warning = true;
+        constexpr float vertical_figure_of_merit_f = 0;
+        uint32_t vertical_figure_of_merit;
+        gdl90.geo_altitude_encode(geo_altitude, pos.heightElipsoid() * M_TO_FT); 
+        gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
+        if (gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
+        {
+            packAndSend(unpacked);
+        }
+        else
+        {
+            statistics.ownEncodingFailureErr++;
+        }
     }
-    else
-    {
-        statistics.ownEncodingFailureErr++;
-    }
+}
+
+void Gdl90Service::on_receive(const OpenAce::GpsStatsMsg &msg) {
+    gpsStatusValid = msg.fixType == 3;
 }
 
 void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
@@ -176,11 +182,11 @@ void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
     uint32_t vert_velocity;
     uint32_t track_hdg;
 
-    //printf("lat:%f lon:%f alt:%d addr:%ld\n", pos.lat, pos.lon, pos.altitudeWgs84, pos.address);
+    //printf("lat:%f lon:%f alt:%d addr:%ld\n", pos.lat, pos.lon, pos.altitudeGeoid, pos.address);
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, (pos.altitudeWgs84 - geoidSeparation) * M_TO_FT);
+    gdl90.altitude_encode(altitude, (pos.altitudeGeoid - geoidSeparation) * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
@@ -227,7 +233,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
                       /* GDL90::HEARTBEAT_STATUS_ADDR_TYPE_MASK | */
                       /* GDL90::HEARTBEAT_STATUS_IDENT_MASK | */
                       /* GDL90::HEARTBEAT_STATUS_MAINT_REQD_MASK | */ /* Can be used to indicate device is not good*/
-                      GDL90::HEARTBEAT_STATUS_GPS_POS_VALID_MASK |
+                      (gpsStatusValid?GDL90::HEARTBEAT_STATUS_GPS_POS_VALID_MASK:0) |
                       /* GDL90::HEARTBEAT_STATUS_UAT_OK_MASK | */
                       /* GDL90::HEARTBEAT_STATUS_CSA_NOT_AVAIL_MASK | */
                       /*GDL90::HEARTBEAT_STATUS_CSA_REQUESTED_MASK*/

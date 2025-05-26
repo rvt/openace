@@ -22,7 +22,7 @@ private:
     static constexpr uint32_t DEFAULT_GPS_BAUDRATE = 115200; // If you change this, you need to change the baudrate in the ublox config as well
 
     friend class message_router;
-    
+
     enum TaskState : uint32_t
     {
         EXIT = 1 << 0,
@@ -30,7 +30,7 @@ private:
     };
     struct
     {
-        uint32_t totalReceived=0;
+        uint32_t totalReceived = 0;
         uint32_t baudrate = 0;
         uint32_t queueFullErr = 0;
         etl::string<16> status;
@@ -42,42 +42,42 @@ private:
     int8_t ppsPin;
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<OpenAce::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
-        static constexpr const etl::string_view NAME = "Gnss";
+    static constexpr const etl::string_view NAME = "Gnss";
+
 protected:
-    PioSerial &getSerial() {
+    PioSerial &getSerial()
+    {
         return pioSerial;
     }
-    void processNewSentence(const etl::array_view<char>& sentence);
-
+    void processNewSentence(const etl::array_view<char> &sentence);
 
     /** What a implementation needs to override */
-    void setStatus(const etl::string_view &status) { 
+    void setStatus(const etl::string_view &status)
+    {
         statistics.status.assign(status.cbegin(), status.cend());
     }
 
-    void setStatusBaud(uint32_t baud) {
+    void setStatusBaud(uint32_t baud)
+    {
         statistics.baudrate = baud;
     }
 
     /*
     This method can be overwritten to cleanup teh sebtence if needed
     */
-    virtual bool preProcessSentence(etl::string_view sentence) {
+    virtual bool preProcessSentence(etl::string_view sentence)
+    {
         (void)sentence;
         return true;
     }
 
     virtual bool configureGnss() = 0;
 
-    
-
-
 public:
-    AbstractGnss(etl::imessage_bus& bus, const etl::string_view name, const OpenAce::PinTypeMap& pins) :
-        BaseModule(bus, name),
-        pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
-        ppsPin(CoreUtils::pinValue(pins, OpenAce::PinType::BUSY)),
-        taskHandle(nullptr)
+    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const OpenAce::PinTypeMap &pins) : BaseModule(bus, name),
+                                                                                                         pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
+                                                                                                         ppsPin(CoreUtils::pinValue(pins, OpenAce::PinType::BUSY)),
+                                                                                                         taskHandle(nullptr)
     {
     }
 
@@ -90,8 +90,4 @@ public:
     virtual void stop() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
-
-
 };
-
-

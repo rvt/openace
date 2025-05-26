@@ -239,7 +239,7 @@ void ADSL::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
         packet.setLatitude(ownshipPosition.lat);
         packet.setLongitude(ownshipPosition.lon);
         packet.setGroundSpeed(ownshipPosition.groundSpeed);
-        packet.setAltitudeWGS84(static_cast<int32_t>(ownshipPosition.altitudeWgs84));
+        packet.setaltitudeGeoid(static_cast<int32_t>(ownshipPosition.altitudeGeoid));
         packet.setVerticalRate(ownshipPosition.verticalSpeed);
         packet.setTrack(ownshipPosition.course);
 
@@ -280,7 +280,7 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
     }
 
 //    printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
-//      packet.address, fLatitude, fLongitude, packet.getAltitudeWGS84(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
+//      packet.address, fLatitude, fLongitude, packet.getaltitudeGeoid(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
 
     OpenAce::AircraftPositionMsg aircraftPosition{
         OpenAce::AircraftPositionInfo{
@@ -295,7 +295,7 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
             packet.flightState == ADSL_Packet::FlightState::FS_Airborne, // airBorn
             fLatitude,
             fLongitude,
-            packet.getAltitudeWGS84(),              // relative to WGS84 ellipsoid
+            packet.getaltitudeGeoid(),              // relative to WGS84 ellipsoid
             packet.getVerticalRate(),
             packet.getGroundSpeed(),
             static_cast<int16_t>(packet.getTrack()),

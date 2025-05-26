@@ -33,7 +33,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"receivedOther\":" << statistics.receivedOther;
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude;
     stream << ",\"longitude\":" << longitude << etl::format_spec{}.precision(1);
-    stream << ",\"altitudeWgs84\":" << altitudeWgs84();
+    stream << ",\"altitudeGeoid\":" << altitudeGeoid();
     stream << ",\"geoidSeparation\":" << geoidSeparation;
     stream << ",\"groundspeed\":" << groundSpeed;
     stream << ",\"track\":" << course();
@@ -53,7 +53,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
 void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 {
     // printf("GpsDecoder: %s\n", msg.sentence.c_str());
-    static Every<uint32_t, 10'000'000, 30'000'000> gpsStatsMsg{0}; // Every 30 seconds 10 seconds in
+    static Every<uint32_t, 10'000'000, 15'000'000> gpsStatsMsg{0}; // Every 30 seconds 10 seconds in
 
     switch (minmea_sentence_id(msg.sentence.c_str(), false))
     {
@@ -120,11 +120,13 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
                 latitude = (minmea_tocoord(&frame.latitude));
                 longitude = (minmea_tocoord(&frame.longitude));
 
+                // TODO: Perhaps use Speed over ground/cours over ground?
                 auto const relNorthrelEast = CoreUtils::northEastDistance(prevLatitude, prevLongitude, latitude, longitude);
                 velocityNorth = relNorthrelEast.north;
                 velocityEast = relNorthrelEast.east;
 
-                groundSpeed = getFloat(frame.speed, groundSpeed) * KN_TO_MS; // Groundspeed in knt???
+                groundSpeed = getFloat(frame.speed, groundSpeed) * KN_TO_MS;
+
                 // Course might not always be available and will result in a inf values in the filter
                 if (frame.course.scale != 0)
                 {
@@ -146,9 +148,9 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
         {
 
             // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
-            auto wgs84Altitude = convertToMeters(frame.altitude, frame.altitude_units, altitudeWgs84()); // Field 9 (MSL)
+            auto wgs84Altitude = convertToMeters(frame.altitude, frame.altitude_units, altitudeGeoid()); // Field 9 (MSL)
             geoidSeparation = convertToMeters(frame.height, frame.height_units, geoidSeparation); // Field 11 (Undulation)
-            altitudeWgs84(wgs84Altitude);
+            altitudeGeoid(wgs84Altitude);
 
             satellitesTracked = frame.satellites_tracked;
             fixQuality = frame.fix_quality;
@@ -227,7 +229,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
     // TODO: Reconsider
     if (lastGGATimestamp.microseconds == lastRMCTimestamp.microseconds && lastGGATimestamp.seconds == lastRMCTimestamp.seconds)
     {
-        auto alt = altitudeWgs84();
+        auto altGeoid = altitudeGeoid();
 
         // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
         getBus().receive(
@@ -237,14 +239,13 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .airborne = groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
                     .lat = latitude,
                     .lon = longitude,
-                    .altitudeWgs84 = static_cast<int16_t>(alt),
-                    .verticalSpeed = altitudeWgs84.perSecond(), // vertical speed
+                    .altitudeGeoid = static_cast<int16_t>(altGeoid),
+                    .verticalSpeed = altitudeGeoid.perSecond(), // vertical speed
                     .groundSpeed = groundSpeed,                 // Ground Speed
                     .course = course(),
                     .hTurnRate = course.perSecond(),            // hTurnRate   // degrees per second
                     .velocityNorth = velocityNorth,
                     .velocityEast = velocityEast,
-                    .heightEgm96 = static_cast<int16_t>(alt - geoidSeparation),
                     .geoidSeparation = static_cast<int16_t>(geoidSeparation)}});
     }
 }

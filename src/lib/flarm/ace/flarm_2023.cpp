@@ -301,7 +301,7 @@ const flarmV7Packet_t Flarm::on_receive(const OpenAce::RadioTxPositionRequestMsg
         packet.latitude = lat128;
         packet.longitude = lon128;
         //https://www.flarm.com/support/faq/  For collision avoidance with other FLARM equipped aircraft, FLARM uses only the more accurate GPS altitude difference.
-        packet.altitude = ownshipPosition.altitudeWgs84<0?0:(ownshipPosition.altitudeWgs84>0x1fff?0x1fff:ownshipPosition.altitudeWgs84); // Is this referenced to Wgs84??
+        packet.altitude = ownshipPosition.altitudeGeoid<0?0:(ownshipPosition.altitudeGeoid>0x1fff?0x1fff:ownshipPosition.altitudeGeoid); // Is this referenced to Wgs84??
         packet.zero1 = 0;
 
         extrapolatVelocityVector(ownshipPosition.hTurnRate, ownshipPosition.velocityNorth, ownshipPosition.velocityEast, speedScale, packet.ns, packet.ew);

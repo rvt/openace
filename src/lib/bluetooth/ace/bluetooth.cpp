@@ -658,7 +658,7 @@ void Bluetooth::parseAircraftPosition(uint8_t *data, size_t size)
 
     float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
     float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
-    int16_t altitude = reader.read_unchecked<int16_t>(16U); // Assumed WGS84 or as close as possible
+    int16_t altitude = reader.read_unchecked<int16_t>(16U); // TODO: Validate altitude - CoreUtils::egm96GeoidOffset(lat, lon); // ADSB Tracking sends height above ellipsoid, we need MSL
 
     int32_t relNorth = reader.read_unchecked<int32_t>(24U);
     int32_t relEast = reader.read_unchecked<int32_t>(24U);

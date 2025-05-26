@@ -43,10 +43,7 @@ OpenAce::PostConstruct AbstractGnss::postConstruct()
 
 void AbstractGnss::start()
 {
-
-    // TODO: Check if there is a better way to reduce stack size.
-    // This seem to have because the ublox is the beginning of messages through the complete system?
-    // Can we use a reference to strings instead of copy?
+    // Needs a larger stack because GPS is part of a chain of events
     xTaskCreate(receiveTask, AbstractGnss::NAME.cbegin(),
                 configMINIMAL_STACK_SIZE + 768, this, tskIDLE_PRIORITY + 3, &taskHandle);
 
@@ -119,7 +116,7 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     // GSA : GPS DOP and active satellites
     // GSV : GPS Satellites in view
 
-    bool isRmc = false;
+    bool isPriority = false;
 
     // Only check if the queue has room
     if (!queue.full())
@@ -127,20 +124,20 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
         if (sentence.size() >= 6)
         {
             // Check the message type at position 3–5
-            char type[4] = {sentence[3], sentence[4], sentence[5], '\0'};
+            char type[4] = {sentence[4], sentence[5], '\0'};
 
-            if (etl::string_view(type) == "GSV" ||
-                etl::string_view(type) == "VTG" ||
-                etl::string_view(type) == "GLL")
+            if (etl::string_view(type) == "SV" || // GSV
+                etl::string_view(type) == "TG" || // VTG
+                etl::string_view(type) == "LL")   // GLL 
             {
                 // Ignore this sentence
                 return;
             }
 
             // Check for RMC to give it more priority
-            if (etl::string_view(type) == "RMC")
+            if (etl::string_view(type) == "MC" || etl::string_view(type) == "GA") // RMC || GGA
             {
-                isRmc = true;
+                isPriority = true;
             }
 
             // Push the sentence
@@ -153,7 +150,7 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     }
 
     // Notify only when queue has enough items or it's an RMC
-    if (queue.size() > 3 || isRmc)
+    if (queue.size() > QUEUE_SIZE/2 || isPriority)
     {
         xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
     }

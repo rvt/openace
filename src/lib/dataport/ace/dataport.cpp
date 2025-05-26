@@ -66,7 +66,7 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
               "0,"                                                            // @todo Alarm Level
            << position.relNorthFromOwn << ","                                 // Relative North Meters
            << position.relEastFromOwn << ","                                  // Relative East Meters
-           << (position.altitudeWgs84 - ownshipPosition.altitudeWgs84) << "," // Relative Vertical Meters
+           << (position.altitudeGeoid - ownshipPosition.altitudeGeoid) << "," // Relative Vertical Meters
            << getPFLAAAddressType(position.addressType) << ",";               // ID Type
     CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
     stream << ","                                       // HEXCode example 484FB3!PH-DHA
@@ -292,7 +292,7 @@ void DataPort::sendPGRMZ(const OpenAce::OwnshipPositionInfo &position)
     etl::string_stream stream(pgrmz);
 
     stream << "$PGRMZ,"
-           << position.altitudeWgs84 << "," // @todo Convert by estimate or read out barometric altitude
+           << position.altitudeGeoid << "," // @todo Convert by estimate or read out barometric altitude
            << "f,"                          // Altitude unit
            << "3";                          // @todo Fix type 2=2D 3=3D
 
@@ -341,7 +341,7 @@ void DataPort::sendGPGGA(const OpenAce::AircraftPositionInfo &position)
            << "2,"                                                                                                                                                                                 // 1==GPS, 2=DGPS, 9=DBAS
            << "6,"                                                                                                                                                                                 // Number of satellites
            << "1.0,"                                                                                                                                                                               // Horizontal dilution of position (hdop)
-           << position.altitudeWgs84 << ","                                                                                                                                                        // Altitude Wgs84
+           << position.altitudeGeoid << ","                                                                                                                                                        // Altitude Wgs84
            << "M,"                                                                                                                                                                                 // Altitude unit
            << "0,"                                                                                                                                                                                 // Geoid Separation
            << "M,"                                                                                                                                                                                 // Unit

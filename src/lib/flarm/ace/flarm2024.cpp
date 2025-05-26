@@ -363,7 +363,7 @@ void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
                 .flarmTimestampLSB = static_cast<uint8_t>(epochSeconds & 0x0F),
                 .aircraftType = static_cast<uint8_t>(openAceConfiguration.category),
                 .reserved7 = 0x00,
-                .altitude = static_cast<uint16_t>(enscale<12, 1, false>(etl::max(static_cast<int16_t>(0), ownshipPosition.altitudeWgs84) + 1000)),
+                .altitude = static_cast<uint16_t>(enscale<12, 1, false>(etl::max(static_cast<int16_t>(0), ownshipPosition.altitudeGeoid) + 1000)),
                 .latitude = latitude,
                 .longitude = longitude,
                 .turnRate = static_cast<uint16_t>(enscale<6, 2, true>(ownshipPosition.hTurnRate * 20)),

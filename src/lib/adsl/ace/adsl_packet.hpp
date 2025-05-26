@@ -166,7 +166,7 @@ public:
             int32_t latitude: 24;
             int32_t longitude: 24;
             uint8_t groundSpeed: 8;
-            uint16_t altitudeWGS84: 14;
+            uint16_t altitudeGeoid: 14;
             int16_t verticalRate: 9;
             uint16_t groundTrack: 9;
             SourceIntegrity sourceIntegrity: 2;
@@ -214,14 +214,14 @@ public:
         CRC[2]=Word;
     }
 
-    int32_t getAltitudeWGS84(void) const                                                                  // [m]
+    int32_t getaltitudeGeoid(void) const                                                                  // [m]
     {
-        return UnsVRdecode<int32_t,12>(altitudeWGS84) - 320;
+        return UnsVRdecode<int32_t,12>(altitudeGeoid) - 320;
     }
-    void setAltitudeWGS84(int32_t altitude)                                                                   // [m]
+    void setaltitudeGeoid(int32_t altitude)                                                                   // [m]
     {
         if (altitude<-320) altitude = -320;
-        altitudeWGS84 = UnsVRencode<int32_t,12>(altitude + 320);
+        altitudeGeoid = UnsVRencode<int32_t,12>(altitude + 320);
     }
 
     float getLatitude() const

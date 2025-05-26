@@ -82,7 +82,6 @@ uint32_t getFreeHeap(void)
     return getTotalHeap() - m.uordblks;
 }
 
-
 void registerModules()
 {
     BaseModule::registerModule(AceSpi::NAME, true);
@@ -425,7 +424,11 @@ void overflowTest()
 
 int main()
 {
-    set_sys_clock_khz(200000, true);
+    bool at200Mhz = false;
+    if (set_sys_clock_khz(200000, true))
+    {
+        at200Mhz = true;
+    }
     stdio_init_all();
     printf(
         R"=(
@@ -456,7 +459,7 @@ int main()
 #endif
 
 #if (configNUMBER_OF_CORES > 1)
-    printf("Starting %s on both cores:\n\n", rtos_name);
+    printf("Starting %s on both cores at %dMHZ:\n\n", rtos_name, at200Mhz ? 200 : 125);
     vLaunch();
 #elif (RUN_FREERTOS_ON_CORE == 1)
     printf("Starting %s on core 1:\n\n", rtos_name);

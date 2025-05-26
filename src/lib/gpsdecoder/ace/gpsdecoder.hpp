@@ -33,7 +33,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, Ope
 
     float velocityNorth = 0;
     float velocityEast = 0;
-    RatePerSecond altitudeWgs84{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2}; // Field 9
+    RatePerSecond altitudeGeoid{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2}; // Field 9
     float geoidSeparation = 0;                                     // Field 11
     float groundSpeed = 0;
     RatePerSecond course{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2};

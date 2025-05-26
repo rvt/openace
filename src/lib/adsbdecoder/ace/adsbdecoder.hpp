@@ -97,7 +97,7 @@ private:
 
     bool outOfAltitudeRange(int32_t otherCraftAltitude)
     {
-        return (otherCraftAltitude - ownshipPosition.altitudeWgs84) > filterAbove || (ownshipPosition.altitudeWgs84 - otherCraftAltitude) > filterBelow;
+        return (otherCraftAltitude - ownshipPosition.altitudeGeoid) > filterAbove || (ownshipPosition.altitudeGeoid - otherCraftAltitude) > filterBelow;
     }
 
     void on_receive_unknown(const etl::imessage &msg)

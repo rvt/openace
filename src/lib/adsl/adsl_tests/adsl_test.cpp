@@ -36,7 +36,7 @@ TEST_CASE( "Correct bit errors and get data", "[single-file]" )
     // REQUIRE( packet.getLatitude() == Catch::Approx(5.892681f) );
     // REQUIRE( packet.getLongitude() == Catch::Approx(2.736240) );
     // REQUIRE( packet.getTrack() == Catch::Approx(0.) );
-    // REQUIRE( packet.getAltitudeWGS84() == 307 );
+    // REQUIRE( packet.getaltitudeGeoid() == 307 );
     // REQUIRE( packet.getGroundSpeed() == Catch::Approx(54.5f) );
     // REQUIRE( packet.getVerticalRate() == Catch::Approx(2.75f) );
 
@@ -55,8 +55,8 @@ TEST_CASE( "Getters and Setters", "[single-file]" )
 {
     ADSL_Packet packet;
 
-    packet.setAltitudeWGS84(1000.f);
-    REQUIRE( packet.getAltitudeWGS84() == Catch::Approx(1000.f) );
+    packet.setaltitudeGeoid(1000.f);
+    REQUIRE( packet.getaltitudeGeoid() == Catch::Approx(1000.f) );
 
     packet.setLatitude(53.12345678f);
     REQUIRE( packet.getLatitude() == Catch::Approx(53.12345678f) );
