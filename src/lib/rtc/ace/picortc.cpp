@@ -21,7 +21,6 @@ __force_inline void PicoRtc::ppsEvent()
 
 OpenAce::PostConstruct PicoRtc::postConstruct()
 {
-    rtc_init();
     return OpenAce::PostConstruct::OK;
 }
 

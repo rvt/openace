@@ -1,65 +1,44 @@
-# Fetch ubuntu image
 FROM ubuntu:24.10
 
-# Install prerequisites
-# pycryptodome is used for gatt compilation 
-RUN \
-    apt update && \
-    apt install -y git python3 ninja-build cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev gnutls-bin python3-pycryptodome
-
-# Set Environments
+ENV DEBIAN_FRONTEND=noninteractive
 ENV PICO_SDK_PATH=/opt/pico-sdk
 ENV FREERTOS_KERNEL_PATH=/opt/FreeRTOS-Kernel
-ENV BUILD_DIR_NAME=release_build_docker
 
-RUN \
-    git config --global http.version HTTP/1.1 && \
+# Install everything needed
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        git python3 ninja-build cmake gcc-arm-none-eabi \
+        libnewlib-arm-none-eabi build-essential \
+        libstdc++-arm-none-eabi-newlib libusb-dev gnutls-bin \
+        python3-pycryptodome && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt
+
+# Git config and clone dependencies
+RUN git config --global http.version HTTP/1.1 && \
     git config --global http.postBuffer 1048576000 && \
-    git config --global https.postBuffer 1048576000 
-
-# Install Pico SDK
-RUN \
-    cd /opt/ && \
+    git config --global https.postBuffer 1048576000 && \
     git clone --branch 2.1.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git && \
-    cd pico-sdk/ && \
+    cd pico-sdk && \
     git config fetch.recurseSubmodules on-demand && \
-    git submodule update --init --depth 1
-
-RUN \
-    cd ${PICO_SDK_PATH}/lib/btstack && \
-    git fetch --unshallow && \
-    git checkout v1.6.2
-
-RUN \
-    cd /opt/ && \
+    git submodule update --init --depth 1 && \
+    cd lib/btstack && \
+    git fetch --unshallow && git checkout v1.6.2 && \
+    cd /opt && \
     git clone --branch V11.2.0 --depth 1 https://github.com/FreeRTOS/FreeRTOS-Kernel.git && \
     cd FreeRTOS-Kernel && \
     git config fetch.recurseSubmodules on-demand && \
     git submodule update --init --depth 1
 
-RUN \
-    cd /opt/ && \
-    ls -l /opt
+COPY ./freertos.patch /opt/
+COPY ./Community-Supported-Ports.patch /opt/
+RUN cd /opt/FreeRTOS-Kernel && git apply /opt/freertos.patch && cd /opt/FreeRTOS-Kernel/portable/ThirdParty/Community-Supported-Ports && git apply /opt/Community-Supported-Ports.patch
 
-# Patch pico SDK and update btstack to dev branch
-COPY ./freertos.patch /opt
+RUN mkdir -p /opt/src/
 
-RUN \
-    cd /opt/FreeRTOS-Kernel && \
-    git apply /opt/freertos.patch
-
-RUN \
-    mkdir -p /opt/src/
-
-# Create entrypoint script that will be used at container start
-RUN echo '#!/bin/bash\n\
-  echo "Using ninja"\n\
-  mkdir -p /opt/src/pico/$BUILD_DIR_NAME\n\
-  cd /opt/src/pico\n\
-  cmake -B $BUILD_DIR_NAME -G Ninja && ninja -C $BUILD_DIR_NAME $1\n\
-  exit' > /entrypoint.sh
-
+# Copy the entrypoint and run it
+COPY ./docker-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# Use the custom entrypoint script to build and exit
 ENTRYPOINT ["/entrypoint.sh"]

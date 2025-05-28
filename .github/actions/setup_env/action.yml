@@ -39,6 +39,8 @@ runs:
       run: |
         cd ${{github.workspace}}/FreeRTOS-Kernel
         git apply ${{github.workspace}}/src/freertos.patch
+        cd ${{github.workspace}}/FreeRTOS-Kernel/portable/ThirdParty/Community-Supported-Ports
+        git apply ${{github.workspace}}/src/Community-Supported-Ports.patch
 
     - name: Show workspace
       shell: bash

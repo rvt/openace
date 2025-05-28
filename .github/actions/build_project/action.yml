@@ -9,6 +9,14 @@ inputs:
     description: 'Build the project'
     required: false
     default: 'false'
+  board:
+    description: 'PICO_BOARD value'
+    required: false
+    default: 'pico_w'
+  platform:
+    description: 'PICO_PLATFORM value'
+    required: false
+    default: 'rp2040'
 
 runs:
   using: 'composite'
@@ -27,5 +35,6 @@ runs:
         export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk/
         export FREERTOS_KERNEL_PATH=$GITHUB_WORKSPACE/FreeRTOS-Kernel
         cd src/pico
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && ninja -C build
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=${{ inputs.platform }} -DPICO_BOARD=${{ inputs.board }}
+        ninja -C build
         ls -lrt build/*.uf2

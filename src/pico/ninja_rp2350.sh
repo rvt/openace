@@ -1,11 +1,11 @@
 #!/bin/sh
 
 if which ninja >/dev/null; then
-    cmake -B release_build -G Ninja -DCMAKE_BUILD_TYPE=Release && \
-    ninja -C release_build  $1
+    cmake -B release_build_2350 -G Ninja -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=rp2350 -DPICO_BOARD=pico2_w && \
+    ninja -C release_build_2350  $1
 else
-    cmake -B release_build -DCMAKE_BUILD_TYPE=Release && \
-    make -j $(getconf _NPROCESSORS_ONLN) -C release_build $1 && \
+    cmake -B release_build -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=rp2350 -DPICO_BOARD=pico2_w && \
+    make -j $(getconf _NPROCESSORS_ONLN) -C release_build_rp2350 $1 && \
     echo "done. P.S.: Consider installing ninja - it's faster"
 fi
 

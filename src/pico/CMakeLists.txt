@@ -31,8 +31,6 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E touch "${BUILD_TIME_HEADER}"
   DEPENDS "${BUILD_TIME_HEADER}")
 
-set(PICO_BOARD pico_w)
-
 # pico_sdk_import.cmake is a single file copied from this SDK note: this must
 # happen before project() include(cmake/pico_sdk_import.cmake)7s
 include(cmake/pico_sdk_import.cmake)
@@ -114,7 +112,7 @@ target_link_libraries(
           pico_stdlib
           hardware_gpio
           hardware_spi
-          hardware_rtc
+#          hardware_rtc
           hardware_irq
           hardware_uart
           hardware_pio
