@@ -6,6 +6,7 @@ include <NopSCADlib/core.scad>
 include <NopSCADlib/vitamins/green_terminals.scad>
 include <NopSCADlib/vitamins/pcbs.scad>
 include <NopSCADlib/vitamins/batteries.scad>
+include <NopSCADlib/vitamins/toggles.scad>
 include <pcb_fixtures.scad>
 
 $fn = $preview ? 32 : 96;

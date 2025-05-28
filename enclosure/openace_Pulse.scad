@@ -12,11 +12,11 @@ include <NopSCADlib/vitamins/antennas.scad>
 
 $fn = $preview ? 15 : 76;
 
-
 ////////////////////////////////////////////////////////////////// OK
 
 // place the switch in the lid for better protection
 SWITCH_IN_LID=true;
+TOGGLE_SWITCH="MINI_TOGGLE_8"; // ["MINI_TOGGLE_8", "CK7101"]
 ROCKER_SWITCH=true;
 // Width of all the walls of the box
 WALL_THICKNESS = 2.4; // [1.6, 2.0, 2.4, 2.8]
@@ -68,14 +68,14 @@ SWITCH_LID_BORE=5.5;
 SWITCH_LID_Z_OFFSET=6.5;
 
 
-
-    // Switch    
-MINI_ROCKER = ["", "", 5, 8, 8.89,      // 0
+MINI_TOGGLE_8 = ["", "", 5, 8, 8.89,      // 0
   0.4, 2.0, "red", 5.1, 4,   // 5
   6.5, 0, 0, 1.45,          // 10
   25/2, 10.67, 2.92, 0,   ["M4_nut",           4,   8.1, 1.2, 5,    M4_washer,     M4_nut_trap_depth, 0, [8,   5.74]],  // 15
   M4_washer, 3, [3.94, 2.03, 0.76, 3, 4.83]]; // 20
 
+
+MICRO_ROCKER   = ["micro_rocker",   "Rocker Switch 10x15",            9, 13.2,  10.5, 15, 1.5,  8.2, 14,   9.3,  2.0, 0.8, 3.0, micro_spades];
         
 
 // Plug for USB
@@ -231,12 +231,11 @@ diff()
     if (SWITCH_IN_LID) {
     
       if (ROCKER_SWITCH) {
-        micro_rocker2   = ["micro_rocker",   "Rocker Switch 10x15",            9, 13.2,  10.5, 15, 1.5,  8.2, 14,   9.3,  2.0, 0.8, 3.0, micro_spades];
         position("back+top") fwd(8) left(40) zrot(90) 
           if ($preview) {
-            rocker(micro_rocker2);
+            rocker(MICRO_ROCKER);
           } else {
-            tag("remove") cube([micro_rocker2[2], micro_rocker2[3], 10], anchor=CENTER);
+            tag("remove") cube([MICRO_ROCKER[2], MICRO_ROCKER[3], 10], anchor=CENTER);
           }
       } else {
         up(0.02) translate(SWITCH_LID_POS) 
@@ -256,7 +255,7 @@ diff()
 
             position(TOP) fwd(SWITCH_LID_Z_OFFSET) xrot(180) zrot(90)
               if ($preview) {
-                down(3) toggle(MINI_ROCKER, 3);
+                down(3) toggle(TOGGLE_SWITCH=="CK7101"?CK7101:MINI_TOGGLE_8, 3);
               } else {
                 tag("remove") cyl(d=SWITCH_LID_BORE,l=6,center=true);
               }
