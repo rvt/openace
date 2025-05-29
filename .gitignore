@@ -9,9 +9,12 @@ private.data/
 *-backups/
 
 # Builds
-build/
-./default_config.hpp
-./build_time.hpp
+**/default_config.hpp
+**/build_time.hpp
+**/build_test*/
+**/generated/
+**/release_build*/
+**/build/
 
 # VSCode + Python
 **/.vscode/settings.json
@@ -20,9 +23,7 @@ build/
 src/vendor/etl/
 
 # GUI
-dist/
+**/dist/
 package-lock.json
-.parcel-cache
-node_modules/
-
-.codegpt
+**/.parcel-cache/
+**/node_modules/

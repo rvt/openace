@@ -14,7 +14,6 @@ set(MODULE_TARGET_LINK
 
 set(PICO_EXTRA_LIBS
     pico_time
-    hardware_rtc
 )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../openace_module.cmake)

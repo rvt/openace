@@ -5,6 +5,7 @@
             "BOTTOM_THICKNESS": "2.5",
             "ROCKER_SWITCH": "false",
             "SWITCH_IN_LID": "true",
+            "TOGGLE_SWITCH": "MINI_TOGGLE_8",
             "TOP_THICKNESS": "2",
             "VISUALIZE_CUT": "false",
             "VISUALIZE_LID_ON_TOP": "false",

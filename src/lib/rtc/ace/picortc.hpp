@@ -11,7 +11,6 @@
 #include "etl/map.h"
 #include "etl/message_bus.h"
 
-#include "hardware/rtc.h"
 #include "pico/time.h"
 #include "sys/time.h"
 

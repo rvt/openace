@@ -7,7 +7,7 @@
 */
 bool add_pio_program(const pio_program_t *program, PIO *pio_hw, int *sm, uint *offset)
 {
-#if defined(PICO_RP2040)
+#if defined(PICO_RP2040) || defined(PICO_RP2350)
     *pio_hw = pio0;
     if (!pio_can_add_program(*pio_hw, program))
     {

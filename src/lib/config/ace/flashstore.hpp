@@ -5,7 +5,7 @@
 /* PICO */
 #include "hardware/flash.h"
 
-#if defined(PICO_RP2040)
+#if defined(PICO_RP2040) || defined(PICO_RP2350)
 
 /**
  * @class FlashStore
