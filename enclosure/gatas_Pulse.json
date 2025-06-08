@@ -1,0 +1,43 @@
+{
+    "fileFormatVersion": "1",
+    "parameterSets": {
+        "NO TOP": {
+            "BOTTOM_THICKNESS": "2.5",
+            "INSIDE_MOUNT": "true",
+            "LID_SCREW_DIAM": "2.3999999999999999",
+            "LID_SCREW_HEAD_DIAM": "5",
+            "TOGGLE_SWITCH": "CK7101",
+            "TOP_MOUNT": "false",
+            "TOP_THICKNESS": "2",
+            "VISUALIZE_CUT": "false",
+            "VISUALIZE_LID": "true",
+            "VISUALIZE_LID_ON_TOP": "false",
+            "VISUALIZE_LID_POSITION": "0",
+            "VISUALIZE_MAIN_CASE": "true",
+            "VISUALIZE_OTHERS": "true",
+            "VISUALIZE_SCHEMA": "false",
+            "VISUALIZE_X_CUT_POS": "0",
+            "VISUALIZE_Y_CUT_POS": "100",
+            "WALL_THICKNESS": "2.3999999999999999"
+        },
+        "New set 1": {
+            "BOTTOM_THICKNESS": "2.5",
+            "INSIDE_MOUNT": "true",
+            "LID_SCREW_DIAM": "2.3999999999999999",
+            "LID_SCREW_HEAD_DIAM": "5",
+            "TOGGLE_SWITCH": "CK7101",
+            "TOP_MOUNT": "false",
+            "TOP_THICKNESS": "2",
+            "VISUALIZE_CUT": "false",
+            "VISUALIZE_LID": "true",
+            "VISUALIZE_LID_ON_TOP": "false",
+            "VISUALIZE_LID_POSITION": "0",
+            "VISUALIZE_MAIN_CASE": "true",
+            "VISUALIZE_OTHERS": "true",
+            "VISUALIZE_SCHEMA": "false",
+            "VISUALIZE_X_CUT_POS": "75",
+            "VISUALIZE_Y_CUT_POS": "0",
+            "WALL_THICKNESS": "2.3999999999999999"
+        }
+    }
+}

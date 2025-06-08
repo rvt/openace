@@ -7,11 +7,12 @@ include <NopSCADlib/vitamins/green_terminals.scad>
 include <NopSCADlib/vitamins/pcbs.scad>
 include <NopSCADlib/vitamins/batteries.scad>
 include <NopSCADlib/vitamins/toggles.scad>
-include <pcb_fixtures.scad>
+include <pcbSupport.scad>
 
 $fn = $preview ? 32 : 96;
 
 
+TEST_VALUE = false;
 SMA_ANTENNA_HOLE_DIAM=7;
 TOLERANCE=0.15; // Added or remove from parts that are designed to cut holes.
 
@@ -118,10 +119,10 @@ module screw_mount(anchor=BOTTOM, spin=0, orient=UP, center, screw=2.5, height=5
 }
 
 
-// openace_pcb( visual=true) {
+// gatas_pcb( visual=true) {
 //  show_anchors(std=false);
 //}
-module openace_pcb(anchor=BOTTOM, spin=0, orient=UP, center, bbox=false, rough=false, visual=true, pi=4) {
+module gatas_pcb(anchor=BOTTOM, spin=0, orient=UP, center, bbox=false, rough=false, visual=true, pi=4) {
     size=[86.87,84,1.6];
     corner=[-size.x/2, -size.y/2, -size.z/2];
 
@@ -354,27 +355,24 @@ module crop(c,t,r)
 
 
   
-//TBATHOLDER_18650(anchor=BOTTOM, casing=1);  
+// TBATHOLDER_18650(anchor=BOTTOM, casing=0);  
   
 module TBATHOLDER_18650(anchor=CENTER, spin=0, orient=UP, casing=0) {
-  SIZE=[78,22,21];
+  SIZE=[78,21,21];
   WALL=[4,4,0];
   CASING_Z=7;
   module casing() {
-        down(SIZE.y/2 - 0.5)
-        difference() {
-          cube(size=[SIZE.x+1, SIZE.y, 6] + WALL,anchor=BOTTOM);
-          union() {
-            down(0.01) union() {
-              cube(size=[SIZE.x+0.8, SIZE.y, CASING_Z] + [0.5, 0.5,0],anchor=BOTTOM);
-              cube(size=[SIZE.x+0.8, 5, CASING_Z] + [5,0,0],anchor=BOTTOM);
-            }
-            for(i = [[SIZE.x/2,SIZE.y/2],[-SIZE.x/2,SIZE.y/2],[SIZE.x/2,-SIZE.y/2],[-SIZE.x/2,-SIZE.y/2]]) {
-              translate([i.x,i.y])
-              cube(size=[5.1,5.1,CASING_Z], anchor=BOTTOM);
-            }
-          }
+    down(SIZE.y/2)
+    difference() {
+      cube(size=[SIZE.x+1, SIZE.y, 6] + WALL,anchor=BOTTOM);
+      union() {
+        down(0.01) union() {
+          cube(size=[SIZE.x, SIZE.y, CASING_Z] + [0.5, 0.5,0],anchor=BOTTOM);
+          cube(size=[SIZE.x, SIZE.y, CASING_Z] + [-15, 10,0],anchor=BOTTOM);
+          cube(size=[SIZE.x, 5, CASING_Z] + [6,0,0],anchor=BOTTOM);
         }
+      }
+    }
   }
 
   attachable(anchor=anchor, spin=spin, orient, size=SIZE) {
@@ -403,7 +401,7 @@ module TBATHOLDER_18650(anchor=CENTER, spin=0, orient=UP, casing=0) {
 }
   
   
-//CHARGER_TP4056(casing=0){
+//CHARGER_TP4056(casing=1, up=4){
 //  show_anchors(std=false);
 //}
 module CHARGER_TP4056(anchor=BOTTOM, spin=0, orient=UP, casing=0, up=1.5) {
@@ -420,22 +418,33 @@ module CHARGER_TP4056(anchor=BOTTOM, spin=0, orient=UP, casing=0, up=1.5) {
   gt_2p54 = ["gt_2p54", 3,  7,   8.8, 3,    5, 0.0,  5.0, 0,    1,    0.2, 2,   2,   2,   0,   0,    0];
     
   module casing() {
+    right(TP4056[2]/2) up(0) cube([2,TP4056[3],up], anchor=CENTER+BOTTOM);
+    left(2)
     difference() {
-      cube([TP4056[2],TP4056[3],up]-[6,0,0], anchor=CENTER+BOTTOM);
-      cube([TP4056[2],TP4056[3],up]-[6+4,4,-0.1], anchor=CENTER+BOTTOM);
+      cube([TP4056[2],TP4056[3],up]-[9,0,0], anchor=CENTER+BOTTOM);
+      down(0.01) cube([TP4056[2],TP4056[3],up]-[9+4,4,-.02], anchor=CENTER+BOTTOM);
     }
     left(TP4056[2]/2+0.8+TOL) cube([1.2,TP4056[3],up+TP4056[4]-0.5], anchor=CENTER+BOTTOM);
     right(TP4056[2]/2+1+TOL) cube([2,TP4056[3],up+TP4056[4]], anchor=CENTER+BOTTOM);
     
     fwd(TP4056[3]/2) zrot(90) pcbSupport(up,8,TP4056[4],1,2);
     back(TP4056[3]/2) zrot(-90) pcbSupport(up,8,TP4056[4],1,2);
+    
+    right(16) fwd(2.5) linear_extrude(1) {
+      back(8) text("O+", font="Arial Black", size=4.5, halign="left", anchor=BOTTOM);
+      back(3) text("B+", font="Arial Black", size=4.5, halign="left", anchor=BOTTOM);
+      fwd(3) text("B--", font="Arial Black", size=4.5, halign="left", anchor=BOTTOM);
+      fwd(8) text("O--", font="Arial Black", size=4.5, halign="left", anchor=BOTTOM);
+    }
+
   }
 
     anchors = [
-      named_anchor("usb_c", [-16, 0 , 3+up], unit(LEFT)),
+      named_anchor("usb_c", [-16, 0 , 3+up], unit(LEFT), spin=90),
+      named_anchor("front", [-16, 0 , 0], unit(LEFT), spin=90),
   ]; 
   
-  attachable(anchor=anchor, spin=spin, orient, size=SIZE, anchors=anchors) {
+  attachable(anchor=anchor, spin=spin, orient=orient, size=SIZE, anchors=anchors) {
   
   
     union() {
@@ -446,10 +455,11 @@ module CHARGER_TP4056(anchor=BOTTOM, spin=0, orient=UP, casing=0, up=1.5) {
         else 
       {
         color([0,0.8,1]) %casing();
+        
+        
         up(up) {
           pcb(TP4056);
-          
-                  
+                            
           right(12.4) back(5.4) up(2.5) xrot(0) green_terminal(gt_2p54, 2);
           right(12.4) fwd(5.4) up(2.5) xrot(0) green_terminal(gt_2p54, 2);
           
@@ -470,29 +480,36 @@ module CHARGER_TP4056(anchor=BOTTOM, spin=0, orient=UP, casing=0, up=1.5) {
 //  show_anchors(std=false);
 //}
 
-module PICOBlock(anchor=CENTER, spin=0, orient=UP, casing=0, offsetPico=1) {
+TEST = false;
+module PICOBlock(anchor=CENTER, spin=0, orient=UP, casing=0, offsetPico=0, teeth=true) {
 
   SIZE=  [21,52,33.5];
   SX1262=[21,52,10];
   GPS=   [21,56,10];
   
   module casing() { //left(2.54/2) 
-      right(SIZE.x/2) down(11) ycopies(spacing=2.54, n=19) cube([4,0.4*3,3], anchor=TOP+RIGHT);
-      right(SIZE.x/2) down(1) {
-      difference() {
-        union() {
-          up(.75) cube([5,SIZE.y,SIZE.z]+[0,4,5.75], anchor=RIGHT);
+    right(SIZE.x/2) {
+      if (teeth) down(12) ycopies(spacing=2.54, n=19) cube([4,0.4*3,3], anchor=TOP+RIGHT);
+     
+      down(1) {
+      
+        CSIZE = [5,SIZE.y,SIZE.z];
+          color([1,0,0]) difference() {
+            union() {
+              cube(CSIZE+[0,4,6], anchor=RIGHT);
+            }
+            union() {
+              right(0.01) cube(CSIZE+[1,0.5,1], anchor=RIGHT); // large inside
+              fwd(SIZE.y/2) right(0.01) up(1) cube([10,10,10], anchor=RIGHT); // gap for bigger GPS
+            }
+          }    
         }
-        union() {
-          up(0.3) cube(SIZE+[0.5,0.5,0.2], anchor=CENTER); // large inside
-          fwd(SIZE.y/2) right(0.01) up(1) cube([10,10,10], anchor=RIGHT); // gap for bigger GPS
-        }
-      }    
+      }
     }
-  }
   
   anchors = [                 
     named_anchor("usb", [0+-offsetPico,-SIZE.y/2,14.7], unit(FWD)),
+    named_anchor("debug", [0+-offsetPico-3.5,5.6,14.7], unit(UP)),
   ];
 
   attachable(anchor=anchor, spin=spin, orient, size=SIZE, anchors=anchors) {
@@ -502,7 +519,6 @@ module PICOBlock(anchor=CENTER, spin=0, orient=UP, casing=0, offsetPico=1) {
       } 
         else 
       {
-      union() {
         color([0,0.8,1,0.8]) %casing();
         
         up(10) left(offsetPico) union() {
@@ -530,7 +546,6 @@ module PICOBlock(anchor=CENTER, spin=0, orient=UP, casing=0, offsetPico=1) {
           left(8.5) fwd(0.2) ycopies(spacing=2.54, n=20) cube([0.5,0.5,7]);
         }
         }
-      }
       }
       // %cube(SIZE, anchor=anchor, spin=spin, orient);      
     }    
@@ -570,27 +585,33 @@ module screwHead(anchor=CENTER, spin=0, orient=UP, headDiam=5, shaftDiam=2.4, he
   }
 }
 
+//diff() {
+//  screwFixture(spin=180);
+//}
+
 
 module screwFixture(anchor=CENTER, spin=0, orient=UP, headDiam=5, shaftDiam=2.5, headLength=10, totalLength=20, remove=0) {
   SCREW_DIAM=shaftDiam;
   SCREWHD = headDiam;
-
+  CREWD=0.4*6;
+  ODIAM = SCREW_DIAM+CREWD;
   anchors = [                 
   ];
 
-attachable(anchor=anchor, spin=spin, orient, d=shaftDiam, l=totalLength, anchors=anchors,expose_tags=true) {
+attachable(anchor=anchor, spin=spin, orient=orient, d=shaftDiam, l=totalLength, anchors=anchors,expose_tags=true) {
     union() {
       // Structure
       position(BOTTOM) {
-        cyl(d=SCREW_DIAM+0.4*5,l=totalLength - (SCREW_DIAM+0.4*5)/2, anchor=BOTTOM) {
-          position(TOP) sphere(d=SCREW_DIAM+0.4*5);
+        cyl(d=ODIAM,l=totalLength - ODIAM/2, anchor=BOTTOM) {
+          // position(TOP) sphere(d=SCREW_DIAM+CREWD);
+          position(TOP) skew(axz=18.0) cyl(d1=ODIAM,d2=0,l=ODIAM*1.5, anchor=BOTTOM);
         }
       }
 
       // Removals
       position(BOTTOM) down(1.01)
       tag("remove")
-        down(0.01) cyl(d=SCREW_DIAM,l=totalLength - (SCREW_DIAM+0.4*5)/2+0.03, anchor=BOTTOM); 
+        down(0.01) cyl(d=SCREW_DIAM,l=totalLength - ODIAM/2+0.03, anchor=BOTTOM); 
     }   
     children();
   }   
@@ -631,7 +652,7 @@ module electronicsBox(isize, wall=2.8, bottom=3, ichamfer=2, rounding=2, anchor=
             rounding=rounding,anchor=BOTTOM
         ) {
           if (rim>0) {
-            RIM_TOL=0.2;
+            RIM_TOL=0.1;
             position(TOP)
             if (lid) {
               // TODO: MINOR calculate correct rounding
@@ -724,3 +745,8 @@ diff()
     position(TOP+LEFT) right(3) fwd(5) zrot(90)  CHARGER_TP4056(anchor=BOTTOM+BACK, casing=1);
   }
 }
+
+//ovalTube();
+//module ovalTube(l=10,d1=10,d2=12) {
+//  xrot(90) down(l/2) linear_extrude(height=l) ellipse(d=[d1, d2]);
+//}

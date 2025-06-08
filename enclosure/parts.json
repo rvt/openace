@@ -1,0 +1,10 @@
+{
+    "fileFormatVersion": "1",
+    "parameterSets": {
+        "New set 1": {
+            "SMA_ANTENNA_HOLE_DIAM": "7",
+            "TEST_VALUE": "true",
+            "TOLERANCE": "0.14999999999999999"
+        }
+    }
+}

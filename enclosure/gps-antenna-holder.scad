@@ -72,6 +72,20 @@ SCREWHD=5;
 SCREW_L=8;
 SCREWWALL=0.4*2;
 
+
+
+
+// Rendering
+if ($preview) {
+  up(CAP_POSITION) cap();
+  right(3+PLATE_POSITION) down(BHEIGHT/2-2) zrot(-90) bottom_plate();
+} else {
+  left(50) bottom_plate();
+  right(50) up(THEIGHT) xrot(180) cap();
+}
+casing();
+
+
 //up (6) color([1,1,1,0.1]) #cuboid([22,20,8]);
 
 // Simple cropping function
@@ -136,7 +150,7 @@ module cdebyte_E108_GN04 () {
 
 module cap_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
 
-  attachable(anchor, spin, orient, size=[WIDTH,LENGTH,THEIGHT], center) {  
+  #attachable(anchor, spin, orient, size=[WIDTH,LENGTH,THEIGHT], center) {  
     union() {
     down(THEIGHT/2) 
     diff("remove_cap") 
@@ -163,6 +177,7 @@ module cap() {
   {
     diff()    
     cap_casing(anchor=BOTTOM) {
+      // Marker for front
       position(RIGHT+BOTTOM) cuboid([0.2, 6, 2], anchor=BOTTOM+LEFT, chamfer=0.2, edges=[RIGHT+TOP, RIGHT+BACK, RIGHT+FRONT]);
     
       position(BOTTOM)
@@ -189,15 +204,6 @@ module base_casing(anchor=BOTTOM, spin=0, orient=UP, center ) {
       children();
    }
 }
-
-up($preview?CAP_POSITION:50) cap();
-if ($preview) {
-  right(3+PLATE_POSITION) down(BHEIGHT/2-2) zrot(-90) bottom_plate();
-} else {
-  left(50) bottom_plate();
-}
-casing();
-
 
 module casing() {
   crop(c=(_CROP?300:0),t=[0,0,0],r=90)
@@ -303,73 +309,6 @@ module bottom_plate() {
     position(BOTTOM+BACK) cuboid([HINGE_LENGTH*5,FWD,4.4], anchor=BOTTOM+BACK, rounding=0.4, edges=[BACK+LEFT, BACK+RIGHT, BACK+TOP, TOP+LEFT, TOP+RIGHT]);
   }
 }
-
-
-
-
-  // Hinge 
-//  LENGTH=DIAMETER/2+HINGE_ATTACH_LENGTH;
-//  WIDTH=14;
-//  down(BHEIGHT+PLATE_DOWN+KNUCKLE_OFFSET+($preview?3.5:15))
-//  xrot(($preview?-HINGE_ANGLE:0))
-//  left(HINGE_LENGTH*3-HINGE_LENGTH/2) back(3) 
-//  xrot(90) 
-//  zrot(-90) 
-//  diff()
-//  prismoid(size1=[KNUNCKLE_DIAM/8,LENGTH], size2=[KNUNCKLE_DIAM,LENGTH], shift=[(KNUNCKLE_DIAM - KNUNCKLE_DIAM/8)/2,0], h=WIDTH, anchor=FRONT+TOP) {
-//       
-//       
-//      position(TOP+FRONT) knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, segs=HINGE_SEGS, inner=false, arm_angle=90, anchor=BOT+RIGHT, orient=UP, spin=-90,knuckle_diam=KNUNCKLE_DIAM, offset=KNUNCKLE_DIAM/2) {
-//
-//          color("green") attach(BACK) xrot(20) down(1) cuboid([HINGE_LENGTH-1,2.5,2], anchor=BOTTOM);
-//        
-//          if (FRICTION_RING) {
-//            tag("remove") right(HINGE_LENGTH) attach(LEFT) {
-//              color("orange") %torus(od=6,id=2, anchor=BOTTOM);
-//              cylinder(d=7,h=1.75);
-//            }
-//            
-//          }
-//
-//        }
-//
-//        position(TOP+FRONT) knuckle_hinge(length=HINGE_LENGTH*HINGE_SEGS, segs=HINGE_SEGS, offset=KNUNCKLE_DIAM/2, inner=false, arm_angle=90, anchor=BOT+RIGHT, orient=UP, spin=-90, knuckle_clearance=1,knuckle_diam=KNUNCKLE_DIAM);
-//
-//
-//      ATTACH_WIDTH=WIDTH+8;
-//      echo("With of attachment: ", ATTACH_WIDTH);
-//      // #position(LEFT+BACK) cube([10,WALL,WIDTH], anchor=RIGHT+BACK); on top..
-//      color("lightblue")
-//      position(LEFT+BACK) cube([12,3,ATTACH_WIDTH], anchor=LEFT+BACK) {
-//        right(WALL) 
-//        position(LEFT+FRONT) 
-//        prismoid(size1=[WIDTH/2,WALL], size2=[0,WALL], shift=[-WIDTH/4,0], h=WIDTH/2, anchor=BOTTOM+LEFT, orient=FRONT);
-//        
-//        tag("remove") {
-//          up(4) right(2) attach(FRONT) cyl(d=3, l=10) {
-//            if ($preview) tag("keep") #position(TOP) cyl(d=6, l=2);
-//          }
-//          down(4) right(-1) attach(FRONT) cyl(d=3, l=10) {
-//            if ($preview) tag("keep") #position(TOP) cyl(d=6, l=2);
-//          }
-//        }
-//      }      
-//   }
-//}
-
-module gpsSideAttach(w1=21.5, w2=9, d=3, h=18) {
-  diff() {
-    cuboid([w1+6, d+3, h]) {
-      up(1.5) position(FRONT) tag("remove") cuboid([w1, d, 18], anchor=FRONT);
-
-      position(FRONT+TOP) tag("remove") {
-        #cuboid([w1, d+3, KNUNCKLE_DIAM], anchor=FRONT+TOP);
-        cuboid([4, d+3, h], anchor=FRONT+TOP);
-      }
-    }
-  }
-}
-
 
 // Round Rect module to set top and side rounding
 module rrect(rt=4, rs=2, l=10, rect=[10,10], anchor=CENTER, spin=0, orient=UP) {
