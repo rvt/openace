@@ -201,7 +201,7 @@ namespace OpenAce
         bool airborne; // Is the aircraft airborne
         float lat;
         float lon;
-        int16_t altitudeGeoid; // Altitude above the GeoId (MSL) in meters. For aircraft where altitude is based from BARO, this is an estimate
+        int16_t altitudeHAE; // Altitude above the GeoId (MSL) in meters. For aircraft where altitude is based from BARO, this is an estimate
         float verticalSpeed;   // in m/s
         float groundSpeed;     // in m/s
         int16_t course;        // 0..359
@@ -213,12 +213,12 @@ namespace OpenAce
         int32_t relEastFromOwn;   // relEast to ownship in meters
         int16_t bearingFromOwn;   // Bearing to ownship in degrees
 
-        AircraftPositionInfo(uint32_t timestamp_, OpenAce::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeGeoid_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
-            : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), altitudeGeoid(altitudeGeoid_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_), bearingFromOwn(bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, OpenAce::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeHAE_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
+            : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), altitudeHAE(altitudeHAE_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_), bearingFromOwn(bearingFromOwn_)
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeGeoid(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeHAE(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
         {
         }
 
@@ -233,7 +233,7 @@ namespace OpenAce
         bool airborne;                 // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
         float lat;
         float lon;
-        int16_t altitudeGeoid;   // Altitude above the GeoId (MSL) in meters
+        int16_t altitudeHAE;       // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
         float verticalSpeed;     // in m/s
         float groundSpeed;       // in m/s
         float course;            // 0..359
@@ -242,8 +242,8 @@ namespace OpenAce
         float velocityEast;      // East velocity in m/s
         int16_t geoidSeparation; // The distance from the surface of an ellipsoid to the surface of the geoid.
 
-        int16_t heightElipsoid() const {
-            return altitudeGeoid - geoidSeparation;
+        int16_t heightMsl() const {
+            return altitudeHAE - geoidSeparation;
         }
     };
 

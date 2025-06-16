@@ -1,0 +1,19 @@
+{
+"folders": [
+	{
+		"path": "src/pico"
+	},
+	{
+		"path": "./"
+	}
+]
+  	,
+	"settings": {
+		"C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+		"files.associations": {
+			"compare": "cpp",
+			"cstdint": "cpp"
+		},
+		"cmake.autoSelectActiveFolder": false
+	  }
+}

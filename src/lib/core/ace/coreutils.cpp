@@ -1,5 +1,5 @@
 #include "coreutils.hpp"
-#include "egm96_dem.hpp"
+#include "egm2008_dem.hpp"
 
 #if defined(__MACH__)
 #include "pico/stdlib.h"
@@ -47,16 +47,23 @@ uint32_t CoreUtils::getFreeHeap(void)
 
 }
 
-int8_t CoreUtils::egm96GeoidOffset(float lat, float lon)
+int8_t CoreUtils::egmGeoidOffset(float lat, float lon)
 {
-  int32_t ilat = roundf((90.f - lat) / 2.f);
-  int32_t ilon = roundf(CoreUtils::toBearing(lon) / 2.f);
-  int32_t offset = ilat * 180 + ilon;
+    if (lat < egm2008_min_lat || lat > egm2008_max_lat ||
+        lon < egm2008_min_lon || lon > egm2008_max_lon) {
+//            printf("Latitude or longitude out of bounds: lat=%.2f, lon=%.2f\n", lat, lon);
+        return 0;
+    }
 
-  if (offset < 0 || static_cast<uint32_t>(offset) >= egm96s_dem.size())
-  {
-    return 0;
-  }
+    int lat_idx = static_cast<int>(round((egm2008_max_lat - lat) / egm2008_resolution_deg));
+    int lon_idx = static_cast<int>(round((lon - egm2008_min_lon) / egm2008_resolution_deg));
 
-  return egm96s_dem[offset];
+    if (lat_idx < 0 || lat_idx >= egm2008_lat_steps ||
+        lon_idx < 0 || lon_idx >= egm2008_lon_steps) {
+//        printf("Latitude or longitude index out of bounds: lat_idx=%d, lon_idx=%d\n", lat_idx, lon_idx);
+        return 0;
+    }
+
+    int8_t val = egm2008s_dem[lon_idx][lat_idx];
+    return (val == -128) ? 0 : val;
 }

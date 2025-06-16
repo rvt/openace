@@ -55,8 +55,8 @@ TEST_CASE( "Getters and Setters", "[single-file]" )
 {
     ADSL_Packet packet;
 
-    packet.setaltitudeGeoid(1000.f);
-    REQUIRE( packet.getaltitudeGeoid() == Catch::Approx(1000.f) );
+    packet.setHeightHAE(1000.f);
+    REQUIRE( packet.getHeightHAE() == Catch::Approx(1000.f) );
 
     packet.setLatitude(53.12345678f);
     REQUIRE( packet.getLatitude() == Catch::Approx(53.12345678f) );

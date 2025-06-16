@@ -95,9 +95,9 @@ private:
     virtual void receiveBinary(const uint8_t* data, uint8_t length) override;
     void processAdsbData(const uint8_t* data, uint8_t length);
 
-    bool outOfAltitudeRange(int32_t otherCraftAltitude)
+    bool outOfAltitudeRange(int32_t otheraltitudeHAE)
     {
-        return (otherCraftAltitude - ownshipPosition.altitudeGeoid) > filterAbove || (ownshipPosition.altitudeGeoid - otherCraftAltitude) > filterBelow;
+        return (otheraltitudeHAE - ownshipPosition.altitudeHAE) > filterAbove || (ownshipPosition.altitudeHAE - otheraltitudeHAE) > filterBelow;
     }
 
     void on_receive_unknown(const etl::imessage &msg)

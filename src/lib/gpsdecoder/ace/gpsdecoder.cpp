@@ -148,9 +148,9 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
         {
 
             // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
-            auto wgs84Altitude = convertToMeters(frame.altitude, frame.altitude_units, altitudeGeoid()); // Field 9 (MSL)
+            auto geoidAltitude = convertToMeters(frame.altitude, frame.altitude_units, altitudeGeoid()); // Field 9 (MSL)
             geoidSeparation = convertToMeters(frame.height, frame.height_units, geoidSeparation); // Field 11 (Undulation)
-            altitudeGeoid(wgs84Altitude);
+            altitudeGeoid(geoidAltitude);
 
             satellitesTracked = frame.satellites_tracked;
             fixQuality = frame.fix_quality;
@@ -239,7 +239,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .airborne = groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
                     .lat = latitude,
                     .lon = longitude,
-                    .altitudeGeoid = static_cast<int16_t>(altGeoid),
+                    .altitudeHAE = static_cast<int16_t>(altGeoid + geoidSeparation),
                     .verticalSpeed = altitudeGeoid.perSecond(), // vertical speed
                     .groundSpeed = groundSpeed,                 // Ground Speed
                     .course = course(),

@@ -7,7 +7,7 @@ private.data/
 
 # KiAD
 *-backups/
-
+**/tmp/
 # Builds
 **/default_config.hpp
 **/build_time.hpp
@@ -19,7 +19,8 @@ private.data/
 # VSCode + Python
 **/.vscode/settings.json
 **/.vscode/tasks.json
-.venv
+**/.venv/
+**venv/
 src/vendor/etl/
 
 # GUI

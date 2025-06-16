@@ -142,16 +142,16 @@ public:
     /**
      * GPRMC – NMEA minimum recommended GPS navigation data
      */
-    void sendGPRMC(const OpenAce::AircraftPositionInfo &position);
+    // void sendGPRMC(const OpenAce::OwnshipPositionInfo &position);
 
-    void sendPGRMZ(const OpenAce::OwnshipPositionInfo &position);
+    // void sendPGRMZ(const OpenAce::OwnshipPositionInfo &position);
 
     /**
      * GNGSA – GPS DOP and active satellites
      */
-    void sendGNGSA(const OpenAce::AircraftPositionInfo &position);
+    // void sendGNGSA(const OpenAce::AircraftPositionInfo &position);
 
-    void sendGPGGA(const OpenAce::AircraftPositionInfo &position);
+    // void sendGPGGA(const OpenAce::OwnshipPositionInfo &position);
 
     /**
      * We seem to need this to get altitude in SkyDemon

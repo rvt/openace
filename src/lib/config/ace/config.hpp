@@ -21,7 +21,7 @@ using namespace ArduinoJson;
 
 typedef std::function<void(const char *NAME, const OpenAce::PinTypeMap &map)> LoadModuleCallback;
 
-class Config : public Configuration, public etl::message_router<Config>
+class Config : public Configuration, public etl::message_router<Config, OpenAce::ConfigUpdatedMsg, OpenAce::IdleMsg>
 {
 private:
     enum LoadLocation : uint8_t
@@ -125,7 +125,8 @@ private:
             return Result
             {
                 etl::to_arithmetic_result<int>{},
-                pathParsed};
+                pathParsed
+            };
         }
 
         // When the last last item is a number, it's expected to be an entry in an array
@@ -145,6 +146,25 @@ private:
 
     void serializeToVolatile();
     void serializeToPersistent();
+
+    void on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+    {
+        if (msg.moduleName == Configuration::CONFIG)
+        {
+            // ownshipAddress = msg.config.openAceConfig().address;
+        }
+    }
+
+    void on_receive(const OpenAce::IdleMsg &msg)
+    {
+        (void)msg;
+        // if (auto guard = SemaphoreGuard<10>(mutex))
+        // {
+        //     //auto usTime = CoreUtils::timeUs32Raw();
+        //     //ignoredAirplanes.evictOldEntries(usTime);
+        //     //adsbDataCollector.evictOldEntries(usTime);
+        // }
+    }
 
 private:
     friend class message_router;

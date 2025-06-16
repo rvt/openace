@@ -21,7 +21,7 @@ struct AdsbCombinedDataStatus
     uint16_t velocity;          // Non decoded Ground speed in knots
     uint8_t category;           // category
     int16_t heading;            // Heading in degrees
-    int32_t gnsAltitude;        // Altitude in meter
+    int32_t altitudeHAE;        // Altitude in meter
     int32_t raw_even_latitude;  // Non decoded latitude  even
     int32_t raw_even_longitude; // Non decoded longitude even
     int32_t raw_odd_latitude;   // Non decoded latitude   odd
@@ -40,7 +40,7 @@ struct AdsbCombinedDataStatus
     // Constructor with icao for search functions.
     AdsbCombinedDataStatus(uint32_t icao_)
         : icao(icao_), callSign(""), messageStatus(0), lastSeen(0),
-          velocity(0.0f), category(0), heading(0), gnsAltitude(0), raw_even_latitude(0),
+          velocity(0.0f), category(0), heading(0), altitudeHAE(0), raw_even_latitude(0),
           raw_even_longitude(0), raw_odd_latitude(0), raw_odd_longitude(0), baro_gnss_diff(0),
           lat(0.0f), lon(0.0f), vert_rate(0.0f), airborne(false), evict(false)
     {
@@ -49,7 +49,7 @@ struct AdsbCombinedDataStatus
     // Constructor with icao and lastSeen parameters
     AdsbCombinedDataStatus(uint32_t icao_, uint32_t lastSeen_)
         : icao(icao_), callSign(""), messageStatus(0), lastSeen(lastSeen_),
-          velocity(0.0f), category(0), heading(0), gnsAltitude(0), raw_even_latitude(0),
+          velocity(0.0f), category(0), heading(0), altitudeHAE(0), raw_even_latitude(0),
           raw_even_longitude(0), raw_odd_latitude(0), raw_odd_longitude(0), baro_gnss_diff(0),
           lat(0.0f), lon(0.0f), vert_rate(0.0f), airborne(false), evict(false)
     {
@@ -169,7 +169,7 @@ public:
         for (const auto &entry : cache)
         {
             const auto &data = entry.second; // Access the value part of the pair
-            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usToReference(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.gnsAltitude);
+            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usToReference(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.altitudeHAE);
         }
     }
 
@@ -186,13 +186,13 @@ public:
     void updateAltitude(int32_t altitude)
     {
         currentDataStatus->messageStatus |= HAS_ALTITUDE;
-        currentDataStatus->gnsAltitude = altitude + currentDataStatus->baro_gnss_diff;
+        currentDataStatus->altitudeHAE = altitude + currentDataStatus->baro_gnss_diff;
     }
 
     void updateGnssAltitude(int32_t altitude)
     {
         currentDataStatus->messageStatus |= HAS_ALTITUDE;
-        currentDataStatus->gnsAltitude = altitude;
+        currentDataStatus->altitudeHAE = altitude;
     }
 
     void updateCallsign(const OpenAce::IcaoAddress &flight, uint8_t aircraft_type)

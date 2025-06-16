@@ -213,12 +213,18 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
 
         auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
         pkt_params_gfsk.pld_len_in_bytes = newParameters.config.packetLength * MANCHESTER;
-        pkt_params_gfsk.preamble_len_in_bits = newParameters.config.preambleLength;                         // 1 * 8 newParameters.config.preambleLength;
-        pkt_params_gfsk.preamble_detector = static_cast<sx126x_gfsk_preamble_detector_t>((1 + 3) & 0b1100); // Must be set to 1 for now (even though ADS-L has 2...)
+
+        if (forTx) {
+            pkt_params_gfsk.preamble_len_in_bits = newParameters.config.txPreambleLength;
+            pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_16BITS;
+        } else {
+            pkt_params_gfsk.preamble_len_in_bits = 0;
+            pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS;
+        }
+
         pkt_params_gfsk.sync_word_len_in_bits = (newParameters.config.syncLength) * 8;
         sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
-        // TO TEST, newParameters.config.preambleLength / 8 THIS MIGHT HAVE FUCKED UP ADSL SENDING OR RECEIVING this used to be newParameters.config.preambleLength
-        sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data() + newParameters.config.preambleLength / 8, newParameters.config.syncLength);
+        sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data(), newParameters.config.syncLength);
         // printf("Radio %d changed from %s to %s\n", radioNo, OpenAce::dataSourceToString(lastParameters.config.dataSource), OpenAce::dataSourceToString(newParameters.config.dataSource));
     }
     else if (newParameters.config.mode == Radio::Mode::LORA)

@@ -166,7 +166,7 @@ public:
             int32_t latitude: 24;
             int32_t longitude: 24;
             uint8_t groundSpeed: 8;
-            uint16_t altitudeGeoid: 14;
+            uint16_t heightHAE: 14;
             int16_t verticalRate: 9;
             uint16_t groundTrack: 9;
             SourceIntegrity sourceIntegrity: 2;
@@ -214,14 +214,14 @@ public:
         CRC[2]=Word;
     }
 
-    int32_t getaltitudeGeoid(void) const                                                                  // [m]
+    int32_t getHeightHAE(void) const                                                                  // [m]
     {
-        return UnsVRdecode<int32_t,12>(altitudeGeoid) - 320;
+        return UnsVRdecode<int32_t,12>(heightHAE) - 320;
     }
-    void setaltitudeGeoid(int32_t altitude)                                                                   // [m]
+    void setHeightHAE(int32_t altitude)                                                                   // [m]
     {
         if (altitude<-320) altitude = -320;
-        altitudeGeoid = UnsVRencode<int32_t,12>(altitude + 320);
+        heightHAE = UnsVRencode<int32_t,12>(altitude + 320);
     }
 
     float getLatitude() const

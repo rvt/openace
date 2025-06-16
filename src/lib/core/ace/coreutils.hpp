@@ -15,7 +15,7 @@
 
 class CoreUtils
 {
-    // Putting these in scratch mem does work __scratch_y("OpenAceMem") 
+    // Putting these in scratch mem does work __scratch_y("OpenAceMem")
     inline static uint64_t offsetTimeToAbsolute = 0;
     inline static uint32_t timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
 
@@ -224,7 +224,6 @@ public:
         return d * DIAMETER_EARTH_M;
     }
 
-
     static auto northEastDistance(float fromLat, float fromLon, float toLat, float toLon)
     {
         struct relNorthRllEast
@@ -392,7 +391,7 @@ public:
      * See also : https://geographiclib.sourceforge.io/cgi-bin/GeoidEval
      * Note: Only use of the GPS with GGA does nit send the egm96 data
      */
-    static int8_t egm96GeoidOffset(float lat, float lon);
+    static int8_t egmGeoidOffset(float lat, float lon);
 
     /**
      * Add's the checksum and postfix characters to a NMEA string. It may contain an existing checksum that will be overwritten

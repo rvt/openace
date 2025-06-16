@@ -18,8 +18,8 @@
             "address": 0,
             "addressType": "ADSL",
             "category": "ReciprocatingEngine",
-            "privacy": 1,
-            "noTrack": 1,
+            "privacy": 0,
+            "noTrack": 0,
             "protocols": [
                 "OGN",
                 "ADSL",
@@ -180,6 +180,9 @@
             "miso": 12,
             "rst": 15,
             "spi": 1
+        },
+        "port5": {
+            "O0": 26
         }
     }
 }

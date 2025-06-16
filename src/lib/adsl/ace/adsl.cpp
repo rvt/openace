@@ -239,7 +239,7 @@ void ADSL::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
         packet.setLatitude(ownshipPosition.lat);
         packet.setLongitude(ownshipPosition.lon);
         packet.setGroundSpeed(ownshipPosition.groundSpeed);
-        packet.setaltitudeGeoid(static_cast<int32_t>(ownshipPosition.altitudeGeoid));
+        packet.setHeightHAE(static_cast<int32_t>(ownshipPosition.altitudeHAE));
         packet.setVerticalRate(ownshipPosition.verticalSpeed);
         packet.setTrack(ownshipPosition.course);
 
@@ -295,7 +295,7 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
             packet.flightState == ADSL_Packet::FlightState::FS_Airborne, // airBorn
             fLatitude,
             fLongitude,
-            packet.getaltitudeGeoid(),              // relative to WGS84 ellipsoid
+            packet.getHeightHAE(),
             packet.getVerticalRate(),
             packet.getGroundSpeed(),
             static_cast<int16_t>(packet.getTrack()),

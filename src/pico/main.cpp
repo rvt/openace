@@ -156,9 +156,15 @@ static InMemoryStore volatileStore;
 static FlashStore permanentStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 2}; // FLASH_SECTOR_SIZE => 4096 on the PICO
 static OpenAce::ThreadSafeBus<25> bus;
 static Config config(bus, volatileStore, permanentStore, DEFAULT_OPENACE_CONFIG);
-
+volatile static bool loadIndicator = false;
+volatile static int8_t ledStatusIndicatorPin = -1;
 static void load(const etl::string_view str, etl::imessage_bus &bus, const Configuration &config, bool force = false)
 {
+    if (ledStatusIndicatorPin > -1) {
+        gpio_put(ledStatusIndicatorPin, loadIndicator);
+        loadIndicator = !loadIndicator;
+    }
+
     struct HeapLogger
     {
         ~HeapLogger() { printf("\nFree: %d\n\n", xPortGetFreeHeapSize()); }
@@ -267,6 +273,7 @@ static void loadModules(void *arch)
     // load(SerialADSB::NAME, bus, config);
     // puts("\033[2J\033[H");
     puts("All modules loaded!\n");
+    gpio_put(ledStatusIndicatorPin, 1);
 
     vTaskDelete(nullptr);
 }
@@ -285,10 +292,12 @@ static void openAceIdlTask(void *arch)
         if (cyw43_arch_async_context())
         {
             // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+            gpio_put(ledStatusIndicatorPin, 1);
             vTaskDelay(TASK_DELAY_MS(100));
             bus.receive(OpenAce::IdleMsg());
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+            gpio_put(ledStatusIndicatorPin, 0);
             // Sync blink the LED with GPS
             vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
         }
@@ -382,6 +391,14 @@ void vLaunch(void)
     BaseModule::initBase();
     puts("--");
     config.postConstruct();
+
+    /*** Turn on LED ASAP to indicate that the device is on */
+    ledStatusIndicatorPin = config.valueByPath(26, "port5", "O0");
+    gpio_init(ledStatusIndicatorPin);
+    gpio_set_dir(ledStatusIndicatorPin, GPIO_OUT);
+    gpio_put(ledStatusIndicatorPin, 1); // Turn on LED to indicate booting
+    /*** Turn on LED ASAP to indicate that the device is on */
+
     registerModules();
     BaseModule::setModuleStatus(Configuration::NAME, &config);
     BaseModule::setModuleStatus(Config::NAME, &config);

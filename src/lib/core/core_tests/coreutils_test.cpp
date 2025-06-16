@@ -267,3 +267,25 @@ TEST_CASE( "hexStrToByteArray overflow", "[single-file]" )
     REQUIRE( bytes[5] == 0x58 );
     REQUIRE( bytes[6] == 0x12 ); // should stay the same and not turn into AA
 }
+
+TEST_CASE("egmGeoidOffset Example case (51, 4)", "[altitude]") {
+
+    float result = CoreUtils::egmGeoidOffset(51, 4);
+
+    REQUIRE(result  == 45);
+}
+
+TEST_CASE("egmGeoidOffset Example case (72, -15.5)", "[altitude]") {
+
+    float result = CoreUtils::egmGeoidOffset(72, -15.5);
+
+    REQUIRE(result  == 55);
+}
+
+TEST_CASE("egmGeoidOffset Example case (-34, 4) outside of grid", "[altitude]") {
+
+    float result = CoreUtils::egmGeoidOffset(-34, 4);
+
+    REQUIRE(result  == 0);
+}
+

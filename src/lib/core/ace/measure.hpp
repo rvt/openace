@@ -38,7 +38,7 @@ struct Measure
     Measure(const etl::string_view name, uint32_t alertTimeout, uint32_t id) : start_(CoreUtils::timeUs32Raw()), id_(id), alertTimeout_(alertTimeout), name_(name) {}
     ~Measure()
     {
-        auto duration = CoreUtils::timeUs32Raw() - start_;
+        uint32_t duration = static_cast<uint32_t>(CoreUtils::timeUs32Raw() - start_);
         if (duration > alertTimeout_)
         {
             if (id_) {

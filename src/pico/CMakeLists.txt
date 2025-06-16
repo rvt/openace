@@ -46,8 +46,17 @@ endif()
 project(OpenAce C CXX ASM)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-# Set to 0 to use picotool and openocd, and beable to receive UART data over picotool
-set(OPENACE_UART_OVER_USB 0)
+# Allow user to override this option from command line: -DOPENACE_UART_OVER_USB=1
+option(OPENACE_UART_OVER_USB "Enable UART over USB (1) or physical UART (0)" "")
+
+# Set default based on build type if not provided
+if(OPENACE_UART_OVER_USB STREQUAL "")
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(OPENACE_UART_OVER_USB 1 CACHE BOOL "Enable UART over USB by default in Release builds" FORCE)
+  else()
+    set(OPENACE_UART_OVER_USB 0 CACHE BOOL "Enable UART over USB by default in Debug builds" FORCE)
+  endif()
+endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   add_compile_options(

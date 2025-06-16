@@ -27,7 +27,7 @@ OpenAce::PostConstruct Ogn1::postConstruct()
 
 void Ogn1::start()
 {
-    xTaskCreate(ognReceiveTask, Ogn1::NAME.cbegin(), configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(ognReceiveTask, Ogn1::NAME.cbegin(), configMINIMAL_STACK_SIZE + 64, this, tskIDLE_PRIORITY + 2, &taskHandle);
     // auto tuner = static_cast<Tuner *>(BaseModule::moduleByName(*this, Tuner::NAME));
     // tuner->startListen(OpenAce::DataSource::OGN1);
     getBus().subscribe(*this);
@@ -202,11 +202,11 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
             OpenAce::DataSource::OGN1,
             static_cast<OpenAce::AircraftCategory>(packet.Position.AcftType),
             packet.Position.Stealth ? true : false, // Privacy
-            0,                                      // noTrack
+            openAceConfiguration.noTrack,           // noTrack
             1,                                      // airBorn
             fLatitude,
             fLongitude,
-            packet.DecodeAltitude() + CoreUtils::egm96GeoidOffset(fLatitude, fLongitude), // OGN sends Ellipsoid we need MSL
+            packet.DecodeAltitude() + CoreUtils::egmGeoidOffset(fLatitude, fLongitude),   // OGN Sends MSL
             packet.DecodeClimbRate() * .1f,         // Climb Rate is send s 0.1m/s (10 means 1/ms)
             speed0d1ms * .1f,
             static_cast<int16_t>(packet.DecodeHeading() * .1f),
@@ -244,7 +244,7 @@ void Ogn1::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
         packet.EncodeHeading(ownshipPosition.course * 10.f);
         packet.EncodeClimbRate(ownshipPosition.verticalSpeed * 10.f);
         packet.EncodeTurnRate(ownshipPosition.hTurnRate * 10.f);
-        packet.EncodeAltitude(ownshipPosition.heightElipsoid());              // OGN Seems to need height above Elipsoid isntead of MSL
+        packet.EncodeAltitude(ownshipPosition.altitudeHAE);              
         packet.EncodeDOP(gpsStats.pDop + 0.5f);
 
         // TODO: Understand how baro Altitude really works in OGN

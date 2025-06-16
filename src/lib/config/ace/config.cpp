@@ -325,7 +325,7 @@ const OpenAce::Config::OpenAceConfiguration Config::openAceConfig() const
             .addressType = OpenAce::AddressType::ADSL,
             .address = 0,
             .stealth = false,
-            .noTrack = true,
+            .noTrack = false,
             .protocols = protocols};
     }
 

@@ -21,13 +21,12 @@ void DataPort::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
     {
 
-        // START
-        // We properly do not need these sentences
+        // Initially the idea was to 'emulate' a GNS chip, but later decides
+        // to pass through GPS messages. Keeping this code just in case/
         // sendGPRMC(message.position);
         // sendGPGSA(ownshipPosition);
         // sendGPGGA(ownshipPosition);
         // sendPGRMZ(msg.position);
-        // END
         sendPFLAU(msg.position);
     }
 }
@@ -63,11 +62,11 @@ void DataPort::sendPFLAA(const OpenAce::AircraftPositionInfo &position)
 
     // Example: PFLAA: $PFLAA,0,10,7,21,0,B1B1B1,0,,,-0.1,1,48,0,*23
     stream << "$PFLAA,"
-              "0,"                                                            // @todo Alarm Level
-           << position.relNorthFromOwn << ","                                 // Relative North Meters
-           << position.relEastFromOwn << ","                                  // Relative East Meters
-           << (position.altitudeGeoid - ownshipPosition.altitudeGeoid) << "," // Relative Vertical Meters
-           << getPFLAAAddressType(position.addressType) << ",";               // ID Type
+              "0,"                                                        // @todo Alarm Level
+           << position.relNorthFromOwn << ","                             // Relative North Meters
+           << position.relEastFromOwn << ","                              // Relative East Meters
+           << (position.altitudeHAE - ownshipPosition.altitudeHAE) << "," // Relative Vertical Meters
+           << getPFLAAAddressType(position.addressType) << ",";           // ID Type
     CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
     stream << ","                                       // HEXCode example 484FB3!PH-DHA
            << position.course << ","                    // Heading
@@ -163,8 +162,8 @@ void DataPort::sendPFLAU(const OpenAce::OwnshipPositionInfo &position)
 
     // $PFLAU,5,1,1,1,0,,0,,,*
     stream << "$PFLAU,"
-              "0"  // Should be filled in with the number of aircraft we are tracking
-              ",1" // IDially should based on tranceiver status
+              "0"  // Should be filled in with the number of aircraft we are tracking But does not seem to be required
+              ",1" // Idially should based on tranceiver status
               ",1,1,0,,0,,,";
 
     CoreUtils::addChecksumToNMEA(pflau);
@@ -253,119 +252,119 @@ void DataPort::decimalDegreesToDMM(float degrees, int8_t &deg, float &min)
 /**
  * GPRMC – NMEA minimum recommended GPS navigation data
  */
-void DataPort::sendGPRMC(const OpenAce::AircraftPositionInfo &position)
-{
-    time_t timet;
-    struct tm *ptm;
-    time(&timet);
-    ptm = gmtime(&timet);
-    OpenAce::NMEAString gnrmc;
-    etl::string_stream stream(gnrmc);
+// void DataPort::sendGPRMC(const OpenAce::OwnshipPositionInfo &position)
+// {
+//     time_t timet;
+//     struct tm *ptm;
+//     time(&timet);
+//     ptm = gmtime(&timet);
+//     OpenAce::NMEAString gnrmc;
+//     etl::string_stream stream(gnrmc);
 
-    int8_t latDeg, lonDeg;
-    float latMin, lonMin;
-    decimalDegreesToDMM(position.lat, latDeg, latMin);
-    decimalDegreesToDMM(position.lon, lonDeg, lonMin);
+//     int8_t latDeg, lonDeg;
+//     float latMin, lonMin;
+//     decimalDegreesToDMM(position.lat, latDeg, latMin);
+//     decimalDegreesToDMM(position.lon, lonDeg, lonMin);
 
-    // SkyDemon want's to see GPRMC, not GNRMC
-    stream << "$GPRMC,"
-           << etl::format_spec{}.width(2).fill('0') << ptm->tm_hour << ptm->tm_min << ptm->tm_sec << OpenAce::RESET_FORMAT << "." << position.timestamp % 1000 << ","                              // @todo validate if position.timestamp%1000 is correct
-           << "A,"                                                                                                                                                                                 // validity - A-ok, V-invalid
-           << etl::format_spec{}.width(2).fill('0') << latDeg << etl::format_spec{}.precision(5).width(8).fill('0') << latMin << OpenAce::RESET_FORMAT << "," << (position.lat >= 0 ? "N," : "S,") // Latitude
-           << etl::format_spec{}.width(3).fill('0') << lonDeg << etl::format_spec{}.precision(5).width(8).fill('0') << lonMin << OpenAce::RESET_FORMAT << "," << (position.lon >= 0 ? "E," : "W,") // Longitude
-           << position.groundSpeed * MS_TO_KN << ","                                                                                                                                               // Speed over ground
-           << position.course << ","                                                                                                                                                               // Course over ground
-           << etl::format_spec{}.width(2).fill('0') << ptm->tm_mday << ptm->tm_mon + 1 << (ptm->tm_year + 1900 - 2000) << OpenAce::RESET_FORMAT << ","                                             // Date
-           << ","                                                                                                                                                                                  // Magnetic variation
-           << ","                                                                                                                                                                                  // Magnetic variation direction
-           << "D";                                                                                                                                                                                 // A = Autonomous, D = DGPS, E =DR
+//     // SkyDemon want's to see GPRMC, not GNRMC
+//     stream << "$GPRMC,"
+//            << etl::format_spec{}.width(2).fill('0') << ptm->tm_hour << ptm->tm_min << ptm->tm_sec << OpenAce::RESET_FORMAT << "." << position.timestamp % 1000 << ","                              // @todo validate if position.timestamp%1000 is correct
+//            << "A,"                                                                                                                                                                                 // validity - A-ok, V-invalid
+//            << etl::format_spec{}.width(2).fill('0') << latDeg << etl::format_spec{}.precision(5).width(8).fill('0') << latMin << OpenAce::RESET_FORMAT << "," << (position.lat >= 0 ? "N," : "S,") // Latitude
+//            << etl::format_spec{}.width(3).fill('0') << lonDeg << etl::format_spec{}.precision(5).width(8).fill('0') << lonMin << OpenAce::RESET_FORMAT << "," << (position.lon >= 0 ? "E," : "W,") // Longitude
+//            << position.groundSpeed * MS_TO_KN << ","                                                                                                                                               // Speed over ground
+//            << position.course << ","                                                                                                                                                               // Course over ground
+//            << etl::format_spec{}.width(2).fill('0') << ptm->tm_mday << ptm->tm_mon + 1 << (ptm->tm_year + 1900 - 2000) << OpenAce::RESET_FORMAT << ","                                             // Date
+//            << ","                                                                                                                                                                                  // Magnetic variation
+//            << ","                                                                                                                                                                                  // Magnetic variation direction
+//            << "D";                                                                                                                                                                                 // A = Autonomous, D = DGPS, E =DR
 
-    CoreUtils::addChecksumToNMEA(gnrmc);
-    getBus().receive(OpenAce::DataPortMsg{gnrmc});
-    statistics.messages++;
-}
+//     CoreUtils::addChecksumToNMEA(gnrmc);
+//     getBus().receive(OpenAce::DataPortMsg{gnrmc});
+//     statistics.messages++;
+// }
 
-void DataPort::sendPGRMZ(const OpenAce::OwnshipPositionInfo &position)
-{
-    //         // (int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
-    OpenAce::NMEAString pgrmz;
-    etl::string_stream stream(pgrmz);
+// void DataPort::sendPGRMZ(const OpenAce::OwnshipPositionInfo &position)
+// {
+//     //         // (int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
+//     OpenAce::NMEAString pgrmz;
+//     etl::string_stream stream(pgrmz);
 
-    stream << "$PGRMZ,"
-           << position.altitudeGeoid << "," // @todo Convert by estimate or read out barometric altitude
-           << "f,"                          // Altitude unit
-           << "3";                          // @todo Fix type 2=2D 3=3D
+//     stream << "$PGRMZ,"
+//            << (position.altitudeHAE - position.geoidSeparation) * M_TO_FT << "," // @todo: Not clear what altitude this really is
+//            << "f,"                          // Altitude unit
+//            << "3";                          // @todo Fix type 2=2D 3=3D
 
-    // example $PGRMZ,295,f,3*15
-    CoreUtils::addChecksumToNMEA(pgrmz);
-    getBus().receive(OpenAce::DataPortMsg{pgrmz});
-    statistics.messages++;
-}
+//     // example $PGRMZ,295,f,3*15
+//     CoreUtils::addChecksumToNMEA(pgrmz);
+//     getBus().receive(OpenAce::DataPortMsg{pgrmz});
+//     statistics.messages++;
+// }
 
 /**
  * GNGSA – GPS DOP and active satellites
  */
-void DataPort::sendGNGSA(const OpenAce::AircraftPositionInfo &position)
-{
-    (void)position;
-    // (int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
-    // OpenAce::NMEAString nmeaString="$PFLANC,A,ERROR";
+// void DataPort::sendGNGSA(const OpenAce::AircraftPositionInfo &position)
+// {
+//     (void)position;
+//     // (int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
+//     // OpenAce::NMEAString nmeaString="$PFLANC,A,ERROR";
 
-    OpenAce::NMEAString gngsa{"$GNGSA,A,3,,,,,,,,,,,,,1.0,1.0,1.0"};
-    CoreUtils::addChecksumToNMEA(gngsa);
-    getBus().receive(OpenAce::DataPortMsg{gngsa});
-    statistics.messages++;
-}
+//     OpenAce::NMEAString gngsa{"$GNGSA,A,3,,,,,,,,,,,,,1.0,1.0,1.0"};
+//     CoreUtils::addChecksumToNMEA(gngsa);
+//     getBus().receive(OpenAce::DataPortMsg{gngsa});
+//     statistics.messages++;
+// }
 
-void DataPort::sendGPGGA(const OpenAce::AircraftPositionInfo &position)
-{
-    (void)position;
-    time_t timet;
-    struct tm *ptm;
-    time(&timet);
-    ptm = gmtime(&timet);
+// void DataPort::sendGPGGA(const OpenAce::OwnshipPositionInfo &position)
+// {
+//     (void)position;
+//     time_t timet;
+//     struct tm *ptm;
+//     time(&timet);
+//     ptm = gmtime(&timet);
 
-    OpenAce::NMEAString gngga;
-    etl::string_stream stream(gngga);
+//     OpenAce::NMEAString gngga;
+//     etl::string_stream stream(gngga);
 
-    int8_t latDeg, lonDeg;
-    float latMin, lonMin;
-    decimalDegreesToDMM(position.lat, latDeg, latMin);
-    decimalDegreesToDMM(position.lon, lonDeg, lonMin);
+//     int8_t latDeg, lonDeg;
+//     float latMin, lonMin;
+//     decimalDegreesToDMM(position.lat, latDeg, latMin);
+//     decimalDegreesToDMM(position.lon, lonDeg, lonMin);
 
-    // SkyDemon want's to see GPGGA not GNGGA
-    stream << "$GPGGA,"
-           << etl::format_spec{}.width(2).fill('0') << ptm->tm_hour << ptm->tm_min << ptm->tm_sec << OpenAce::RESET_FORMAT << "." << position.timestamp % 1000 << ","                              // @todo validate if position.timestamp%1000 is correct
-           << etl::format_spec{}.width(2).fill('0') << latDeg << etl::format_spec{}.precision(5).width(8).fill('0') << latMin << OpenAce::RESET_FORMAT << "," << (position.lat >= 0 ? "N," : "S,") // Latitude
-           << etl::format_spec{}.width(3).fill('0') << lonDeg << etl::format_spec{}.precision(5).width(8).fill('0') << lonMin << OpenAce::RESET_FORMAT << "," << (position.lon >= 0 ? "E," : "W,") // Longitude
-           << "2,"                                                                                                                                                                                 // 1==GPS, 2=DGPS, 9=DBAS
-           << "6,"                                                                                                                                                                                 // Number of satellites
-           << "1.0,"                                                                                                                                                                               // Horizontal dilution of position (hdop)
-           << position.altitudeGeoid << ","                                                                                                                                                        // Altitude Wgs84
-           << "M,"                                                                                                                                                                                 // Altitude unit
-           << "0,"                                                                                                                                                                                 // Geoid Separation
-           << "M,"                                                                                                                                                                                 // Unit
-           << ","                                                                                                                                                                                  // age of differential GPS data
-           << "";                                                                                                                                                                                  // Differential reference station ID
+//     // SkyDemon want's to see GPGGA not GNGGA
+//     stream << "$GPGGA,"
+//            << etl::format_spec{}.width(2).fill('0') << ptm->tm_hour << ptm->tm_min << ptm->tm_sec << OpenAce::RESET_FORMAT << "." << position.timestamp % 1000 << ","                              // @todo validate if position.timestamp%1000 is correct
+//            << etl::format_spec{}.width(2).fill('0') << latDeg << etl::format_spec{}.precision(5).width(8).fill('0') << latMin << OpenAce::RESET_FORMAT << "," << (position.lat >= 0 ? "N," : "S,") // Latitude
+//            << etl::format_spec{}.width(3).fill('0') << lonDeg << etl::format_spec{}.precision(5).width(8).fill('0') << lonMin << OpenAce::RESET_FORMAT << "," << (position.lon >= 0 ? "E," : "W,") // Longitude
+//            << "2,"                                                                                                                                                                                 // 1==GPS, 2=DGPS, 9=DBAS
+//            << "6,"                                                                                                                                                                                 // Number of satellites
+//            << "1.0,"                                                                                                                                                                               // Horizontal dilution of position (hdop)
+//            << (position.altitudeHAE - position.geoidSeparation) << ","                                                                                                                                                        // Altitude Wgs84
+//            << "M,"                                                                                                                                                                                 // Altitude unit
+//            << "position.geoidSeparation,"                                                                                                                                                                                 // Geoid Separation
+//            << "M,"                                                                                                                                                                                 // Unit
+//            << ","                                                                                                                                                                                  // age of differential GPS data
+//            << "";                                                                                                                                                                                  // Differential reference station ID
 
-    CoreUtils::addChecksumToNMEA(gngga);
-    getBus().receive(OpenAce::DataPortMsg{gngga});
-    statistics.messages++;
-}
+//     CoreUtils::addChecksumToNMEA(gngga);
+//     getBus().receive(OpenAce::DataPortMsg{gngga});
+//     statistics.messages++;
+// }
 
 /**
  * We seem to need this to get altitude in SkyDemon
  */
-void DataPort::sendGPGSA()
-{
-    OpenAce::NMEAString gpgsa;
-    etl::string_stream stream(gpgsa);
+// void DataPort::sendGPGSA()
+// {
+//     OpenAce::NMEAString gpgsa;
+//     etl::string_stream stream(gpgsa);
 
-    stream << "$GPGSA,A,3,,,,,,,,,,,,,1.0,1.0,1.0";
-    CoreUtils::addChecksumToNMEA(gpgsa);
-    getBus().receive(OpenAce::DataPortMsg{gpgsa});
-    statistics.messages++;
-}
+//     stream << "$GPGSA,A,3,,,,,,,,,,,,,1.0,1.0,1.0";
+//     CoreUtils::addChecksumToNMEA(gpgsa);
+//     getBus().receive(OpenAce::DataPortMsg{gpgsa});
+//     statistics.messages++;
+// }
 
 void DataPort::sendLK8EX1()
 {

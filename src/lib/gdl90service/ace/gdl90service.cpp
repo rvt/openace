@@ -116,7 +116,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, pos.heightElipsoid() * M_TO_FT);
+    gdl90.altitude_encode(altitude, pos.altitudeHAE * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
@@ -154,7 +154,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
         bool vertical_warning = true;
         constexpr float vertical_figure_of_merit_f = 0;
         uint32_t vertical_figure_of_merit;
-        gdl90.geo_altitude_encode(geo_altitude, pos.heightElipsoid() * M_TO_FT); 
+        gdl90.geo_altitude_encode(geo_altitude, pos.altitudeHAE * M_TO_FT); 
         gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
         if (gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
         {
@@ -186,7 +186,7 @@ void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, (pos.altitudeGeoid - geoidSeparation) * M_TO_FT);
+    gdl90.altitude_encode(altitude, (pos.altitudeHAE + geoidSeparation) * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);

@@ -58,6 +58,7 @@
 #define ETL_VERBOSE_ERRORS ( 1 )
 #define ETL_LOG_ERRORS ( 1 )
 #define ETL_DEBUG ( 1 )
+#define ETL_CHECK_PUSH_POP ( 1)
 #define OPENACE_LWIP_DEBUG ( 1 )
 #define OPENACE_FREERTOS_DEBUG ( 1 )
 #define PICO_ENTER_USB_BOOT_ON_EXIT ( 1 )

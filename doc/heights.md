@@ -1,5 +1,7 @@
 # Understanding Geodetic Heights: Notes and Clarifications
 
+[<img src="img/Discord-Logo-Blurple.png" height="25px">](https://discord.gg/xfRNnhMY)
+
 Heights and reference systems in geodesy and aviation can be confusing. Here is a summary of what I’ve learned so far.
 
 ---
@@ -30,25 +32,27 @@ Heights and reference systems in geodesy and aviation can be confusing. Here is 
 
 ## Protocol-Specific Altitude References
 
-| Protocol       | Altitude Reference        |
-|----------------|---------------------------|
-| FLARM          | MSL          |
-| OGN            | Ellipsoid WGS84             |
-| ADS-L          | MSL          |
-| FANET          | MSL  |
-| ADS-B (online) | Ellipsoid WGS84 or Barometric, when QNH if available |
-| GDL90 (e.g., ForeFlight) | Can specify either WGS84 or MSL (via capability flags). OpenAce uses bit 0 = 0 to indicate WGS84 Ellipsoid. Howdver SkyDemon seems to want |
+| Protocol                 | Altitude Reference                                      | Notes                                                                               |
+| ------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| FLARM                    | Altitude above WGS-84 Ellipsoid                         | Some sources say Hight Above Elipsoid, however OGN Stations seems to indicare MSL?? |
+| OGN                      | Altitude above Geoid (MSL)                              |                                                                                     |
+| ADS-L                    | ADS-L.4.SRD860.G.1.7 Altitude above WGS-84 Ellipsoid    |                                                                                     |
+| FANET                    | Altitude above Geoid (MSL)                              |                                                                                     |
+| ADS-B (online)           | Ellipsoid WGS84 or Barometric, when QNH if available    | When  barometric is known, math is applied to estimate WGS-84 Ellipsopid            |
+| GDL90 (e.g., ForeFlight) | Can specify either WGS84 or MSL (via capability flags). | GA/TAS uses bit 0 = 0 to indicate WGS84 Ellipsoid with GDL90                        |
 
 ---
 
 ## Calculating Altitudes
 
-For OpenAce, GGA messages we use altitude MSL and the geodicHight
+For GA/TAS, GGA messages we use altitude MSL and the geodicHight
 
-MSL (Orthometric Height) = Ellipsoid Height − Geoid Separation
-Ellipsoid Height = MSL (Orthometric Height) + Geoid Separation
+`MSL (Orthometric Height) = Ellipsoid Height − Geoid Separation`
+`Ellipsoid Height = MSL (Orthometric Height) + Geoid Separation`
 
 This allows you to present GPS-derived altitude in a way that aligns with traditional barometric references.
+
+Internaly all altitudes are converted to Height Above Elippsoid, this makes it far easer to show relative altitudes and have correct estimates if a plane in distance is above or below us.
 
 ---
 

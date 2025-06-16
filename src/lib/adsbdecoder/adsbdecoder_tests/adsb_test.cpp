@@ -83,7 +83,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
     int lowestPlane = 50000;
 
     std::string line;
-    adsbDecoder.ownshipPosition.altitudeGeoid = 10000;
+    adsbDecoder.ownshipPosition.altitudeHAE = 10000;
     adsbDecoder.filterAbove = 50000;
     adsbDecoder.filterBelow = 50000;
     while (std::getline(infile, line))
@@ -97,13 +97,13 @@ TEST_CASE("Test filter below and above", "[single-file]")
         {
             REQUIRE(test.position.address != 0);
 
-            if (test.position.altitudeGeoid > higestPlane)
+            if (test.position.altitudeHAE > higestPlane)
             {
-                higestPlane = test.position.altitudeGeoid;
+                higestPlane = test.position.altitudeHAE;
             }
-            if (test.position.altitudeGeoid < lowestPlane)
+            if (test.position.altitudeHAE < lowestPlane)
             {
-                lowestPlane = test.position.altitudeGeoid;
+                lowestPlane = test.position.altitudeHAE;
             }
         }
     }
@@ -115,7 +115,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
     infile.seekg(0, std::ios::beg); // back to the start!
     adsbDecoder.filterAbove = 1000;
     adsbDecoder.filterBelow = 1000;
-    adsbDecoder.ownshipPosition.altitudeGeoid = lowestPlane - adsbDecoder.filterAbove;
+    adsbDecoder.ownshipPosition.altitudeHAE = lowestPlane - adsbDecoder.filterAbove;
     get_absolute_timeValue += 10000000;
     while (std::getline(infile, line))
     {
@@ -137,7 +137,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
     adsbDecoder.postConstruct();    // Also clears current internal status
     adsbDecoder.filterAbove = 1000;
     adsbDecoder.filterBelow = 1000;
-    adsbDecoder.ownshipPosition.altitudeGeoid = higestPlane;
+    adsbDecoder.ownshipPosition.altitudeHAE = higestPlane;
     get_absolute_timeValue += 100'000'000;
     totalPlanes = 0;
     while (std::getline(infile, line))
@@ -170,7 +170,7 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
     adsbDecoder.filterBelow = 50000;
 
     test.received = false;
-    adsbDecoder.ownshipPosition.altitudeGeoid = 10000;
+    adsbDecoder.ownshipPosition.altitudeHAE = 10000;
     adsbDecoder.ownshipPosition.lat = 52.1;
     adsbDecoder.ownshipPosition.lon = 4.8;
 
@@ -187,7 +187,8 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
     REQUIRE(test.position.addressType == OpenAce::AddressType::ICAO);
     REQUIRE(test.position.dataSource == OpenAce::DataSource::ADSB);
     REQUIRE(test.position.aircraftType == OpenAce::AircraftCategory::Unknown);
-    REQUIRE(test.position.altitudeGeoid == 9029);
+    // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html  for 52.3888,4.7209
+    REQUIRE(test.position.altitudeHAE == /*9029*/ 9072); // geoid aprox 43m
     REQUIRE(test.position.groundSpeed == Catch::Approx(230.98).margin(0.1)); // in m/s
     REQUIRE(test.position.course == 25);                                     // ADSB data shows 25.94.. Should we use floats instead of int?
     REQUIRE(test.position.lat == Catch::Approx(52.3888).margin(0.005));
@@ -212,7 +213,7 @@ TEST_CASE("Test descending aircraft", "[single-file]")
     adsbDecoder.filterBelow = 50000;
 
     test.received = false;
-    adsbDecoder.ownshipPosition.altitudeGeoid = 10000;
+    adsbDecoder.ownshipPosition.altitudeHAE = 10000;
     adsbDecoder.ownshipPosition.lat = 52.1;
     adsbDecoder.ownshipPosition.lon = 4.8;
 

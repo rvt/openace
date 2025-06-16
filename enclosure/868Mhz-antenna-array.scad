@@ -199,7 +199,7 @@ diff("remove") cube([ WIDTH, DEPTH, 2 ], anchor = BOTTOM)
 	}
 	back(10)
 	{
-		position(TOP + FRONT) linear_extrude(0.2) text("OpenAce", font = "Arial Black", size = 5, anchor = CENTER);
+		position(TOP + FRONT) linear_extrude(0.2) text("GA/TAS", font = "Arial Black", size = 5, anchor = CENTER);
 	}
 }
 }

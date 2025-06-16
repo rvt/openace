@@ -78,7 +78,7 @@ void FanetAce::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
         FANET::TrackingPayload payload;
         payload.latitude(ownshipPosition.lat)
             .longitude(ownshipPosition.lon)
-            .altitude(ownshipPosition.altitudeGeoid)
+            .altitude(ownshipPosition.heightMsl())
             .speed(ownshipPosition.groundSpeed * MS_TO_KPH)
             .groundTrack(ownshipPosition.course)
             .climbRate(ownshipPosition.verticalSpeed)
@@ -180,7 +180,7 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
                 tp.speed() > (OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN * MS_TO_KPH),
                 tp.latitude(),
                 tp.longitude(),
-                tp.altitude(),
+                tp.altitude() + CoreUtils::egmGeoidOffset(tp.latitude(), tp.longitude()),
                 tp.climbRate(),
                 tp.speed() * KPH_TO_MS,
                 static_cast<int16_t>(tp.groundTrack()),
@@ -217,7 +217,7 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
                 false,
                 tp.latitude(),
                 tp.longitude(),
-                ownshipPosition.heightElipsoid(),
+                ownshipPosition.heightMsl(),
                 0,
                 0,
                 0,

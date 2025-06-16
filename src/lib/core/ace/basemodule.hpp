@@ -285,19 +285,19 @@ public:
         Radio::Mode mode;               // Mode of the radio
         OpenAce::DataSource dataSource; // Data source
         uint8_t packetLength;           // Total packet length including CRC
-        uint8_t preambleLength;         // Preamble length in bits
+        uint8_t txPreambleLength;       // Preamble length in bits during transmission
         uint8_t codingRate;             // Coding rate for LORA packages
         uint8_t syncLength;
         etl::array<uint8_t, 10> syncWord; // Sync word
 
-        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t preambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
-            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), preambleLength(preambleLength_), codingRate(codingRate_), syncLength(syncLength_), syncWord(syncWord_) {}
+        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t txPreambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
+            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), txPreambleLength(txPreambleLength_), codingRate(codingRate_), syncLength(syncLength_), syncWord(syncWord_) {}
 
         constexpr ProtocolConfig(const ProtocolConfig &other)
             : mode(other.mode),
               dataSource(other.dataSource),
               packetLength(other.packetLength),
-              preambleLength(other.preambleLength),
+              txPreambleLength(other.txPreambleLength),
               codingRate(other.codingRate),
               syncLength(other.syncLength),
               syncWord(other.syncWord) {}
