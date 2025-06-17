@@ -14,11 +14,11 @@
 
 #include "adsbdecoder.hpp"
 
-class Test : public etl::message_router<Test, OpenAce::AircraftPositionMsg>
+class Test : public etl::message_router<Test, GATAS::AircraftPositionMsg>
 {
 
 public:
-    OpenAce::AircraftPositionInfo position;
+    GATAS::AircraftPositionInfo position;
     etl::imessage_bus *bus;
     bool received = false;
     Test(etl::imessage_bus *bus_) : bus(bus_)
@@ -30,7 +30,7 @@ public:
         bus->unsubscribe(*this);
     }
 
-    void on_receive(const OpenAce::AircraftPositionMsg &msg)
+    void on_receive(const GATAS::AircraftPositionMsg &msg)
     {
         // printf("AircraftPosition Received\n");
         received = true;
@@ -42,10 +42,10 @@ public:
     }
 };
 
-OpenAce::ThreadSafeBus<50> bus;
+GATAS::ThreadSafeBus<50> bus;
 MockConfig mockConfig{bus};
 
-auto ownship = OpenAce::OwnshipPositionInfo{
+auto ownship = GATAS::OwnshipPositionInfo{
     CoreUtils::timeUs32(),
     true,
     52.2,
@@ -65,8 +65,8 @@ TEST_CASE("Test filter below and above", "[single-file]")
 {
     xSemaphoreTakeValue = pdTRUE;
     ADSBDecoder adsbDecoder{bus, mockConfig};
-    adsbDecoder.on_receive(OpenAce::AdapativeRadiusMsg{10'000'000});
-    adsbDecoder.on_receive(OpenAce::OwnshipPositionMsg{ownship});
+    adsbDecoder.on_receive(GATAS::AdapativeRadiusMsg{10'000'000});
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
     uint8_t data[24];
     Test test{&bus};
@@ -151,7 +151,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
         {
             totalPlanes++;
         }
-        adsbDecoder.on_receive(OpenAce::IdleMsg());
+        adsbDecoder.on_receive(GATAS::IdleMsg());
     }
     printf("Total Planes below: %d\n", totalPlanes);
     REQUIRE(totalPlanes == 4600);
@@ -162,8 +162,8 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
 {
     xSemaphoreTakeValue = pdTRUE;
     ADSBDecoder adsbDecoder{bus, mockConfig};
-    adsbDecoder.on_receive(OpenAce::AdapativeRadiusMsg{1'000'000});
-    adsbDecoder.on_receive(OpenAce::OwnshipPositionMsg{ownship});
+    adsbDecoder.on_receive(GATAS::AdapativeRadiusMsg{1'000'000});
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
     Test test{&bus};
     adsbDecoder.filterAbove = 50000;
@@ -184,9 +184,9 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
 
     REQUIRE(test.received == true);
     REQUIRE(test.position.address == 0x502CD1);
-    REQUIRE(test.position.addressType == OpenAce::AddressType::ICAO);
-    REQUIRE(test.position.dataSource == OpenAce::DataSource::ADSB);
-    REQUIRE(test.position.aircraftType == OpenAce::AircraftCategory::Unknown);
+    REQUIRE(test.position.addressType == GATAS::AddressType::ICAO);
+    REQUIRE(test.position.dataSource == GATAS::DataSource::ADSB);
+    REQUIRE(test.position.aircraftType == GATAS::AircraftCategory::Unknown);
     // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html  for 52.3888,4.7209
     REQUIRE(test.position.altitudeHAE == /*9029*/ 9072); // geoid aprox 43m
     REQUIRE(test.position.groundSpeed == Catch::Approx(230.98).margin(0.1)); // in m/s
@@ -205,8 +205,8 @@ TEST_CASE("Test descending aircraft", "[single-file]")
 {
     xSemaphoreTakeValue = pdTRUE;
     ADSBDecoder adsbDecoder{bus, mockConfig};
-    adsbDecoder.on_receive(OpenAce::AdapativeRadiusMsg{1'000'000});
-    adsbDecoder.on_receive(OpenAce::OwnshipPositionMsg{ownship});
+    adsbDecoder.on_receive(GATAS::AdapativeRadiusMsg{1'000'000});
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
     Test test{&bus};
     adsbDecoder.filterAbove = 50000;

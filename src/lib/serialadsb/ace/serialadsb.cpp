@@ -19,17 +19,17 @@ void SerialADSB::stop()
     xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
 };
 
-OpenAce::PostConstruct SerialADSB::postConstruct()
+GATAS::PostConstruct SerialADSB::postConstruct()
 {
     pioSerial.postConstruct();
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void SerialADSB::serialADSBTask(void *arg)
 {
     SerialADSB *serialAdsb = static_cast<SerialADSB *>(arg);
     serialAdsb->statistics.queueFullErr = 0;
-    OpenAce::ADSBString sentence;
+    GATAS::ADSBString sentence;
     while (true)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
@@ -46,7 +46,7 @@ void SerialADSB::serialADSBTask(void *arg)
                 {
                     serialAdsb->statistics.totalReceived++;
                     // Finalise implementation to create the binary message here and send
-//                    serialAdsb->getBus().receive(OpenAce::ADSBMessageBin{sentence});
+//                    serialAdsb->getBus().receive(GATAS::ADSBMessageBin{sentence});
                 }
             }
         }

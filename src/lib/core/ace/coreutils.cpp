@@ -8,10 +8,10 @@
 #endif
 
 
-const etl::vector<OpenAce::Modulename, 7> CoreUtils::parsePath(const etl::string_view path)
+const etl::vector<GATAS::Modulename, 7> CoreUtils::parsePath(const etl::string_view path)
 {
     using StringView = etl::string_view ;
-    using Vector     = etl::vector<OpenAce::Modulename, 7>;
+    using Vector     = etl::vector<GATAS::Modulename, 7>;
     using Token      = etl::optional<StringView>;
 
     Vector tokens;

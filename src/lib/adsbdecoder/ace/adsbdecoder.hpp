@@ -25,7 +25,7 @@
 /**
  * ADSBDecoder decodes ADSB message from a ADSB device and forwards that as NMEA Strings
  */
-class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, OpenAce::ADSBMessageBin, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg, OpenAce::IdleMsg, OpenAce::AdapativeRadiusMsg>
+class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, GATAS::ADSBMessageBin, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::IdleMsg, GATAS::AdapativeRadiusMsg>
 {
 private:
     static constexpr uint8_t MAX_PLANES_TRACKED = 64;
@@ -53,7 +53,7 @@ private:
     int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed
     mode_s_t state;      
     SemaphoreHandle_t mutex;
-    OpenAce::OwnshipPositionInfo ownshipPosition;
+    GATAS::OwnshipPositionInfo ownshipPosition;
     uint32_t filterRadius=100'000;
     
 public:
@@ -68,7 +68,7 @@ public:
     {
     }
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 
@@ -79,18 +79,18 @@ public:
 private:
     void getConfiguration(const Configuration &config);
 
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
 
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
-    void on_receive(const OpenAce::IdleMsg &msg);
+    void on_receive(const GATAS::IdleMsg &msg);
 
-    void on_receive(const OpenAce::AdapativeRadiusMsg &msg);
+    void on_receive(const GATAS::AdapativeRadiusMsg &msg);
 
     /**
      * Change a hex string into a byte array
      */
-    void on_receive(const OpenAce::ADSBMessageBin &msg);
+    void on_receive(const GATAS::ADSBMessageBin &msg);
 
     virtual void receiveBinary(const uint8_t* data, uint8_t length) override;
     void processAdsbData(const uint8_t* data, uint8_t length);

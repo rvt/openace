@@ -110,7 +110,7 @@ class WifiServiceConfig extends ModuleConfig {
   _setFormData(data) {
     // Get Access Point
     if (data == null || data.ap == null || data.ap.password == null || data.ap.password.length < 8 || data.ap.ssid == null || data.ap.ssid.length < 4) {
-      this.$refs.apssid.value = "OpenAce";
+      this.$refs.apssid.value = "GATAS";
       this.$refs.appassword.value = "12345678";
     } else {
       this.$refs.apssid.value = data.ap.ssid;
@@ -159,7 +159,7 @@ class WifiServiceConfig extends ModuleConfig {
       <form ref="form" autocomplete="off" novalidate="novalidate">
          <hr>
          <h5>Client configuration</h5>
-         <p>OpenAce will try to connect to each of the configured access points, if no content is possible the an Access Point will be created</p>
+         <p>GaTas will try to connect to each of the configured access points, if no content is possible the an Access Point will be created</p>
         <div class="grid md-columns-2 lg-columns-2">
             ${this.clientsIds.map(
               (id) => html`
@@ -180,7 +180,7 @@ class WifiServiceConfig extends ModuleConfig {
           </div>
           <hr>
         <h5>Access Point configuration</h5>
-        <p>Access point configuration. This AP will be created if OpenAce could not connect to any other Access Points.
+        <p>Access point configuration. This AP will be created if GaTas could not connect to any other Access Points.
           <div class="alert alert-warning">
             This access point does not support routing to the internet.
           </div>
@@ -441,7 +441,7 @@ class GDLoverUDPConfig extends ModuleConfig {
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-right text-left mh-200 overflow-auto">
-              Each device connected to OpenAce will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to four
+              Each device connected to GaTas will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to four
               different ports can be configured to accommodate devices that listen on other ports. Default port is <b>4000</b>
             </p>
           </label>
@@ -541,7 +541,7 @@ class Dump1090ClientConfig extends ModuleConfig {
     return html`
       <h4>Configuration of the Dump1090 Client</h4>
       <p>
-        This module enables reading ADS-B data in the format '*8D7C7181215D01A08208204D8BF1;' from an external system like Dump1090 into OpenAce (port
+        This module enables reading ADS-B data in the format '*8D7C7181215D01A08208204D8BF1;' from an external system like Dump1090 into GaTas (port
         &lt;IP&gt;:30002), processing them as traffic targets. Ensure that the ADSBDecoder is enabled and there is traffic within the filtered ranges above or
         below so you will actually see them.
           <div class="alert alert-warning">
@@ -686,7 +686,7 @@ class BluetoothConfig extends ModuleConfig {
   _setFormData(data) {
     // Get Access Point
     if (data == null || data.localName == null) {
-      this.$refs.localName.value = "OpenAce";
+      this.$refs.localName.value = "GaTas";
     } else {
       this.$refs.localName.value = data.localName;
     }
@@ -712,11 +712,11 @@ class BluetoothConfig extends ModuleConfig {
         <div class="row g-0">
           <label for="localName">
             Device Name:
-            <input type="text" id="localName" ref="localName" placeholder="OpenAce" />
+            <input type="text" id="localName" ref="localName" placeholder="GaTas" />
           </label>
         </div>
         <div class="row g-0">
-          <label for="rfComm">             
+          <label for="rfComm">
             <input type="checkbox" id="rfComm" id="rfComm" ref="rfComm" placeholder="0" />
             Enable SPP (Serial Port Profile) on Bluetooth. Normally just BLE is enough for systems like SkyDemon.
           </label>

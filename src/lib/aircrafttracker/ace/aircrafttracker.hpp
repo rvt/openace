@@ -25,7 +25,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class AircraftTracker : public BaseModule, public etl::message_router<AircraftTracker, OpenAce::ConfigUpdatedMsg, OpenAce::AircraftPositionMsg, OpenAce::IdleMsg>
+class AircraftTracker : public BaseModule, public etl::message_router<AircraftTracker, GATAS::ConfigUpdatedMsg, GATAS::AircraftPositionMsg, GATAS::IdleMsg>
 {
 private:
     friend class message_router;
@@ -46,7 +46,7 @@ private:
     {
         uint32_t nextSendTime;
         uint8_t numberOfTries;
-        OpenAce::AircraftPositionInfo position;
+        GATAS::AircraftPositionInfo position;
         bool operator<(const TrackInfo &other) const
         {
             return nextSendTime < other.nextSendTime;
@@ -55,12 +55,12 @@ private:
 
     TaskHandle_t taskHandle;
     TrackerData<MAX_TRACKING_PLANES, TIMESLICES> trackedAircraft;
-    OpenAce::AircraftAddress ownshipAddress;
+    GATAS::AircraftAddress ownshipAddress;
 
     // Producer Consumer queue to handle data between this task and the send task
-    etl::queue_spsc_atomic<OpenAce::AircraftPositionInfo, 8, etl::memory_model::MEMORY_MODEL_SMALL> queue;
-    using ProtocolRadPattern = OpenAce::AntennaRadiationPattern<OPENACE_STATSCOLLECTOR_NUM_RADIALS>;
-    etl::array<ProtocolRadPattern, static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS)> antennaRadiationPattern;
+    etl::queue_spsc_atomic<GATAS::AircraftPositionInfo, 8, etl::memory_model::MEMORY_MODEL_SMALL> queue;
+    using ProtocolRadPattern = GATAS::AntennaRadiationPattern<GATAS_STATSCOLLECTOR_NUM_RADIALS>;
+    etl::array<ProtocolRadPattern, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> antennaRadiationPattern;
 
     enum TaskState : uint32_t
     {
@@ -71,17 +71,17 @@ private:
     };
 
     void on_receive_unknown(const etl::imessage &msg);
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
-    void on_receive(const OpenAce::AircraftPositionMsg &msg);
-    void on_receive(const OpenAce::IdleMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::AircraftPositionMsg &msg);
+    void on_receive(const GATAS::IdleMsg &msg);
     static void aircraftTrackerTask(void *arg);
     void handleNew();
     void sendEligibleAircraft();
     void maintenance();
 
-    void handleTrackedAircraft(const OpenAce::AircraftPositionInfo &position)
+    void handleTrackedAircraft(const GATAS::AircraftPositionInfo &position)
     {
-        getBus().receive(OpenAce::TrackedAircraftPositionMsg(position));
+        getBus().receive(GATAS::TrackedAircraftPositionMsg(position));
     }
 
 public:
@@ -89,12 +89,12 @@ public:
     AircraftTracker(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                            taskHandle(nullptr)
     {
-        ownshipAddress = config.openAceConfig().address;
+        ownshipAddress = config.gaTasConfig().address;
     }
 
     virtual ~AircraftTracker() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

@@ -14,12 +14,12 @@
 #include "etl/map.h"
 #include "etl/message_bus.h"
 
-class DataPort : public BaseModule, public etl::message_router<DataPort, OpenAce::TrackedAircraftPositionMsg, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg, OpenAce::GPSSentenceMsg>
+class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GPSSentenceMsg>
 {
     friend class message_router;
-    OpenAce::OwnshipPositionInfo ownshipPosition;
-    OpenAce::AircraftAddress address;
-    OpenAce::AircraftCategory category;
+    GATAS::OwnshipPositionInfo ownshipPosition;
+    GATAS::AircraftAddress address;
+    GATAS::AircraftCategory category;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
     
@@ -32,16 +32,16 @@ public:
     static constexpr const etl::string_view NAME = "DataPort";
     DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
-        auto newConfig = config.openAceConfig();
+        auto newConfig = config.gaTasConfig();
         address = newConfig.address;
         category = newConfig.category;
     }
 
     virtual ~DataPort() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override
+    virtual GATAS::PostConstruct postConstruct() override
     {
-        return OpenAce::PostConstruct::OK;
+        return GATAS::PostConstruct::OK;
     }
 
     virtual void start() override
@@ -54,13 +54,13 @@ public:
         getBus().unsubscribe(*this);
     };
 
-    void on_receive(const OpenAce::TrackedAircraftPositionMsg &msg);
+    void on_receive(const GATAS::TrackedAircraftPositionMsg &msg);
 
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
 
-    void on_receive(const OpenAce::GPSSentenceMsg &msg);
+    void on_receive(const GATAS::GPSSentenceMsg &msg);
 
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     
     void on_receive_unknown(const etl::imessage &msg)
     {
@@ -72,17 +72,17 @@ public:
      * Periodicity:
      * Sent when available. Can be sent several times per second with information on several (but not always all) surrounding targets.
      */
-    void sendPFLAA(const OpenAce::AircraftPositionInfo &position);
+    void sendPFLAA(const GATAS::AircraftPositionInfo &position);
 
-    uint8_t getPFLAASourceType(const OpenAce::AircraftPositionInfo &position);
+    uint8_t getPFLAASourceType(const GATAS::AircraftPositionInfo &position);
 
-    uint8_t getPFLAAAddressType(const OpenAce::AddressType type);
+    uint8_t getPFLAAAddressType(const GATAS::AddressType type);
 
-    void getPFLAAGroundSpeed(const OpenAce::AircraftPositionInfo &position, etl::string<6> &speed);
+    void getPFLAAGroundSpeed(const GATAS::AircraftPositionInfo &position, etl::string<6> &speed);
 
-    void getPFLAAClimbRate(const OpenAce::AircraftPositionInfo &position, etl::string<7> &verticalSpeed);
+    void getPFLAAClimbRate(const GATAS::AircraftPositionInfo &position, etl::string<7> &verticalSpeed);
 
-    etl::string_view getPFLAAAircraftCategory(const OpenAce::AircraftPositionInfo &position) const;
+    etl::string_view getPFLAAAircraftCategory(const GATAS::AircraftPositionInfo &position) const;
 
     /**
      * PFLAU – Heartbeat, status, and basic alarms
@@ -91,7 +91,7 @@ public:
      * Sent once every second (1.8 s at maximum)
      */
 
-    void sendPFLAU(const OpenAce::OwnshipPositionInfo &position);
+    void sendPFLAU(const GATAS::OwnshipPositionInfo &position);
 
     /**
      * PFLAE – Self-test result and errors codes
@@ -100,7 +100,7 @@ public:
      * Sent once after startup and completion of self-test, when errors occur, and when requested
      *
      */
-    void sendPFLAE(const OpenAce::AircraftPositionInfo &position);
+    void sendPFLAE(const GATAS::AircraftPositionInfo &position);
 
     /**
      * PFLAV – Version information
@@ -109,7 +109,7 @@ public:
      * Sent once after startup and completion of self-test and when requested
      *
      */
-    void sendPFLAV(const OpenAce::AircraftPositionInfo &position);
+    void sendPFLAV(const GATAS::AircraftPositionInfo &position);
 
     /**
      * PFLAR – Reset
@@ -118,7 +118,7 @@ public:
      * Not applicable
      *
      */
-    void sendPFLAR(const OpenAce::AircraftPositionInfo &position);
+    void sendPFLAR(const GATAS::AircraftPositionInfo &position);
 
     /**
      * PFLAC – Device configuration
@@ -127,7 +127,7 @@ public:
      * Sent when requested
      */
 
-    void sendPFLAC(const OpenAce::AircraftPositionInfo &position);
+    void sendPFLAC(const GATAS::AircraftPositionInfo &position);
 
     /**
      * PFLAN – Continuous Analyzer of Radio Performance (CARP).
@@ -135,23 +135,23 @@ public:
      * Periodicity:
      * Sent when requested
      */
-    void sendPFLANC(const OpenAce::AircraftPositionInfo &position);
+    void sendPFLANC(const GATAS::AircraftPositionInfo &position);
 
     void decimalDegreesToDMM(float degrees, int8_t &deg, float &min);
 
     /**
      * GPRMC – NMEA minimum recommended GPS navigation data
      */
-    // void sendGPRMC(const OpenAce::OwnshipPositionInfo &position);
+    // void sendGPRMC(const GATAS::OwnshipPositionInfo &position);
 
-    // void sendPGRMZ(const OpenAce::OwnshipPositionInfo &position);
+    // void sendPGRMZ(const GATAS::OwnshipPositionInfo &position);
 
     /**
      * GNGSA – GPS DOP and active satellites
      */
-    // void sendGNGSA(const OpenAce::AircraftPositionInfo &position);
+    // void sendGNGSA(const GATAS::AircraftPositionInfo &position);
 
-    // void sendGPGGA(const OpenAce::OwnshipPositionInfo &position);
+    // void sendGPGGA(const GATAS::OwnshipPositionInfo &position);
 
     /**
      * We seem to need this to get altitude in SkyDemon

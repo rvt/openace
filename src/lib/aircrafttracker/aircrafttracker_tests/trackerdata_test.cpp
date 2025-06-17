@@ -22,7 +22,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
      time_us_Value = 0;
      TrackerData<100, 2> trackedAircraft;
 
-     OpenAce::AircraftPositionInfo aircraftPosition;
+     GATAS::AircraftPositionInfo aircraftPosition;
      aircraftPosition.timestamp = 560'000;
      aircraftPosition.distanceFromOwn = 10'000;
      REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
@@ -30,7 +30,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
 
      SECTION("When adding, must stay unique")
      {
-         OpenAce::AircraftPositionInfo aircraftPosition;
+         GATAS::AircraftPositionInfo aircraftPosition;
          aircraftPosition.timestamp = 860'000;
          aircraftPosition.distanceFromOwn = 8000;
          REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
@@ -39,7 +39,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
 
      SECTION("Same, but now Out of adaptiveRadious and should not have been added")
      {
-         OpenAce::AircraftPositionInfo aircraftPosition;
+         GATAS::AircraftPositionInfo aircraftPosition;
          aircraftPosition.timestamp = 860'000;
          aircraftPosition.address = 9999;
          aircraftPosition.distanceFromOwn = OUT_OF_ADAPTIVE_RANGE;
@@ -51,13 +51,13 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
      {
          bool nextCalled = false;
          time_us_Value = 120'000;
-         auto delay = trackedAircraft.next([&nextCalled](const OpenAce::AircraftPositionInfo &position)
+         auto delay = trackedAircraft.next([&nextCalled](const GATAS::AircraftPositionInfo &position)
                                            { nextCalled=true; });
          REQUIRE(nextCalled);
 
          time_us_Value = 920'000;
          nextCalled = false;
-         delay = trackedAircraft.next([](const OpenAce::AircraftPositionInfo &position)
+         delay = trackedAircraft.next([](const GATAS::AircraftPositionInfo &position)
                                          { REQUIRE(false); });
          REQUIRE(!nextCalled);
 
@@ -68,19 +68,19 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
      {
          time_us_Value = 900'000;
          bool called = false;
-         auto delay = trackedAircraft.next([&called](const OpenAce::AircraftPositionInfo &position)
+         auto delay = trackedAircraft.next([&called](const GATAS::AircraftPositionInfo &position)
                                            { called = true; });
          REQUIRE(called);
          REQUIRE(delay == 500);
 
          // Would not call again with the same time as send time is updated
          called = false;
-         delay = trackedAircraft.next([&called](const OpenAce::AircraftPositionInfo &position)
+         delay = trackedAircraft.next([&called](const GATAS::AircraftPositionInfo &position)
                                              { called = true; });
          REQUIRE(called == false);
 
          time_us_Value = time_us_Value + 250'000;
-         delay = trackedAircraft.next([&called](const OpenAce::AircraftPositionInfo &position)
+         delay = trackedAircraft.next([&called](const GATAS::AircraftPositionInfo &position)
                                      {
                                          REQUIRE(false);
                                      });
@@ -96,7 +96,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
 
      SECTION("Additional aircraft added ")
      {
-         OpenAce::AircraftPositionInfo aircraftPosition;
+         GATAS::AircraftPositionInfo aircraftPosition;
          aircraftPosition.timestamp = 570'000;
          aircraftPosition.distanceFromOwn = 10000;
          aircraftPosition.address = 1;
@@ -104,7 +104,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
          REQUIRE(trackedAircraft.size() == 2);
          int callbacks = 0;
          time_us_Value = 1'500'000;
-         auto delay = trackedAircraft.next([&callbacks](const OpenAce::AircraftPositionInfo &position)
+         auto delay = trackedAircraft.next([&callbacks](const GATAS::AircraftPositionInfo &position)
                                            {
                                          if (callbacks == 0 ) {
                                              REQUIRE (position.address == 0);
@@ -124,7 +124,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
      int i = 0;
      for (; i < 100; i++)
      {
-         OpenAce::AircraftPositionInfo aircraftPosition;
+         GATAS::AircraftPositionInfo aircraftPosition;
          aircraftPosition.distanceFromOwn = 10000 + 100 * i;
          aircraftPosition.address = i;
          REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
@@ -134,7 +134,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
      SECTION("One more should recalculate radius and must have free room")
      {
          REQUIRE(trackedAircraft.radius() == 75000);
-         OpenAce::AircraftPositionInfo aircraftPosition;
+         GATAS::AircraftPositionInfo aircraftPosition;
          aircraftPosition.distanceFromOwn = 10000 + 100 * i;
          aircraftPosition.address = i;
          REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
@@ -148,7 +148,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
          auto radius = trackedAircraft.radius();
          for (int i = 125; i < 175; i++)
          {
-             OpenAce::AircraftPositionInfo aircraftPosition;
+             GATAS::AircraftPositionInfo aircraftPosition;
              aircraftPosition.distanceFromOwn = i * 10;
              aircraftPosition.address = i;
              // Ensure that new planes are always added
@@ -173,7 +173,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
  TEST_CASE("Next should handle correct delay 4 slices", "[single-file]")
  {
      TrackerData<100, 4> trackedAircraft;
-     auto delay = trackedAircraft.next([](const OpenAce::AircraftPositionInfo &position) {});
+     auto delay = trackedAircraft.next([](const GATAS::AircraftPositionInfo &position) {});
      REQUIRE(delay == 250);
  }
 
@@ -181,7 +181,7 @@ TEST_CASE("Should update data", "[single-file]")
 {
     TrackerData<100, 4> trackedAircraft;
     time_us_Value = 1;
-    OpenAce::AircraftPositionInfo aircraftPosition;
+    GATAS::AircraftPositionInfo aircraftPosition;
     aircraftPosition.timestamp = 570'000;
     aircraftPosition.distanceFromOwn = 10000;
     aircraftPosition.address = 1;
@@ -198,7 +198,7 @@ TEST_CASE("Should update data", "[single-file]")
 
     // Validate if the queue was updated
     int callbacks = 0;
-    trackedAircraft.next([&callbacks](const OpenAce::AircraftPositionInfo &position)
+    trackedAircraft.next([&callbacks](const GATAS::AircraftPositionInfo &position)
                          {
   REQUIRE (position.distanceFromOwn == 20000);
   callbacks++; });

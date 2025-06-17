@@ -4,7 +4,7 @@
 #include "hardware/watchdog.h"
 #include "pico/bootrom.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/coreutils.hpp"
 #include "etl/string.h"
 
@@ -25,7 +25,7 @@ etl::string_view Config::loadLocationToString(LoadLocation location) const
     }
 }
 
-OpenAce::PostConstruct Config::postConstruct()
+GATAS::PostConstruct Config::postConstruct()
 {
     // Load a configuration in this order
     // volatileStore -> persistentStore -> Defaul configuration
@@ -34,7 +34,7 @@ OpenAce::PostConstruct Config::postConstruct()
     if (error || loadDefaultConfig)
     {
         error = deserializeJson(doc, permanentStore.data());
-        auto signatureMismatch = doc[SIGNATURE].as<uint32_t>() != OPENACE_FLASH_SIGNATURE;
+        auto signatureMismatch = doc[SIGNATURE].as<uint32_t>() != GATAS_FLASH_SIGNATURE;
 
         // Still error, load default
         if (error || signatureMismatch || loadDefaultConfig)
@@ -55,7 +55,7 @@ OpenAce::PostConstruct Config::postConstruct()
         statistics.location = VOLATILE;
     }
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Config::start()
@@ -259,16 +259,16 @@ void Config::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-const OpenAce::PinTypeMap Config::pinMap(const etl::string_view moduleName) const
+const GATAS::PinTypeMap Config::pinMap(const etl::string_view moduleName) const
 {
-    OpenAce::PinTypeMap map;
+    GATAS::PinTypeMap map;
     ccharptr hardware = (ccharptr)doc["hardware"]["type"];
     if (JsonObjectConst moduleConfig = doc[hardware][moduleName]; !moduleConfig.isNull())
     {
         for (JsonPairConst kv : moduleConfig)
         {
-            auto pinType = OpenAce::stringToPinType(kv.key().c_str());
-            if (pinType != OpenAce::PinType::UNKNOWN)
+            auto pinType = GATAS::stringToPinType(kv.key().c_str());
+            if (pinType != GATAS::PinType::UNKNOWN)
             {
                 map[pinType] = kv.value().as<uint8_t>();
             }
@@ -277,18 +277,18 @@ const OpenAce::PinTypeMap Config::pinMap(const etl::string_view moduleName) cons
     return map;
 }
 
-const OpenAce::Config::WifiServiceData Config::wifiService() const
+const GATAS::Config::WifiServiceData Config::wifiService() const
 {
     auto wifi = doc["WifiService"];
-    OpenAce::Config::WifiServiceData wifiService;
+    GATAS::Config::WifiServiceData wifiService;
 
-    OpenAce::SsidOrPasswdStr ssid = (ccharptr)wifi["ap"]["ssid"];
-    OpenAce::SsidOrPasswdStr password = (ccharptr)wifi["ap"]["password"];
+    GATAS::SsidOrPasswdStr ssid = (ccharptr)wifi["ap"]["ssid"];
+    GATAS::SsidOrPasswdStr password = (ccharptr)wifi["ap"]["password"];
 
     if (ssid.size() < 4 || password.size() < 8)
     {
         // Set default Ssid and passsword if non was found
-        wifiService.ap.ssid = "OpenAce";
+        wifiService.ap.ssid = "GaTas";
         wifiService.ap.password = "12345678";
     }
     else
@@ -311,18 +311,18 @@ const OpenAce::Config::WifiServiceData Config::wifiService() const
     return wifiService;
 };
 
-const OpenAce::Config::OpenAceConfiguration Config::openAceConfig() const
+const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
 {
     ccharptr aircraft = (ccharptr)doc["config"]["aircraftId"];
     JsonObjectConst aircraftConfig = doc["aircraft"][aircraft];
 
     // Default if no aircraft config was found
-    etl::vector<OpenAce::DataSource, static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS)> protocols;
+    etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
     if (aircraftConfig.isNull())
     {
         return {
-            .category = OpenAce::AircraftCategory::ReciprocatingEngine,
-            .addressType = OpenAce::AddressType::ADSL,
+            .category = GATAS::AircraftCategory::ReciprocatingEngine,
+            .addressType = GATAS::AddressType::ADSL,
             .address = 0,
             .stealth = false,
             .noTrack = false,
@@ -331,12 +331,12 @@ const OpenAce::Config::OpenAceConfiguration Config::openAceConfig() const
 
     for (auto protocol : aircraftConfig["protocols"].as<JsonArrayConst>())
     {
-        protocols.push_back(OpenAce::stringToDataSource(protocol.as<const char *>()));
+        protocols.push_back(GATAS::stringToDataSource(protocol.as<const char *>()));
     }
 
     return {
-        .category = OpenAce::stringToAircraftCategory((ccharptr)aircraftConfig["category"]),
-        .addressType = OpenAce::stringToAddressType((ccharptr)aircraftConfig["addressType"]),
+        .category = GATAS::stringToAircraftCategory((ccharptr)aircraftConfig["category"]),
+        .addressType = GATAS::stringToAddressType((ccharptr)aircraftConfig["addressType"]),
         .address = aircraftConfig["address"],
         .stealth = aircraftConfig["stealth"],
         .noTrack = aircraftConfig["noTrack"],
@@ -377,7 +377,7 @@ int Config::valueByPath(int defaultValue, const etl::string_view pathToValue, co
     }
 }
 
-const OpenAce::ConfigString Config::strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const
+const GATAS::ConfigString Config::strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const
 {
     auto path = CoreUtils::parsePath(pathToValue);
     auto src = configValueBypath<JsonVariantConst>(path);
@@ -388,18 +388,18 @@ const OpenAce::ConfigString Config::strValueByPath(const etl::string_view defaul
 
     if (src.isNull())
     {
-        return OpenAce::ConfigString(defaultValue);
+        return GATAS::ConfigString(defaultValue);
     }
     else
     {
         auto string = src.as<const char *>();
-        return OpenAce::ConfigString(string);
+        return GATAS::ConfigString(string);
     }
 };
 
-const OpenAce::Config::IpPort Config::ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const
+const GATAS::Config::IpPort Config::ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const
 {
-    OpenAce::ConfigPathString fullPath(pathToValue);
+    GATAS::ConfigPathString fullPath(pathToValue);
     if (key.size() > 0)
     {
         etl::string_stream fullPath_stream(fullPath);
@@ -415,13 +415,13 @@ const OpenAce::Config::IpPort Config::ipPortBypath(const etl::string_view pathTo
 
     if (src.isNull())
     {
-        return OpenAce::Config::IpPort{IPADDR_NONE, 0};
+        return GATAS::Config::IpPort{IPADDR_NONE, 0};
     }
     else
     {
         auto ip = src["ip"].as<const char *>();
         auto port = src["port"].as<uint16_t>();
-        return OpenAce::Config::IpPort{
+        return GATAS::Config::IpPort{
             inet_addr(ip),
             port};
     }

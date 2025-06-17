@@ -1,6 +1,6 @@
 #include "models.hpp"
 
-namespace OpenAce
+namespace GATAS
 {
 
     struct PinMapping
@@ -120,7 +120,7 @@ namespace OpenAce
         return stringToEnum(aircraftMappings, str, AircraftCategory::Unknown);
     }
 
-    const char *aircraftTypeToString(OpenAce::AircraftCategory at)
+    const char *aircraftTypeToString(GATAS::AircraftCategory at)
     {
         return enumToString(aircraftMappings, at, "Unknown");
     }

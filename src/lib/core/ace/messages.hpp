@@ -12,7 +12,7 @@
 #include "etl/set.h"
 #include "etl/array.h"
 
-namespace OpenAce
+namespace GATAS
 {
 
     /**
@@ -177,20 +177,20 @@ namespace OpenAce
     struct RadioRxGfskMsg : public etl::message<16>
     {
         // TODO: CHange to ETL::array
-        uint32_t frame[OpenAce::RADIO_MAX_FRAME_WORD_LENGTH];
-        uint32_t err[OpenAce::RADIO_MAX_FRAME_WORD_LENGTH];
+        uint32_t frame[GATAS::RADIO_MAX_FRAME_WORD_LENGTH];
+        uint32_t err[GATAS::RADIO_MAX_FRAME_WORD_LENGTH];
         uint32_t epochSeconds;
         uint8_t length; // TODO: CHange this to length in words
         int8_t rssidBm;
         uint32_t frequency;
-        OpenAce::DataSource dataSource;
-        RadioRxGfskMsg(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, OpenAce::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
+        GATAS::DataSource dataSource;
+        RadioRxGfskMsg(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
         {
             // TODO: Decide if we need to do this
             memset(frame, 0, sizeof(frame));
             memset(err, 0, sizeof(frame));
         };
-        RadioRxGfskMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(OpenAce::DataSource::NONE)
+        RadioRxGfskMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::NONE)
         {
             memset(frame, 0, sizeof(frame));
             memset(err, 0, sizeof(frame));
@@ -199,15 +199,15 @@ namespace OpenAce
 
     struct RadioRxLoraMsg : public etl::message<27>
     {
-        etl::vector<uint8_t, OpenAce::MAX_LORA_MSG_SIZE> frame;
+        etl::vector<uint8_t, GATAS::MAX_LORA_MSG_SIZE> frame;
         uint32_t epochSeconds;
         int8_t rssidBm;
         uint32_t frequency;
-        OpenAce::DataSource dataSource;
-        RadioRxLoraMsg(uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, OpenAce::DataSource dataSource_) : epochSeconds(epochSeconds_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
+        GATAS::DataSource dataSource;
+        RadioRxLoraMsg(uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
         {
         };
-        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(OpenAce::DataSource::NONE)
+        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::NONE)
         {
         };
     };
@@ -236,8 +236,8 @@ namespace OpenAce
     struct ConfigUpdatedMsg : public etl::message<20> /* Don't change from 20!!!! They are used in MessageRouter*/
     {
         const Configuration &config;
-        const OpenAce::Modulename moduleName;
-        ConfigUpdatedMsg(const Configuration &config_, const OpenAce::Modulename &moduleName_) : config(config_), moduleName(moduleName_) {};
+        const GATAS::Modulename moduleName;
+        ConfigUpdatedMsg(const Configuration &config_, const GATAS::Modulename &moduleName_) : config(config_), moduleName(moduleName_) {};
         ConfigUpdatedMsg(const Configuration &config_, const etl::string_view &moduleName_) : config(config_), moduleName(moduleName_) {};
     };
 
@@ -246,8 +246,8 @@ namespace OpenAce
      */
     struct AccessPointClientsMsg : public etl::message<21>
     {
-        const etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> msg;
-        AccessPointClientsMsg(const etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> &msg_) : msg(msg_) {};
+        const etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> msg;
+        AccessPointClientsMsg(const etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> &msg_) : msg(msg_) {};
         AccessPointClientsMsg() {};
     };
 

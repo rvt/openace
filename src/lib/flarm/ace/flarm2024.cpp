@@ -88,14 +88,14 @@ void Flarm2024::scramble(uint32_t *data, uint32_t timestamp) const
     }
 }
 
-OpenAce::PostConstruct Flarm2024::postConstruct()
+GATAS::PostConstruct Flarm2024::postConstruct()
 {
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxGfskMsg));
+    frameConsumerQueue = xQueueCreate(4, sizeof(GATAS::RadioRxGfskMsg));
     if (frameConsumerQueue == nullptr)
     {
-        return OpenAce::PostConstruct::XQUEUE_ERROR;
+        return GATAS::PostConstruct::XQUEUE_ERROR;
     }
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Flarm2024::start()
@@ -123,7 +123,7 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
     stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
     stream << ",\"crcErr\":" << statistics.crcErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
-    stream << ",\"ownshipAddress\":" << openAceConfiguration.address;
+    stream << ",\"ownshipAddress\":" << gaTasConfiguration.address;
     stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"messageTypeNot0x02\":" << statistics.messageTypeNot0x02;
     stream << "}\n";
@@ -235,17 +235,17 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
     //       (uint16_t)(CoreUtils::msSinceEpoch() % 1000), radioPacket->aircraftID, aircraftLat, aircraftLon, descale<12, 1, false>(radioPacket->altitude) - 1000, descale<6, 2, true>(radioPacket->verticalSpeed) / 10.0f, groundSpeed, static_cast<int16_t>(radioPacket->course >> 1), descale<6, 2, true>(radioPacket->turnRate) / 20.0f);
 
     statistics.receivedAircraftPositions++;
-    OpenAce::AircraftPositionMsg aircraftPosition{
-        OpenAce::AircraftPositionInfo{
+    GATAS::AircraftPositionMsg aircraftPosition{
+        GATAS::AircraftPositionInfo{
             CoreUtils::timeUs32(),
             "",
             radioPacket->aircraftID,
             addressTypeFromFlarm(radioPacket->addressType),
-            OpenAce::DataSource::FLARM,
-            static_cast<OpenAce::AircraftCategory>(radioPacket->aircraftType),
+            GATAS::DataSource::FLARM,
+            static_cast<GATAS::AircraftCategory>(radioPacket->aircraftType),
             radioPacket->stealth,
             radioPacket->noTrack,
-            groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN,
+            groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN,
             aircraftLat,
             aircraftLon,
             descale<12, 1, false>(radioPacket->altitude) - 1000,
@@ -268,7 +268,7 @@ void Flarm2024::flarmReceiveTask(void *arg)
     Flarm2024 *flarm = static_cast<Flarm2024 *>(arg);
     while (true)
     {
-        OpenAce::RadioRxGfskMsg msg;
+        GATAS::RadioRxGfskMsg msg;
         if (xQueueReceive(flarm->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
             // Validate checksum
@@ -282,7 +282,7 @@ void Flarm2024::flarmReceiveTask(void *arg)
             }
 
             // Ignore ownship address
-            if (packet->aircraftID == flarm->openAceConfiguration.address)
+            if (packet->aircraftID == flarm->gaTasConfiguration.address)
             {
                 continue;
             }
@@ -293,11 +293,11 @@ void Flarm2024::flarmReceiveTask(void *arg)
     }
 }
 
-void Flarm2024::on_receive(const OpenAce::RadioRxGfskMsg &msg)
+void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
-    if (msg.dataSource == OpenAce::DataSource::FLARM)
+    if (msg.dataSource == GATAS::DataSource::FLARM)
     {
-        const OpenAce::RadioRxGfskMsg cpy = msg;
+        const GATAS::RadioRxGfskMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;
@@ -305,25 +305,25 @@ void Flarm2024::on_receive(const OpenAce::RadioRxGfskMsg &msg)
     }
 }
 
-void Flarm2024::on_receive(const OpenAce::OwnshipPositionMsg &msg)
+void Flarm2024::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     ownshipPosition = msg.position;
 }
 
-void Flarm2024::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void Flarm2024::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        openAceConfiguration = msg.config.openAceConfig();
+        gaTasConfiguration = msg.config.gaTasConfig();
     }
 }
 
-void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
+void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config.dataSource == OpenAce::DataSource::FLARM)
+    if (msg.radioParameters.config.dataSource == GATAS::DataSource::FLARM)
     {
 
-        uint8_t addressType = static_cast<uint8_t>(openAceConfiguration.addressType);
+        uint8_t addressType = static_cast<uint8_t>(gaTasConfiguration.addressType);
 
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
         auto ownLat = ownshipPosition.lat;
@@ -351,17 +351,17 @@ void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
 
         Flarm2024::RadioPacket radioPacket =
             {
-                .aircraftID = openAceConfiguration.address, // ownshipPosition.address,
+                .aircraftID = gaTasConfiguration.address, // ownshipPosition.address,
                 .messageType = 0x02,
                 .addressType = addressType <= 2 ? addressType : uint8_t(0),
                 .reserved1 = 0,
-                .stealth = openAceConfiguration.stealth,
-                .noTrack = openAceConfiguration.noTrack,
+                .stealth = gaTasConfiguration.stealth,
+                .noTrack = gaTasConfiguration.noTrack,
                 .reserved3 = 0b11,
                 .reserved4 = 0b11,
                 .reserved5 = 0x00,
                 .flarmTimestampLSB = static_cast<uint8_t>(epochSeconds & 0x0F),
-                .aircraftType = static_cast<uint8_t>(openAceConfiguration.category),
+                .aircraftType = static_cast<uint8_t>(gaTasConfiguration.category),
                 .reserved7 = 0x00,
                 .altitude = static_cast<uint16_t>(enscale<12, 1, false>(etl::max(static_cast<int16_t>(0), static_cast<int16_t>(ownshipPosition.altitudeHAE + 1000)))),
                 .latitude = latitude,
@@ -370,7 +370,7 @@ void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
                 .groundSpeed = static_cast<uint16_t>(enscale<8, 2, false>(ownshipPosition.groundSpeed * 10)),
                 .verticalSpeed = static_cast<uint16_t>(enscale<6, 2, true>(ownshipPosition.verticalSpeed * 10)),
                 .course = static_cast<uint16_t>(ownshipPosition.course * 2),
-                .movementStatus = static_cast<uint8_t>(ownshipPosition.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1), // TODO: Add support for Circling
+                .movementStatus = static_cast<uint8_t>(ownshipPosition.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1), // TODO: Add support for Circling
                 .gnssHorizontalAccuracy = 0b010010,                                                                                     // enscale<3, 2, false>((gpsStats.hDop*2+5)/10),
                 .gnssVerticalAccuracy = 0b01010,                                                                                        // enscale<2, 3, false>((gpsStats.pDop*2+5)/10),
                 .unknownData = 11,
@@ -390,7 +390,7 @@ void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
 
         statistics.transmittedAircraftPositions++;
 
-        getBus().receive(OpenAce::RadioTxFrameMsg{
+        getBus().receive(GATAS::RadioTxFrameMsg{
             Radio::TxPacket{
                 msg.radioParameters,
                 RadioPacket::totalLengthWCRC,
@@ -399,26 +399,26 @@ void Flarm2024::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
     }
 }
 
-OpenAce::AddressType Flarm2024::addressTypeFromFlarm(uint8_t addressType) const
+GATAS::AddressType Flarm2024::addressTypeFromFlarm(uint8_t addressType) const
 {
-    constexpr etl::array<OpenAce::AddressType, 3> lookupTable =
+    constexpr etl::array<GATAS::AddressType, 3> lookupTable =
         {
-            OpenAce::AddressType::RANDOM, // 0x00
-            OpenAce::AddressType::ICAO,   // 0x01
-            OpenAce::AddressType::FLARM,  // 0x02
+            GATAS::AddressType::RANDOM, // 0x00
+            GATAS::AddressType::ICAO,   // 0x01
+            GATAS::AddressType::FLARM,  // 0x02
         };
     if (addressType > 2)
-        return OpenAce::AddressType::RANDOM;
+        return GATAS::AddressType::RANDOM;
     return lookupTable[addressType];
 }
 
-uint8_t Flarm2024::addressTypeToFlarm(OpenAce::AddressType addressType) const
+uint8_t Flarm2024::addressTypeToFlarm(GATAS::AddressType addressType) const
 {
     switch (addressType)
     {
-    case OpenAce::AddressType::ICAO:
+    case GATAS::AddressType::ICAO:
         return 0x01;
-    case OpenAce::AddressType::FLARM:
+    case GATAS::AddressType::FLARM:
         return 0x02;
     default:
         return 0;

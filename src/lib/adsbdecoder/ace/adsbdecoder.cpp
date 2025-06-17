@@ -3,18 +3,18 @@
 #include "ace/semaphoreguard.hpp"
 #include "adsbdecoder.hpp"
 
-OpenAce::PostConstruct ADSBDecoder::postConstruct()
+GATAS::PostConstruct ADSBDecoder::postConstruct()
 {
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
+        return GATAS::PostConstruct::MUTEX_ERROR;
     }
     state.fix_errors = false;
     mode_s_init(&state);
     ignoredAirplanes.clear();
     adsbDataCollector.clear();
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void ADSBDecoder::start()
@@ -27,7 +27,7 @@ void ADSBDecoder::stop()
     getBus().unsubscribe(*this);
 };
 
-void ADSBDecoder::on_receive(const OpenAce::OwnshipPositionMsg &msg)
+void ADSBDecoder::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     ownshipPosition = msg.position;
 }
@@ -38,7 +38,7 @@ void ADSBDecoder::getConfiguration(const Configuration &config)
     filterBelow = config.valueByPath(true, NAME, "filterBelow");
 }
 
-void ADSBDecoder::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void ADSBDecoder::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == ADSBDecoder::NAME)
     {
@@ -51,7 +51,7 @@ void ADSBDecoder::receiveBinary(const uint8_t *data, uint8_t length)
     processAdsbData(data, length);
 }
 
-void ADSBDecoder::on_receive(const OpenAce::ADSBMessageBin &msg)
+void ADSBDecoder::on_receive(const GATAS::ADSBMessageBin &msg)
 {
     processAdsbData(msg.data, msg.length);
 }
@@ -185,13 +185,13 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             }
 
             // printf("Received  t:%06ld a:%06lX gnsAlt:%ldm gnsAlt:%0.2fft\n", usTime / 1'000'000, current.icao, current.altitudeHAE, current.altitudeHAE * M_TO_FT);
-            getBus().receive(OpenAce::AircraftPositionMsg{
+            getBus().receive(GATAS::AircraftPositionMsg{
                 {usTime - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
                  current.callSign,
                  current.icao,
-                 OpenAce::AddressType::ICAO,
-                 OpenAce::DataSource::ADSB,
-                 OpenAce::AircraftCategory::Unknown, // ADSB does not have type
+                 GATAS::AddressType::ICAO,
+                 GATAS::DataSource::ADSB,
+                 GATAS::AircraftCategory::Unknown, // ADSB does not have type
                  false,                              // ADSB does not have privacy
                  false,                              // No privacy
                  current.airborne,
@@ -212,7 +212,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     }
 }
 
-void ADSBDecoder::on_receive(const OpenAce::IdleMsg &msg)
+void ADSBDecoder::on_receive(const GATAS::IdleMsg &msg)
 {
     (void)msg;
     if (auto guard = SemaphoreGuard<10>(mutex))
@@ -223,7 +223,7 @@ void ADSBDecoder::on_receive(const OpenAce::IdleMsg &msg)
     }
 }
 
-void ADSBDecoder::on_receive(const OpenAce::AdapativeRadiusMsg &msg)
+void ADSBDecoder::on_receive(const GATAS::AdapativeRadiusMsg &msg)
 {
     filterRadius = msg.radius;
 }

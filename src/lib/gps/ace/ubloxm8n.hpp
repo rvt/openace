@@ -29,7 +29,7 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "UbloxM8N";
-    UbloxM8N(etl::imessage_bus& bus, const OpenAce::PinTypeMap& pins) : 
+    UbloxM8N(etl::imessage_bus& bus, const GATAS::PinTypeMap& pins) : 
         AbstractGnss(bus, NAME, pins)
     {
     }

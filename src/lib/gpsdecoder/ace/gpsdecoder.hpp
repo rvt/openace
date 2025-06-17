@@ -19,7 +19,7 @@
  * This decoder requires that both GGA and GMC sentences are received from the GPS and that each sentences us correct ms resolution
  * When both coralated sentences are sned. It will send out a ownship position message
  */
-class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, OpenAce::GPSSentenceMsg>
+class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GATAS::GPSSentenceMsg>
 {
     friend class message_router;
     struct
@@ -33,10 +33,10 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, Ope
 
     float velocityNorth = 0;
     float velocityEast = 0;
-    RatePerSecond altitudeGeoid{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2}; // Field 9
+    RatePerSecond altitudeGeoid{GATAS_EMAFLOAT_K_FACTOR_2PS, 2}; // Field 9
     float geoidSeparation = 0;                                     // Field 11
     float groundSpeed = 0;
-    RatePerSecond course{OPENACE_EMAFLOAT_K_FACTOR_2PS, 2};
+    RatePerSecond course{GATAS_EMAFLOAT_K_FACTOR_2PS, 2};
     float latitude = 0;
     float longitude = 0;
 
@@ -57,7 +57,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, Ope
     uint8_t fixType = 0;
 
 private:
-    void on_receive(const OpenAce::GPSSentenceMsg &msg);
+    void on_receive(const GATAS::GPSSentenceMsg &msg);
 
     /**
      * Convert an minmea_float with altitude/height information in meters
@@ -100,7 +100,7 @@ public:
 
     virtual ~GpsDecoder() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
     virtual void stop() override;

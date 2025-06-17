@@ -22,7 +22,7 @@
 #include "etl/string.h"
 #include "etl/bitset.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -31,8 +31,8 @@
 
 
 
-class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, OpenAce::ConfigUpdatedMsg, 
-OpenAce::RadioRxGfskMsg, OpenAce::OwnshipPositionMsg, OpenAce::RadioTxPositionRequestMsg>
+class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, GATAS::ConfigUpdatedMsg, 
+GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
 {
     friend class message_router;
 
@@ -99,8 +99,8 @@ private:
 
     TaskHandle_t taskHandle;
     QueueHandle_t frameConsumerQueue;
-    OpenAce::OwnshipPositionInfo ownshipPosition;
-    OpenAce::Config::OpenAceConfiguration openAceConfiguration;
+    GATAS::OwnshipPositionInfo ownshipPosition;
+    GATAS::Config::GaTasConfiguration gaTasConfiguration;
     float deltaCourse;
     uint16_t distanceIgnore;
 public:
@@ -114,12 +114,12 @@ public:
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Flarm", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
-        openAceConfiguration = config.openAceConfig();
+        gaTasConfiguration = config.gaTasConfig();
     }
 
     virtual ~Flarm2024() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
     virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
@@ -130,20 +130,20 @@ private:
      * Send a FreeRTOS message when a FlarmFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxGfskMsg &msg);
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
-    void on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
+    void on_receive(const GATAS::RadioRxGfskMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
 
     void on_receive_unknown(const etl::imessage& msg)
     {
         (void)msg;
     }
 
-    // Transform a FLARM addressType to an openAce address type
-    OpenAce::AddressType addressTypeFromFlarm(uint8_t addressType) const;
+    // Transform a FLARM addressType to an gaTas address type
+    GATAS::AddressType addressTypeFromFlarm(uint8_t addressType) const;
 
-    uint8_t addressTypeToFlarm(OpenAce::AddressType) const;
+    uint8_t addressTypeToFlarm(GATAS::AddressType) const;
 
     /**
      * Keep track of what timestamp (roughly) we receive flarm frames

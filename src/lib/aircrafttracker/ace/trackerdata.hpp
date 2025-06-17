@@ -30,16 +30,16 @@ private:
     struct TrackerEntry
     {
         uint32_t sendTime;
-        OpenAce::AircraftPositionInfo position;
+        GATAS::AircraftPositionInfo position;
 
-        TrackerEntry(uint32_t time, const OpenAce::AircraftPositionInfo &pos)
+        TrackerEntry(uint32_t time, const GATAS::AircraftPositionInfo &pos)
             : sendTime(time), position(pos) {}
 
         TrackerEntry() = default;
     };
 
 
-    etl::unordered_map<OpenAce::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
+    etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
     uint32_t adaptiveRadius;
 
     bool calculateAdaptiveRadius()
@@ -149,7 +149,7 @@ public:
         }
     }
 
-    bool insert(OpenAce::AircraftPositionInfo &position)
+    bool insert(GATAS::AircraftPositionInfo &position)
     {
         auto m = Measure("TrackerData::insert ", 400);
         if (position.distanceFromOwn > adaptiveRadius)
@@ -181,7 +181,7 @@ public:
         return true;
     }
 
-    uint16_t next(const etl::delegate<void(const OpenAce::AircraftPositionInfo &)> &msg)
+    uint16_t next(const etl::delegate<void(const GATAS::AircraftPositionInfo &)> &msg)
     {
         auto currentTime = CoreUtils::timeUs32Raw();
         uint8_t count = 0;

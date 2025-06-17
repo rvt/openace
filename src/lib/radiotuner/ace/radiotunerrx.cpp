@@ -10,7 +10,7 @@
 
 #include "pico/rand.h"
 
-OpenAce::PostConstruct RadioTunerRx::postConstruct()
+GATAS::PostConstruct RadioTunerRx::postConstruct()
 {
     moduleByName(*this, Radio::NAMES[0]);
     uint8_t numRadios = 1;
@@ -18,10 +18,10 @@ OpenAce::PostConstruct RadioTunerRx::postConstruct()
     {
         numRadios++;
     } else {
-        return OpenAce::PostConstruct::DEP_NOT_FOUND;
+        return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
     addRadioTasks(numRadios);
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void RadioTunerRx::start()
@@ -31,7 +31,7 @@ void RadioTunerRx::start()
     Configuration *config = static_cast<Configuration *>(BaseModule::moduleByName(*this, Configuration::NAME));
     if (config)
     {
-        enableDisableDatasources(config->openAceConfig().protocols);
+        enableDisableDatasources(config->gaTasConfig().protocols);
     }
 };
 
@@ -127,15 +127,15 @@ void RadioTunerRx::radioTuneTask(void *arg)
                 if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx)
                 {
     
-                    // printf("Set frequency to f:%ld ms:%d zone:%d source:%s\n", frequency, CoreUtils::msInSecond(), taskCtx->nextTimeSlot.zone, OpenAce::dataSourceToString(radioTask->nextTimeSlot.source));
+                    // printf("Set frequency to f:%ld ms:%d zone:%d source:%s\n", frequency, CoreUtils::msInSecond(), taskCtx->nextTimeSlot.zone, GATAS::dataSourceToString(radioTask->nextTimeSlot.source));
                     auto thisTimeSlot = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot);
                     auto frequency = CountryRegulations::determineFrequency(thisTimeSlot);
     
                     // Send a message to the radio to indicate to switch and listen to a different protocol
-                    taskCtx->controller->getBus().receive(OpenAce::RadioControlMsg{
+                    taskCtx->controller->getBus().receive(GATAS::RadioControlMsg{
                         Radio::RadioParameters{thisTimeSlot.radioConfig, frequency, thisTimeSlot.frequency.powerdBm}, taskCtx->radio->radio()});
 
-                    auto delay = taskCtx->advanceReceiveSlot() - OPENACE_RX_OFFSET;
+                    auto delay = taskCtx->advanceReceiveSlot() - GATAS_RX_OFFSET;
                     xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay < 1 ? 1 : delay), TASK_DELAY_MS(1));
     
                     // printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
@@ -163,7 +163,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
 // ******************** Message bus receive handlers ********************
 
-void RadioTunerRx::on_receive(const OpenAce::OwnshipPositionMsg &msg)
+void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     static auto lastTime = 0;
     // Update ZONE every 30 seconds, or when still at ZONE0
@@ -175,7 +175,7 @@ void RadioTunerRx::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     }
 }
 
-void RadioTunerRx::on_receive(const OpenAce::AircraftPositionMsg &msg)
+void RadioTunerRx::on_receive(const GATAS::AircraftPositionMsg &msg)
 {
     static uint32_t lastTime = 0;
     slotReceive[(uint8_t)msg.position.dataSource]++;
@@ -197,16 +197,16 @@ void RadioTunerRx::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void RadioTunerRx::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void RadioTunerRx::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        const auto openAceConfiguration = msg.config.openAceConfig();
-        enableDisableDatasources(openAceConfiguration.protocols);
+        const auto gaTasConfiguration = msg.config.gaTasConfig();
+        enableDisableDatasources(gaTasConfiguration.protocols);
     }
 }
 
-void RadioTunerRx::enableDisableDatasources(const etl::ivector<OpenAce::DataSource> &dataSources)
+void RadioTunerRx::enableDisableDatasources(const etl::ivector<GATAS::DataSource> &dataSources)
 {
     // Block all tasks first
     for (auto &taskCtx : radioTasks)
@@ -241,7 +241,7 @@ void RadioTunerRx::enableDisableDatasources(const etl::ivector<OpenAce::DataSour
             }
 
             // Copy the assigned data sources for this radio
-            etl::vector<OpenAce::DataSource, OPENACE_MAX_SOURCE_PER_RADIO> newDataSources;
+            etl::vector<GATAS::DataSource, GATAS_MAX_SOURCE_PER_RADIO> newDataSources;
             for (uint8_t i = 0; i < sourcesForThisRadio; ++i)
             {
                 newDataSources.emplace_back(dataSources[newDsPos]);

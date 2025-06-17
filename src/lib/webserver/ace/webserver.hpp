@@ -10,7 +10,7 @@
 #include "etl/map.h"
 #include "etl/message_bus.h"
 
-class Webserver : public BaseModule, public etl::message_router<Webserver, OpenAce::WifiConnectionStateMsg>
+class Webserver : public BaseModule, public etl::message_router<Webserver, GATAS::WifiConnectionStateMsg>
 {
     friend class message_router;
 public:
@@ -29,13 +29,13 @@ public:
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 
     virtual void stop() override;
 
-    void on_receive(const OpenAce::WifiConnectionStateMsg &wcs);
+    void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
 
     void on_receive_unknown(const etl::imessage& msg);
 };

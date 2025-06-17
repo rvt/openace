@@ -15,7 +15,7 @@
 
 class CoreUtils
 {
-    // Putting these in scratch mem does work __scratch_y("OpenAceMem")
+    // Putting these in scratch mem does work __scratch_y("GaTasMem")
     inline static uint64_t offsetTimeToAbsolute = 0;
     inline static uint32_t timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
 
@@ -148,7 +148,7 @@ public:
      * Set's the offset to the current time in ms since epoch.
      * THis function should be called to sync GPS time to the PICO's time using the PPS from the GPS
      * and is given the exact epochoffset when received from PPS this will calibrate the epoch function to exact ms
-     * See RTC::on_receive(const OpenAce::UtcTimeMsg& msg)
+     * See RTC::on_receive(const GATAS::UtcTimeMsg& msg)
      */
     static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
     {
@@ -303,12 +303,12 @@ public:
         float bearing;
     };
 
-    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const OpenAce::AircraftPositionInfo &from, const OpenAce::AircraftPositionInfo &to)
+    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const GATAS::AircraftPositionInfo &from, const GATAS::AircraftPositionInfo &to)
     {
         return getDistanceRelNorthRelEastInt(from.lat, from.lon, to.lat, to.lon);
     }
 
-    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const OpenAce::OwnshipPositionInfo &from, const OpenAce::AircraftPositionInfo &to)
+    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const GATAS::OwnshipPositionInfo &from, const GATAS::AircraftPositionInfo &to)
     {
         return getDistanceRelNorthRelEastInt(from.lat, from.lon, to.lat, to.lon);
     }
@@ -363,7 +363,7 @@ public:
      * Parse an path in the form of /foo/bar/bas.extension
      * returns a vector with foo, bar, bas, extension
      */
-    static const etl::vector<OpenAce::Modulename, 7> parsePath(const etl::string_view path);
+    static const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path);
 
     /**
      * Devide a circle in a number of sections.
@@ -443,10 +443,10 @@ public:
      * Later the idea is that it will use DDB to get the registration based on aircraftID and addressType
      *
      */
-    static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, OpenAce::AddressType addressType, etl::string_view callSign = "")
+    static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, GATAS::AddressType addressType, etl::string_view callSign = "")
     {
         (void)addressType;
-        stream << etl::hex << etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << OpenAce::RESET_FORMAT;
+        stream << etl::hex << etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << GATAS::RESET_FORMAT;
         if (callSign.size() > 0)
         {
             stream << "!" << callSign;
@@ -498,7 +498,7 @@ public:
     /**
      * Returns the pin number from the pin map, when not found returns -1 to indicate that
      */
-    static int8_t pinValue(const OpenAce::PinTypeMap &pm, const OpenAce::PinType &pinName, int8_t defaultValue = -1)
+    static int8_t pinValue(const GATAS::PinTypeMap &pm, const GATAS::PinType &pinName, int8_t defaultValue = -1)
     {
         auto it = pm.find(pinName);
         if (it != pm.end())

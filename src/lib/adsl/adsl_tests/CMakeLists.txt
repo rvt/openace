@@ -6,8 +6,8 @@ message(STATUS "Building tests.")
 
 add_definitions(-DCATCH_CONFIG_NO_POSIX_SIGNALS)
 add_definitions(-DUNIT_TESTING)
-add_definitions(-DOPENACE_MAXIMUM_TCP_CLIENTS=4)
-add_definitions(-DOPENACE_ADSL_IGNORE_DISTANCE_ERRORS=50000)
+add_definitions(-DGATAS_MAXIMUM_TCP_CLIENTS=4)
+add_definitions(-DGATAS_ADSL_IGNORE_DISTANCE_ERRORS=50000)
 
 
 

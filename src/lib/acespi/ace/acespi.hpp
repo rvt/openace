@@ -14,7 +14,7 @@
 /* Vendor. */
 #include "etl/message_bus.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
@@ -43,13 +43,13 @@ private:
     SemaphoreHandle_t mutex;
 public:
     static constexpr const etl::string_view NAME = "AceSpi";
-    AceSpi(etl::imessage_bus &bus, const OpenAce::PinTypeMap &pins) : SpiModule(bus),
-                                                                      clk(pins.at(OpenAce::PinType::CLK)),
-                                                                      mosi(pins.at(OpenAce::PinType::MOSI)),
-                                                                      miso(pins.at(OpenAce::PinType::MISO)),
-                                                                      rst(pins.at(OpenAce::PinType::RST)),
-                                                                      spi(pins.at(OpenAce::PinType::SPI)),
-                                                                      lastBusFrequency(OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY)
+    AceSpi(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins) : SpiModule(bus),
+                                                                      clk(pins.at(GATAS::PinType::CLK)),
+                                                                      mosi(pins.at(GATAS::PinType::MOSI)),
+                                                                      miso(pins.at(GATAS::PinType::MISO)),
+                                                                      rst(pins.at(GATAS::PinType::RST)),
+                                                                      spi(pins.at(GATAS::PinType::SPI)),
+                                                                      lastBusFrequency(GATAS_SPI_DEFAULT_BUS_FREQUENCY)
     {
     }
 
@@ -59,7 +59,7 @@ public:
 
     virtual ~AceSpi() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

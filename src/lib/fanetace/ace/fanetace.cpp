@@ -24,15 +24,15 @@ void FanetAce::stop()
     xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
 };
 
-OpenAce::PostConstruct FanetAce::postConstruct()
+GATAS::PostConstruct FanetAce::postConstruct()
 {
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
+        return GATAS::PostConstruct::MUTEX_ERROR;
     }
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void FanetAce::FanetAceTask(void *arg)
@@ -62,18 +62,18 @@ void FanetAce::FanetAceTask(void *arg)
     }
 }
 
-void FanetAce::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void FanetAce::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        openAceConfiguration = msg.config.openAceConfig();
-        protocol.ownAddress(FANET::Address{openAceConfiguration.address});
+        gaTasConfiguration = msg.config.gaTasConfig();
+        protocol.ownAddress(FANET::Address{gaTasConfiguration.address});
     }
 }
 
-void FanetAce::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
+void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config.dataSource == OpenAce::DataSource::FANET)
+    if (msg.radioParameters.config.dataSource == GATAS::DataSource::FANET)
     {
         FANET::TrackingPayload payload;
         payload.latitude(ownshipPosition.lat)
@@ -82,9 +82,9 @@ void FanetAce::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
             .speed(ownshipPosition.groundSpeed * MS_TO_KPH)
             .groundTrack(ownshipPosition.course)
             .climbRate(ownshipPosition.verticalSpeed)
-            .tracking(!openAceConfiguration.noTrack)
+            .tracking(!gaTasConfiguration.noTrack)
             .turnRate(ownshipPosition.hTurnRate)
-            .aircraftType(mapAircraftCategory(openAceConfiguration.category));
+            .aircraftType(mapAircraftCategory(gaTasConfiguration.category));
 
         auto packet = FANET::Packet<1>()
                           .payload(payload)
@@ -111,7 +111,7 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
     statistics.send++;
     radioParameters.config.codingRate = codingRate;
 
-    getBus().receive(OpenAce::RadioTxFrameMsg{
+    getBus().receive(GATAS::RadioTxFrameMsg{
         Radio::TxPacket{radioParameters, data},
         radioNo});
 
@@ -123,7 +123,7 @@ void FanetAce::fanet_ackReceived(uint16_t id)
     (void)id;
 }
 
-void FanetAce::on_receive(const OpenAce::OwnshipPositionMsg &msg)
+void FanetAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     auto m = Measure("FanetAce::OwnshipPositionMsg", 5000);
     if (auto guard = SemaphoreGuard<10>(mutex))
@@ -132,7 +132,7 @@ void FanetAce::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     }
 }
 
-void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
+void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
 {
     (void)msg;
     statistics.received++;
@@ -167,17 +167,17 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
             return;
         }
 
-        OpenAce::AircraftPositionMsg aircraftPosition{
-            OpenAce::AircraftPositionInfo{
+        GATAS::AircraftPositionMsg aircraftPosition{
+            GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
                 "",
                 packet.source().asUint(),
-                OpenAce::AddressType::FANET,
-                OpenAce::DataSource::FANET,
+                GATAS::AddressType::FANET,
+                GATAS::DataSource::FANET,
                 mapAircraftCategory(tp.aircraftType()),
                 false,
                 !tp.tracking(), // FANET uses 'tracking' to indicate it want's to be tracked
-                tp.speed() > (OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN * MS_TO_KPH),
+                tp.speed() > (GATAS::GROUNDSPEED_CONSIDERING_AIRBORN * MS_TO_KPH),
                 tp.latitude(),
                 tp.longitude(),
                 tp.altitude() + CoreUtils::egmGeoidOffset(tp.latitude(), tp.longitude()),
@@ -204,14 +204,14 @@ void FanetAce::on_receive(const OpenAce::RadioRxLoraMsg &msg)
             return;
         }
 
-        OpenAce::AircraftPositionMsg aircraftPosition{
-            OpenAce::AircraftPositionInfo{
+        GATAS::AircraftPositionMsg aircraftPosition{
+            GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
                 "",
                 packet.source().asUint(),
-                OpenAce::AddressType::FANET,
-                OpenAce::DataSource::FANET,
-                OpenAce::AircraftCategory::StaticObstacle,
+                GATAS::AddressType::FANET,
+                GATAS::DataSource::FANET,
+                GATAS::AircraftCategory::StaticObstacle,
                 false,
                 !tp.tracking(), // FANET uses 'tracking' to indicate it want's to be tracked
                 false,
@@ -255,50 +255,50 @@ void FanetAce::getData(etl::string_stream &stream, const etl::string_view path) 
     stream << "}\n";
 }
 
-OpenAce::AircraftCategory FanetAce::mapAircraftCategory(FANET::TrackingPayload::AircraftType category) const
+GATAS::AircraftCategory FanetAce::mapAircraftCategory(FANET::TrackingPayload::AircraftType category) const
 {
-    // map ADSL_Packet::AircraftCategory to OpenAce::AircraftCategory
+    // map ADSL_Packet::AircraftCategory to GATAS::AircraftCategory
     switch (category)
     {
     case FANET::TrackingPayload::AircraftType::PARAGLIDER:
-        return OpenAce::AircraftCategory::Paraglider;
+        return GATAS::AircraftCategory::Paraglider;
     case FANET::TrackingPayload::AircraftType::HANGLIDER:
-        return OpenAce::AircraftCategory::HangGlider;
+        return GATAS::AircraftCategory::HangGlider;
     case FANET::TrackingPayload::AircraftType::BALLOON:
-        return OpenAce::AircraftCategory::Balloon;
+        return GATAS::AircraftCategory::Balloon;
     case FANET::TrackingPayload::AircraftType::GLIDER:
-        return OpenAce::AircraftCategory::GliderMotorGlider;
+        return GATAS::AircraftCategory::GliderMotorGlider;
     case FANET::TrackingPayload::AircraftType::POWERED_AIRCRAFT:
-        return OpenAce::AircraftCategory::ReciprocatingEngine;
+        return GATAS::AircraftCategory::ReciprocatingEngine;
     case FANET::TrackingPayload::AircraftType::HELICOPTER:
-        return OpenAce::AircraftCategory::Helicopter;
+        return GATAS::AircraftCategory::Helicopter;
     case FANET::TrackingPayload::AircraftType::UAV:
-        return OpenAce::AircraftCategory::Uav;
+        return GATAS::AircraftCategory::Uav;
     default:
-        return OpenAce::AircraftCategory::Unknown;
+        return GATAS::AircraftCategory::Unknown;
     }
 }
 
-FANET::TrackingPayload::AircraftType FanetAce::mapAircraftCategory(OpenAce::AircraftCategory category) const
+FANET::TrackingPayload::AircraftType FanetAce::mapAircraftCategory(GATAS::AircraftCategory category) const
 {
     switch (category)
     {
-    case OpenAce::AircraftCategory::Paraglider:
+    case GATAS::AircraftCategory::Paraglider:
         return FANET::TrackingPayload::AircraftType::PARAGLIDER;
-    case OpenAce::AircraftCategory::HangGlider:
+    case GATAS::AircraftCategory::HangGlider:
         return FANET::TrackingPayload::AircraftType::HANGLIDER;
-    case OpenAce::AircraftCategory::Balloon:
+    case GATAS::AircraftCategory::Balloon:
         return FANET::TrackingPayload::AircraftType::BALLOON;
-    case OpenAce::AircraftCategory::GliderMotorGlider:
+    case GATAS::AircraftCategory::GliderMotorGlider:
         return FANET::TrackingPayload::AircraftType::GLIDER;
-    case OpenAce::AircraftCategory::TowPlane:
-    case OpenAce::AircraftCategory::DropPlane:
-    case OpenAce::AircraftCategory::ReciprocatingEngine:
-    case OpenAce::AircraftCategory::JetTurbopropEngine:
+    case GATAS::AircraftCategory::TowPlane:
+    case GATAS::AircraftCategory::DropPlane:
+    case GATAS::AircraftCategory::ReciprocatingEngine:
+    case GATAS::AircraftCategory::JetTurbopropEngine:
         return FANET::TrackingPayload::AircraftType::POWERED_AIRCRAFT;
-    case OpenAce::AircraftCategory::Helicopter:
+    case GATAS::AircraftCategory::Helicopter:
         return FANET::TrackingPayload::AircraftType::HELICOPTER;
-    case OpenAce::AircraftCategory::Uav:
+    case GATAS::AircraftCategory::Uav:
         return FANET::TrackingPayload::AircraftType::UAV;
     default:
         return FANET::TrackingPayload::AircraftType::OTHER;

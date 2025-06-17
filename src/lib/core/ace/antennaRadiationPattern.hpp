@@ -4,7 +4,7 @@
 #include "etl/array.h"
 
 
-namespace OpenAce
+namespace GATAS
 {
     template<size_t NUM_RADIALS = 8>
     class AntennaRadiationPattern
@@ -35,7 +35,7 @@ namespace OpenAce
         AntennaRadiationPattern() : radiationPattern() {};
 
 
-        void put(const OpenAce::AircraftPositionMsg &msg) {
+        void put(const GATAS::AircraftPositionMsg &msg) {
             auto &position = msg.position;
             uint8_t positionInRadial = CoreUtils::getRadialSection<NUM_RADIALS>(position.bearingFromOwn);
             Measurement &measurement = radiationPattern[positionInRadial];

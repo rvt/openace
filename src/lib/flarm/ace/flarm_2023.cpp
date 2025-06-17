@@ -59,39 +59,39 @@ uint16_t flarmCalculateChecksum(uint8_t* flarm_pkt, uint8_t length)
 
 
 
-OpenAce::PostConstruct Flarm::postConstruct()
+GATAS::PostConstruct Flarm::postConstruct()
 {
     BaseModule::moduleByName(*this, Tuner::NAME);
     if (sizeof(flarmV7Packet_t) != 24)
     {
         panic("Flarm packet size is not 24 bytes");
-        return OpenAce::PostConstruct::FAILED;
+        return GATAS::PostConstruct::FAILED;
     }
 
-    frameConsumerQueue = xQueueCreate( 4, sizeof( OpenAce::RadioRxGfskMsg ) );
+    frameConsumerQueue = xQueueCreate( 4, sizeof( GATAS::RadioRxGfskMsg ) );
     if (frameConsumerQueue == nullptr)
     {
         panic("Failed to create frameConsumerQueue");
-        return OpenAce::PostConstruct::FAILED;
+        return GATAS::PostConstruct::FAILED;
     }
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Flarm::start()
 {
     xTaskCreate(flarmReceiveTask, Flarm::NAME.cbegin(), configMINIMAL_STACK_SIZE+64, this, tskIDLE_PRIORITY + 2, &taskHandle);
-//    getBus().receive(OpenAce::DataSourceListen{OpenAce::DataSource::FLARM, true});
+//    getBus().receive(GATAS::DataSourceListen{GATAS::DataSource::FLARM, true});
     // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->startListen(OpenAce::DataSource::FLARM);
+    // tuner->startListen(GATAS::DataSource::FLARM);
     getBus().subscribe(*this);
 };
 
 void Flarm::stop()
 {
     getBus().unsubscribe(*this);
-//    getBus().receive(OpenAce::DataSourceListen{OpenAce::DataSource::FLARM, false});
+//    getBus().receive(GATAS::DataSourceListen{GATAS::DataSource::FLARM, false});
     // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->stopListen(OpenAce::DataSource::FLARM);
+    // tuner->stopListen(GATAS::DataSource::FLARM);
 
     vTaskDelete(taskHandle);
     vQueueDelete(frameConsumerQueue);
@@ -176,7 +176,7 @@ int8_t Flarm::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rssiDb
     if (fromOwn.distance > distanceIgnore)
     {
         statistics.outOfDistance++;
-        // printf("Distance %2.f > OPENACE_FLARM_IGNORE_DISTANCE_ERRORS, ignoring (%.4f, %.4f, %.4f, %.4f)\n",   distance, fLatitude, fLongitude, lastGpsPosition.latitude, lastGpsPosition.longitude);
+        // printf("Distance %2.f > GATAS_FLARM_IGNORE_DISTANCE_ERRORS, ignoring (%.4f, %.4f, %.4f, %.4f)\n",   distance, fLatitude, fLongitude, lastGpsPosition.latitude, lastGpsPosition.longitude);
         return -1;
     }
 
@@ -202,15 +202,15 @@ int8_t Flarm::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rssiDb
 
     statistics.receivedAircraftPositions++;
 
-    OpenAce::AircraftPositionMsg aircraftPosition
+    GATAS::AircraftPositionMsg aircraftPosition
     {
-        OpenAce::AircraftPositionInfo
+        GATAS::AircraftPositionInfo
         {
             positionTs,
             flarmPacket->address,
             addressType(flarmPacket->addressType),
-            OpenAce::DataSource::FLARM,
-            static_cast<OpenAce::AircraftCategory>(flarmPacket->aircraftType),   // We can cast this because AircraftCategory follows FLARM spec
+            GATAS::DataSource::FLARM,
+            static_cast<GATAS::AircraftCategory>(flarmPacket->aircraftType),   // We can cast this because AircraftCategory follows FLARM spec
             flarmPacket->stealth,                         // stealth somehow relates to random address, but different :)
             noTrack,                                 //
             flarmPacket->turnRate != TURN_RATE_ON_GROUND, // Airborn
@@ -238,7 +238,7 @@ void Flarm::flarmReceiveTask(void *arg)
     Flarm *flarm = static_cast<Flarm*>(arg);
     while (true)
     {
-        OpenAce::RadioRxGfskMsg msg;
+        GATAS::RadioRxGfskMsg msg;
         if (xQueueReceive(flarm->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
             // Validate checksum
@@ -256,10 +256,10 @@ void Flarm::flarmReceiveTask(void *arg)
     }
 }
 
-const flarmV7Packet_t Flarm::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
+const flarmV7Packet_t Flarm::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     flarmV7Packet_t packet;
-    if (msg.radioParameters.config.dataSource == OpenAce::DataSource::FLARM)
+    if (msg.radioParameters.config.dataSource == GATAS::DataSource::FLARM)
     {
         auto speedScale = getSpeedScaling();
 
@@ -315,7 +315,7 @@ const flarmV7Packet_t Flarm::on_receive(const OpenAce::RadioTxPositionRequestMsg
         packet.checksum = swapBytes16(calculatedChecksum);
 
         statistics.transmittedAircraftPositions++;
-        getBus().receive(OpenAce::RadioTxFrameMsg
+        getBus().receive(GATAS::RadioTxFrameMsg
         {
             Radio::TxPacket{
                 msg.radioParameters,
@@ -330,22 +330,22 @@ const flarmV7Packet_t Flarm::on_receive(const OpenAce::RadioTxPositionRequestMsg
     return packet;
 }
 
-OpenAce::AddressType Flarm::addressType(uint8_t addressType)
+GATAS::AddressType Flarm::addressType(uint8_t addressType)
 {
     switch (addressType)
     {
     case 0x02:
         statistics.addressTypeFlarm++;
-        return OpenAce::AddressType::FLARM;
+        return GATAS::AddressType::FLARM;
     case 0x01:
         statistics.addressTypeICAO++;
-        return OpenAce::AddressType::ICAO;
+        return GATAS::AddressType::ICAO;
     case 0x00:
         statistics.addressTypeRandom++;
     default:
         // Not a bug, if we don't the the type we just say random
         statistics.addressTypeErr++;
-        return OpenAce::AddressType::RANDOM;
+        return GATAS::AddressType::RANDOM;
     }
 }
 
@@ -370,7 +370,7 @@ uint8_t Flarm::getTurnState() const
     }
 
     // No turn if this is not a glider or if moving faster than 36m/s.
-    if (ownshipPosition.aircraftType != OpenAce::AircraftCategory::GliderMotorGlider || ownshipPosition.groundSpeed > 36.f)
+    if (ownshipPosition.aircraftType != GATAS::AircraftCategory::GliderMotorGlider || ownshipPosition.groundSpeed > 36.f)
     {
         return 5;
     }

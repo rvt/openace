@@ -13,7 +13,7 @@
 /* Pico. */
 #include "pico/cyw43_arch.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/coreutils.hpp"
 
 Webserver *webserver;
@@ -23,13 +23,13 @@ extern struct tcp_pcb *tcp_input_pcb;
 inline etl::map<uint32_t, uint32_t, 4> captiveCheck;
 
 /* Other consts */
-constexpr etl::string_view X_OPENACE_METHOD_DELETE = "X-Method: DELETE";    // Custom HTTP header for method intent
+constexpr etl::string_view X_GATAS_METHOD_DELETE = "X-Method: DELETE";    // Custom HTTP header for method intent
 constexpr etl::string_view CONFIGPATH = "/api/_Configuration"; // Endpoint path
 
 static struct RequestContext_t
 {
     void *current_connection;
-    OpenAce::ConfigPathString uri;
+    GATAS::ConfigPathString uri;
     enum
     {
         POST,
@@ -68,7 +68,7 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
                     .method = RequestContext_t::POST,
                     .response = false};
 
-            if (sv_http_request.find(X_OPENACE_METHOD_DELETE) != etl::string_view::npos)
+            if (sv_http_request.find(X_GATAS_METHOD_DELETE) != etl::string_view::npos)
             {
                 RequestContext.method = RequestContext_t::DELETE;
             }
@@ -113,7 +113,7 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
                 // TODO: FInd a way to correctly hold locks on data
                 // printf("Sending config update to %s\n", pathParsed[2].c_str());
                 configModule->getBus().receive(
-                    OpenAce::ConfigUpdatedMsg{
+                    GATAS::ConfigUpdatedMsg{
                         *configModule,
                         pathParsed[2],
                     });
@@ -123,7 +123,7 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
                 if (pathParsed[2] == "aircraft") 
                 {
                     configModule->getBus().receive(
-                        OpenAce::ConfigUpdatedMsg{
+                        GATAS::ConfigUpdatedMsg{
                             *configModule,
                             Configuration::CONFIG,
                         });
@@ -158,11 +158,11 @@ extern struct fsdata_file file_captive_html[];
 extern struct fsdata_file file_ios_html[];
 const uint8_t IS_ACCEPTED = 1 << 1;
 
-int handle_captive(fs_file *file, const etl::ivector<OpenAce::Modulename> &path)
+int handle_captive(fs_file *file, const etl::ivector<GATAS::Modulename> &path)
 {
     // How captive works. All devices test a URL and see what content is returned. If the unexpected content is returned, it's assumed it need to be captive:
-    // For iOS: iOS loads hotspot-detect.html -> OpenAce shows something different -> iOS Opens loading the page OpenAce returns a landing page with redirect -> iOS still showing captive, follows redirect and shows OpenACE
-    // for Android: Android checks generate_204 -> OpenAce returns something different -> Keep portal open, but service pages
+    // For iOS: iOS loads hotspot-detect.html -> GaTas shows something different -> iOS Opens loading the page GaTas returns a landing page with redirect -> iOS still showing captive, follows redirect and shows GATAS
+    // for Android: Android checks generate_204 -> GaTas returns something different -> Keep portal open, but service pages
     // For Android it would be nice to start using DHCP_OPT_CAPTIVE_PORTAL see dhcpserver.c
     uint32_t remoteAddress = tcp_input_pcb->remote_ip.addr;
     if (captiveCheck[remoteAddress] & IS_ACCEPTED)
@@ -208,7 +208,7 @@ int fs_open_custom(fs_file *file, const char *name)
 {
     constexpr auto MAX_CONTENT_SIZE = 1024;
 
-    auto pathString = OpenAce::ConfigPathString(name);
+    auto pathString = GATAS::ConfigPathString(name);
     auto path = CoreUtils::parsePath(pathString);
 
     // Test if this is an request for api data requests
@@ -224,7 +224,7 @@ int fs_open_custom(fs_file *file, const char *name)
     //     return 1;
     // }
 
-    // OpenAce API calls
+    // GaTas API calls
     if (path.back() != "json" || path.front() != "api")
     {
         return 0;
@@ -301,9 +301,9 @@ void Webserver::getData(etl::string_stream &stream, const etl::string_view path)
     stream << "}\n";
 }
 
-OpenAce::PostConstruct Webserver::postConstruct()
+GATAS::PostConstruct Webserver::postConstruct()
 {
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Webserver::start()
@@ -323,7 +323,7 @@ void Webserver::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void Webserver::on_receive(const OpenAce::WifiConnectionStateMsg &wcs)
+void Webserver::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
     static bool once = false;
     // Only start the webserver after WIFI has been connected.

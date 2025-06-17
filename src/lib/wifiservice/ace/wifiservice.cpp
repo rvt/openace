@@ -8,13 +8,13 @@
 #include "lwip/apps/mdns.h"
 #include "ace/coreutils.hpp"
 
-OpenAce::PostConstruct WifiService::postConstruct()
+GATAS::PostConstruct WifiService::postConstruct()
 {
     if (cyw43_arch_init())
     {
-        return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;
+        return GATAS::PostConstruct::HARDWARE_NOT_FOUND;
     }
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void WifiService::start()
@@ -68,7 +68,7 @@ void WifiService::wifiTask(void *arg)
                 break;
 
             case ConnectionState::WIFISCAN:
-                startScan = CoreUtils::timeUs32Raw() + (OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS * 1'000);
+                startScan = CoreUtils::timeUs32Raw() + (GATAS_WIFISERVICE_MAX_SCAN_TIME_MS * 1'000);
                 wifiService->startWifiScan();
                 wifiService->connectionState = ConnectionState::WIFISCANNING;
                 break;
@@ -78,7 +78,7 @@ void WifiService::wifiTask(void *arg)
                 {
                     wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
                 }
-                // If for whatever reason WIFI scan does not find any network, then stop scanning after OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS
+                // If for whatever reason WIFI scan does not find any network, then stop scanning after GATAS_WIFISERVICE_MAX_SCAN_TIME_MS
                 if (CoreUtils::isUsReachedRaw(startScan))
                 {
                     cyw43_wifi_leave(&cyw43_state, 0);
@@ -165,7 +165,7 @@ void WifiService::wifiTask(void *arg)
 
             case ConnectionState::APSTOPPED:
                 wifiService->connectionState = ConnectionState::WIFISCAN;
-                wifiService->getBus().receive(OpenAce::WifiConnectionStateMsg{false});
+                wifiService->getBus().receive(GATAS::WifiConnectionStateMsg{false});
                 break;
 
             default:
@@ -180,7 +180,7 @@ void WifiService::accessPointConnectionScanner()
 {
     auto cyw43TickMs = cyw43_hal_ticks_ms();
     // Generate a lit of connected clients and send it
-    etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> clients;
+    etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> clients;
     for (uint8_t i = 0; i < DHCPS_MAX_IP; i++)
     {
         uint32_t expiry = dhcp_server.lease[i].expiry << 16 | 0xffff;
@@ -189,7 +189,7 @@ void WifiService::accessPointConnectionScanner()
             clients.insert(dhcp_server.lease[i].ip.addr);
         }
     }
-    getBus().receive(OpenAce::AccessPointClientsMsg{clients});
+    getBus().receive(GATAS::AccessPointClientsMsg{clients});
 }
 
 void WifiService::startAccessPoint()
@@ -222,10 +222,10 @@ int WifiService::scanResultCb(void *env, const cyw43_ev_scan_result_t *result)
     {
         // puts("Scan Result received");
         WifiService *service = (WifiService *)env;
-        OpenAce::SsidOrPasswdStr name = (char *)result->ssid;
+        GATAS::SsidOrPasswdStr name = (char *)result->ssid;
 
         auto it = etl::find_if(service->wifiData.clients.begin(), service->wifiData.clients.end(),
-                               [&name](const OpenAce::Config::WifiNamePassword &client)
+                               [&name](const GATAS::Config::WifiNamePassword &client)
                                {
                                    return client.ssid == name;
                                });
@@ -276,7 +276,7 @@ uint8_t WifiService::connectClient()
 
     auto nameIt = scanResult.begin();
     auto it = etl::find_if(wifiData.clients.begin(), wifiData.clients.end(),
-                           [&nameIt](const OpenAce::Config::WifiNamePassword &client)
+                           [&nameIt](const GATAS::Config::WifiNamePassword &client)
                            {
                                return client.ssid == *nameIt;
                            });
@@ -378,7 +378,7 @@ void WifiService::mDnsInit()
 #if LWIP_MDNS_RESPONDER == 1
     mdns_resp_init();
 
-    mdns_resp_add_netif(netif_default, "openace");
+    mdns_resp_add_netif(netif_default, "gatas");
     mdns_resp_add_service(netif_default, "myweb", "_http", DNSSD_PROTO_TCP, 80, srv_txt, NULL);
     mdns_resp_announce(netif_default);
 #endif
@@ -400,7 +400,7 @@ ip4_addr_t WifiService::getIpAddr() {
     return { 0 };
 }
 
-void WifiService::on_receive(const OpenAce::IdleMsg &msg)
+void WifiService::on_receive(const GATAS::IdleMsg &msg)
 {
     (void)msg;
     static bool previous = false;
@@ -408,7 +408,7 @@ void WifiService::on_receive(const OpenAce::IdleMsg &msg)
 
     if (active != previous)
     {
-        getBus().receive(OpenAce::WifiConnectionStateMsg{active, getIpAddr().addr & 0xFFFFFF});
+        getBus().receive(GATAS::WifiConnectionStateMsg{active, getIpAddr().addr & 0xFFFFFF});
         previous = active;
     }
 }

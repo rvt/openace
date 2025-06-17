@@ -7,38 +7,38 @@
 /* PICO. */
 #include "hardware/gpio.h"
 
-/* OpenAce */
+/* GaTas */
 #include "coreutils.hpp"
 
-const char *postConstructToString(OpenAce::PostConstruct value)
+const char *postConstructToString(GATAS::PostConstruct value)
 {
     switch (value)
     {
-    case OpenAce::PostConstruct::OK:
+    case GATAS::PostConstruct::OK:
         return "Ok";
-    case OpenAce::PostConstruct::FAILED:
-        return "OpenAce::PostConstruct failed";
-    case OpenAce::PostConstruct::MEMORY:
+    case GATAS::PostConstruct::FAILED:
+        return "GATAS::PostConstruct failed";
+    case GATAS::PostConstruct::MEMORY:
         return "Memory error";
-    case OpenAce::PostConstruct::DEP_NOT_FOUND:
+    case GATAS::PostConstruct::DEP_NOT_FOUND:
         return "A dependency was not found";
-    case OpenAce::PostConstruct::XQUEUE_ERROR:
+    case GATAS::PostConstruct::XQUEUE_ERROR:
         return "xQueue error";
-    case OpenAce::PostConstruct::TASK_ERROR:
+    case GATAS::PostConstruct::TASK_ERROR:
         return "Task Error";
-    case OpenAce::PostConstruct::HARDWARE_NOT_FOUND:
+    case GATAS::PostConstruct::HARDWARE_NOT_FOUND:
         return "Hardware not found";
-    case OpenAce::PostConstruct::HARDWARE_ERROR:
+    case GATAS::PostConstruct::HARDWARE_ERROR:
         return "Hardware error";
-    case OpenAce::PostConstruct::NETWORK_ERROR:
+    case GATAS::PostConstruct::NETWORK_ERROR:
         return "network error";
-    case OpenAce::PostConstruct::CONFIG_ERROR:
+    case GATAS::PostConstruct::CONFIG_ERROR:
         return "Configuration error";
-    case OpenAce::PostConstruct::MUTEX_ERROR:
+    case GATAS::PostConstruct::MUTEX_ERROR:
         return "Failed to create mutex";
-    case OpenAce::PostConstruct::TIMER_ERROR:
+    case GATAS::PostConstruct::TIMER_ERROR:
         return "Timer error";
-    case OpenAce::PostConstruct::HARDWARE_NOT_CONFIGURED:
+    case GATAS::PostConstruct::HARDWARE_NOT_CONFIGURED:
         return "Hardware configuration not found";
     default:
         return "unknown error";
@@ -76,7 +76,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
         if (BaseModule::moduleLoaderMap.contains(requesting))
         {
             auto module = BaseModule::moduleLoaderMap[requesting];
-            if (module.result == OpenAce::PostConstruct::OK)
+            if (module.result == GATAS::PostConstruct::OK)
             {
                 return module.module;
             }

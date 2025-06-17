@@ -72,7 +72,7 @@
 /* Memory allocation related definitions. */
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-/* OpenACE: Changed from 128 to 115 */
+/* GATAS: Changed from 128 to 115 */
 #define configTOTAL_HEAP_SIZE                   (115*1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 

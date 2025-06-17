@@ -9,7 +9,7 @@
 /* ETL. */
 #include "etl/map.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/manchester.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/measure.hpp"
@@ -28,19 +28,19 @@ void Sx1262::stop()
     xTaskNotify(taskHandle, TaskState::DELETE, eSetBits);
 };
 
-OpenAce::PostConstruct Sx1262::postConstruct()
+GATAS::PostConstruct Sx1262::postConstruct()
 {
     spiHall = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
 
     if (spiHall == nullptr)
     {
-        return OpenAce::PostConstruct::DEP_NOT_FOUND;
+        return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
 
     xMutex = xSemaphoreCreateMutex();
     if (xMutex == nullptr)
     {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
+        return GATAS::PostConstruct::MUTEX_ERROR;
     }
 
     // Chip select is active-low, so we'll initialise it to a driven-high state
@@ -65,7 +65,7 @@ OpenAce::PostConstruct Sx1262::postConstruct()
     if (strncmp(data, "SX126", 5) != 0)
     {
         printf("Expected SX126X, but found [%s] ", data);
-        return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;
+        return GATAS::PostConstruct::HARDWARE_NOT_FOUND;
     }
     printf(" found [%s] (Sx1261 is normal for a Sx1262) ", data);
 
@@ -74,7 +74,7 @@ OpenAce::PostConstruct Sx1262::postConstruct()
     // Added 512byte because Fanet can be up to 256 byte
     if (xTaskCreate(sx1262Task, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
     {
-        return OpenAce::PostConstruct::TASK_ERROR;
+        return GATAS::PostConstruct::TASK_ERROR;
     }
     registerPinInterrupt(dio1Pin, GPIO_IRQ_EDGE_RISE, taskHandle, 0);
 
@@ -85,7 +85,7 @@ OpenAce::PostConstruct Sx1262::postConstruct()
     bi_decl(bi_1pin_with_name(static_cast<uint32_t>(busyPin), NAMES[radioNo].cbegin()));
     bi_decl(bi_1pin_with_name(static_cast<uint32_t>(dio1Pin), NAMES[radioNo].cbegin()));
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -101,7 +101,7 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << ",\"txQueueFull\":" << statistics.queueFull;
     stream << ",\"txQueueSize\":" << txQueue.size();
     stream << ",\"mode\":" << "\"" << Radio::modeString(rxRadioParameters.config.mode) << "\"";
-    stream << ",\"dataSource\":" << "\"" << OpenAce::dataSourceToString(rxRadioParameters.config.dataSource) << "\"";
+    stream << ",\"dataSource\":" << "\"" << GATAS::dataSourceToString(rxRadioParameters.config.dataSource) << "\"";
     stream << ",\"frequency\":" << rxRadioParameters.frequency;
     stream << ",\"powerdBm\":" << rxRadioParameters.powerdBm;
     stream << ",\"txEnabled\":" << txEnabled;
@@ -111,7 +111,7 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << "}\n";
 }
 
-void Sx1262::on_receive(const OpenAce::RadioTxFrameMsg &msg)
+void Sx1262::on_receive(const GATAS::RadioTxFrameMsg &msg)
 {
     if (msg.radioNo == radioNo && txEnabled)
     {
@@ -127,7 +127,7 @@ void Sx1262::on_receive(const OpenAce::RadioTxFrameMsg &msg)
     }
 }
 
-void Sx1262::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void Sx1262::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Sx1262::NAMES[radioNo])
     {
@@ -136,12 +136,12 @@ void Sx1262::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
     }
 }
 
-void Sx1262::on_receive(const OpenAce::GpsStatsMsg &msg)
+void Sx1262::on_receive(const GATAS::GpsStatsMsg &msg)
 {
     hasGpsFix = msg.fixType == 3;
 }
 
-void Sx1262::on_receive(const OpenAce::RadioControlMsg &msg)
+void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
@@ -225,7 +225,7 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
         pkt_params_gfsk.sync_word_len_in_bits = (newParameters.config.syncLength) * 8;
         sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
         sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data(), newParameters.config.syncLength);
-        // printf("Radio %d changed from %s to %s\n", radioNo, OpenAce::dataSourceToString(lastParameters.config.dataSource), OpenAce::dataSourceToString(newParameters.config.dataSource));
+        // printf("Radio %d changed from %s to %s\n", radioNo, GATAS::dataSourceToString(lastParameters.config.dataSource), GATAS::dataSourceToString(newParameters.config.dataSource));
     }
     else if (newParameters.config.mode == Radio::Mode::LORA)
     {
@@ -340,13 +340,13 @@ void Sx1262::receiveGFSKPacket()
     {
         statistics.receivedPackets++;
         uint8_t receivedFrameLength = receivedPacketLength();
-        constexpr uint8_t maxFrameLength = OpenAce::RADIO_MAX_FRAME_LENGTH * MANCHESTER;
+        constexpr uint8_t maxFrameLength = GATAS::RADIO_MAX_FRAME_LENGTH * MANCHESTER;
         if (receivedFrameLength > 0 && receivedFrameLength <= maxFrameLength)
         {
             uint8_t data[maxFrameLength];
             sx126x_read_buffer(this, 0x80, data, receivedFrameLength);
 
-            rxGfskMsg = OpenAce::RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), pkt_status.rssi_avg, rxRadioParameters.frequency, rxRadioParameters.config.dataSource};
+            rxGfskMsg = GATAS::RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), pkt_status.rssi_avg, rxRadioParameters.frequency, rxRadioParameters.config.dataSource};
 
             // Seems like all GFSK packets are Manchester encoded, so we just decode here directly
             manchesterDecode((uint8_t *)rxGfskMsg.frame, (uint8_t *)rxGfskMsg.err, data, receivedFrameLength);
@@ -373,9 +373,9 @@ void Sx1262::receiveLORAPacket()
 
         statistics.receivedPackets++;
         uint8_t receivedFrameLength = receivedPacketLength();
-        if (receivedFrameLength > 0 && receivedFrameLength <= OpenAce::MAX_LORA_MSG_SIZE)
+        if (receivedFrameLength > 0 && receivedFrameLength <= GATAS::MAX_LORA_MSG_SIZE)
         {
-            rxLoraMsg = OpenAce::RadioRxLoraMsg(CoreUtils::secondsSinceEpoch(), pkt_status.signal_rssi_pkt_in_dbm, rxRadioParameters.frequency, rxRadioParameters.config.dataSource);
+            rxLoraMsg = GATAS::RadioRxLoraMsg(CoreUtils::secondsSinceEpoch(), pkt_status.signal_rssi_pkt_in_dbm, rxRadioParameters.frequency, rxRadioParameters.config.dataSource);
             rxLoraMsg.frame.resize(receivedFrameLength);
             sx126x_read_buffer(this, 0x80, rxLoraMsg.frame.data(), receivedFrameLength);
             // dumpBuffer((uint8_t *)RadioRxGfskMsg.frame, RadioRxGfskMsg.length);
@@ -433,12 +433,12 @@ sx126x_irq_mask_t Sx1262::getIrqStatus()
 void Sx1262::sendPacket(const TxPacket &txPacket)
 {
 
-    // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
+    // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, GATAS::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
     configureSx1262(txPacket.radioParameters, true);
 
     if (txPacket.radioParameters.config.mode == Radio::Mode::GFSK)
     {
-        uint8_t frame[OpenAce::RADIO_MAX_FRAME_LENGTH * 2];
+        uint8_t frame[GATAS::RADIO_MAX_FRAME_LENGTH * 2];
         manchesterEncode(frame, txPacket.data.data(), txPacket.length);
         sendGFSKPacket(txPacket.radioParameters, frame, txPacket.length * 2);
     }
@@ -476,7 +476,7 @@ void Sx1262::sx1262Task(void *arg)
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
-                    // printf("%8ld Listen Packet after TX ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+                    // printf("%8ld Listen Packet after TX ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
                     sx1262->configureSx1262(sx1262->rxRadioParameters);
                     sx1262->listen();
                 }
@@ -497,7 +497,7 @@ void Sx1262::sx1262Task(void *arg)
             // When a packet is received, receive it and directly reconfigure the transceiver.. then send it to the bus
             if (notifyValue & TaskState::DIO1_RX_DONE)
             {
-                // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource), CoreUtils::msInSecond());
+                // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, GATAS::dataSourceToString(sx1262->rxRadioParameters.config.dataSource), CoreUtils::msInSecond());
                 if (sx1262->rxRadioParameters.config.mode == Radio::Mode::GFSK)
                 {
                     auto m = Measure("Receive receiveGFSKPacket (takes about 1.4ms)", 0);
@@ -529,7 +529,7 @@ void Sx1262::sx1262Task(void *arg)
                         sx1262->sendToBus(sx1262->rxLoraMsg);
                     }
                 }
-                // printf("%8ld RX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+                // printf("%8ld RX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
             };
 
             // Only in TX 
@@ -539,7 +539,7 @@ void Sx1262::sx1262Task(void *arg)
                 if (auto guard = aceSpi->getLock(_))
                 {
                     auto m = Measure("Send Packet");
-                    // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(txPacket.radioParameters.config.dataSource));
+                    // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::dataSourceToString(txPacket.radioParameters.config.dataSource));
                     txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     sx1262->sendPacket(txPacket);
                     sx1262->statistics.transmittedPackets++;
@@ -553,7 +553,7 @@ void Sx1262::sx1262Task(void *arg)
                 if (auto g = SemaphoreGuard<10>(sx1262->xMutex))
                 {
                     sx1262->rxRadioParameters = sx1262->newRxRadioParameters;
-                    // printf("%8ld New Config ds:%s\n", CoreUtils::timeUs32Raw() / 1000, OpenAce::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
+                    // printf("%8ld New Config ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
                     hasNewConfig = false;
                 }
                 bool _;
@@ -567,7 +567,7 @@ void Sx1262::sx1262Task(void *arg)
         else
         {
             // End up here when timeout, only count in statistics so we know this is happening
-            if (sx1262->rxRadioParameters.config.dataSource != OpenAce::DataSource::NONE)
+            if (sx1262->rxRadioParameters.config.dataSource != GATAS::DataSource::NONE)
             {
                 sx1262->statistics.taskTimeout++;
             }

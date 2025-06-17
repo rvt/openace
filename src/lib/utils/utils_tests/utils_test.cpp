@@ -35,7 +35,7 @@ TEST_CASE( "manchesterEncodeTest", "[single-file]" )
  TEST_CASE( "AMA", "[single-file]" )
  {
      // Tuned such that within 5 seconds (5GPS positions per second) the resulting values is within 3%
-     EMAFloat filter{OPENACE_EMAFLOAT_K_FACTOR_5PS};
+     EMAFloat filter{GATAS_EMAFLOAT_K_FACTOR_5PS};
      printf("1 %f\n", filter(100));
      printf("2 %f\n", filter(100));
      printf("3 %f\n", filter(100));
@@ -60,7 +60,7 @@ TEST_CASE( "manchesterEncodeTest", "[single-file]" )
  TEST_CASE( "RatePerSecond 5", "[single-file]" )
  {
      printf("-------\n");
-     RatePerSecond filter(OPENACE_EMAFLOAT_K_FACTOR_5PS, 5); // 1.9 is a good k factor when updated 2x per second
+     RatePerSecond filter(GATAS_EMAFLOAT_K_FACTOR_5PS, 5); // 1.9 is a good k factor when updated 2x per second
      for (int i = 0; i < 15; i++)
      {
          filter(500);

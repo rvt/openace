@@ -33,7 +33,7 @@
 // Create dynamic headers based on the files extension
 #define LWIP_HTTPD_DYNAMIC_HEADERS 1
 // THis file will be generated and located in the web servers module
-#define HTTPD_FSDATA_FILE "@CMAKE_CURRENT_SOURCE_DIR@/../lib/webserver/openace_fsdata.c"
+#define HTTPD_FSDATA_FILE "@CMAKE_CURRENT_SOURCE_DIR@/../lib/webserver/gatas_fsdata.c"
 
 // Default gateway to 192.168.1.1 instead of 192.168.4.1
 #define CYW43_DEFAULT_IP_AP_ADDRESS LWIP_MAKEU32(192, 168, 1, 1)
@@ -43,7 +43,7 @@
 #define CYW43_DEFAULT_IP_DNS LWIP_MAKEU32(0, 0, 0, 0)
 // #define PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE CYW43_COUNTRY_USA
 #define PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE CYW43_COUNTRY_WORLDWIDE
-#define CYW43_HOST_NAME "OpenAce"
+#define CYW43_HOST_NAME "GATAS"
 
 // https://github.com/raspberrypi/pico-sdk/issues/1443
 #define PICO_MAX_SHARED_IRQ_HANDLERS 6
@@ -59,8 +59,8 @@
 #define ETL_LOG_ERRORS ( 1 )
 #define ETL_DEBUG ( 1 )
 #define ETL_CHECK_PUSH_POP ( 1)
-#define OPENACE_LWIP_DEBUG ( 1 )
-#define OPENACE_FREERTOS_DEBUG ( 1 )
+#define GATAS_LWIP_DEBUG ( 1 )
+#define GATAS_FREERTOS_DEBUG ( 1 )
 #define PICO_ENTER_USB_BOOT_ON_EXIT ( 1 )
 
 // Other's that could help debugging problems
@@ -72,7 +72,7 @@
 
 
 // Route UART messages over different pins by default
-#if OPENACE_UART_OVER_USB
+#if GATAS_UART_OVER_USB
     #define PICO_DEFAULT_UART 1
 #else
     #define PICO_DEFAULT_UART_RX_PIN  17
@@ -80,7 +80,7 @@
 #endif
 
 // DHCP lease time. 30 minutes TO ensure we remove unneeded targets on time. But long enough to ensure we do not loose connection
-#define OPENACE_DEFAULT_LEASE_TIME_S ( 60 * 30 )
+#define GATAS_DEFAULT_LEASE_TIME_S ( 60 * 30 )
 
 // ***** ETLCPP 
 // https://www.etlcpp.com/mutex.html
@@ -92,13 +92,13 @@
 // TODO: Re-enable so we can use etl::delegate and get rid of std
 // #define ETL_NO_STL ( 1 ) 
 
-// ***** OpenAce configurations 
+// ***** GaTas configurations 
 
 // Maximum number of TCP clients that can connect to the server
-#define OPENACE_MAXIMUM_TCP_CLIENTS ( 4 )
+#define GATAS_MAXIMUM_TCP_CLIENTS ( 4 )
 
 // Default BUS frequency of SPI in MHZ
-#define OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY ( 15 )
+#define GATAS_SPI_DEFAULT_BUS_FREQUENCY ( 15 )
 
 // Address field
 // The address field starts with “$” followed by the talker ID and a sentence identifier. The used talker IDs are:
@@ -114,32 +114,32 @@
 // * RMC – Recommended Minimum Specific GNSS Data
 // * ZDA – Time and Date
 // Sentencs we never want to send over AirConnect
-// #define OPENACE_AIRCONNECT_DO_NOT_SEND  ""
-#define OPENACE_AIRCONNECT_DO_NOT_SEND  "$GPGLL,$GNRMC,$GNGGA,$GNGLL,$GNGSV,$GPGSV,$GLGSV,$GPGSA,$GNGSA,$GNVTG"
+// #define GATAS_AIRCONNECT_DO_NOT_SEND  ""
+#define GATAS_AIRCONNECT_DO_NOT_SEND  "$GPGLL,$GNRMC,$GNGGA,$GNGLL,$GNGSV,$GPGSV,$GLGSV,$GPGSA,$GNGSA,$GNVTG"
 
 // Stat's collector antenna radial pattern divisions
-#define OPENACE_STATSCOLLECTOR_NUM_RADIALS ( 8 )
+#define GATAS_STATSCOLLECTOR_NUM_RADIALS ( 8 )
 
 // K Factor to use for EMA Filter that ensures we filter values over a 1 second period reach minimum to maximum for 5 updates per second
-#define OPENACE_EMAFLOAT_K_FACTOR_5PS ( 1.9f )
+#define GATAS_EMAFLOAT_K_FACTOR_5PS ( 1.9f )
 
 // K Factor to use for EMA Filter that ensures we filter values over a 1 second period reach minimum to maximum for 2 updates per second
-#define OPENACE_EMAFLOAT_K_FACTOR_2PS ( 1.2f )
+#define GATAS_EMAFLOAT_K_FACTOR_2PS ( 1.2f )
 
 // Maximum radios that can be controlled
-#define OPENACE_MAX_RADIOS ( 2 ) 
+#define GATAS_MAX_RADIOS ( 2 ) 
 // Maximum number of datasources per radio that can be handled
-#define OPENACE_MAX_SOURCE_PER_RADIO ( 3 )
+#define GATAS_MAX_SOURCE_PER_RADIO ( 3 )
 
 // Maximum time the system will start scanning. If a scan result was found, then scanning will stop  aswell.
-#define OPENACE_WIFISERVICE_MAX_SCAN_TIME_MS 10000
+#define GATAS_WIFISERVICE_MAX_SCAN_TIME_MS 10000
 
 // Maximum number of bluetooth connections
-#define OPENACE_MAX_BLUETOOTH_CONNECTIONS ( 3 )
+#define GATAS_MAX_BLUETOOTH_CONNECTIONS ( 3 )
 
 // Signature for Flash configuration. When this signature changes, a compete new and fresh configuration will be loaded
-// Make sure this value is the same as in openace_default_config.json
-#define OPENACE_FLASH_SIGNATURE ( 250207 )
+// Make sure this value is the same as in gatas_default_config.json
+#define GATAS_FLASH_SIGNATURE ( 250207 )
 
 #define DISALLOW_COPY_AND_MOVE(Type)       \
     Type(const Type&) = delete;            \

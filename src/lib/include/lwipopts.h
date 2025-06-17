@@ -39,7 +39,7 @@
 #define DHCP_DOES_ARP_CHECK         0
 #define LWIP_DHCP_DOES_ACD_CHECK    0
 
-#if !defined(NDEBUG) && OPENACE_LWIP_DEBUG
+#if !defined(NDEBUG) && GATAS_LWIP_DEBUG
 #define LWIP_DEBUG                  1
 #define LWIP_STATS                  1
 #define LWIP_STATS_DISPLAY          1

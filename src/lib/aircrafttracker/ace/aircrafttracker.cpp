@@ -4,9 +4,9 @@
 
 #include "etl/algorithm.h"
 
-OpenAce::PostConstruct AircraftTracker::postConstruct()
+GATAS::PostConstruct AircraftTracker::postConstruct()
 {
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void AircraftTracker::start()
@@ -25,11 +25,11 @@ void AircraftTracker::stop()
     }
 };
 
-void AircraftTracker::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void AircraftTracker::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        ownshipAddress = msg.config.openAceConfig().address;
+        ownshipAddress = msg.config.gaTasConfig().address;
     }
 }
 
@@ -38,21 +38,21 @@ void AircraftTracker::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void AircraftTracker::on_receive(const OpenAce::IdleMsg &msg)
+void AircraftTracker::on_receive(const GATAS::IdleMsg &msg)
 {
     (void)msg;
     xTaskNotify(taskHandle, TaskState::MAINTAIN, eSetBits);
 
-    getBus().receive(OpenAce::AdapativeRadiusMsg(trackedAircraft.radius()));
+    getBus().receive(GATAS::AdapativeRadiusMsg(trackedAircraft.radius()));
 }
 
 void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
     stream << "{";
-    for (uint8_t i = 0; i < static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS); i++)
+    for (uint8_t i = 0; i < static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS); i++)
     {
-        stream << "\"" << OpenAce::dataSourceIntToString(i) << "\":";
+        stream << "\"" << GATAS::dataSourceIntToString(i) << "\":";
         antennaRadiationPattern[i].serialize(stream);
         stream << ",";
     }
@@ -63,7 +63,7 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     stream << "}\n";
 }
 
-void AircraftTracker::on_receive(const OpenAce::AircraftPositionMsg &msg)
+void AircraftTracker::on_receive(const GATAS::AircraftPositionMsg &msg)
 {
     if (ownshipAddress == msg.position.address)
     {
@@ -124,7 +124,7 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
 
 void AircraftTracker::handleNew()
 {
-    OpenAce::AircraftPositionInfo position;
+    GATAS::AircraftPositionInfo position;
     while (queue.pop(position))
     {
         trackedAircraft.insert(position);
@@ -135,7 +135,7 @@ void AircraftTracker::handleNew()
 void AircraftTracker::sendEligibleAircraft()
 {
     trackedAircraft.next(
-        etl::delegate<void(const OpenAce::AircraftPositionInfo &)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this));
+        etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this));
 }
 
 void AircraftTracker::maintenance()

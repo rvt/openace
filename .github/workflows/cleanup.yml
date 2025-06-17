@@ -1,38 +1,38 @@
-name: Cleanup Old Workflow Runs
+# name: Cleanup Old Workflow Runs
 
-on:
-  schedule:
-    - cron: '0 2 * * 0'  # every Sunday at 2am
+# on:
+#   schedule:
+#     - cron: '0 2 * * 0'  # every Sunday at 2am
 
-jobs:
-  cleanup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete workflow runs older than 30 days
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.PAT_CLEANUP }}
-          script: |
-            const days = 30;
-            const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+# jobs:
+#   cleanup:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Delete workflow runs older than 30 days
+#         uses: actions/github-script@v7
+#         with:
+#           github-token: ${{ secrets.PAT_CLEANUP }}
+#           script: |
+#             const days = 30;
+#             const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-            const runs = await github.paginate(
-              github.rest.actions.listWorkflowRunsForRepo,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                per_page: 100,
-              }
-            );
+#             const runs = await github.paginate(
+#               github.rest.actions.listWorkflowRunsForRepo,
+#               {
+#                 owner: context.repo.owner,
+#                 repo: context.repo.repo,
+#                 per_page: 100,
+#               }
+#             );
 
-            for (const run of runs) {
-              const createdAt = new Date(run.created_at);
-              if (createdAt < cutoff && run.status === "completed") {
-                console.log(`Deleting run #${run.id} from ${run.created_at}`);
-                await github.rest.actions.deleteWorkflowRun({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  run_id: run.id,
-                });
-              }
-            }
+#             for (const run of runs) {
+#               const createdAt = new Date(run.created_at);
+#               if (createdAt < cutoff && run.status === "completed") {
+#                 console.log(`Deleting run #${run.id} from ${run.created_at}`);
+#                 await github.rest.actions.deleteWorkflowRun({
+#                   owner: context.repo.owner,
+#                   repo: context.repo.repo,
+#                   run_id: run.id,
+#                 });
+#               }
+#             }

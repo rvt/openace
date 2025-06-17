@@ -16,7 +16,7 @@
 #include "etl/list.h"
 #include "etl/string.h"
 
-/* OpenAce */
+/* GaTas */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -27,7 +27,7 @@
  * AirConnect protocol for EFB's that only support AirConnect.
  * THis protocol is currently not recommende if you can also use GDL90, if you need to use NMEA and have BLE, use that
  */
-class AirConnect : public BaseModule, public etl::message_router<AirConnect, OpenAce::DataPortMsg, OpenAce::WifiConnectionStateMsg, OpenAce::IdleMsg>
+class AirConnect : public BaseModule, public etl::message_router<AirConnect, GATAS::DataPortMsg, GATAS::WifiConnectionStateMsg, GATAS::IdleMsg>
 {
     friend class message_router;
     static constexpr uint16_t AIRCONNECT_PORT = 2000;
@@ -63,23 +63,23 @@ class AirConnect : public BaseModule, public etl::message_router<AirConnect, Ope
         TcpClientState &operator=(TcpClientState &&) = delete;
     };
 
-    using ConnectedClients = etl::list<TcpClientState, OPENACE_MAXIMUM_TCP_CLIENTS>;
+    using ConnectedClients = etl::list<TcpClientState, GATAS_MAXIMUM_TCP_CLIENTS>;
     ConnectedClients connectedClients;
     tcp_pcb *serverPcb;
     bool wifiConnected;
 
 private:
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 
     virtual void stop() override;
 
-    void on_receive(const OpenAce::DataPortMsg &msg);
+    void on_receive(const GATAS::DataPortMsg &msg);
     
-    void on_receive(const OpenAce::WifiConnectionStateMsg &wcs);
+    void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
 
-    void on_receive(const OpenAce::IdleMsg &msg);
+    void on_receive(const GATAS::IdleMsg &msg);
 
     void on_receive_unknown(const etl::imessage &msg);
 

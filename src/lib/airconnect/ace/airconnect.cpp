@@ -2,9 +2,9 @@
 
 #include "airconnect.hpp"
 
-OpenAce::PostConstruct AirConnect::postConstruct()
+GATAS::PostConstruct AirConnect::postConstruct()
 {
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void AirConnect::start()
@@ -31,9 +31,9 @@ void AirConnect::getData(etl::string_stream &stream, const etl::string_view path
 
 /**
  * Receive dataport messages and send it to all clients
- * TODO: Change it such that each connected client can receive the OpenAce::DataPortMsg &msg
+ * TODO: Change it such that each connected client can receive the GATAS::DataPortMsg &msg
  */
-void AirConnect::on_receive(const OpenAce::DataPortMsg &msg)
+void AirConnect::on_receive(const GATAS::DataPortMsg &msg)
 {
     cyw43_arch_lwip_begin();
     for (auto &it : connectedClients)
@@ -323,7 +323,7 @@ void AirConnect::tcp_server_close()
 /**
  * Track wifi connects and disconnect
  */
-void AirConnect::on_receive(const OpenAce::WifiConnectionStateMsg &wcs)
+void AirConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
     wifiConnected = wcs.connected;
 }
@@ -331,7 +331,7 @@ void AirConnect::on_receive(const OpenAce::WifiConnectionStateMsg &wcs)
 /**
  * Starts and stop LWiP when wifi connects or disconnects to cleanup any resources
  */
-void AirConnect::on_receive(const OpenAce::IdleMsg &msg)
+void AirConnect::on_receive(const GATAS::IdleMsg &msg)
 {
     (void)msg;
     if (wifiConnected && !serverPcb)

@@ -16,11 +16,11 @@
 // #include "ace/ognconv.hpp"
 #include "mockutils.h"
 
-class Test : public etl::message_router<Test, OpenAce::AircraftPositionMsg>
+class Test : public etl::message_router<Test, GATAS::AircraftPositionMsg>
 {
 
 public:
-    OpenAce::AircraftPositionInfo position;
+    GATAS::AircraftPositionInfo position;
     etl::imessage_bus *bus;
     Test(etl::imessage_bus *bus_) : bus(bus_)
     {
@@ -31,7 +31,7 @@ public:
         bus->unsubscribe(*this);
     }
 
-    void on_receive(const OpenAce::AircraftPositionMsg &msg)
+    void on_receive(const GATAS::AircraftPositionMsg &msg)
     {
         printf("AircraftPosition Received");
         position = msg.position;
@@ -42,10 +42,10 @@ public:
     }
 };
 
-OpenAce::ThreadSafeBus<50> bus;
+GATAS::ThreadSafeBus<50> bus;
 MockConfig mockConfig{bus};
 Flarm2024 flarm{bus, mockConfig};
-auto protocol = Radio::ProtocolConfig{Radio::Mode::GFSK, OpenAce::DataSource::FLARM, 24 + 2, 1*8, 0, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
+auto protocol = Radio::ProtocolConfig{Radio::Mode::GFSK, GATAS::DataSource::FLARM, 24 + 2, 1*8, 0, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
 
 TEST_CASE("RadioPacket size", "[single-file]")
 {
@@ -54,23 +54,23 @@ TEST_CASE("RadioPacket size", "[single-file]")
 
 TEST_CASE("addressTypeToFlarm", "[single-file]")
 {
-    REQUIRE(flarm.addressTypeToFlarm(OpenAce::AddressType::RANDOM) == 0);
-    REQUIRE(flarm.addressTypeToFlarm(OpenAce::AddressType::ICAO) == 1);
-    REQUIRE(flarm.addressTypeToFlarm(OpenAce::AddressType::FLARM) == 2);
-    REQUIRE(flarm.addressTypeToFlarm(OpenAce::AddressType::FANET) == 0);
-    REQUIRE(flarm.addressTypeToFlarm(OpenAce::AddressType::OGN) == 0);
+    REQUIRE(flarm.addressTypeToFlarm(GATAS::AddressType::RANDOM) == 0);
+    REQUIRE(flarm.addressTypeToFlarm(GATAS::AddressType::ICAO) == 1);
+    REQUIRE(flarm.addressTypeToFlarm(GATAS::AddressType::FLARM) == 2);
+    REQUIRE(flarm.addressTypeToFlarm(GATAS::AddressType::FANET) == 0);
+    REQUIRE(flarm.addressTypeToFlarm(GATAS::AddressType::OGN) == 0);
 }
 
 TEST_CASE("addressTypeFromFlarm", "[single-file]")
 {
 
-    REQUIRE(flarm.addressTypeFromFlarm(0) == OpenAce::AddressType::RANDOM);
-    REQUIRE(flarm.addressTypeFromFlarm(1) == OpenAce::AddressType::ICAO);
-    REQUIRE(flarm.addressTypeFromFlarm(2) == OpenAce::AddressType::FLARM);
+    REQUIRE(flarm.addressTypeFromFlarm(0) == GATAS::AddressType::RANDOM);
+    REQUIRE(flarm.addressTypeFromFlarm(1) == GATAS::AddressType::ICAO);
+    REQUIRE(flarm.addressTypeFromFlarm(2) == GATAS::AddressType::FLARM);
 
     for (int i = 3; i < 0xFF; i++)
     {
-        REQUIRE(flarm.addressTypeFromFlarm(i) == OpenAce::AddressType::RANDOM);
+        REQUIRE(flarm.addressTypeFromFlarm(i) == GATAS::AddressType::RANDOM);
     }
 }
 

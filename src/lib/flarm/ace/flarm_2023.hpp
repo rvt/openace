@@ -22,7 +22,7 @@
 #include "etl/string.h"
 #include "etl/bitset.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -127,7 +127,7 @@ uint16_t flarmCalculateChecksum(uint8_t* flarm_pkt, uint8_t length);
 
 
 
-class Flarm_2023 : public BaseModule, public etl::message_router<Flarm_2023, OpenAce::RadioRxGfskMsg, OpenAce::OwnshipPositionMsg, OpenAce::RadioTxPositionRequestMsg>
+class Flarm_2023 : public BaseModule, public etl::message_router<Flarm_2023, GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
 {
     static constexpr int32_t DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int32_t MAX_IGNORE_DISTANCE = 50000;
@@ -156,7 +156,7 @@ class Flarm_2023 : public BaseModule, public etl::message_router<Flarm_2023, Ope
 
     TaskHandle_t taskHandle;
     QueueHandle_t frameConsumerQueue;
-    OpenAce::OwnshipPositionInfo ownshipPosition;
+    GATAS::OwnshipPositionInfo ownshipPosition;
     float deltaCourse;
     uint16_t distanceIgnore;
 public:
@@ -174,7 +174,7 @@ public:
 
     virtual ~Flarm_2023() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
     virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
@@ -183,11 +183,11 @@ private:
      * Send a FreeRTOS message when a FlarmFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxGfskMsg &msg)
+    void on_receive(const GATAS::RadioRxGfskMsg &msg)
     {
-        if (msg.dataSource == OpenAce::DataSource::FLARM)
+        if (msg.dataSource == GATAS::DataSource::FLARM)
         {
-            const OpenAce::RadioRxGfskMsg cpy = msg;
+            const GATAS::RadioRxGfskMsg cpy = msg;
             if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS )
             {
                 statistics.queueFull++;
@@ -195,7 +195,7 @@ private:
         }
     }
 
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg)
+    void on_receive(const GATAS::OwnshipPositionMsg &msg)
     {
         ownshipPosition = msg.position;
     }
@@ -205,9 +205,9 @@ private:
      * The packets is assembled and then send over the respected radio
      * Only reason to return the packet is to beable to test it.
     */
-    const flarmV7Packet_t on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
+    const flarmV7Packet_t on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
 
-    void on_receive(const OpenAce::ConfigUpdated &msg)
+    void on_receive(const GATAS::ConfigUpdated &msg)
     {
     }
 
@@ -216,8 +216,8 @@ private:
         (void)msg;
     }
 
-    // Transform a FLARM addressType to an openAce address type
-    OpenAce::AddressType addressType(uint8_t addressType);
+    // Transform a FLARM addressType to an gaTas address type
+    GATAS::AddressType addressType(uint8_t addressType);
 
     /**
      * Keep track of what timestamp (roughly) we receive flarm frames

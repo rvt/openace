@@ -1,4 +1,4 @@
-name: Build OpenAce
+name: Build GaTas
 
 on:
   schedule:
@@ -10,15 +10,15 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/openace-build:latest
-  TEST_TAG: ghcr.io/${{ github.repository }}/openace-build:latest
+  IMAGE_NAME: ${{ github.repository }}/gatas-build:latest
+  TEST_TAG: ghcr.io/${{ github.repository }}/gatas-build:latest
 
 jobs:
   Test:
     name: Run the unit tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout OpenAce
+      - name: Checkout GATAS
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -44,7 +44,7 @@ jobs:
           - { board: "pico2_w", platform: "rp2350" }
 
     steps:
-      - name: Checkout OpenAce
+      - name: Checkout GATAS
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -67,7 +67,7 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout OpenAce
+      - name: Checkout GATAS
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -112,7 +112,7 @@ jobs:
           - { board: "pico2_w", platform: "rp2350" }
 
     steps:
-      - name: Checkout OpenAce
+      - name: Checkout GATAS
         uses: actions/checkout@v4
         with:
           submodules: true

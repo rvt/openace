@@ -7,7 +7,7 @@
 #include "FreeRTOS.h"
 #include "timers.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
@@ -18,7 +18,7 @@
  * Note: This module is experimental
  */
 class Dump1090Client : public BaseModule,
-                       public etl::message_router<Dump1090Client, OpenAce::IdleMsg, OpenAce::WifiConnectionStateMsg>
+                       public etl::message_router<Dump1090Client, GATAS::IdleMsg, GATAS::WifiConnectionStateMsg>
 {
     friend class message_router;
 
@@ -38,9 +38,9 @@ class Dump1090Client : public BaseModule,
     AdsbTcpClient tcpClient;
 
 public:
-    void on_receive(const OpenAce::WifiConnectionStateMsg &wcs);
+    void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
     void on_receive_unknown(const etl::imessage &msg);
-    void on_receive(const OpenAce::IdleMsg &msg);
+    void on_receive(const GATAS::IdleMsg &msg);
 
 public:
     static constexpr const char *NAME = "Dump1090Client";
@@ -48,7 +48,7 @@ public:
     //  TcpClient::CallBackFunction::create([this](const char *sentence)
     //                                                                                                                         {
     //             statistics.totalReceived++;
-    //               getBus().receive(OpenAce::ADSBMessage{sentence}); })
+    //               getBus().receive(GATAS::ADSBMessage{sentence}); })
 
     Dump1090Client(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                           stoppedCounter(0),
@@ -61,7 +61,7 @@ public:
 
     virtual ~Dump1090Client() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

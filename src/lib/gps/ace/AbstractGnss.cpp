@@ -21,24 +21,24 @@ void __time_critical_func(AbstractGnss_pps_callback)(uint32_t events)
     AbstractGnss_rtc->ppsEvent();
 }
 
-OpenAce::PostConstruct AbstractGnss::postConstruct()
+GATAS::PostConstruct AbstractGnss::postConstruct()
 {
-    if (pioSerial.postConstruct() != OpenAce::PostConstruct::OK)
+    if (pioSerial.postConstruct() != GATAS::PostConstruct::OK)
     {
-        return OpenAce::PostConstruct::HARDWARE_ERROR;
+        return GATAS::PostConstruct::HARDWARE_ERROR;
     }
 
     AbstractGnss_rtc = static_cast<RtcModule *>(moduleByName(*this, RtcModule::NAME));
     if (AbstractGnss_rtc == nullptr)
     {
-        return OpenAce::PostConstruct::DEP_NOT_FOUND;
+        return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
 
     gpio_init(ppsPin);
     gpio_set_dir(ppsPin, GPIO_IN);
     gpio_pull_up(ppsPin);
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void AbstractGnss::start()
@@ -69,7 +69,7 @@ void AbstractGnss::receiveTask(void *arg)
     }
 
     abstractGnss->statistics.queueFullErr = 0;
-    OpenAce::NMEAString sentence;
+    GATAS::NMEAString sentence;
     while (true)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
@@ -87,7 +87,7 @@ void AbstractGnss::receiveTask(void *arg)
                     if (abstractGnss->preProcessSentence(sentence))
                     {
                         // puts(sentence.c_str());
-                        abstractGnss->getBus().receive(OpenAce::GPSSentenceMsg{sentence});
+                        abstractGnss->getBus().receive(GATAS::GPSSentenceMsg{sentence});
                         abstractGnss->statistics.totalReceived++;
                     }
                 }

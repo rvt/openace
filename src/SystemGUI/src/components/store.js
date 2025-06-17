@@ -2,8 +2,8 @@ import { El } from "@frameable/el";
 
 let instance;
 
-export class OpenAceStore {
-  availableHardware = [{name: "-", hardware:"-"}, {name: "OpenAce Board", hardware:"PICO_2RADIO"}, {name: "Waveshare Lite", hardware:"WAVESHARE_LITE"}];
+export class GaTasStore {
+  availableHardware = [{name: "-", hardware:"-"}, {name: "GA/TAS Custom", hardware:"PICO_2RADIO"}, {name: "GA/TAS Pulse", hardware:"WAVESHARE_LITE"}];
 
   constructor() {
     if (instance) {
@@ -227,5 +227,5 @@ export class OpenAceStore {
   }
 }
 
-let store = Object.freeze(new OpenAceStore());
+let store = Object.freeze(new GaTasStore());
 export default store;

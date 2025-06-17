@@ -6,11 +6,11 @@
 
 #include "ace/utils.hpp"
 
-OpenAce::PostConstruct PioSerial::postConstruct()
+GATAS::PostConstruct PioSerial::postConstruct()
 {
     if (rxPin == -1 || txPin == -1)
     {
-        return OpenAce::PostConstruct::HARDWARE_NOT_CONFIGURED;
+        return GATAS::PostConstruct::HARDWARE_NOT_CONFIGURED;
     }
 
     handlerIdx = 0;
@@ -21,7 +21,7 @@ OpenAce::PostConstruct PioSerial::postConstruct()
 
     if (handlerIdx >= interruptHandlers.size())
     {
-        return OpenAce::PostConstruct::HARDWARE_ERROR;
+        return GATAS::PostConstruct::HARDWARE_ERROR;
     }
     interruptHandlers[handlerIdx] = this;
 
@@ -33,7 +33,7 @@ OpenAce::PostConstruct PioSerial::postConstruct()
     // Enable Rx
     if (!enableRx())
     {
-        return OpenAce::PostConstruct::HARDWARE_ERROR;
+        return GATAS::PostConstruct::HARDWARE_ERROR;
     }
 
     static_assert(PIO0_IRQ_1 == PIO0_IRQ_0 + 1 && PIO1_IRQ_1 == PIO1_IRQ_0 + 1, "");
@@ -43,7 +43,7 @@ OpenAce::PostConstruct PioSerial::postConstruct()
         pio_irq++;
         if (irq_get_exclusive_handler(pio_irq))
         {
-            return OpenAce::PostConstruct::HARDWARE_ERROR;
+            return GATAS::PostConstruct::HARDWARE_ERROR;
         }
     }
 
@@ -62,11 +62,11 @@ OpenAce::PostConstruct PioSerial::postConstruct()
         handler = pio1_irq1_func_handler;
         break;
     default:
-        return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;
+        return GATAS::PostConstruct::HARDWARE_NOT_FOUND;
     }
     
     bi_decl(bi_2pins_with_func(static_cast<uint32_t>(txPin), static_cast<uint32_t>(rxPin), GPIO_FUNC_UART));
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void PioSerial::start()

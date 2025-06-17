@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1"
     />
     <meta name="color-scheme" content="light dark" />
-    <title>OpenAce</title>
+    <title>GA/TAS</title>
 
     <!-- Polyfill :has() for spry-css -->
     <script>
@@ -46,7 +46,7 @@
 
     <div class="row jc-center">
       <div class="lg-col-8 md-col-10 sm-col-12">
-        <openace-main> </openace-main>
+        <gatas-main> </gatas-main>
       </div>
     </div>
   </body>
@@ -59,7 +59,7 @@
     import "./components/modules";
     import "./components/gpsstatus";
 
-    class OpenAceMain extends El {
+    class GaTasMain extends El {
       created() {
         store.init().then((data) => {
           // Have to set this with a timeout or else the drop down does not appear on the right aircraft
@@ -74,20 +74,20 @@
         let pageContent;
         switch (store.state.page) {
           case "session":
-            pageContent = html`<openace-session
+            pageContent = html`<gatas-session
               key="session"
-            ></openace-session>`;
+            ></gatas-session>`;
             break;
           case "modules":
-            pageContent = html`<openace-modules
+            pageContent = html`<gatas-modules
               key="modules"
-            ></openace-modules>`;
+            ></gatas-modules>`;
             break;
           case "status":
             pageContent = html`<gps-status key="gpsstatus"></gps-status>`;
             break;
           case "config":
-            pageContent = html`<openace-config key="config"></openace-config>`;
+            pageContent = html`<gatas-config key="config"></gatas-config>`;
             break;
           default:
             pageContent = "";
@@ -99,6 +99,6 @@
         `;
       }
     }
-    customElements.define("openace-main", OpenAceMain);
+    customElements.define("gatas-main", GaTasMain);
   </script>
 </html>

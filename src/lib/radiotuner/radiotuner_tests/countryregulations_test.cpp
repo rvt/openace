@@ -17,33 +17,33 @@ TEST_CASE("zone", "[single-file]")
 TEST_CASE("nextProtocolTimeslot", "[single-file]")
 {
     uint8_t idx;
-    idx = countryRegulations.nextProtocolTimeslot(100, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.nextProtocolTimeslot(100, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(400 == countryRegulations.protocolTimeslotById(idx).slotStartTime);
 
-    idx = countryRegulations.nextProtocolTimeslot(500, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.nextProtocolTimeslot(500, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(800 == countryRegulations.protocolTimeslotById(idx).slotStartTime);
 
-    idx = countryRegulations.nextProtocolTimeslot(900, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.nextProtocolTimeslot(900, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(400 == countryRegulations.protocolTimeslotById(idx).slotStartTime);
 
-    idx = countryRegulations.nextProtocolTimeslot(300, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.nextProtocolTimeslot(300, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(400 == countryRegulations.protocolTimeslotById(idx).slotStartTime);
 
-    idx = countryRegulations.nextProtocolTimeslot(1000, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.nextProtocolTimeslot(1000, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(400 == countryRegulations.protocolTimeslotById(idx).slotStartTime);
 
-    idx = countryRegulations.nextProtocolTimeslot(0, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.nextProtocolTimeslot(0, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(400 == countryRegulations.protocolTimeslotById(idx).slotStartTime);
 
     // Unconfigured ZONE/Datasource
-    idx = countryRegulations.nextProtocolTimeslot(0, CountryRegulations::Zone::ZONE2, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.nextProtocolTimeslot(0, CountryRegulations::Zone::ZONE2, GATAS::DataSource::FLARM);
     REQUIRE(CountryRegulations::Zone::ZONE0 == countryRegulations.protocolTimeslotById(idx).zone);
 }
 
 TEST_CASE("findFittingTimeslot", "[single-file]")
 {
     uint8_t idx;
-    idx = countryRegulations.nextProtocolTimeslot(500, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.nextProtocolTimeslot(500, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(2 == countryRegulations.findFittingTimeslot(100, idx));
     REQUIRE(2 == countryRegulations.findFittingTimeslot(1100, idx));
     REQUIRE(0 == countryRegulations.findFittingTimeslot(1300, idx));
@@ -58,7 +58,7 @@ TEST_CASE("protocolTimeslotById", "[single-file]")
 {
     uint8_t idx;
 
-    idx = countryRegulations.getFirstSlotIdx(CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.getFirstSlotIdx(CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(1 == countryRegulations.protocolTimeslotById(idx).idx);
 }
 
@@ -66,7 +66,7 @@ TEST_CASE("getFirstSlotIdx", "[single-file]")
 {
     uint8_t idx;
 
-    idx = countryRegulations.getFirstSlotIdx(CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM);
+    idx = countryRegulations.getFirstSlotIdx(CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM);
     REQUIRE(idx + 1 == countryRegulations.nextSlotIdx(CountryRegulations::Zone::ZONE1, idx));
     // FLARM has two slots for ZONE1, so should warm over
     REQUIRE(idx == countryRegulations.nextSlotIdx(CountryRegulations::Zone::ZONE1, idx + 1));

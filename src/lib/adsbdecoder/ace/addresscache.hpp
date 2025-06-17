@@ -18,13 +18,13 @@ private:
 
     struct CacheEntry
     {
-        OpenAce::AircraftAddress icao;
+        GATAS::AircraftAddress icao;
         uint32_t lastSeen;
 
         // Default constructor
         CacheEntry() = default;
 
-        CacheEntry(OpenAce::AircraftAddress icao_, uint32_t lastSeen_)
+        CacheEntry(GATAS::AircraftAddress icao_, uint32_t lastSeen_)
             : icao(icao_), lastSeen(lastSeen_) {}
 
         CacheEntry(const CacheEntry &other)

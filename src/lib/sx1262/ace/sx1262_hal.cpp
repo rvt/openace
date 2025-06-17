@@ -9,7 +9,7 @@
 #include "hardware/spi.h"
 #include "pico/stdlib.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/basemodule.hpp"
 #include "ace/coreutils.hpp"
 

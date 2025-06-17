@@ -24,7 +24,7 @@
 typedef std::function<void(const uint32_t)> pinIntrCallback_t;
 
 // function to transform a reason into text
-const char *postConstructToString(OpenAce::PostConstruct reason);
+const char *postConstructToString(GATAS::PostConstruct reason);
 
 class Configuration;
 class BaseModule
@@ -46,7 +46,7 @@ private:
         pinInterruptHandler(uint32_t _event, pinIntrCallback_t _callback) : event(_event), handler(nullptr), callback(_callback), notificationValue(0x00), enabled(true) {}
         pinInterruptHandler() : event(0x00), handler(nullptr), callback(nullptr), notificationValue(0x00), enabled(true) {}
     };
-    inline static etl::map<uint8_t, BaseModule::pinInterruptHandler, 8> __scratch_y("OpenAceMem") pinInterruptHandlers;
+    inline static etl::map<uint8_t, BaseModule::pinInterruptHandler, 8> __scratch_y("GaTasMem") pinInterruptHandlers;
 
 public:
     static void initBase()
@@ -60,7 +60,7 @@ public:
     using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
     struct ModuleStatus
     {
-        OpenAce::PostConstruct result;
+        GATAS::PostConstruct result;
         bool hwCheck;
         BaseModule *module;
     };
@@ -85,7 +85,7 @@ public:
 
     static void registerModule(const etl::string_view name, bool hwCheck)
     {
-        moduleLoaderMap[name] = {OpenAce::PostConstruct::NA, hwCheck, nullptr};
+        moduleLoaderMap[name] = {GATAS::PostConstruct::NA, hwCheck, nullptr};
     }
 
     /**
@@ -93,10 +93,10 @@ public:
      */
     static void setModuleStatus(const etl::string_view name, BaseModule *base)
     {
-        moduleLoaderMap[name].result = OpenAce::PostConstruct::OK;
+        moduleLoaderMap[name].result = GATAS::PostConstruct::OK;
         moduleLoaderMap[name].module = base;
     }
-    static void setModuleStatus(const etl::string_view name, OpenAce::PostConstruct result)
+    static void setModuleStatus(const etl::string_view name, GATAS::PostConstruct result)
     {
         moduleLoaderMap[name].result = result;
         moduleLoaderMap[name].module = nullptr;
@@ -108,7 +108,7 @@ public:
     }
 
     // Called after construction but before running
-    virtual OpenAce::PostConstruct postConstruct() = 0;
+    virtual GATAS::PostConstruct postConstruct() = 0;
 
     // Called when all objects are initialised and ready to run
     virtual void start() = 0;
@@ -197,7 +197,7 @@ class StringHandler
     friend class StringProvider;
 
 protected:
-    virtual void handle(const OpenAce::NMEAString &message) = 0;
+    virtual void handle(const GATAS::NMEAString &message) = 0;
 };
 
 /**
@@ -283,14 +283,14 @@ public:
     struct ProtocolConfig
     {
         Radio::Mode mode;               // Mode of the radio
-        OpenAce::DataSource dataSource; // Data source
+        GATAS::DataSource dataSource; // Data source
         uint8_t packetLength;           // Total packet length including CRC
         uint8_t txPreambleLength;       // Preamble length in bits during transmission
         uint8_t codingRate;             // Coding rate for LORA packages
         uint8_t syncLength;
         etl::array<uint8_t, 10> syncWord; // Sync word
 
-        constexpr ProtocolConfig(Radio::Mode mode_, OpenAce::DataSource dataSource_, uint8_t packetLength_, uint8_t txPreambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
+        constexpr ProtocolConfig(Radio::Mode mode_, GATAS::DataSource dataSource_, uint8_t packetLength_, uint8_t txPreambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
             : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), txPreambleLength(txPreambleLength_), codingRate(codingRate_), syncLength(syncLength_), syncWord(syncWord_) {}
 
         constexpr ProtocolConfig(const ProtocolConfig &other)
@@ -321,7 +321,7 @@ public:
     {
         RadioParameters radioParameters;
         uint8_t length;
-        OpenAce::TxPacketType data;
+        GATAS::TxPacketType data;
         TxPacket() = default;
         TxPacket(const RadioParameters &radioParameters_, etl::span<const uint8_t> dataSpan)
             : radioParameters(radioParameters_), length(static_cast<uint8_t>(dataSpan.size()))
@@ -359,8 +359,8 @@ public:
     }
     virtual ~Configuration() = default;
 
-    virtual const OpenAce::Config::OpenAceConfiguration openAceConfig() const = 0;
-    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName) const = 0;
+    virtual const GATAS::Config::GaTasConfiguration gaTasConfig() const = 0;
+    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName) const = 0;
 
     virtual bool deleteData(const etl::string_view fullPath) = 0;
     virtual int valueByPath(int defaultValue, const etl::string_view pathToValue, const etl::string_view key) const = 0;
@@ -369,16 +369,16 @@ public:
         return valueByPath(defaultValue, pathToValue, "");
     };
 
-    virtual const OpenAce::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const = 0;
-    const OpenAce::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue) const
+    virtual const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const = 0;
+    const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue) const
     {
         return strValueByPath(defaultValue, pathToValue, "");
     }
 
     virtual bool isModuleEnabled(const etl::string_view moduleName) const = 0;
-    virtual const OpenAce::Config::WifiServiceData wifiService() const = 0;
-    virtual const OpenAce::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const = 0;
-    const OpenAce::Config::IpPort ipPortBypath(const etl::string_view pathToValue) const
+    virtual const GATAS::Config::WifiServiceData wifiService() const = 0;
+    virtual const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const = 0;
+    const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue) const
     {
         return ipPortBypath(pathToValue, "");
     }

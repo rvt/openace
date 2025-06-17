@@ -1,11 +1,11 @@
 #include "acespi.hpp"
 
-OpenAce::PostConstruct AceSpi::postConstruct()
+GATAS::PostConstruct AceSpi::postConstruct()
 {
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
+        return GATAS::PostConstruct::MUTEX_ERROR;
     }
 
     // Reset is active-low, so we'll initialise it to a driven-high state
@@ -14,7 +14,7 @@ OpenAce::PostConstruct AceSpi::postConstruct()
     gpio_put(rst, 1);
 
     // Set default SPI bus frequency
-    spi_init(spi?spi1:spi0, OPENOPENACE_SPI_DEFAULT_BUS_FREQUENCY * 1000 * 1000);
+    spi_init(spi?spi1:spi0, GATAS_SPI_DEFAULT_BUS_FREQUENCY * 1000 * 1000);
     gpio_set_function(miso, GPIO_FUNC_SPI);
     gpio_set_function(clk, GPIO_FUNC_SPI);
     gpio_set_function(mosi, GPIO_FUNC_SPI);
@@ -25,7 +25,7 @@ OpenAce::PostConstruct AceSpi::postConstruct()
 
     // Make the SPI pins available to picotool
     bi_decl(bi_3pins_with_func(static_cast<uint32_t>(miso), static_cast<uint32_t>(mosi), static_cast<uint32_t>(clk), GPIO_FUNC_SPI));
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void AceSpi::start()

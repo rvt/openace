@@ -22,7 +22,7 @@
 #include "etl/error_handler.h"
 #include "etl/exception.h"
 
-/* OpenAce. */
+/* GaTas. */
 #include "ace/serialadsb.hpp"
 #include "ace/dump1090client.hpp"
 
@@ -55,7 +55,7 @@
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
 
-const char *OpenAce_buildTime = BUILD_TIMESTAMP;
+const char *GaTas_buildTime = BUILD_TIMESTAMP;
 
 /* Prototypes for the standard FreeRTOS callback/hook functions implemented
 within this file. */
@@ -145,7 +145,7 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, const Conf
     if (name == Gdl90Service::NAME) return new Gdl90Service(bus, config);
     if (name == Bmp280::NAME) return new Bmp280(bus, config);
     if (name == AceSpi::NAME) return new AceSpi(bus, config);
-    // if (name == Config::NAME) return new Config(bus, FlashStore, DEFAULT_OPENACE_CONFIG); // Uncomment if needed
+    // if (name == Config::NAME) return new Config(bus, FlashStore, DEFAULT_GATAS_CONFIG); // Uncomment if needed
     // clang-format on
 
     return nullptr; // Unknown name
@@ -154,8 +154,8 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, const Conf
 static InMemoryStore volatileStore;
 // Bluetooth stores bonding information at the last sector
 static FlashStore permanentStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 2}; // FLASH_SECTOR_SIZE => 4096 on the PICO
-static OpenAce::ThreadSafeBus<25> bus;
-static Config config(bus, volatileStore, permanentStore, DEFAULT_OPENACE_CONFIG);
+static GATAS::ThreadSafeBus<25> bus;
+static Config config(bus, volatileStore, permanentStore, DEFAULT_GATAS_CONFIG);
 volatile static bool loadIndicator = false;
 volatile static int8_t ledStatusIndicatorPin = -1;
 static void load(const etl::string_view str, etl::imessage_bus &bus, const Configuration &config, bool force = false)
@@ -174,7 +174,7 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, const Confi
 
     if (registeredModules[str].hwCheck && config.pinMap(str).empty())
     {
-        BaseModule::setModuleStatus(str, OpenAce::PostConstruct::HARDWARE_NOT_CONFIGURED);
+        BaseModule::setModuleStatus(str, GATAS::PostConstruct::HARDWARE_NOT_CONFIGURED);
         printf("Module %s has no hardware configuration", str.cbegin());
         return;
     }
@@ -203,7 +203,7 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, const Confi
 
     printf(" -> PostConstruct() ");
     auto result = client->postConstruct();
-    if (result == OpenAce::PostConstruct::OK)
+    if (result == GATAS::PostConstruct::OK)
     {
         BaseModule::setModuleStatus(str, client);
         printf(" -> start() ");
@@ -250,7 +250,7 @@ static void loadModules(void *arch)
     load(DataPort::NAME, bus, config);
     load(AirConnect::NAME, bus, config);
 
-    for (uint8_t i = 0; i < OPENACE_MAX_RADIOS; i++)
+    for (uint8_t i = 0; i < GATAS_MAX_RADIOS; i++)
     {
         load(Sx1262::NAMES[i], bus, config);
     }
@@ -278,7 +278,7 @@ static void loadModules(void *arch)
     vTaskDelete(nullptr);
 }
 
-static void openAceIdlTask(void *arch)
+static void gaTasIdleTask(void *arch)
 {
     (void)arch;
 #ifdef NDEBUG
@@ -295,7 +295,7 @@ static void openAceIdlTask(void *arch)
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
             gpio_put(ledStatusIndicatorPin, 1);
             vTaskDelay(TASK_DELAY_MS(100));
-            bus.receive(OpenAce::IdleMsg());
+            bus.receive(GATAS::IdleMsg());
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
             gpio_put(ledStatusIndicatorPin, 0);
             // Sync blink the LED with GPS
@@ -411,7 +411,7 @@ void vLaunch(void)
 
     // Run a Idle Task Idletask
     // TODO: apparently needs a large stack??
-    xTaskCreate(openAceIdlTask, "openAceIdlTask", configMINIMAL_STACK_SIZE + 2048, NULL, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(gaTasIdleTask, "GatasTask", configMINIMAL_STACK_SIZE + 2048, NULL, tskIDLE_PRIORITY + 1, nullptr);
 
     // Dump some CPU diagnostics to terminal of all running tasks
 #if configGENERATE_RUN_TIME_STATS == 1
@@ -470,9 +470,9 @@ int main()
 
     const char *rtos_name;
 #if (configNUMBER_OF_CORES > 1)
-    rtos_name = "OpenAce SMP";
+    rtos_name = "GaTas SMP";
 #else
-    rtos_name = "OpenAce";
+    rtos_name = "GaTas";
 #endif
 
 #if (configNUMBER_OF_CORES > 1)

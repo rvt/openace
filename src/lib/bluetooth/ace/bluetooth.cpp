@@ -6,7 +6,7 @@
 #include "ace/measure.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/cobs.hpp"
-#include "openace_gatt.h"
+#include "gatas_gatt.h"
 
 #include "ble/gatt-service/battery_service_server.h"
 #include "ble/gatt-service/device_information_service_server.h"
@@ -22,20 +22,20 @@
 
 #define RFCOMM_SERVER_CHANNEL 1
 
-OpenAce::PostConstruct Bluetooth::postConstruct()
+GATAS::PostConstruct Bluetooth::postConstruct()
 {
     if (mutex != nullptr)
     {
-        return OpenAce::PostConstruct::MEMORY;
+        return GATAS::PostConstruct::MEMORY;
     }
 
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
+        return GATAS::PostConstruct::MUTEX_ERROR;
     }
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Bluetooth::stop()
@@ -178,7 +178,7 @@ void Bluetooth::createAdvData()
  * Only process data if there are any actual clients and when all client
  * buffers are empty, send a trigger to the BT thread to process the data.
  */
-void Bluetooth::on_receive(const OpenAce::DataPortMsg &msg)
+void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 {
     // Some code to do some visual checking - Disabled for production
     // char type[4] = {msg.sentence[3], msg.sentence[4], msg.sentence[5], '\0'};
@@ -272,7 +272,7 @@ void Bluetooth::attContextCallback(void *context)
             if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
             {
                 // SkyDemon requires per message to be full sentence
-                while (writePos + OpenAce::NMEA_MAX_LENGTH <= sizeof(intermediateBuffer))
+                while (writePos + GATAS::NMEA_MAX_LENGTH <= sizeof(intermediateBuffer))
                 {
                     const auto [peekPart, peekLen] = btContext->buffer.peek();
                     if (peekLen == 0)
@@ -598,42 +598,42 @@ void Bluetooth::processIncomingBuffer(uint8_t *data, size_t size)
     }
 }
 
-OpenAce::AircraftCategory mapAircraftCategoryToType(uint8_t category)
+GATAS::AircraftCategory mapAircraftCategoryToType(uint8_t category)
 {
     switch (category)
     {
     case 4:
-        return OpenAce::AircraftCategory::GliderMotorGlider;
+        return GATAS::AircraftCategory::GliderMotorGlider;
 
     case 3:
     case 10:
-        return OpenAce::AircraftCategory::Helicopter;
+        return GATAS::AircraftCategory::Helicopter;
 
     case 8:
-        return OpenAce::AircraftCategory::Skydiver;
+        return GATAS::AircraftCategory::Skydiver;
 
     case 5:
-        return OpenAce::AircraftCategory::Balloon; // Or Airship if needed
+        return GATAS::AircraftCategory::Balloon; // Or Airship if needed
 
     case 1:
-        return OpenAce::AircraftCategory::ReciprocatingEngine;
+        return GATAS::AircraftCategory::ReciprocatingEngine;
 
     case 2:
-        return OpenAce::AircraftCategory::JetTurbopropEngine;
+        return GATAS::AircraftCategory::JetTurbopropEngine;
 
     case 11:
     case 12:
     case 13:
-        return OpenAce::AircraftCategory::Uav;
+        return GATAS::AircraftCategory::Uav;
 
     case 7:
-        return OpenAce::AircraftCategory::Paraglider;
+        return GATAS::AircraftCategory::Paraglider;
 
     case 0:
-        return OpenAce::AircraftCategory::Unknown;
+        return GATAS::AircraftCategory::Unknown;
 
     default:
-        return OpenAce::AircraftCategory::Reserved;
+        return GATAS::AircraftCategory::Reserved;
     }
 }
 
@@ -680,12 +680,12 @@ void Bluetooth::parseAircraftPosition(uint8_t *data, size_t size)
         callSignBuffer[i] = static_cast<char>(reader.read_unchecked<uint8_t>(8));
     }
 
-    auto api = OpenAce::AircraftPositionInfo(
+    auto api = GATAS::AircraftPositionInfo(
         timeStamp,
-        OpenAce::CallSign(callSignBuffer),
-        static_cast<OpenAce::AircraftAddress>(addressRaw),
-        OpenAce::AddressType::ICAO, // Assumed for now that all addresses are ICAO
-        OpenAce::DataSource::ADSB,
+        GATAS::CallSign(callSignBuffer),
+        static_cast<GATAS::AircraftAddress>(addressRaw),
+        GATAS::AddressType::ICAO, // Assumed for now that all addresses are ICAO
+        GATAS::DataSource::ADSB,
         mapAircraftCategoryToType(aircraftTypeIndex),
         false, // stealth
         false, // noTrack
@@ -702,7 +702,7 @@ void Bluetooth::parseAircraftPosition(uint8_t *data, size_t size)
         relEast,
         bearing);
 
-    Bluetooth::instance->getBus().receive(OpenAce::AircraftPositionMsg(api));
+    Bluetooth::instance->getBus().receive(GATAS::AircraftPositionMsg(api));
 }
 
 /*

@@ -40,11 +40,11 @@ private:
 
     PioSerial pioSerial;
     TaskHandle_t taskHandle;
-    etl::queue_spsc_atomic<OpenAce::ADSBString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
+    etl::queue_spsc_atomic<GATAS::ADSBString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
 
 public:
     static constexpr const etl::string_view NAME = "SerialADSB";
-    SerialADSB(etl::imessage_bus &bus, const OpenAce::PinTypeMap &pins) : BaseModule(bus, NAME),
+    SerialADSB(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins) : BaseModule(bus, NAME),
                                                                           pioSerial{pins, SERIAL_BAUDRATE, PioSerial::CallBackFunction::create<SerialADSB, &SerialADSB::processNewSentence>(*this)},
                                                                           taskHandle(nullptr)
     {
@@ -56,7 +56,7 @@ public:
 
     virtual ~SerialADSB() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

@@ -5,24 +5,24 @@
 
 constexpr float POSITION_DECODE = 0.0001f / 60.f;
 
-OpenAce::PostConstruct ADSL::postConstruct()
+GATAS::PostConstruct ADSL::postConstruct()
 {
     //    BaseModule::moduleByName(*this, Tuner::NAME);
 
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxGfskMsg));
+    frameConsumerQueue = xQueueCreate(4, sizeof(GATAS::RadioRxGfskMsg));
     if (frameConsumerQueue == nullptr)
     {
-        return OpenAce::PostConstruct::XQUEUE_ERROR;
+        return GATAS::PostConstruct::XQUEUE_ERROR;
     }
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void ADSL::start()
 {
     xTaskCreate(adslReceiveTask, ADSL::NAME.cbegin(), configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
     // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->startListen(OpenAce::DataSource::ADSL);
+    // tuner->startListen(GATAS::DataSource::ADSL);
     getBus().subscribe(*this);
 };
 
@@ -30,7 +30,7 @@ void ADSL::stop()
 {
     getBus().unsubscribe(*this);
     // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->stopListen(OpenAce::DataSource::ADSL);
+    // tuner->stopListen(GATAS::DataSource::ADSL);
 
     vTaskDelete(taskHandle);
     vQueueDelete(frameConsumerQueue);
@@ -75,11 +75,11 @@ void ADSL::addReceiveStat(uint32_t frequency)
         dataSourceTimeStats.back().timeTenthMs.set(msInSec);
     }
 }
-void ADSL::on_receive(const OpenAce::RadioRxGfskMsg &msg)
+void ADSL::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
-    if (msg.dataSource == OpenAce::DataSource::ADSL)
+    if (msg.dataSource == GATAS::DataSource::ADSL)
     {
-        const OpenAce::RadioRxGfskMsg cpy = msg;
+        const GATAS::RadioRxGfskMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;
@@ -87,153 +87,153 @@ void ADSL::on_receive(const OpenAce::RadioRxGfskMsg &msg)
     }
 }
 
-void ADSL::on_receive(const OpenAce::OwnshipPositionMsg &msg)
+void ADSL::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     ownshipPosition = msg.position;
 }
 
-void ADSL::on_receive(const OpenAce::GpsStatsMsg &msg)
+void ADSL::on_receive(const GATAS::GpsStatsMsg &msg)
 {
     gpsStats = msg;
 }
 
-void ADSL::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void ADSL::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        openAceConfiguration = msg.config.openAceConfig();
+        gaTasConfiguration = msg.config.gaTasConfig();
     }
 }
 
-OpenAce::AddressType ADSL::addressMapToAddressType(uint8_t addressMap) const
+GATAS::AddressType ADSL::addressMapToAddressType(uint8_t addressMap) const
 {
     switch (addressMap)
     {
     case 0x00:
-        return OpenAce::AddressType::RANDOM;
+        return GATAS::AddressType::RANDOM;
     case 0x01:
     case 0x02:
     case 0x03:
     case 0x04:
-        return OpenAce::AddressType::RESERVED;
+        return GATAS::AddressType::RESERVED;
     case 0x05:
-        return OpenAce::AddressType::ICAO;
+        return GATAS::AddressType::ICAO;
     case 0x06:
-        return OpenAce::AddressType::FLARM;
+        return GATAS::AddressType::FLARM;
     case 0x07:
-        return OpenAce::AddressType::OGN;
+        return GATAS::AddressType::OGN;
     case 0x08:
-        return OpenAce::AddressType::FANET;
+        return GATAS::AddressType::FANET;
     // Not a bug, if we don't the the type we just say random
     default:
-        return OpenAce::AddressType::UNKNOWN;
+        return GATAS::AddressType::UNKNOWN;
     }
 }
 
-uint8_t ADSL::addressTypeToAddressMap(OpenAce::AddressType addressType)
+uint8_t ADSL::addressTypeToAddressMap(GATAS::AddressType addressType)
 {
     switch (addressType)
     {
-    case OpenAce::AddressType::RANDOM:
+    case GATAS::AddressType::RANDOM:
         return 0x00;
-    case OpenAce::AddressType::RESERVED:
+    case GATAS::AddressType::RESERVED:
         return 0x01;
-    case OpenAce::AddressType::ICAO:
+    case GATAS::AddressType::ICAO:
         return 0x05;
-    case OpenAce::AddressType::FLARM:
+    case GATAS::AddressType::FLARM:
         return 0x06;
-    case OpenAce::AddressType::OGN:
+    case GATAS::AddressType::OGN:
         return 0x07;
-    case OpenAce::AddressType::FANET:
+    case GATAS::AddressType::FANET:
         return 0x08;
     default:
         return 0x00;
     }
 }
 
-OpenAce::AircraftCategory ADSL::mapAircraftCategory(ADSL_Packet::AircraftCategory category)
+GATAS::AircraftCategory ADSL::mapAircraftCategory(ADSL_Packet::AircraftCategory category)
 {
-    // map ADSL_Packet::AircraftCategory to OpenAce::AircraftCategory
+    // map ADSL_Packet::AircraftCategory to GATAS::AircraftCategory
     switch (category)
     {
     case ADSL_Packet::AircraftCategory::AC_NoEmitterCategory:
-        return OpenAce::AircraftCategory::Unknown;
+        return GATAS::AircraftCategory::Unknown;
     case ADSL_Packet::AircraftCategory::AC_LightFixedWing:
-        return OpenAce::AircraftCategory::ReciprocatingEngine;
+        return GATAS::AircraftCategory::ReciprocatingEngine;
     case ADSL_Packet::AircraftCategory::AC_SmallToHeavyFixedWing:
-        return OpenAce::AircraftCategory::JetTurbopropEngine;
+        return GATAS::AircraftCategory::JetTurbopropEngine;
     case ADSL_Packet::AircraftCategory::AC_Rotorcraft:
-        return OpenAce::AircraftCategory::Helicopter;
+        return GATAS::AircraftCategory::Helicopter;
     case ADSL_Packet::AircraftCategory::AC_GliderSailplane:
-        return OpenAce::AircraftCategory::GliderMotorGlider;
+        return GATAS::AircraftCategory::GliderMotorGlider;
     case ADSL_Packet::AircraftCategory::AC_LighterThanAir:
-        return OpenAce::AircraftCategory::Balloon;
+        return GATAS::AircraftCategory::Balloon;
     case ADSL_Packet::AircraftCategory::AC_Ultralight:
-        return OpenAce::AircraftCategory::ReciprocatingEngine;
+        return GATAS::AircraftCategory::ReciprocatingEngine;
     case ADSL_Packet::AircraftCategory::AC_HangGliderParaglider:
-        return OpenAce::AircraftCategory::Paraglider;
+        return GATAS::AircraftCategory::Paraglider;
     case ADSL_Packet::AircraftCategory::AC_ParachutistSkydiverWingsuit:
-        return OpenAce::AircraftCategory::Skydiver;
+        return GATAS::AircraftCategory::Skydiver;
     case ADSL_Packet::AircraftCategory::AC_Gyrocopter:
-        return OpenAce::AircraftCategory::Helicopter;
+        return GATAS::AircraftCategory::Helicopter;
     case ADSL_Packet::AircraftCategory::AC_UASOpenCategory:
-        return OpenAce::AircraftCategory::Uav;
+        return GATAS::AircraftCategory::Uav;
     case ADSL_Packet::AircraftCategory::AC_AircraftCategoryReserved:
-        return OpenAce::AircraftCategory::ReservedE;
+        return GATAS::AircraftCategory::ReservedE;
     default:
-        return OpenAce::AircraftCategory::Unknown;
+        return GATAS::AircraftCategory::Unknown;
     }
 }
 
-ADSL_Packet::AircraftCategory ADSL::mapAircraftCategory(OpenAce::AircraftCategory category)
+ADSL_Packet::AircraftCategory ADSL::mapAircraftCategory(GATAS::AircraftCategory category)
 {
     switch (category)
     {
-    case OpenAce::AircraftCategory::Unknown:
+    case GATAS::AircraftCategory::Unknown:
         return ADSL_Packet::AircraftCategory::AC_NoEmitterCategory;
-    case OpenAce::AircraftCategory::ReciprocatingEngine:
-    case OpenAce::AircraftCategory::TowPlane:
+    case GATAS::AircraftCategory::ReciprocatingEngine:
+    case GATAS::AircraftCategory::TowPlane:
         return ADSL_Packet::AircraftCategory::AC_LightFixedWing;
-    case OpenAce::AircraftCategory::JetTurbopropEngine:
-    case OpenAce::AircraftCategory::DropPlane:
+    case GATAS::AircraftCategory::JetTurbopropEngine:
+    case GATAS::AircraftCategory::DropPlane:
         return ADSL_Packet::AircraftCategory::AC_SmallToHeavyFixedWing;
-    case OpenAce::AircraftCategory::Helicopter:
+    case GATAS::AircraftCategory::Helicopter:
         return ADSL_Packet::AircraftCategory::AC_Rotorcraft;
-    case OpenAce::AircraftCategory::GliderMotorGlider:
+    case GATAS::AircraftCategory::GliderMotorGlider:
         return ADSL_Packet::AircraftCategory::AC_GliderSailplane;
-    case OpenAce::AircraftCategory::Balloon:
-    case OpenAce::AircraftCategory::Airship:
+    case GATAS::AircraftCategory::Balloon:
+    case GATAS::AircraftCategory::Airship:
         return ADSL_Packet::AircraftCategory::AC_LighterThanAir;
-    case OpenAce::AircraftCategory::Paraglider:
-    case OpenAce::AircraftCategory::HangGlider:
+    case GATAS::AircraftCategory::Paraglider:
+    case GATAS::AircraftCategory::HangGlider:
         return ADSL_Packet::AircraftCategory::AC_HangGliderParaglider;
-    case OpenAce::AircraftCategory::Skydiver:
+    case GATAS::AircraftCategory::Skydiver:
         return ADSL_Packet::AircraftCategory::AC_ParachutistSkydiverWingsuit;
-    case OpenAce::AircraftCategory::Uav:
+    case GATAS::AircraftCategory::Uav:
         return ADSL_Packet::AircraftCategory::AC_UASOpenCategory;
-    case OpenAce::AircraftCategory::ReservedE:
+    case GATAS::AircraftCategory::ReservedE:
         return ADSL_Packet::AircraftCategory::AC_AircraftCategoryReserved;
-    case OpenAce::AircraftCategory::StaticObstacle:
+    case GATAS::AircraftCategory::StaticObstacle:
     default:
         return ADSL_Packet::AircraftCategory::AC_NoEmitterCategory;
     }
 }
 
 
-void ADSL::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
+void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
 
-    if (msg.radioParameters.config.dataSource == OpenAce::DataSource::ADSL)
+    if (msg.radioParameters.config.dataSource == GATAS::DataSource::ADSL)
     {
         ADSL_Packet packet;
         packet.payloadIdent = 0x02; // ADS-L.4.SRD860.F.2.1 :: iConspicuity
-        packet.addressMapping = addressTypeToAddressMap(openAceConfiguration.addressType);
-        packet.address = openAceConfiguration.address;
+        packet.addressMapping = addressTypeToAddressMap(gaTasConfiguration.addressType);
+        packet.address = gaTasConfiguration.address;
         packet.reserved1 = 0;
         packet.relay = 0;
         packet.timeStamp = (CoreUtils::msSinceEpoch() / 250) % 60;
         packet.flightState = ownshipPosition.airborne ? ADSL_Packet::FlightState::FS_Airborne : ADSL_Packet::FlightState::FS_OnGround;
-        packet.aircraftCategory = mapAircraftCategory(openAceConfiguration.category);
+        packet.aircraftCategory = mapAircraftCategory(gaTasConfiguration.category);
         packet.emergencyStatus = ADSL_Packet::ES_NoEmergency;
 
         packet.setLatitude(ownshipPosition.lat);
@@ -253,7 +253,7 @@ void ADSL::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
         packet.setCRC();
 
         // Takes about 4ms from the request to end up here
-        getBus().receive(OpenAce::RadioTxFrameMsg{
+        getBus().receive(GATAS::RadioTxFrameMsg{
             Radio::TxPacket{
                 msg.radioParameters,
                 ADSL_Packet::TotalTxBytes,
@@ -282,13 +282,13 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
 //    printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
 //      packet.address, fLatitude, fLongitude, packet.getaltitudeGeoid(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
 
-    OpenAce::AircraftPositionMsg aircraftPosition{
-        OpenAce::AircraftPositionInfo{
+    GATAS::AircraftPositionMsg aircraftPosition{
+        GATAS::AircraftPositionInfo{
             positionTs,
             "",
             packet.address,
             addressMapToAddressType(packet.addressMapping),
-            OpenAce::DataSource::ADSL,
+            GATAS::DataSource::ADSL,
             mapAircraftCategory(packet.aircraftCategory),
             packet.addressMapping == 0x00,
             false,
@@ -314,7 +314,7 @@ void ADSL::adslReceiveTask(void *arg)
 {
     ADSL *adsl = static_cast<ADSL *>(arg);
     ADSL_Packet packet;
-    OpenAce::RadioRxGfskMsg msg;
+    GATAS::RadioRxGfskMsg msg;
     while (true)
     {
         // msg length expected to be 0x1b == 25byte
@@ -336,7 +336,7 @@ void ADSL::adslReceiveTask(void *arg)
             }
 
             // Ignore ownship address
-            if (packet.address == adsl->openAceConfiguration.address) {
+            if (packet.address == adsl->gaTasConfiguration.address) {
                 continue;
             }
 

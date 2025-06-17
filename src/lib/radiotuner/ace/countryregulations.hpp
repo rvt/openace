@@ -21,7 +21,7 @@ public:
         ZONE6  // Zone 6: South America (west of 30W, south of 10N)
     };
 
-    inline static constexpr OpenAce::Mapping<Zone, const char *> ZoneMapping[] =
+    inline static constexpr GATAS::Mapping<Zone, const char *> ZoneMapping[] =
         {
             {Zone::ZONE0, "ZONE0"},
             {Zone::ZONE1, "ZONE1"},
@@ -34,7 +34,7 @@ public:
 
     static const char *zoneToString(Zone zone)
     {
-        return OpenAce::enumToString(ZoneMapping, zone, "UNKNOWN");
+        return GATAS::enumToString(ZoneMapping, zone, "UNKNOWN");
     }
 
     struct Frequency
@@ -58,12 +58,12 @@ public:
 
     // First byte of the syncWord is the preamble for TX
     //                                                                mode                   dataSource  packetLength txPreambleLength codingRate syncLength;
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE,   0,           16,              0,         1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
-    static constexpr Radio::ProtocolConfig PROTOCOL_FLARM{Radio::Mode::GFSK, OpenAce::DataSource::FLARM, 26,          16,              0,         7, {/*0x55,*/ 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96, 0x00}}; // 0 FLARM 0 airtime 6ms
-    static constexpr Radio::ProtocolConfig PROTOCOL_OGN1{Radio::Mode::GFSK, OpenAce::DataSource::OGN1,   26,          16,              0,         8, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}}; // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
-    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL{Radio::Mode::GFSK, OpenAce::DataSource::ADSL,   24,          16,              0,         8, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
-    static constexpr Radio::ProtocolConfig PROTOCOL_PAW{Radio::Mode::GFSK, OpenAce::DataSource::PAW,     00,          16,              0,         8, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}}; // 4 PAW
-    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{Radio::Mode::LORA, OpenAce::DataSource::FANET, 0xff,        12,              8,         2, {0xF4, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // 5 FANET 3
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, GATAS::DataSource::NONE,   0,           16,              0,         1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_FLARM{Radio::Mode::GFSK, GATAS::DataSource::FLARM, 26,          16,              0,         7, {/*0x55,*/ 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96, 0x00}}; // 0 FLARM 0 airtime 6ms
+    static constexpr Radio::ProtocolConfig PROTOCOL_OGN1{Radio::Mode::GFSK, GATAS::DataSource::OGN1,   26,          16,              0,         8, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}}; // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
+    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL{Radio::Mode::GFSK, GATAS::DataSource::ADSL,   24,          16,              0,         8, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}}; // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
+    static constexpr Radio::ProtocolConfig PROTOCOL_PAW{Radio::Mode::GFSK, GATAS::DataSource::PAW,     00,          16,              0,         8, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}}; // 4 PAW
+    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{Radio::Mode::LORA, GATAS::DataSource::FANET, 0xff,        12,              8,         2, {0xF4, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // 5 FANET 3
 
     enum class ChannelMethod : uint8_t
     {
@@ -77,7 +77,7 @@ public:
         uint8_t idx;                              // This slot ID
         uint8_t nextSlotIdx;                      // Next slot to use, this is used to optmise searching for the next ID, specially when it's wrapped back
         CountryRegulations::Zone zone;            // Zone where this regulation applies
-        OpenAce::DataSource source;               // System Source
+        GATAS::DataSource source;               // System Source
         const Frequency &frequency;               // Entry on the regulation table
         const Radio::ProtocolConfig &radioConfig; // Entry on the regulation table
         uint16_t slotStartTime;                   // in ms start time of a slot must be between 0..1000
@@ -89,7 +89,7 @@ public:
         ChannelMethod channelMethod;              // What method channel selection
     };
 
-    static constexpr ProtocolTimeSlot NONE_DATASOURCE = ProtocolTimeSlot{0, 0, CountryRegulations::Zone::ZONE0, OpenAce::DataSource::NONE, Europe, PROTOCOL_NONE, 000, 0000, 000, 0000, 00, 000, ChannelMethod::CHANNEL_0};
+    static constexpr ProtocolTimeSlot NONE_DATASOURCE = ProtocolTimeSlot{0, 0, CountryRegulations::Zone::ZONE0, GATAS::DataSource::NONE, Europe, PROTOCOL_NONE, 000, 0000, 000, 0000, 00, 000, ChannelMethod::CHANNEL_0};
 
     // Table with timings for each protocol needs to adhere to the following rules for optimalisation reasons
     // - Minimum of 1 and a maximum of 2 timings packages
@@ -103,23 +103,23 @@ public:
         NONE_DATASOURCE,
 
         // FLARM packages are send/rceived 400..1200ms after PPS channel is based on FLARM_TIME_BASED_2SLOTS. Minimum 600ms between packages, maximum of 1400ms between packages
-        ProtocolTimeSlot{1, 2, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM, Europe, PROTOCOL_FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
-        ProtocolTimeSlot{2, 1, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FLARM, Europe, PROTOCOL_FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{1, 2, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM, Europe, PROTOCOL_FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{2, 1, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM, Europe, PROTOCOL_FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
 
         // FLARM Zone 5
-        ProtocolTimeSlot{3, 4, CountryRegulations::Zone::ZONE5, OpenAce::DataSource::FLARM, Israel, PROTOCOL_FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
-        ProtocolTimeSlot{4, 3, CountryRegulations::Zone::ZONE5, OpenAce::DataSource::FLARM, Israel, PROTOCOL_FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{3, 4, CountryRegulations::Zone::ZONE5, GATAS::DataSource::FLARM, Israel, PROTOCOL_FLARM, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{4, 3, CountryRegulations::Zone::ZONE5, GATAS::DataSource::FLARM, Israel, PROTOCOL_FLARM, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
 
         // OGN 
-        ProtocolTimeSlot{5, 6, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, PROTOCOL_OGN1, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
-        ProtocolTimeSlot{6, 5, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::OGN1, Europe, PROTOCOL_OGN1, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{5, 6, CountryRegulations::Zone::ZONE1, GATAS::DataSource::OGN1, Europe, PROTOCOL_OGN1, 400, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{6, 5, CountryRegulations::Zone::ZONE1, GATAS::DataSource::OGN1, Europe, PROTOCOL_OGN1, 800, 400, 600, 1400, 15, 150, ChannelMethod::CHANNEL_0},
 
         // ADSL
-        ProtocolTimeSlot{7, 8, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 400, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_1},
-        ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{7, 8, CountryRegulations::Zone::ZONE1, GATAS::DataSource::ADSL, Europe, PROTOCOL_ADSL, 400, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_1},
+        ProtocolTimeSlot{8, 7, CountryRegulations::Zone::ZONE1, GATAS::DataSource::ADSL, Europe, PROTOCOL_ADSL, 800, 400, 600, 1400, 15, 250, ChannelMethod::CHANNEL_0},
 
         // Fanet
-        ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, OpenAce::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 2000, 3000, 15, 000, ChannelMethod::CHANNEL_0},
+        ProtocolTimeSlot{9, 9, CountryRegulations::Zone::ZONE1, GATAS::DataSource::FANET, Europe, PROTOCOL_FANET, 000, 1000, 2000, 3000, 15, 000, ChannelMethod::CHANNEL_0},
     };
 
 private:
@@ -148,7 +148,7 @@ public:
     /**
      * return the first configuration for the given datasource and zone
      */
-    static uint8_t getFirstSlotIdx(CountryRegulations::Zone zone, OpenAce::DataSource dataSource);
+    static uint8_t getFirstSlotIdx(CountryRegulations::Zone zone, GATAS::DataSource dataSource);
 
     /**
      * Return the slot's configuration for the given idx
@@ -173,7 +173,7 @@ public:
     /**
      * Based on the current time in Ms, decide for the given zone and protocol what the next timeslot is going to be
      */
-    static uint8_t nextProtocolTimeslot(uint16_t msInSecond, CountryRegulations::Zone zone, OpenAce::DataSource dataSource);
+    static uint8_t nextProtocolTimeslot(uint16_t msInSecond, CountryRegulations::Zone zone, GATAS::DataSource dataSource);
 
     /**
      * Find a timeslot that fits the givenMs

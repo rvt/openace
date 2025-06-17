@@ -27,7 +27,7 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "L76B";
-    L76B(etl::imessage_bus& bus, const OpenAce::PinTypeMap& pins) : 
+    L76B(etl::imessage_bus& bus, const GATAS::PinTypeMap& pins) : 
         AbstractGnss(bus, NAME, pins)
     {
     }

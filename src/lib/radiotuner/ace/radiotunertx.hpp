@@ -24,9 +24,9 @@
  * Note: Currently using array's indexed on datasource to give fast lookups on statistics but will cost a bit more memory
  * The downside is that only one protocol can be configured on one radio so listening on the same protocol on two radios would not be possible
  */
-class RadioTunerTx : public BaseModule, public etl::message_router<RadioTunerTx, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg>
+class RadioTunerTx : public BaseModule, public etl::message_router<RadioTunerTx, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg>
 {
-    static constexpr const size_t MAX_PROTOCOLS = OPENACE_MAX_SOURCE_PER_RADIO * OPENACE_MAX_RADIOS; // Maximum number of datasources per radio
+    static constexpr const size_t MAX_PROTOCOLS = GATAS_MAX_SOURCE_PER_RADIO * GATAS_MAX_RADIOS; // Maximum number of datasources per radio
     static constexpr const uint32_t UPDATE_ZONE_REGULATION_EVERY = 30000;  // Get new regulatory dataset every XXms
 
 private:
@@ -45,13 +45,13 @@ private:
             uint32_t timerMissed = 0;
         } statistics;
 
-        OpenAce::DataSource source;
+        GATAS::DataSource source;
         RadioTunerTx *controller;
         uint8_t radioNo;
         TimerHandle_t timerHandle;
         TaskHandle_t taskHandle;
         uint8_t protocolTimingIdx;
-        SendPositionCtx(OpenAce::DataSource _source, RadioTunerTx *_controller, uint8_t _radioNo)
+        SendPositionCtx(GATAS::DataSource _source, RadioTunerTx *_controller, uint8_t _radioNo)
             : source(_source), controller(_controller), radioNo(_radioNo), timerHandle(nullptr), taskHandle(nullptr), protocolTimingIdx(CountryRegulations::NONE_DATASOURCE.idx) {}
 
         // Ensure we never copy
@@ -79,10 +79,10 @@ private:
     static void timerTxCallback(TimerHandle_t xTimer);
     static void radioTxTask(void *arg);
 
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive_unknown(const etl::imessage &msg);
-    void enableDisableDatasources(const etl::ivector<OpenAce::DataSource> &datasources);
+    void enableDisableDatasources(const etl::ivector<GATAS::DataSource> &datasources);
 
 public:
     static constexpr const etl::string_view NAME = "RadioTunerTx";
@@ -94,7 +94,7 @@ public:
     }
     virtual ~RadioTunerTx() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
     virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
@@ -102,5 +102,5 @@ public:
     /*
     * Returns the datasources for a specific radio
     */
-    etl::vector<OpenAce::DataSource, MAX_PROTOCOLS> datasourcesOnRadio(uint8_t radioNo) const;
+    etl::vector<GATAS::DataSource, MAX_PROTOCOLS> datasourcesOnRadio(uint8_t radioNo) const;
 };

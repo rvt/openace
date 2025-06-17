@@ -12,7 +12,7 @@
 #include "etl/string.h"
 #include "etl/queue_spsc_atomic.h"
 
-/* OpenAce */
+/* GaTas */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -30,10 +30,10 @@
  * https://bluekitchen-gmbh.com/btstack/#
  *
  * Note for developers: btStack is single threaded in FreeRTOS. It's not needed to uses mutexes to protect the data structures.
- * The only one that requires a mutex is to see if we need a notification in on_receive(const OpenAce::DataPortMsg &msg)
+ * The only one that requires a mutex is to see if we need a notification in on_receive(const GATAS::DataPortMsg &msg)
  * The queue is a lock free queue so no mutex needed
  */
-class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenAce::DataPortMsg>
+class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg>
 {
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
@@ -88,13 +88,13 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, OpenA
     };
 
 private:
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 
     virtual void stop() override;
 
-    void on_receive(const OpenAce::DataPortMsg &msg);
+    void on_receive(const GATAS::DataPortMsg &msg);
 
     void on_receive_unknown(const etl::imessage &msg);
 
@@ -121,7 +121,7 @@ private:
     static void processIncomingBuffer( uint8_t* data, size_t size);
 
     // Lists of bluetooth contexts
-    using BluetoothConnections = etl::list<BtContext, OPENACE_MAX_BLUETOOTH_CONNECTIONS>;
+    using BluetoothConnections = etl::list<BtContext, GATAS_MAX_BLUETOOTH_CONNECTIONS>;
     inline static BluetoothConnections connections;
     /**
      * Get the connections context by Bluetooth handle
@@ -158,7 +158,7 @@ private:
     // Semaphore to ensure checking data and is synchronized with the BT thread.
     // TODO: Perhaps this can be optimized by using a atomic (allBufferEmpty), all we use it for is to validate if all buffers ar empty
     inline static SemaphoreHandle_t mutex = nullptr;
-    OpenAce::SsidOrPasswdStr localName;
+    GATAS::SsidOrPasswdStr localName;
     bool rfComm;
 
 public:
@@ -167,7 +167,7 @@ public:
     Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), rfComm(false)
     {
         instance = this;
-        localName = config.strValueByPath("OpenAce", NAME, "localName");
+        localName = config.strValueByPath("GaTas", NAME, "localName");
         rfComm = config.valueByPath(0, NAME, "rfComm");
         createAdvData();
     }

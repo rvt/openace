@@ -8,28 +8,28 @@
 constexpr float POSITION_DECODE = 0.0001f / 60.f;
 constexpr float POSITION_ENDECODE = 1.f / POSITION_DECODE;
 
-OpenAce::PostConstruct Ogn1::postConstruct()
+GATAS::PostConstruct Ogn1::postConstruct()
 {
-    frameConsumerQueue = xQueueCreate(4, sizeof(OpenAce::RadioRxGfskMsg));
+    frameConsumerQueue = xQueueCreate(4, sizeof(GATAS::RadioRxGfskMsg));
     if (frameConsumerQueue == nullptr)
     {
-        return OpenAce::PostConstruct::XQUEUE_ERROR;
+        return GATAS::PostConstruct::XQUEUE_ERROR;
     }
 
     if (sizeof(OGN1_Packet) != OGN_PACKET_LENGTH_FEC + 2) // 20byte + FEC == 6 byte + 2 extra for the word that is ignored
     {
         panic("OGN1 packet is smaller than expected");
-        return OpenAce::PostConstruct::FAILED;
+        return GATAS::PostConstruct::FAILED;
     }
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Ogn1::start()
 {
     xTaskCreate(ognReceiveTask, Ogn1::NAME.cbegin(), configMINIMAL_STACK_SIZE + 64, this, tskIDLE_PRIORITY + 2, &taskHandle);
     // auto tuner = static_cast<Tuner *>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->startListen(OpenAce::DataSource::OGN1);
+    // tuner->startListen(GATAS::DataSource::OGN1);
     getBus().subscribe(*this);
 };
 
@@ -37,7 +37,7 @@ void Ogn1::stop()
 {
     getBus().unsubscribe(*this);
     // auto tuner = static_cast<Tuner *>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->stopListen(OpenAce::DataSource::OGN1);
+    // tuner->stopListen(GATAS::DataSource::OGN1);
 
     vTaskDelete(taskHandle);
     vQueueDelete(frameConsumerQueue);
@@ -132,22 +132,22 @@ uint8_t Ogn1::errorCorrect(uint8_t *output, uint8_t *data, uint8_t *err, uint8_t
     return (check & 0x0F) | (errCount << 4);
 }
 
-OpenAce::AddressType Ogn1::addressTypeFromOgn(uint8_t addressType) const
+GATAS::AddressType Ogn1::addressTypeFromOgn(uint8_t addressType) const
 {
     switch (addressType)
     {
     case 0x03:
-        return OpenAce::AddressType::OGN;
+        return GATAS::AddressType::OGN;
     case 0x02:
-        return OpenAce::AddressType::FLARM;
+        return GATAS::AddressType::FLARM;
     case 0x01:
-        return OpenAce::AddressType::ICAO;
+        return GATAS::AddressType::ICAO;
     default:
-        return OpenAce::AddressType::RANDOM;
+        return GATAS::AddressType::RANDOM;
     }
 }
 
-uint8_t Ogn1::addressTypeToOgn(OpenAce::AddressType addressType) const
+uint8_t Ogn1::addressTypeToOgn(GATAS::AddressType addressType) const
 {
     constexpr uint8_t lookupTable[] =
         {
@@ -186,23 +186,23 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
     if (fromOwn.distance > distanceIgnore)
     {
         statistics.outOfDistance++;
-        // printf("Distance %2.f > OPENACE_FLARM_IGNORE_DISTANCE_ERRORS, ignoring (%.4f, %.4f, %.4f, %.4f)\n",   distance, fLatitude, fLongitude, lastGpsPosition.latitude, lastGpsPosition.longitude);
+        // printf("Distance %2.f > GATAS_FLARM_IGNORE_DISTANCE_ERRORS, ignoring (%.4f, %.4f, %.4f, %.4f)\n",   distance, fLatitude, fLongitude, lastGpsPosition.latitude, lastGpsPosition.longitude);
         return -1;
     }
 
     statistics.receivedAircraftPositions++;
     int16_t speed0d1ms = packet.DecodeSpeed();
 
-    OpenAce::AircraftPositionMsg aircraftPosition{
-        OpenAce::AircraftPositionInfo{
+    GATAS::AircraftPositionMsg aircraftPosition{
+        GATAS::AircraftPositionInfo{
             timeUs32,
             "",
             packet.Header.Address,
             addressTypeFromOgn(packet.Header.AddrType),
-            OpenAce::DataSource::OGN1,
-            static_cast<OpenAce::AircraftCategory>(packet.Position.AcftType),
+            GATAS::DataSource::OGN1,
+            static_cast<GATAS::AircraftCategory>(packet.Position.AcftType),
             packet.Position.Stealth ? true : false, // Privacy
-            openAceConfiguration.noTrack,           // noTrack
+            gaTasConfiguration.noTrack,           // noTrack
             1,                                      // airBorn
             fLatitude,
             fLongitude,
@@ -220,15 +220,15 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
     return 0;
 }
 
-void Ogn1::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
+void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config.dataSource == OpenAce::DataSource::OGN1)
+    if (msg.radioParameters.config.dataSource == GATAS::DataSource::OGN1)
     {
         OGN1_Packet packet;
         packet.Header =
             {
-                .Address = openAceConfiguration.address, // Address
-                .AddrType = addressTypeToOgn(openAceConfiguration.addressType),
+                .Address = gaTasConfiguration.address, // Address
+                .AddrType = addressTypeToOgn(gaTasConfiguration.addressType),
                 .NonPos = 0,    // 0 = position packet, 1 = other information like status
                 .Parity = 0,    // parity takes into account bits 0..27 thus only the 28 lowest bits
                 .Relay = 0,     // 0 = direct packet, 1 = relayed once, 2 = relayed twice, ...
@@ -279,7 +279,7 @@ void Ogn1::on_receive(const OpenAce::RadioTxPositionRequestMsg &msg)
         LDPC_Encode(packet.Word());
         statistics.transmittedAircraftPositions++;
 
-        getBus().receive(OpenAce::RadioTxFrameMsg{
+        getBus().receive(GATAS::RadioTxFrameMsg{
             Radio::TxPacket{
                 msg.radioParameters,
                 OGN_PACKET_LENGTH_FEC,
@@ -295,7 +295,7 @@ void Ogn1::ognReceiveTask(void *arg)
     while (true)
     {
         OGN1_Packet packet;
-        OpenAce::RadioRxGfskMsg msg;
+        GATAS::RadioRxGfskMsg msg;
         // msg length expected to be 0x1a == 26byte
         if (xQueueReceive(ogn1->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
         {
@@ -315,7 +315,7 @@ void Ogn1::ognReceiveTask(void *arg)
             }
 
             // Ignore ownship address
-            if (packet.Header.Address == ogn1->openAceConfiguration.address) {
+            if (packet.Header.Address == ogn1->gaTasConfiguration.address) {
                 continue;
             }
 
@@ -325,11 +325,11 @@ void Ogn1::ognReceiveTask(void *arg)
     }
 }
 
-void Ogn1::on_receive(const OpenAce::RadioRxGfskMsg &msg)
+void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
-    if (msg.dataSource == OpenAce::DataSource::OGN1)
+    if (msg.dataSource == GATAS::DataSource::OGN1)
     {
-        const OpenAce::RadioRxGfskMsg cpy = msg;
+        const GATAS::RadioRxGfskMsg cpy = msg;
         if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
         {
             statistics.queueFullErr++;
@@ -337,26 +337,26 @@ void Ogn1::on_receive(const OpenAce::RadioRxGfskMsg &msg)
     }
 }
 
-void Ogn1::on_receive(const OpenAce::OwnshipPositionMsg &msg)
+void Ogn1::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     ownshipPosition = msg.position;
 }
 
-void Ogn1::on_receive(const OpenAce::BarometricPressureMsg &msg)
+void Ogn1::on_receive(const GATAS::BarometricPressureMsg &msg)
 {
     lastBarometricPressureMsg = msg;
 }
 
-void Ogn1::on_receive(const OpenAce::GpsStatsMsg &msg)
+void Ogn1::on_receive(const GATAS::GpsStatsMsg &msg)
 {
     gpsStats = msg;
 }
 
-void Ogn1::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void Ogn1::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        openAceConfiguration = msg.config.openAceConfig();
+        gaTasConfiguration = msg.config.gaTasConfig();
     }
 }
 

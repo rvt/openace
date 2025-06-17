@@ -14,7 +14,7 @@ target_include_directories(${PROJECT_NAME} INTERFACE
     PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
 )
 
-# Set compile options for each file of OpenAce
+# Set compile options for each file of GaTas
 set_source_files_properties(${MODULE_SOURCE_FILES} PROPERTIES
     COMPILE_FLAGS "-Wall -Wextra -Werror"
 )

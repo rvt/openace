@@ -3,7 +3,7 @@ import "./monitormodule";
 import store from "./store";
 import { icon } from "./utils";
 
-class OpenAceModules extends El {
+class GaTasModules extends El {
   created() {
     this.state = this.$observable({
       modules: [],
@@ -65,13 +65,13 @@ class OpenAceModules extends El {
     ];
     this.info = {
       WifiService: (html) =>
-      html`Provides both Access Point and Client modes, allowing OpenAce to connect to or create a network. It can connect to multiple networks based on availability.`,
+      html`Provides both Access Point and Client modes, allowing GaTas to connect to or create a network. It can connect to multiple networks based on availability.`,
       AircraftTracker: (html) =>
       html`Tracks all received aircraft and updates their positions when no new data is received. Sends a 1-second heartbeat with updated positions for each aircraft for a configurable duration.`,
       Webserver: (html) => html`Hosts this page and facilitates configuration changes.`,
       DataPort: (html) => html`Generates NMEA sentences compatible with DataPort, enabling EFBs like SkyDemon to receive traffic and ownship information via Bluetooth or AirConnect.`,
       AirConnect: (html) => html`Sends all DataPort messages over TCP. Prefer Bluetooth if supported by your EFB. Listens on port 2000 and sends data upon connection. Note: ForeFlight may require proprietary port negotiation.`,
-      Bluetooth: (html) => html`Transmits all DataPort messages over Bluetooth, providing NMEA datastreams to external devices. EFBs like SkyDemon can connect to OpenAce via Bluetooth.`,
+      Bluetooth: (html) => html`Transmits all DataPort messages over Bluetooth, providing NMEA datastreams to external devices. EFBs like SkyDemon can connect to GaTas via Bluetooth.`,
       Gdl90Service: (html) => html`Generates GDL90 messages. Requires a module like GDLoverUDP to receive them on external devices.`,
       GDLoverUDP: (html) => html`Transmits GDL90 messages over UDP to external devices.`,
       Flarm: (html) => html`Sends and receives Flarm protocol messages.`,
@@ -131,7 +131,7 @@ class OpenAceModules extends El {
       <div class="modal-content mw-400 rounded">
         <article class="accent-light shadow">
           <header>
-            <h4>Restart OpenAce?</h4>
+            <h4>Restart GaTas?</h4>
           </header>
           <div class="overflow-auto accent-primary" style="color: black">
             <!-- Quick hack to make text black on Safari Desktop -->
@@ -159,12 +159,12 @@ class OpenAceModules extends El {
           <div class="overflow-auto accent-primary" style="color: black">
             <!-- Quick hack to make text black on Safari Desktop -->
             <p>
-              To update OpenAce, make sure it is connected to your computer with a USB cable through the <strong>Microcontroller port</strong> (the charge port
+              To update GaTas, make sure it is connected to your computer with a USB cable through the <strong>Microcontroller port</strong> (the charge port
               won’t work for this step).
             </p>
             <p>
-              When OpenAce restarts, it will show up as a new drive on your computer. Once you see the drive, simply drag and drop the
-              <strong>OpenAce.uf2</strong> file onto it. After a moment, the device will restart automatically, and OpenAce will be ready to use again.
+              When GaTas restarts, it will show up as a new drive on your computer. Once you see the drive, simply drag and drop the
+              <strong>GaTas.uf2</strong> file onto it. After a moment, the device will restart automatically, and GaTas will be ready to use again.
             </p>
           </div>
           <footer class="px-2 jc-end">
@@ -192,7 +192,7 @@ class OpenAceModules extends El {
           <div class="overflow-auto accent-primary" style="color: black">
             <!-- Quick hack to make text black on Safari Desktop -->
             <p>
-              This will change the type of board that OpenAce is running on. 
+              This will change the type of board that GaTas is running on. 
               After changing the connection will be temporary disconnected. 
               Any unsaved data will be available after restart.<br />
             </p>
@@ -217,7 +217,7 @@ class OpenAceModules extends El {
     const errorMap = {
       0: "Never Loaded",
       1: "Ok",
-      2: "OpenAce::PostConstruct failed",
+      2: "GATAS::PostConstruct failed",
       3: "Memory error",
       4: "A dependency was not found",
       5: "xQueue error",
@@ -389,4 +389,4 @@ class OpenAceModules extends El {
     return pageContent;
   }
 }
-customElements.define("openace-modules", OpenAceModules);
+customElements.define("gatas-modules", GaTasModules);

@@ -12,16 +12,16 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
     stream << "}\n";
 }
 
-// This method is not protected with a mutex since it's called from hardware interrupt well before OpenAce::UtcTimeMsg& event is end
+// This method is not protected with a mutex since it's called from hardware interrupt well before GATAS::UtcTimeMsg& event is end
 __force_inline void PicoRtc::ppsEvent()
 {
     CoreUtils::setPPS();
     lastPpstime = CoreUtils::timeUs32();
 }
 
-OpenAce::PostConstruct PicoRtc::postConstruct()
+GATAS::PostConstruct PicoRtc::postConstruct()
 {
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void PicoRtc::start()
@@ -35,9 +35,9 @@ void PicoRtc::stop()
 };
 
 /**
- *   OpenAce::UtcTimeMsg is normally aend every 15 seconds
+ *   GATAS::UtcTimeMsg is normally aend every 15 seconds
  */
-void PicoRtc::on_receive(const OpenAce::UtcTimeMsg &msg)
+void PicoRtc::on_receive(const GATAS::UtcTimeMsg &msg)
 {
     uint32_t elapsedUsSincePps = CoreUtils::timeUs32() - lastPpstime;
 
@@ -48,7 +48,7 @@ void PicoRtc::on_receive(const OpenAce::UtcTimeMsg &msg)
         return;
     }
 
-    // if (OPENACE_SET_PICO_RTC && msg.millisecond == 0)
+    // if (GATAS_SET_PICO_RTC && msg.millisecond == 0)
     // {
     //     // Set the RTC
     //     datetime_t t =
@@ -80,7 +80,7 @@ void PicoRtc::on_receive(const OpenAce::UtcTimeMsg &msg)
 
     time_t secondsSinceEpoch = mktime(&timeinfo);
 
-    // OpenAce uses it's internal timekeeoing since absolute time is really not needed anywhere
+    // GATAS uses it's internal timekeeoing since absolute time is really not needed anywhere
     // struct timeval tv =
     // {
     //     .tv_sec = secondsSinceEpoch,

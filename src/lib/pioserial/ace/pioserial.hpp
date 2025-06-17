@@ -16,7 +16,7 @@
 
 #include "hardware/irq.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/models.hpp"
 #include "ace/coreutils.hpp"
@@ -56,7 +56,7 @@ private:
 
     // We have PIO's and each PIO has 8 state machine
     // Note: We properly need to put these in a struct or something
-    // inline static etl::array<PioSerial*, 4> __scratch_y("OpenAceMem") interruptHandlers;
+    // inline static etl::array<PioSerial*, 4> __scratch_y("GaTasMem") interruptHandlers;
     inline static etl::array<PioSerial*, 4> interruptHandlers;
 
     uint8_t handlerIdx=0;
@@ -75,15 +75,15 @@ private:
     uint txOffset;
 
     irq_handler_t handler;
-    etl::array<char, OpenAce::NMEA_MAX_LENGTH + 1> buffer;
+    etl::array<char, GATAS::NMEA_MAX_LENGTH + 1> buffer;
     CallBackFunction callback;
 
     bool enableRx();
     void disableRx();
 public:
-    PioSerial(const OpenAce::PinTypeMap &pins, uint32_t baudrate_, CallBackFunction callback_) :
-        rxPin(CoreUtils::pinValue(pins, OpenAce::PinType::RX)),
-        txPin(CoreUtils::pinValue(pins, OpenAce::PinType::TX)),
+    PioSerial(const GATAS::PinTypeMap &pins, uint32_t baudrate_, CallBackFunction callback_) :
+        rxPin(CoreUtils::pinValue(pins, GATAS::PinType::RX)),
+        txPin(CoreUtils::pinValue(pins, GATAS::PinType::TX)),
         baudrate(baudrate_),
         rxPio(nullptr),
         rxSmIndx(-1),
@@ -99,7 +99,7 @@ public:
 
     virtual ~PioSerial() = default;
 
-    OpenAce::PostConstruct postConstruct();
+    GATAS::PostConstruct postConstruct();
 
     void start() ;
     void stop() ;

@@ -17,7 +17,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class Bmp280 : public BaseModule, public etl::message_router<Bmp280, OpenAce::ConfigUpdatedMsg, OpenAce::IdleMsg>
+class Bmp280 : public BaseModule, public etl::message_router<Bmp280, GATAS::ConfigUpdatedMsg, GATAS::IdleMsg>
 {
     friend class message_router;
     struct
@@ -50,21 +50,21 @@ private:
 
     void on_receive_unknown(const etl::imessage &msg);
 
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
-    void on_receive(const OpenAce::IdleMsg &msg);
+    void on_receive(const GATAS::IdleMsg &msg);
 
 public:
     static constexpr const etl::string_view NAME = "Bmp280";
     Bmp280(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                  cs(config.pinMap(NAME).at(OpenAce::PinType::CS))
+                                                                  cs(config.pinMap(NAME).at(GATAS::PinType::CS))
     {
         compensation = config.valueByPath(0, NAME, "compensation");
     }
 
     virtual ~Bmp280() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

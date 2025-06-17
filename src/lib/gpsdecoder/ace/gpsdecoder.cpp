@@ -3,11 +3,11 @@
 #include "gpsdecoder.hpp"
 #include "ace/moreutils.hpp"
 
-extern const char *OpenAce_buildTime;
+extern const char *GaTas_buildTime;
 
-OpenAce::PostConstruct GpsDecoder::postConstruct()
+GATAS::PostConstruct GpsDecoder::postConstruct()
 {
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void GpsDecoder::start()
@@ -24,9 +24,9 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
 {
     (void)path;
     constexpr etl::format_spec width2fill0 = etl::format_spec().width(2).fill('0');
-    const char *dopValue = OpenAce::DOPInterpretationToString(OpenAce::floatToDOPInterpretation(pDop));
+    const char *dopValue = GATAS::DOPInterpretationToString(GATAS::floatToDOPInterpretation(pDop));
     stream << "{";
-    stream << "\"OpenAce_buildTime\": \"" << OpenAce_buildTime << "\"";
+    stream << "\"GaTas_buildTime\": \"" << GaTas_buildTime << "\"";
     stream << ",\"receivedGGA\":" << statistics.receivedGGA;
     stream << ",\"receivedRMC\":" << statistics.receivedRMC;
     stream << ",\"receivedGSA\":" << statistics.receivedGSA;
@@ -37,20 +37,20 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"geoidSeparation\":" << geoidSeparation;
     stream << ",\"groundspeed\":" << groundSpeed;
     stream << ",\"track\":" << course();
-    stream << ",\"pDop\":" << pDop << OpenAce::RESET_FORMAT;
+    stream << ",\"pDop\":" << pDop << GATAS::RESET_FORMAT;
     stream << ",\"dopValue\":\"" << dopValue << "\"";
     stream << ",\"gpsRatePerSec\":" << getGpsRate();
     stream << ",\"fixQuality\":" << fixQuality;
     stream << ",\"satellitesTracked\":" << satellitesTracked;
     stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
         stream << ",\"UtcTimeMsg\":" << "\""
-               << width2fill0 << lastGGATimestamp.hours << OpenAce::RESET_FORMAT << ":"
-               << width2fill0 << lastGGATimestamp.minutes << OpenAce::RESET_FORMAT << ":"
-               << width2fill0 << lastGGATimestamp.seconds << OpenAce::RESET_FORMAT << "\"";
+               << width2fill0 << lastGGATimestamp.hours << GATAS::RESET_FORMAT << ":"
+               << width2fill0 << lastGGATimestamp.minutes << GATAS::RESET_FORMAT << ":"
+               << width2fill0 << lastGGATimestamp.seconds << GATAS::RESET_FORMAT << "\"";
     stream << "}\n";
 }
 
-void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
+void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
 {
     // printf("GpsDecoder: %s\n", msg.sentence.c_str());
     static Every<uint32_t, 10'000'000, 15'000'000> gpsStatsMsg{0}; // Every 30 seconds 10 seconds in
@@ -96,7 +96,7 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
 
                 // The time in a RMC sentence is the UTC time, not GPS time
                 getBus().receive(
-                    OpenAce::UtcTimeMsg{
+                    GATAS::UtcTimeMsg{
                         static_cast<int16_t>(frame.date.year + 2000),
                         static_cast<int8_t>(frame.date.month),
                         static_cast<int8_t>(frame.date.day),
@@ -174,7 +174,7 @@ void GpsDecoder::on_receive(const OpenAce::GPSSentenceMsg &msg)
                 pDop = getFloat(frame.pdop, 100);
                 auto hDop = getFloat(frame.hdop, 100);
                 getBus().receive(
-                    OpenAce::GpsStatsMsg{
+                    GATAS::GpsStatsMsg{
                         fixQuality,              // 0:Fix Not Valid 1:GPS fix 2:DGPS SBAS etc.. 3..6:NA
                         (uint8_t)frame.fix_type, // 1:NA 2:2D 3:3D
                         satellitesTracked,
@@ -233,10 +233,10 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
 
         // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
         getBus().receive(
-            OpenAce::OwnshipPositionMsg{
-                OpenAce::OwnshipPositionInfo{
+            GATAS::OwnshipPositionMsg{
+                GATAS::OwnshipPositionInfo{
                     .timestamp = CoreUtils::timeUs32(),
-                    .airborne = groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
+                    .airborne = groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
                     .lat = latitude,
                     .lon = longitude,
                     .altitudeHAE = static_cast<int16_t>(altGeoid + geoidSeparation),

@@ -8,7 +8,7 @@ set(PICO_CXX_ENABLE_RTTI 0)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/generated)
 set(DEFAULT_CONFIG_HEADER "${CMAKE_CURRENT_LIST_DIR}/generated/default_config.hpp")
 set(OPTIMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
-                    openace_default_config.json ${DEFAULT_CONFIG_HEADER})
+                    gatas_default_config.json ${DEFAULT_CONFIG_HEADER})
 execute_process(
   COMMAND ${OPTIMIZE_SCRIPT}
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} ECHO_OUTPUT_VARIABLE ECHO_ERROR_VARIABLE)
@@ -43,18 +43,18 @@ if(PICO_SDK_VERSION_STRING VERSION_LESS "2.1.0")
   )
 endif()
 
-project(OpenAce C CXX ASM)
+project(GaTas C CXX ASM)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-# Allow user to override this option from command line: -DOPENACE_UART_OVER_USB=1
-option(OPENACE_UART_OVER_USB "Enable UART over USB (1) or physical UART (0)" "")
+# Allow user to override this option from command line: -DGATAS_UART_OVER_USB=1
+option(GATAS_UART_OVER_USB "Enable UART over USB (1) or physical UART (0)" "")
 
 # Set default based on build type if not provided
-if(OPENACE_UART_OVER_USB STREQUAL "")
+if(GATAS_UART_OVER_USB STREQUAL "")
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(OPENACE_UART_OVER_USB 1 CACHE BOOL "Enable UART over USB by default in Release builds" FORCE)
+    set(GATAS_UART_OVER_USB 1 CACHE BOOL "Enable UART over USB by default in Release builds" FORCE)
   else()
-    set(OPENACE_UART_OVER_USB 0 CACHE BOOL "Enable UART over USB by default in Debug builds" FORCE)
+    set(GATAS_UART_OVER_USB 0 CACHE BOOL "Enable UART over USB by default in Debug builds" FORCE)
   endif()
 endif()
 
@@ -109,7 +109,7 @@ add_executable(${PROJECT_NAME} main.cpp IdleMemory.c)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor vendorLib)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../lib globalLib)
 
-target_include_directories(OpenAce PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(GaTas PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
 target_link_libraries(
   ${PROJECT_NAME}
@@ -163,20 +163,20 @@ target_link_libraries(
           )
 
 target_compile_definitions(
-  OpenAce
+  GaTas
   PRIVATE FREE_RTOS_KERNEL_SMP=1
           portSUPPORT_SMP=1
-          OPENACE_UART_OVER_USB=${OPENACE_UART_OVER_USB}
+          GATAS_UART_OVER_USB=${GATAS_UART_OVER_USB}
           PICO_USE_STACK_GUARDS=1)
 
 # Enable debugging over PICO Debugger
-if(OPENACE_UART_OVER_USB)
-  pico_enable_stdio_usb(OpenAce 1)
-  pico_enable_stdio_uart(OpenAce 0)
+if(GATAS_UART_OVER_USB)
+  pico_enable_stdio_usb(GaTas 1)
+  pico_enable_stdio_uart(GaTas 0)
 else()
-  pico_enable_stdio_usb(OpenAce 0)
-  pico_enable_stdio_uart(OpenAce 1)
+  pico_enable_stdio_usb(GaTas 0)
+  pico_enable_stdio_uart(GaTas 1)
 endif()
 
 # create map/bin/hex/uf2 file in addition to ELF. -> rp2_common.cmake
-pico_add_extra_outputs(OpenAce)
+pico_add_extra_outputs(GaTas)

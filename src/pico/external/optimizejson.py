@@ -25,8 +25,8 @@ def write_cpp_header(data, file_path):
         json_string = json.dumps(data, separators=(',', ':'))
         json_bytes = [f"0x{ord(char):02X}" for char in json_string]
 
-        file.write(f"static constexpr uint16_t DEFAULT_OPENACE_CONFIG_SIZE = {len(json_bytes) + 1};\n")
-        file.write("static constexpr uint8_t DEFAULT_OPENACE_CONFIG[] = {")
+        file.write(f"static constexpr uint16_t DEFAULT_GATAS_CONFIG_SIZE = {len(json_bytes) + 1};\n")
+        file.write("static constexpr uint8_t DEFAULT_GATAS_CONFIG[] = {")
 
         for i, byte in enumerate(json_bytes):
             if i % 20 == 0:

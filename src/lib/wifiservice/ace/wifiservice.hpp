@@ -22,7 +22,7 @@
 
 /**
  * WifiService handles both Access Point and Client Mode
- * AP Mode: You connect to OpenAce
+ * AP Mode: You connect to GA/TAS
  * Client Mode: Open Ace connects to you
  *
  * It handles up to 4 network clients, process of connecting
@@ -40,14 +40,14 @@
  * 5) Scan the network for any devices (ping?? openPort??) and send GDL90 to these devices found?
  * 6) When in AP mode, restart client mode with a button
  */
-class WifiService : public BaseModule, public etl::message_router<WifiService, OpenAce::IdleMsg>
+class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::IdleMsg>
 {
 private:
 static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 2; // Number of times connection to the same network is attempted before trying an other network
 static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2; // Number is scans done and if no known network is found, create the AP
 
     friend class message_router;
-    OpenAce::Config::WifiServiceData wifiData;
+    GATAS::Config::WifiServiceData wifiData;
 
     enum ConnectionState
     {
@@ -82,14 +82,14 @@ static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2; // Number is scans done an
     uint8_t totalScanAttempt; 
 
     // set of all known networks found during scan
-    etl::set<OpenAce::SsidOrPasswdStr, 4> scanResult;
+    etl::set<GATAS::SsidOrPasswdStr, 4> scanResult;
 
     static void wifiTask(void *arg);
 
     void startAccessPoint();
     void stopAccessPoint();
     /**
-     * When Access Point is active, OpenAce will keep track of all clients connecting to it
+     * When Access Point is active, GaTas will keep track of all clients connecting to it
      * It will send regular AccessPointClientsMsg not notify any modules like GDL90
      */
     void accessPointConnectionScanner();
@@ -107,7 +107,7 @@ static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2; // Number is scans done an
     void mDnsDeinit();
     void showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password, bool ap) const;
     void on_receive_unknown(const etl::imessage &msg);
-    void on_receive(const OpenAce::IdleMsg &msg);
+    void on_receive(const GATAS::IdleMsg &msg);
 
 public:
     static constexpr const etl::string_view NAME = "WifiService";
@@ -129,7 +129,7 @@ public:
 
     virtual ~WifiService() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

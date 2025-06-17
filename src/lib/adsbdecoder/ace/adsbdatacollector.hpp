@@ -13,7 +13,7 @@
 struct AdsbCombinedDataStatus
 {
     uint32_t icao; // ICAO address
-    OpenAce::CallSign callSign;
+    GATAS::CallSign callSign;
     uint8_t messageStatus; // How complete this message is
     uint32_t lastSeen;
 
@@ -195,7 +195,7 @@ public:
         currentDataStatus->altitudeHAE = altitude;
     }
 
-    void updateCallsign(const OpenAce::IcaoAddress &flight, uint8_t aircraft_type)
+    void updateCallsign(const GATAS::IcaoAddress &flight, uint8_t aircraft_type)
     {
         (void)flight;
         if (!(currentDataStatus->messageStatus & CHECK_HAS_CALLSIGN))

@@ -2,13 +2,13 @@
 
 #include "gdl90service.hpp"
 
-/* OpenACE */
+/* GATAS */
 #include "ace/coreutils.hpp"
 #include "ace/semaphoreguard.hpp"
 
-OpenAce::PostConstruct Gdl90Service::postConstruct()
+GATAS::PostConstruct Gdl90Service::postConstruct()
 {
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Gdl90Service::start()
@@ -54,57 +54,57 @@ void Gdl90Service::gdl90ServiceTask(void *arg)
     }
 }
 
-GDL90::EMITTER aircraftTypeToEmitter(OpenAce::AircraftCategory at)
+GDL90::EMITTER aircraftTypeToEmitter(GATAS::AircraftCategory at)
 {
     switch (at)
     {
-    case OpenAce::AircraftCategory::Unknown:
+    case GATAS::AircraftCategory::Unknown:
         return GDL90::EMITTER::UNKNOWN;
-    case OpenAce::AircraftCategory::GliderMotorGlider:
+    case GATAS::AircraftCategory::GliderMotorGlider:
         return GDL90::EMITTER::LIGHT;
-    case OpenAce::AircraftCategory::TowPlane:
+    case GATAS::AircraftCategory::TowPlane:
         return GDL90::EMITTER::LIGHT;
-    case OpenAce::AircraftCategory::Helicopter:
+    case GATAS::AircraftCategory::Helicopter:
         return GDL90::EMITTER::ROTOCRAFT;
-    case OpenAce::AircraftCategory::Skydiver:
+    case GATAS::AircraftCategory::Skydiver:
         return GDL90::EMITTER::PARACHUTIST;
-    case OpenAce::AircraftCategory::DropPlane:
+    case GATAS::AircraftCategory::DropPlane:
         return GDL90::EMITTER::LIGHT;
-    case OpenAce::AircraftCategory::HangGlider:
+    case GATAS::AircraftCategory::HangGlider:
         return GDL90::EMITTER::ULTRA_LIGHT;
-    case OpenAce::AircraftCategory::Paraglider:
+    case GATAS::AircraftCategory::Paraglider:
         return GDL90::EMITTER::ULTRA_LIGHT;
-    case OpenAce::AircraftCategory::ReciprocatingEngine:
+    case GATAS::AircraftCategory::ReciprocatingEngine:
         return GDL90::EMITTER::LIGHT;
-    case OpenAce::AircraftCategory::JetTurbopropEngine:
+    case GATAS::AircraftCategory::JetTurbopropEngine:
         return GDL90::EMITTER::LIGHT;
-    case OpenAce::AircraftCategory::Balloon:
+    case GATAS::AircraftCategory::Balloon:
         return GDL90::EMITTER::LIGHTER_THAN_AIR;
-    case OpenAce::AircraftCategory::Airship:
+    case GATAS::AircraftCategory::Airship:
         return GDL90::EMITTER::LIGHTER_THAN_AIR;
-    case OpenAce::AircraftCategory::Uav:
+    case GATAS::AircraftCategory::Uav:
         return GDL90::EMITTER::UNMANNED;
-    case OpenAce::AircraftCategory::StaticObstacle:
+    case GATAS::AircraftCategory::StaticObstacle:
         return GDL90::EMITTER::POINT_OBSTACLE;
     default:
         return GDL90::EMITTER::UNKNOWN;
     }
 }
 
-void Gdl90Service::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void Gdl90Service::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Gdl90Service::NAME)
     {
-        auto openAceConfiguration = msg.config.openAceConfig();
-        type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
-        address = openAceConfiguration.address;
-        category = openAceConfiguration.category;
+        auto gaTasConfiguration = msg.config.gaTasConfig();
+        type = gaTasConfiguration.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+        address = gaTasConfiguration.address;
+        category = gaTasConfiguration.category;
     }
 }
 
-void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
+void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    const OpenAce::OwnshipPositionInfo &pos = msg.position;
+    const GATAS::OwnshipPositionInfo &pos = msg.position;
     geoidSeparation = pos.geoidSeparation;
 
     uint32_t latitude;
@@ -130,7 +130,7 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
             latitude,
             longitude,
             altitude,
-            GDL90::MISC_TT_HEADING_TRUE_MASK | (pos.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
+            GDL90::MISC_TT_HEADING_TRUE_MASK | (pos.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
             GDL90::NIC::HPL_LT_25_VPL_LT_37_5,
             GDL90::NACP::HFOM_LT_30_VFOM_LT_45, /* Integrity | Accuracy We do not really have this information from the GPS */
             horiz_velocity,
@@ -167,13 +167,13 @@ void Gdl90Service::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     }
 }
 
-void Gdl90Service::on_receive(const OpenAce::GpsStatsMsg &msg) {
+void Gdl90Service::on_receive(const GATAS::GpsStatsMsg &msg) {
     gpsStatusValid = msg.fixType == 3;
 }
 
-void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
+void Gdl90Service::on_receive(const GATAS::TrackedAircraftPositionMsg &msg)
 {
-    const OpenAce::AircraftPositionInfo &pos = msg.position;
+    const GATAS::AircraftPositionInfo &pos = msg.position;
 
     uint32_t latitude;
     uint32_t longitude;
@@ -190,7 +190,7 @@ void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
-    GDL90::ADDR_TYPE type = pos.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+    GDL90::ADDR_TYPE type = pos.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
 
     GDL90::RawBytes unpacked;
     if (gdl90.ownership_or_traffic_report_encode(
@@ -202,7 +202,7 @@ void Gdl90Service::on_receive(const OpenAce::TrackedAircraftPositionMsg &msg)
             latitude,
             longitude,
             altitude,
-            GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_REPORT_UPDATED_MASK | (pos.groundSpeed > OpenAce::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
+            GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_REPORT_UPDATED_MASK | (pos.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
             GDL90::NIC::UNKNOWN,
             GDL90::NACP::UNKNOWN, /* Integrity | Accuracy We do not really have this information from the GPS */
             horiz_velocity,
@@ -253,7 +253,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
     }
 
     // Send ForeFLight heartbeat
-    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 12345, "OpenAce", "OpenAce Device", 0)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 0 0 set to 1, MSL
+    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 12345, "GaTas", "GaTas Device", 0)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 0 0 set to 1, MSL
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx++;
@@ -266,7 +266,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
 
 void Gdl90Service::packAndSend(const GDL90::RawBytes &unpacked)
 {
-    OpenAce::GdlMsg GdlMsg{};
+    GATAS::GdlMsg GdlMsg{};
     gdl90.pack(GdlMsg.msg, unpacked);
     getBus().receive(GdlMsg);
 }

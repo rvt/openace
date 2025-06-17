@@ -20,7 +20,7 @@
 #include "etl/string.h"
 #include "etl/bitset.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -34,8 +34,8 @@
 
 #include "ognpacket.hpp"
 
-class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioRxGfskMsg, OpenAce::OwnshipPositionMsg,
-    OpenAce::RadioTxPositionRequestMsg, OpenAce::BarometricPressureMsg, OpenAce::GpsStatsMsg, OpenAce::ConfigUpdatedMsg>
+class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg,
+    GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg, GATAS::ConfigUpdatedMsg>
 {
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int MAX_IGNORE_DISTANCE = 50000;
@@ -63,10 +63,10 @@ class Ogn1 : public BaseModule, public etl::message_router<Ogn1, OpenAce::RadioR
 
     TaskHandle_t taskHandle;
     QueueHandle_t frameConsumerQueue;
-    OpenAce::OwnshipPositionInfo ownshipPosition;
-    OpenAce::BarometricPressureMsg lastBarometricPressureMsg;
-    OpenAce::GpsStatsMsg gpsStats;
-    OpenAce::Config::OpenAceConfiguration openAceConfiguration;
+    GATAS::OwnshipPositionInfo ownshipPosition;
+    GATAS::BarometricPressureMsg lastBarometricPressureMsg;
+    GATAS::GpsStatsMsg gpsStats;
+    GATAS::Config::GaTasConfiguration gaTasConfiguration;
     uint16_t distanceIgnore;
     LDPC_Decoder<OGN_PACKET_LENGTH*8, 48> decoder;
 public:
@@ -78,7 +78,7 @@ public:
         ownshipPosition(),
         lastBarometricPressureMsg(),
         gpsStats(),
-        openAceConfiguration(config.openAceConfig())
+        gaTasConfiguration(config.gaTasConfig())
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Ogn1", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
@@ -86,7 +86,7 @@ public:
 
     virtual ~Ogn1() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
     virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
@@ -96,17 +96,17 @@ private:
      * Send a FreeRTOS message when a OgnFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxGfskMsg &msg);
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
-    void on_receive(const OpenAce::BarometricPressureMsg &msg);
-    void on_receive(const OpenAce::GpsStatsMsg &msg);
-    void on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
+    void on_receive(const GATAS::RadioRxGfskMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::BarometricPressureMsg &msg);
+    void on_receive(const GATAS::GpsStatsMsg &msg);
+    void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
     void on_receive_unknown(const etl::imessage& msg);
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
-    // Transform a Ogn addressType to an openAce address type
-    OpenAce::AddressType addressTypeFromOgn(uint8_t addressType) const;
-    uint8_t addressTypeToOgn(OpenAce::AddressType addressType) const;
+    // Transform a Ogn addressType to an gaTas address type
+    GATAS::AddressType addressTypeFromOgn(uint8_t addressType) const;
+    uint8_t addressTypeToOgn(GATAS::AddressType addressType) const;
 
     /**
      * Keep track of what timestamp (roughly) we receive Ogn frames

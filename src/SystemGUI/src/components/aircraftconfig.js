@@ -186,12 +186,12 @@ class AircraftConfig extends El {
           <label for="privacy">
             <input type="checkbox" id="privacy" ref="privacy" />Privacy
           </label>
-          <small>OpenAce Will use an random address and send it for the duration of the session.</small> -->
+          <small>GaTas Will use an random address and send it for the duration of the session.</small> -->
 
           <label for="noTrack">
             <input type="checkbox" id="noTrack" ref="noTrack" />No Track
           </label>
-            <small>OpenAce will indicate to other receiver that you don't want to be tracked.</small>  
+            <small>GaTas will indicate to other receiver that you don't want to be tracked.</small>  
         </div>
       </div>
 

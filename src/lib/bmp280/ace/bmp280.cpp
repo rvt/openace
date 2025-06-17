@@ -12,7 +12,7 @@ void Bmp280::stop()
     getBus().unsubscribe(*this);
 };
 
-void Bmp280::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void Bmp280::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Bmp280::NAME)
     {
@@ -24,7 +24,7 @@ void Bmp280::getData(etl::string_stream &stream, const etl::string_view path) co
 {
     (void)path;
     stream << "{";
-    stream << "\"lastPressurehPa\":" << etl::format_spec{}.precision(1) << statistics.lastPressurehPa << OpenAce::RESET_FORMAT;
+    stream << "\"lastPressurehPa\":" << etl::format_spec{}.precision(1) << statistics.lastPressurehPa << GATAS::RESET_FORMAT;
     stream << ",\"compensation\":" << compensation;
     stream << "}\n";
 }
@@ -92,12 +92,12 @@ void Bmp280::read_compensation_parameters()
     dig_P9 = buffer[22] | (buffer[23] << 8);
 }
 
-OpenAce::PostConstruct Bmp280::postConstruct()
+GATAS::PostConstruct Bmp280::postConstruct()
 {
     aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
     if (aceSpi == nullptr)
     {
-        return OpenAce::PostConstruct::DEP_NOT_FOUND;
+        return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
 
     // Chip select is active-low, so we'll initialise it to a driven-high state
@@ -114,7 +114,7 @@ OpenAce::PostConstruct Bmp280::postConstruct()
     if (chipId != 0x58 && chipId != 0x60)
     {
         printf("Bmp280 Chip ID supports 0x58,0x60 but found 0x%x\n", chipId);
-        return OpenAce::PostConstruct::HARDWARE_NOT_FOUND;
+        return GATAS::PostConstruct::HARDWARE_NOT_FOUND;
     }
 
     read_compensation_parameters();
@@ -122,7 +122,7 @@ OpenAce::PostConstruct Bmp280::postConstruct()
     aceSpi->write_array(cs, buf, sizeof(buf), 10); // Set rest of oversampling modes and run mode to normal
 
     printf("Initialised on cs:%d ChipID:0x%x ", cs, chipId);
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Bmp280::on_receive_unknown(const etl::imessage &msg)
@@ -130,7 +130,7 @@ void Bmp280::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void Bmp280::on_receive(const OpenAce::IdleMsg &msg)
+void Bmp280::on_receive(const GATAS::IdleMsg &msg)
 {
     static uint8_t everyOnceAWhile = 0;
     (void)msg;
@@ -153,7 +153,7 @@ void Bmp280::on_receive(const OpenAce::IdleMsg &msg)
             pressure = compensate_pressure(pressure);
 
             statistics.lastPressurehPa = (pressure + compensation) / 100.0f;
-            getBus().receive(OpenAce::BarometricPressureMsg{statistics.lastPressurehPa, CoreUtils::timeUs32()});
+            getBus().receive(GATAS::BarometricPressureMsg{statistics.lastPressurehPa, CoreUtils::timeUs32()});
         }
 
         everyOnceAWhile++;

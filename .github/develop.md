@@ -1,9 +1,9 @@
 # Development version
 
-This is the **DEVELOPMENT** version of OpenAce, use at your own risk
+This is the **DEVELOPMENT** version of GA/TAS, use at your own risk
 
 > [!TIP]
-> **OpenAce is an ongoing project** that is continuously being developed and improved. 
+> **GA/TAS is an ongoing project** that is continuously being developed and improved. 
 > As a result, features, functionality, and performance may be updated or modified at any time without prior notice.
 > We value feedback and collaboration! 
 > If you have any questions, suggestions, or concerns, feel free to reach out. 
@@ -12,16 +12,16 @@ This is the **DEVELOPMENT** version of OpenAce, use at your own risk
 > [!IMPORTANT]
 > **Disclaimer: Use at Your Own Risk**
 > 
-> OpenAce is provided "as is," without any warranties. 
+> GA/TAS is provided "as is," without any warranties. 
 > By downloading or using this device, you acknowledge that you do so at your own risk. 
 > The creators are not liable for any damages or issues resulting from its use. 
-> OpenAce is intended for General Aviation only and should not be relied upon as the sole source of traffic or navigation information. 
+> GA/TAS is intended for General Aviation only and should not be relied upon as the sole source of traffic or navigation information. 
 > Users are responsible for ensuring compliance with local aviation regulations.
 
 ## How to Copy the UF2 File to the Raspberry Pi Pico
 
-### 1. Download the `develop_OpenAce.uf2` File
-- Obtain the `develop_OpenAce.uf2` file from [https://github.com/rvt/OpenAce/release](https://github.com/rvt/OpenAce/release)
+### 1. Download the `develop_GaTas.uf2` File
+- Obtain the `develop_GaTas.uf2` file from [https://github.com/rvt/OpenAce/release](https://github.com/rvt/OpenAce/release)
 - Make sure you know where the file is saved on your computer.
 
 ### 2. Connect Raspberry Pi Pico to Your Computer
@@ -34,10 +34,10 @@ This is the **DEVELOPMENT** version of OpenAce, use at your own risk
     - On **Windows**, it will appear as a removable drive.
     - On **macOS** and **Linux**, it will appear as an external drive.
 
-### 4. Copy `develop_OpenAce.uf2` File to the Pico
+### 4. Copy `develop_GaTas.uf2` File to the Pico
 - Open the `RPI-RP2` drive.
-- **Drag and drop** or **copy and paste** the `develop_OpenAce.uf2` file into the Pico's drive.
-    - Do **not** try to open or modify the `develop_OpenAce.uf2` file; simply copy it.
+- **Drag and drop** or **copy and paste** the `develop_GaTas.uf2` file into the Pico's drive.
+    - Do **not** try to open or modify the `develop_GaTas.uf2` file; simply copy it.
 
 ### 5. Automatic Reboot
 - After the file is copied, the Pico will **automatically reboot** and run the new firmware.
@@ -52,9 +52,9 @@ This is the **DEVELOPMENT** version of OpenAce, use at your own risk
     - Try using a different USB cable (some cables only provide power and don't support data transfer).
 
 ## Summary
-1. Download the `develop_OpenAce.uf2` file.
+1. Download the `develop_GaTas.uf2` file.
 2. Hold down the BOOTSEL button and connect the Pico to your computer.
 3. Release the BOOTSEL button once connected.
-4. Copy the `develop_OpenAce.uf2` file to the Pico's mass storage drive.
+4. Copy the `develop_GaTas.uf2` file to the Pico's mass storage drive.
 5. The Pico will reboot automatically, running the new firmware.
 6. The green LED on the PICO will start flashing once a second

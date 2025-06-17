@@ -25,7 +25,7 @@ constexpr float DIAMETER_EARTH_M = 6371640;         // Radius of the earth in km
 constexpr float M_TWOPI = 2.0f * M_PI; // 2 x PI
 #endif
 
-namespace OpenAce
+namespace GATAS
 {
     constexpr uint8_t MODULE_NAME_LENGTH = 16;
     constexpr uint8_t MANCHESTER = 2;
@@ -45,8 +45,8 @@ namespace OpenAce
     using ConfigPathString = etl::string<65>; // Maximum path length of value from the configuration including api name and module name
     using GDLData = etl::vector<uint8_t, 48>; // GDLXX Message
     using AircraftAddress = uint32_t;         // ICAO code, FLARM ID or OGN ID
-    using TxPacketType = etl::array<uint8_t, OpenAce::RADIO_MAX_FRAME_LENGTH>;
-    using TxFrameType = etl::array<uint8_t, OpenAce::RADIO_MAX_FRAME_LENGTH * MANCHESTER>;
+    using TxPacketType = etl::array<uint8_t, GATAS::RADIO_MAX_FRAME_LENGTH>;
+    using TxFrameType = etl::array<uint8_t, GATAS::RADIO_MAX_FRAME_LENGTH * MANCHESTER>;
     using SsidOrPasswdStr = etl::string<20>;
 
     enum class PinType : uint8_t;

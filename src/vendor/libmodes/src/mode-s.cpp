@@ -435,7 +435,7 @@ void mode_s_decode_phase2(mode_s_t *self, struct mode_s_msg *mm)
     // the checksum is xored with the aircraft ICAO address. We try to
     // brute force it using a list of recently seen aircraft addresses.
 
-    // OPENACE: if (brute_force_ap(self, msg, mm))
+    // GATAS: if (brute_force_ap(self, msg, mm))
     // {
     //   // We recovered the message, mark the checksum as valid.
     //   mm->crcok = 1;
@@ -451,7 +451,7 @@ void mode_s_decode_phase2(mode_s_t *self, struct mode_s_msg *mm)
     // address to the list of recently seen addresses.
     if (mm->crcok && mm->errorbit == -1)
     {
-      // OPENACE: add_recently_seen_icao_addr(self, mm->aa);
+      // GATAS: add_recently_seen_icao_addr(self, mm->aa);
     }
   }
 

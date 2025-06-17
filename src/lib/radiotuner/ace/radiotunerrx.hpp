@@ -31,9 +31,9 @@
  * Note: Currently using array's indexed on datasource to give fast lookups on statistics but will cost a bit more memory
  * The downside is that only one protocol can be configured on one radio so listening on the same protocol on two radios would not be possible
  */
-class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx, OpenAce::OwnshipPositionMsg, OpenAce::AircraftPositionMsg, OpenAce::ConfigUpdatedMsg>
+class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx, GATAS::OwnshipPositionMsg, GATAS::AircraftPositionMsg, GATAS::ConfigUpdatedMsg>
 {
-    using  SlotReceive = etl::array<uint8_t, static_cast<uint8_t>(OpenAce::DataSource::_ITEMS)>;
+    using  SlotReceive = etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_ITEMS)>;
 public:
     static constexpr const uint32_t UPDATE_ZONE_REGULATION_EVERY = 30000; // Get new regulatory dataset every XXms
     // Maximum slots a datasource can get while receiving
@@ -41,9 +41,9 @@ public:
     // 1 slot  => ADSL,FLARM,OGN,ADSL,FLARM,OGN
     // 2 slots => ADSL,ADSL,FLARM,OGN,ADSL,ADSL,FLARM,OGN,
     static constexpr const uint8_t MAX_SLOTS_PER_SOURCE = 1;             
-    static constexpr const uint8_t TIME_SLOT_SIZE = MAX_SLOTS_PER_SOURCE * OPENACE_MAX_SOURCE_PER_RADIO;
+    static constexpr const uint8_t TIME_SLOT_SIZE = MAX_SLOTS_PER_SOURCE * GATAS_MAX_SOURCE_PER_RADIO;
     // Offset applies to the timing so that the receiver is set on time to new frequencies and/or modes
-    static constexpr const uint8_t OPENACE_RX_OFFSET = 1;
+    static constexpr const uint8_t GATAS_RX_OFFSET = 1;
 
 
 private:
@@ -63,10 +63,10 @@ private:
         TimerHandle_t timerHandle;
 
         // The DataSources this radio will handle
-        etl::vector<OpenAce::DataSource, OPENACE_MAX_SOURCE_PER_RADIO> dataSources;
+        etl::vector<GATAS::DataSource, GATAS_MAX_SOURCE_PER_RADIO> dataSources;
 
         // datasources processed by this task and used by prioritizeDatasources
-        using DataSources = etl::vector<OpenAce::DataSource, TIME_SLOT_SIZE * 2>;
+        using DataSources = etl::vector<GATAS::DataSource, TIME_SLOT_SIZE * 2>;
         using CircularDataSourceIterator = etl::circular_iterator<DataSources::iterator>;
         DataSources dataSourceTimeSlots;
         CircularDataSourceIterator upcomingDataSource;
@@ -108,7 +108,7 @@ private:
             stream << ",\"radio_" << radio->radio() << "\":[";
             for (auto it = dataSourceTimeSlots.cbegin(); it != dataSourceTimeSlots.cend(); ++it)
             {
-                stream << "\"" << OpenAce::dataSourceToString(*it) << "\"";
+                stream << "\"" << GATAS::dataSourceToString(*it) << "\"";
                 if (std::next(it) != dataSourceTimeSlots.cend())
                 {
                     stream << ",";
@@ -137,7 +137,7 @@ private:
         /**
          * Set the datasources to be received
          */
-        void updateDataSources(const etl::ivector<OpenAce::DataSource> &ds)
+        void updateDataSources(const etl::ivector<GATAS::DataSource> &ds)
         {
             dataSources.clear();
             dataSources.assign(ds.cbegin(), ds.cend());
@@ -216,7 +216,7 @@ private:
     SlotReceive slotReceive;
 
     // Keep track of one task per each radio
-    etl::list<RadioProtocolCtx, OPENACE_MAX_RADIOS> radioTasks;
+    etl::list<RadioProtocolCtx, GATAS_MAX_RADIOS> radioTasks;
 
     enum TaskState : uint32_t
     {
@@ -238,9 +238,9 @@ private:
     static void radioTuneTask(void *arg);
 
     // ******************** Message bus receive handlers ********************
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
-    void on_receive(const OpenAce::AircraftPositionMsg &msg);
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::AircraftPositionMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive_unknown(const etl::imessage &msg);
 
 public:
@@ -253,12 +253,12 @@ public:
     }
     virtual ~RadioTunerRx() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
     virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
     void addRadioTasks(uint8_t numRadios);
 
 private:
-    void enableDisableDatasources(const etl::ivector<OpenAce::DataSource> &datasources);
+    void enableDisableDatasources(const etl::ivector<GATAS::DataSource> &datasources);
 };

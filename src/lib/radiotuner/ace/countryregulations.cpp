@@ -48,7 +48,7 @@ uint32_t CountryRegulations::determineFrequency(const CountryRegulations::Protoc
 }
 
 // New simplified methods
-uint8_t CountryRegulations::getFirstSlotIdx(CountryRegulations::Zone zone, OpenAce::DataSource dataSource)
+uint8_t CountryRegulations::getFirstSlotIdx(CountryRegulations::Zone zone, GATAS::DataSource dataSource)
 {
 
     for (const auto &slot : timings)
@@ -98,7 +98,7 @@ CountryRegulations::GetNextTxTimeResult CountryRegulations::getNextTxTime(uint16
 
         // Don't generate a time close to a whole second to prevent
         // a tx time with a rollover seconds. This prevents decryption issues for some protocols mainly FLARM and ogn 3.x.x receiver
-        if (slot.source == OpenAce::DataSource::FLARM) {
+        if (slot.source == GATAS::DataSource::FLARM) {
             if ((randomTime % 1000) > 975 && (randomTime % 1000) < 1000)
             {
                 randomTime += 25;
@@ -119,7 +119,7 @@ CountryRegulations::GetNextTxTimeResult CountryRegulations::getNextTxTime(uint16
     return GetNextTxTimeResult{idx, uint16_t(randomTime - msInSecond)};
 }
 
-uint8_t CountryRegulations::nextProtocolTimeslot(uint16_t msInSecond, CountryRegulations::Zone zone, OpenAce::DataSource source)
+uint8_t CountryRegulations::nextProtocolTimeslot(uint16_t msInSecond, CountryRegulations::Zone zone, GATAS::DataSource source)
 {
     msInSecond = msInSecond % 1000;
     auto startIdx = getFirstSlotIdx(zone, source);

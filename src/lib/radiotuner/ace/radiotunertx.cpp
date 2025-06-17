@@ -8,10 +8,10 @@
 
 #include "pico/rand.h"
 
-OpenAce::PostConstruct RadioTunerTx::postConstruct()
+GATAS::PostConstruct RadioTunerTx::postConstruct()
 {
     if (!moduleByName(*this, Radio::NAMES[0])) {
-        return OpenAce::PostConstruct::DEP_NOT_FOUND;
+        return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
 
     numRadios = 1;
@@ -19,7 +19,7 @@ OpenAce::PostConstruct RadioTunerTx::postConstruct()
     {
         numRadios++;
     }
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void RadioTunerTx::start()
@@ -29,7 +29,7 @@ void RadioTunerTx::start()
     Configuration *config = static_cast<Configuration *>(BaseModule::moduleByName(*this, Configuration::NAME));
     if (config)
     {
-        enableDisableDatasources(config->openAceConfig().protocols);
+        enableDisableDatasources(config->gaTasConfig().protocols);
     }
 
     getBus().subscribe(*this);
@@ -118,11 +118,11 @@ void RadioTunerTx::radioTxTask(void *arg)
                 uint32_t frequency = CountryRegulations::determineFrequency(protocolTimeSlot);
                 auto msInSecond = CoreUtils::msInSecond();
 
-//                printf("RadioTunerTX: %d %s currentMs:%d sinceLast:%d\n",taskCtx->radioNo, OpenAce::dataSourceToString(protocolTimeSlot.radioConfig.dataSource), msInSecond, (uint16_t)(CoreUtils::msSinceEpoch()-lastTx));
+//                printf("RadioTunerTX: %d %s currentMs:%d sinceLast:%d\n",taskCtx->radioNo, GATAS::dataSourceToString(protocolTimeSlot.radioConfig.dataSource), msInSecond, (uint16_t)(CoreUtils::msSinceEpoch()-lastTx));
 //                lastTx = CoreUtils::msSinceEpoch();
 
                 taskCtx->controller->getBus().receive(
-                    OpenAce::RadioTxPositionRequestMsg
+                    GATAS::RadioTxPositionRequestMsg
                 {
                     Radio::RadioParameters{
                         protocolTimeSlot.radioConfig,
@@ -146,7 +146,7 @@ void RadioTunerTx::radioTxTask(void *arg)
     }
 }
 
-void RadioTunerTx::on_receive(const OpenAce::OwnshipPositionMsg &msg)
+void RadioTunerTx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     static uint16_t checkEvery = 0;
     // TODO: Change this to some proper timing
@@ -157,24 +157,24 @@ void RadioTunerTx::on_receive(const OpenAce::OwnshipPositionMsg &msg)
     }
 }
 
-void RadioTunerTx::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void RadioTunerTx::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        const auto openAceConfiguration = msg.config.openAceConfig();
-        enableDisableDatasources(openAceConfiguration.protocols);
+        const auto gaTasConfiguration = msg.config.gaTasConfig();
+        enableDisableDatasources(gaTasConfiguration.protocols);
     }
 }
 
-void RadioTunerTx::enableDisableDatasources(const etl::ivector<OpenAce::DataSource> &datasources)
+void RadioTunerTx::enableDisableDatasources(const etl::ivector<GATAS::DataSource> &datasources)
 {
     // Remove all DataSources that are not required
-    etl::array<int8_t, OPENACE_MAX_RADIOS> radioOccupation={};
+    etl::array<int8_t, GATAS_MAX_RADIOS> radioOccupation={};
     radioOccupation.fill(-1);
 
     for (auto it = txTasks.begin(); it != txTasks.end();)
     {
-        bool taskSourceInDatasource = etl::find_if(datasources.cbegin(), datasources.cend(), [&it](const OpenAce::DataSource &source)
+        bool taskSourceInDatasource = etl::find_if(datasources.cbegin(), datasources.cend(), [&it](const GATAS::DataSource &source)
         {
             return it->source == source;
         }) != datasources.cend();
@@ -241,8 +241,8 @@ void RadioTunerTx::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-etl::vector<OpenAce::DataSource, 6> RadioTunerTx::datasourcesOnRadio(uint8_t radioNo) const {
-    etl::vector<OpenAce::DataSource, 6> datasources;
+etl::vector<GATAS::DataSource, 6> RadioTunerTx::datasourcesOnRadio(uint8_t radioNo) const {
+    etl::vector<GATAS::DataSource, 6> datasources;
     for (const auto &it : txTasks) {
         if (it.radioNo == radioNo) {
             datasources.emplace_back(it.source);

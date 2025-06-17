@@ -98,7 +98,7 @@ def generateHeader(filePath, fileName, contentLength):
     header.extend(f"Content-Encoding: {contenEncoding}\r\n".encode('utf-8'))
     header.extend(f"Content-Length: {contentLength}\r\n".encode('utf-8'))
     header.extend(f"Cache-Control: public, max-age={cacheControl}\r\n".encode('utf-8'))
-    header.extend(f"Server: OpenAce\r\n".encode('utf-8'))
+    header.extend(f"Server: GATAS\r\n".encode('utf-8'))
    
     return header
 

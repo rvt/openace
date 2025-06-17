@@ -12,4 +12,4 @@ set(MODULE_TARGET_LINK
     utils
 )
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../openace_module.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)

@@ -22,7 +22,7 @@
 #include "etl/pseudo_moving_average.h"
 #include "etl/queue_spsc_atomic.h"
 
-/* OpenAce Libraries */
+/* GaTas Libraries */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
@@ -34,7 +34,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTxFrameMsg, OpenAce::ConfigUpdatedMsg, OpenAce::GpsStatsMsg, OpenAce::RadioControlMsg>
+class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFrameMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::RadioControlMsg>
 {
     static constexpr uint32_t MAX_LISTEN_TIMEOUT = 150000; // maximum time we listen for packages before we timeout and reset the Sx1262
     static constexpr uint8_t MANCHESTER = 2;               // Used to just clarify why we sometime multiply by 2
@@ -52,7 +52,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     mutable struct
     {
         uint16_t deviceErrors = 0;
-        uint32_t taskTimeout = 0; // THis is more of a indication that we did not receive a packet within OPENACE_SX126X_MAX_RX_TIME, not an error
+        uint32_t taskTimeout = 0; // THis is more of a indication that we did not receive a packet within GATAS_SX126X_MAX_RX_TIME, not an error
         uint32_t receivedPackets = 0;
         uint32_t transmittedPackets = 0;
         uint32_t buzyWaitsTimeout = 0;
@@ -128,7 +128,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
             .ldro = 0,
         };
 
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, OpenAce::DataSource::NONE, 0, 1*8, 0, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, GATAS::DataSource::NONE, 0, 1*8, 0, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
@@ -144,16 +144,16 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, OpenAce::RadioTx
     Radio::RadioParameters newRxRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
     
     // Keep two packages around that will get reasued and send to the message bus outside of a SPI block
-    OpenAce::RadioRxLoraMsg rxLoraMsg;
-    OpenAce::RadioRxGfskMsg rxGfskMsg;
+    GATAS::RadioRxLoraMsg rxLoraMsg;
+    GATAS::RadioRxGfskMsg rxGfskMsg;
     SemaphoreHandle_t xMutex;
 public:
     static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
 
-    Sx1262(etl::imessage_bus &bus, const OpenAce::PinTypeMap &pins, uint8_t radioNo_, bool txEnabled_, uint32_t offsetHz_) : Radio(bus, Radio::NAMES[radioNo_]),
-                                                                                                                             csPin(pins.at(OpenAce::PinType::CS)),
-                                                                                                                             busyPin(pins.at(OpenAce::PinType::BUSY)),
-                                                                                                                             dio1Pin(pins.at(OpenAce::PinType::DIO1)),
+    Sx1262(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, uint8_t radioNo_, bool txEnabled_, uint32_t offsetHz_) : Radio(bus, Radio::NAMES[radioNo_]),
+                                                                                                                             csPin(pins.at(GATAS::PinType::CS)),
+                                                                                                                             busyPin(pins.at(GATAS::PinType::BUSY)),
+                                                                                                                             dio1Pin(pins.at(GATAS::PinType::DIO1)),
                                                                                                                              radioNo(radioNo_),
                                                                                                                              offsetHz(offsetHz_),
                                                                                                                              txEnabled(txEnabled_),
@@ -172,7 +172,7 @@ public:
 
     virtual ~Sx1262() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 
@@ -212,10 +212,10 @@ public:
         (void)msg;
     }
 
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
-    void on_receive(const OpenAce::RadioTxFrameMsg &msg);
-    void on_receive(const OpenAce::RadioControlMsg &msg);
-    void on_receive(const  OpenAce::GpsStatsMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::RadioTxFrameMsg &msg);
+    void on_receive(const GATAS::RadioControlMsg &msg);
+    void on_receive(const  GATAS::GpsStatsMsg &msg);
 
     void radioInit();
     void checkAndClearDeviceErrors();

@@ -6,7 +6,7 @@
 #include "etl/map.h"
 #include "etl/vector.h"
 
-namespace OpenAce
+namespace GATAS
 {
 
     /*
@@ -114,7 +114,7 @@ namespace OpenAce
     }
 
     // Aircrasft type to string
-    const char *aircraftTypeToString(OpenAce::AircraftCategory at);
+    const char *aircraftTypeToString(GATAS::AircraftCategory at);
 
     // String to AircraftCategory
     AircraftCategory stringToAircraftCategory(const char *str);
@@ -138,10 +138,10 @@ namespace OpenAce
     };
 
     // Get a string representation of a AddressType
-    const char *addressTypeToString(OpenAce::AddressType ds);
+    const char *addressTypeToString(GATAS::AddressType ds);
 
     // Maps a string into a AddressType
-    OpenAce::AddressType stringToAddressType(const char *str);
+    GATAS::AddressType stringToAddressType(const char *str);
 
     /**
      * Datasource is the internal service that provided and knows how to handle the data
@@ -190,7 +190,7 @@ namespace OpenAce
     struct AircraftPositionInfo
     {
         uint32_t timestamp; 
-        OpenAce::CallSign callSign;
+        GATAS::CallSign callSign;
 
         AircraftAddress address;
         AddressType addressType;
@@ -213,7 +213,7 @@ namespace OpenAce
         int32_t relEastFromOwn;   // relEast to ownship in meters
         int16_t bearingFromOwn;   // Bearing to ownship in degrees
 
-        AircraftPositionInfo(uint32_t timestamp_, OpenAce::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeHAE_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeHAE_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
             : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), altitudeHAE(altitudeHAE_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_), bearingFromOwn(bearingFromOwn_)
         {
         }
@@ -250,16 +250,16 @@ namespace OpenAce
     namespace Config
     {
         /**
-         * Object that specifies how to configure OpenACE for this aircraft
+         * Object that specifies how to configure GATAS for this aircraft
          */
-        struct OpenAceConfiguration
+        struct GaTasConfiguration
         {
             AircraftCategory category;
             AddressType addressType;
             AircraftAddress address;
             bool stealth;
             bool noTrack;
-            etl::vector<DataSource, static_cast<uint8_t>(OpenAce::DataSource::_TRANSPROTOCOLS)> protocols;
+            etl::vector<DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
         };
 
         /**
@@ -267,8 +267,8 @@ namespace OpenAce
          */
         struct WifiNamePassword
         {
-            OpenAce::SsidOrPasswdStr ssid;
-            OpenAce::SsidOrPasswdStr password;
+            GATAS::SsidOrPasswdStr ssid;
+            GATAS::SsidOrPasswdStr password;
             WifiNamePassword() : ssid(""), password("") {}
             WifiNamePassword(const etl::istring& ssid, const etl::istring& password)
                 : ssid(ssid), password(password)

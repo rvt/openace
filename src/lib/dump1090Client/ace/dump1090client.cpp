@@ -5,21 +5,21 @@
 #include "ace/coreutils.hpp"
 #include "etl/error_handler.h"
 
-OpenAce::PostConstruct Dump1090Client::postConstruct()
+GATAS::PostConstruct Dump1090Client::postConstruct()
 {
     receiver = static_cast<BinaryReceiver *>(BaseModule::moduleByName(*this, "ADSBDecoder"));
     if (receiver == nullptr)
     {
-        return OpenAce::PostConstruct::DEP_NOT_FOUND;
+        return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
 
     auto result = tcpClient.postConstruct();
-    if (result != OpenAce::PostConstruct::OK)
+    if (result != GATAS::PostConstruct::OK)
     {
         return result;
     }
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void Dump1090Client::stop()
@@ -36,7 +36,7 @@ void Dump1090Client::start()
 void Dump1090Client::processNewSentence(const char *sentence)
 {
     constexpr uint8_t ADSBDATALENGTH = 28;
-    static_assert(OpenAce::ADSBMessageBin::MAX_BINARY_LENGTH * 2 == ADSBDATALENGTH, "Must be equal");
+    static_assert(GATAS::ADSBMessageBin::MAX_BINARY_LENGTH * 2 == ADSBDATALENGTH, "Must be equal");
 
     // Fast detection of msgType 17 and hexStrToByteArray to reduce resources
     if (sentence != nullptr && sentence[1] == '8' && (sentence[2] == 'D' || sentence[2] == 'A' || sentence[2] == '0'))
@@ -47,8 +47,8 @@ void Dump1090Client::processNewSentence(const char *sentence)
         {
             auto halfSize = hexSize / 2;
             // puts(sentence);
-            OpenAce::ADSBMessageBin msg;
-            CoreUtils::hexStrToByteArray(sentence + 1, OpenAce::ADSBMessageBin::MAX_BINARY_LENGTH*2, msg.data);
+            GATAS::ADSBMessageBin msg;
+            CoreUtils::hexStrToByteArray(sentence + 1, GATAS::ADSBMessageBin::MAX_BINARY_LENGTH*2, msg.data);
             receiver->receiveBinary(msg.data, halfSize);
             statistics.totalReceived++;
         }
@@ -69,7 +69,7 @@ void Dump1090Client::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void Dump1090Client::on_receive(const OpenAce::IdleMsg &msg)
+void Dump1090Client::on_receive(const GATAS::IdleMsg &msg)
 {
     (void)msg;
     // printf("%d %d %d \n", wifiConnected , tcpClient.isStopped() , (stoppedCounter % 4 == 0));
@@ -82,7 +82,7 @@ void Dump1090Client::on_receive(const OpenAce::IdleMsg &msg)
     stoppedCounter++;
 }
 
-void Dump1090Client::on_receive(const OpenAce::WifiConnectionStateMsg &wcs)
+void Dump1090Client::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
     wifiConnected = wcs.connected;
     networkAddress = wcs.networkAddress;

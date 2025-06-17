@@ -19,9 +19,9 @@
 
 using namespace ArduinoJson;
 
-typedef std::function<void(const char *NAME, const OpenAce::PinTypeMap &map)> LoadModuleCallback;
+typedef std::function<void(const char *NAME, const GATAS::PinTypeMap &map)> LoadModuleCallback;
 
-class Config : public Configuration, public etl::message_router<Config, OpenAce::ConfigUpdatedMsg, OpenAce::IdleMsg>
+class Config : public Configuration, public etl::message_router<Config, GATAS::ConfigUpdatedMsg, GATAS::IdleMsg>
 {
 private:
     enum LoadLocation : uint8_t
@@ -44,7 +44,7 @@ private:
     using ccharptr = const char *;
 
     template <typename T>
-    T configValueBypathImpl(Config &config, const etl::ivector<OpenAce::Modulename> &pathParsed) const
+    T configValueBypathImpl(Config &config, const etl::ivector<GATAS::Modulename> &pathParsed) const
     {
         T variant;
         if (pathParsed.size() == 0)
@@ -72,13 +72,13 @@ private:
     }
 
     template <typename T>
-    T configValueBypath(const etl::ivector<OpenAce::Modulename> &pathParsed)
+    T configValueBypath(const etl::ivector<GATAS::Modulename> &pathParsed)
     {
         return configValueBypathImpl<T>(*this, pathParsed);
     }
 
     template <typename T>
-    const T configValueBypath(const etl::ivector<OpenAce::Modulename> &pathParsed) const
+    const T configValueBypath(const etl::ivector<GATAS::Modulename> &pathParsed) const
     {
         return configValueBypathImpl<T>(const_cast<Config &>(*this), pathParsed);
     }
@@ -94,7 +94,7 @@ private:
     // template <typename T>
     // T configValueBypath(const etl::string_view path) const
     // {
-    //     const etl::vector<OpenAce::Modulename, 7> vpath = CoreUtils::parsePath(path);
+    //     const etl::vector<GATAS::Modulename, 7> vpath = CoreUtils::parsePath(path);
     //     return configValueBypath<T>(vpath);
     // }
 
@@ -110,7 +110,7 @@ private:
         struct Result
         {
             etl::to_arithmetic_result<int> idx;
-            etl::vector<OpenAce::Modulename, 7> path;
+            etl::vector<GATAS::Modulename, 7> path;
         };
 
         auto pathParsed = CoreUtils::parsePath(path);
@@ -147,15 +147,15 @@ private:
     void serializeToVolatile();
     void serializeToPersistent();
 
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg)
     {
         if (msg.moduleName == Configuration::CONFIG)
         {
-            // ownshipAddress = msg.config.openAceConfig().address;
+            // ownshipAddress = msg.config.gaTasConfig().address;
         }
     }
 
-    void on_receive(const OpenAce::IdleMsg &msg)
+    void on_receive(const GATAS::IdleMsg &msg)
     {
         (void)msg;
         // if (auto guard = SemaphoreGuard<10>(mutex))
@@ -180,7 +180,7 @@ public:
 
     virtual ~Config() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 
@@ -198,21 +198,21 @@ public:
      * Returns the hardware configuration for this station or Aircraft
      *
      */
-    virtual const OpenAce::Config::OpenAceConfiguration openAceConfig() const override;
+    virtual const GATAS::Config::GaTasConfiguration gaTasConfig() const override;
 
 
-    virtual const OpenAce::Config::WifiServiceData wifiService() const override;
+    virtual const GATAS::Config::WifiServiceData wifiService() const override;
 
     /**
      * Retreives the pin mapping for a given module, usually used for hardware configurations
      */
-    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName) const override;
+    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName) const override;
 
     virtual int valueByPath(int defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override;
 
-    virtual const OpenAce::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override;
+    virtual const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override;
 
-    virtual const OpenAce::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const override;
+    virtual const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const override;
 
     virtual bool isModuleEnabled(const etl::string_view moduleName) const;
 };

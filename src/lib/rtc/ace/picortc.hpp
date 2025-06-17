@@ -17,7 +17,7 @@
 // When set, also set's the PICO's rtc
 
 
-class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, OpenAce::UtcTimeMsg>
+class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, GATAS::UtcTimeMsg>
 {
     friend class message_router;
     // UtcTimeMsg needs to be ignored when time between PPS and the message is more than this value
@@ -31,7 +31,7 @@ class PicoRtc : public RtcModule, public etl::message_router<PicoRtc, OpenAce::U
     } statistics;
 
 private:
-    void on_receive(const OpenAce::UtcTimeMsg& msg);
+    void on_receive(const GATAS::UtcTimeMsg& msg);
 
     void on_receive_unknown(const etl::imessage& msg);
 
@@ -47,7 +47,7 @@ public:
 
     virtual void ppsEvent() override;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

@@ -8,7 +8,7 @@
 #include "task.h"
 #include "timers.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -24,7 +24,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * TODO: de-Couple UDP from the GDL90 so this service send GDL Message over the messagebus which can then be send over UDP or Serial or BlueToolh
  */
-class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, OpenAce::TrackedAircraftPositionMsg, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg, OpenAce::GpsStatsMsg>
+class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg>
 {
     friend class message_router;
 
@@ -50,20 +50,20 @@ private:
     GDL90 gdl90;
 
     GDL90::ADDR_TYPE type;
-    OpenAce::AircraftAddress address;
-    OpenAce::AircraftCategory category;
+    GATAS::AircraftAddress address;
+    GATAS::AircraftCategory category;
     int16_t geoidSeparation=0;
     bool gpsStatusValid=false;
 
 private:
     static void gdl90ServiceTask(void *arg);
 
-    void on_receive(const OpenAce::TrackedAircraftPositionMsg &msg);
+    void on_receive(const GATAS::TrackedAircraftPositionMsg &msg);
 
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
 
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
-    void on_receive(const OpenAce::GpsStatsMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::GpsStatsMsg &msg);
 
     
 
@@ -80,15 +80,15 @@ public:
     static constexpr const etl::string_view NAME = "Gdl90Service";
     Gdl90Service(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr)
     {
-        auto openAceConfiguration = config.openAceConfig();
-                type = openAceConfiguration.addressType == OpenAce::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
-        address = openAceConfiguration.address;
-        category = openAceConfiguration.category;
+        auto gaTasConfiguration = config.gaTasConfig();
+                type = gaTasConfiguration.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+        address = gaTasConfiguration.address;
+        category = gaTasConfiguration.category;
     }
 
     virtual ~Gdl90Service() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

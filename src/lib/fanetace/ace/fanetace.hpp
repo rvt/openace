@@ -14,7 +14,7 @@
 
 #include "fanet/fanet.hpp"
 
-class FanetAce : public BaseModule, public FANET::Connector, public etl::message_router<FanetAce, OpenAce::RadioTxPositionRequestMsg, OpenAce::RadioRxLoraMsg, OpenAce::OwnshipPositionMsg, OpenAce::ConfigUpdatedMsg>
+class FanetAce : public BaseModule, public FANET::Connector, public etl::message_router<FanetAce, GATAS::RadioTxPositionRequestMsg, GATAS::RadioRxLoraMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg>
 {
     static constexpr uint8_t QUEUE_SIZE = 6;
 
@@ -43,10 +43,10 @@ private:
 
     static void FanetAceTask(void *arg);
 
-    void on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
-    void on_receive(const OpenAce::RadioRxLoraMsg &msg);
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
+    void on_receive(const GATAS::RadioRxLoraMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
     virtual uint32_t fanet_getTick() const override;
     virtual bool fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data) override;
@@ -59,26 +59,26 @@ private:
     uint8_t radioNo;
     uint16_t distanceIgnore;
 
-    OpenAce::OwnshipPositionInfo ownshipPosition;
-    OpenAce::Config::OpenAceConfiguration openAceConfiguration;
+    GATAS::OwnshipPositionInfo ownshipPosition;
+    GATAS::Config::GaTasConfiguration gaTasConfiguration;
     Radio::RadioParameters radioParameters;
 
-    OpenAce::AircraftCategory mapAircraftCategory(FANET::TrackingPayload::AircraftType category) const;
-    FANET::TrackingPayload::AircraftType mapAircraftCategory(OpenAce::AircraftCategory category) const;
+    GATAS::AircraftCategory mapAircraftCategory(FANET::TrackingPayload::AircraftType category) const;
+    FANET::TrackingPayload::AircraftType mapAircraftCategory(GATAS::AircraftCategory category) const;
 
 public:
     static constexpr const etl::string_view NAME = "Fanet";
 
-    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), protocol(this), mutex(nullptr), radioNo(0), distanceIgnore(DEFAULT_IGNORE_DISTANCE), openAceConfiguration(config.openAceConfig())
+    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), protocol(this), mutex(nullptr), radioNo(0), distanceIgnore(DEFAULT_IGNORE_DISTANCE), gaTasConfiguration(config.gaTasConfig())
     {
-        protocol.ownAddress(FANET::Address{openAceConfiguration.address});
+        protocol.ownAddress(FANET::Address{gaTasConfiguration.address});
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Fanet", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
     }
 
     virtual ~FanetAce() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

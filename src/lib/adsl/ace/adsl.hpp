@@ -19,7 +19,7 @@
 #include "etl/string.h"
 #include "etl/bitset.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -34,11 +34,11 @@
 
 
 class ADSL : public BaseModule, public etl::message_router<ADSL,
-    OpenAce::RadioRxGfskMsg,
-    OpenAce::OwnshipPositionMsg,
-    OpenAce::RadioTxPositionRequestMsg,
-    OpenAce::GpsStatsMsg,
-    OpenAce::ConfigUpdatedMsg>
+    GATAS::RadioRxGfskMsg,
+    GATAS::OwnshipPositionMsg,
+    GATAS::RadioTxPositionRequestMsg,
+    GATAS::GpsStatsMsg,
+    GATAS::ConfigUpdatedMsg>
 {
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int MAX_IGNORE_DISTANCE = 50000;
@@ -64,9 +64,9 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
 
     TaskHandle_t taskHandle;
     QueueHandle_t frameConsumerQueue;
-    OpenAce::OwnshipPositionInfo ownshipPosition;
-    OpenAce::Config::OpenAceConfiguration openAceConfiguration;
-    OpenAce::GpsStatsMsg gpsStats;
+    GATAS::OwnshipPositionInfo ownshipPosition;
+    GATAS::Config::GaTasConfiguration gaTasConfiguration;
+    GATAS::GpsStatsMsg gpsStats;
     uint16_t distanceIgnore;
 public:
     static constexpr const etl::string_view NAME = "ADSL";
@@ -78,12 +78,12 @@ public:
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "ADSL", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
-        openAceConfiguration = config.openAceConfig();
+        gaTasConfiguration = config.gaTasConfig();
     }
 
     virtual ~ADSL() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
     virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
@@ -93,22 +93,22 @@ private:
      * Send a FreeRTOS message when a ADSL is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const OpenAce::RadioRxGfskMsg &msg);
-    void on_receive(const OpenAce::OwnshipPositionMsg &msg);
-    void on_receive(const OpenAce::RadioTxPositionRequestMsg &msg);
-    void on_receive(const OpenAce::GpsStatsMsg &msg);
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::RadioRxGfskMsg &msg);
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
+    void on_receive(const GATAS::GpsStatsMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive_unknown(const etl::imessage& msg)
     {
         (void)msg;
     }
 
-    // Transform a FLARM addressType to an openAce address type
-    OpenAce::AddressType addressMapToAddressType(uint8_t addressMap) const;
-    static OpenAce::AircraftCategory mapAircraftCategory(ADSL_Packet::AircraftCategory category) ;
+    // Transform a FLARM addressType to an gaTas address type
+    GATAS::AddressType addressMapToAddressType(uint8_t addressMap) const;
+    static GATAS::AircraftCategory mapAircraftCategory(ADSL_Packet::AircraftCategory category) ;
 
-    static uint8_t addressTypeToAddressMap(OpenAce::AddressType addressType) ;
-    static ADSL_Packet::AircraftCategory  mapAircraftCategory(OpenAce::AircraftCategory category) ;
+    static uint8_t addressTypeToAddressMap(GATAS::AddressType addressType) ;
+    static ADSL_Packet::AircraftCategory  mapAircraftCategory(GATAS::AircraftCategory category) ;
     /**
      * Keep track of what timestamp (roughly) we receive flarm frames
     */

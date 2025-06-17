@@ -32,7 +32,7 @@ extern "C" {
 
 #include "lwip/ip_addr.h"
 #define DHCPS_BASE_IP (16)
-#define DHCPS_MAX_IP OPENACE_MAXIMUM_TCP_CLIENTS
+#define DHCPS_MAX_IP GATAS_MAXIMUM_TCP_CLIENTS
 
 typedef struct _dhcp_server_lease_t
 {

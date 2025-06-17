@@ -2,7 +2,7 @@
 
 #include "gdloverudp.hpp"
 
-/* OpenACE */
+/* GATAS */
 #include "ace/coreutils.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
@@ -45,21 +45,21 @@ void GDLoverUDP::getConfigurationNoMutex(const Configuration &config)
     }
 }
 
-OpenAce::PostConstruct GDLoverUDP::postConstruct()
+GATAS::PostConstruct GDLoverUDP::postConstruct()
 {
     pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
     if (pcb == nullptr)
     {
-        return OpenAce::PostConstruct::NETWORK_ERROR;
+        return GATAS::PostConstruct::NETWORK_ERROR;
     }
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
-        return OpenAce::PostConstruct::MUTEX_ERROR;
+        return GATAS::PostConstruct::MUTEX_ERROR;
     }
     xTaskCreate(gdlOverUDPTask, GDLoverUDP::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 3, &taskHandle);
 
-    return OpenAce::PostConstruct::OK;
+    return GATAS::PostConstruct::OK;
 }
 
 void GDLoverUDP::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -92,12 +92,12 @@ void GDLoverUDP::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void GDLoverUDP::on_receive(const OpenAce::AccessPointClientsMsg &msg)
+void GDLoverUDP::on_receive(const GATAS::AccessPointClientsMsg &msg)
 {
     connectedClients = msg.msg;
 }
 
-void GDLoverUDP::on_receive(const OpenAce::ConfigUpdatedMsg &msg)
+void GDLoverUDP::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == GDLoverUDP::NAME)
     {
@@ -125,7 +125,7 @@ void GDLoverUDP::gdlOverUDPTask(void *arg)
     }
 }
 
-void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
+void GDLoverUDP::on_receive(const GATAS::GdlMsg &msg)
 {
 
     if (auto guard = SemaphoreGuard<10>(mutex))
@@ -133,7 +133,7 @@ void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
         gdlDataBuffer.push(reinterpret_cast<const char *>(msg.msg.cbegin()), msg.msg.size());
 
         // When the buffer is nearly full, request for immediate send
-        if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - NUM_GDL_PACKETS / 4) * sizeof(OpenAce::GDLData))
+        if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - NUM_GDL_PACKETS / 4) * sizeof(GATAS::GDLData))
         {
             xTaskNotify(taskHandle, TaskState::TRANSMIT, eSetBits);
         }
@@ -142,7 +142,7 @@ void GDLoverUDP::on_receive(const OpenAce::GdlMsg &msg)
 
 void GDLoverUDP::transmitBuffer()
 {
-    //    if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - 1) * sizeof(OpenAce::GDLData))
+    //    if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - 1) * sizeof(GATAS::GDLData))
     {
         auto m = Measure("GDLoverUDP::transmitBuffer ", 5000);
 
@@ -217,7 +217,7 @@ void GDLoverUDP::sendTo(const char *part, size_t size, uint32_t ip, int16_t port
     }
 }
 
-void GDLoverUDP::on_receive(const OpenAce::WifiConnectionStateMsg &msg)
+void GDLoverUDP::on_receive(const GATAS::WifiConnectionStateMsg &msg)
 {
     networkAddress = msg.networkAddress;
 }

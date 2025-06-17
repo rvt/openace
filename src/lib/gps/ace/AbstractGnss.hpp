@@ -41,7 +41,7 @@ private:
     PioSerial pioSerial;
     int8_t ppsPin;
     TaskHandle_t taskHandle;
-    etl::queue_spsc_atomic<OpenAce::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
+    etl::queue_spsc_atomic<GATAS::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
     static constexpr const etl::string_view NAME = "Gnss";
 
 protected:
@@ -74,16 +74,16 @@ protected:
     virtual bool configureGnss() = 0;
 
 public:
-    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const OpenAce::PinTypeMap &pins) : BaseModule(bus, name),
+    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins) : BaseModule(bus, name),
                                                                                                          pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
-                                                                                                         ppsPin(CoreUtils::pinValue(pins, OpenAce::PinType::BUSY)),
+                                                                                                         ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
                                                                                                          taskHandle(nullptr)
     {
     }
 
     virtual ~AbstractGnss() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
 

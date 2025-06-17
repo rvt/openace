@@ -14,9 +14,9 @@ class Menu extends El {
     return html`
       <div class="bg-light flex ai-center jc-between relative toolbar px-1">
         <h5 class="flex-center">
-          <a href="#session" onclick=${() => this._setPage("session")}>OpenAce :: ${store.state.aircraftId}</a>
+          <a href="#session" onclick=${() => this._setPage("session")}>GA/TAS :: ${store.state.aircraftId}</a>
         </h5>
-        ${store.state.connected ? html`<div class="alert-success">OpenAce Connected</div>` : html`<div class="alert-error">OpenAce Disconnected</div>`}
+        ${store.state.connected ? html`<div class="alert-success">GA/TAS Connected</div>` : html`<div class="alert-error">GA/TAS Disconnected</div>`}
         <button class="btn xs ${store.state.configModified ? "btn-warning" : ""}" onclick=${() => this._saveBr()}>Save</button>
         <div>
           <label class="toggle btn btn-link p-0 btn-menu md-none">

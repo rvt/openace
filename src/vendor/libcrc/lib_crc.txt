@@ -6,7 +6,7 @@
    E-mail    : info@lammertbies.nl
    Version   : 1.16
 
-   Modified  : For OpenACE by: 2023-De-26 R. van Twisk Disabled functions and table we do not use to safe flash/memory
+   Modified  : For GATAS by: 2023-De-26 R. van Twisk Disabled functions and table we do not use to safe flash/memory
 
    Contents  : Documentation for the CRC functions in lib_crc.c
 

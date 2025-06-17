@@ -191,7 +191,7 @@ private:
     }
 
 private:
-    OpenAce::Config::IpPort ipPort;
+    GATAS::Config::IpPort ipPort;
     struct tcp_pcb *tcp_pcb;
     uint8_t internalBuffer[RECEIVE_BUFFER_SIZE + 1]; // By adding one byte here, we don't need to do a end of buffer check in processBuffer
     uint16_t bufferPosition;
@@ -199,7 +199,7 @@ private:
 
 public:
     // @techdebt: Have a handler with a lambda?
-    TcpClient(OpenAce::Config::IpPort ipPort_, CallBackFunction callback_) : ipPort(ipPort_),
+    TcpClient(GATAS::Config::IpPort ipPort_, CallBackFunction callback_) : ipPort(ipPort_),
                                                                              tcp_pcb(nullptr),
                                                                              bufferPosition(0),
                                                                              callback(callback_)
@@ -208,14 +208,14 @@ public:
 
     virtual ~TcpClient() = default;
 
-    OpenAce::PostConstruct postConstruct()
+    GATAS::PostConstruct postConstruct()
     {
         if (ipPort.ip == IPADDR_NONE)
         {
-            return OpenAce::PostConstruct::CONFIG_ERROR;
+            return GATAS::PostConstruct::CONFIG_ERROR;
         }
 
-        return OpenAce::PostConstruct::OK;
+        return GATAS::PostConstruct::OK;
     }
 
     void start()

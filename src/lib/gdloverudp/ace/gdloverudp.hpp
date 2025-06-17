@@ -6,7 +6,7 @@
 /* PICO. */
 #include "pico/time.h"
 
-/* OpenACE. */
+/* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -26,13 +26,13 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * TODO: de-Couple UDP from the GDL90 so this service send GDL Message over the messagebus which can then be send over UDP or Serial or BlueToolh
  */
-class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, OpenAce::GdlMsg, OpenAce::AccessPointClientsMsg, OpenAce::ConfigUpdatedMsg, OpenAce::WifiConnectionStateMsg>
+class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GATAS::GdlMsg, GATAS::AccessPointClientsMsg, GATAS::ConfigUpdatedMsg, GATAS::WifiConnectionStateMsg>
 {
     static constexpr uint16_t GDL90OVERUDP_DEFAULT_PORT = 4000;                                   // Default port
     static constexpr uint8_t GDL90OVERUDP_MAX_PORTS = 4;                                          // Maximum number of customer UDP ports to send on
     static constexpr uint8_t GDL90OVERUDP_MAX_CUSTOM_CLIENTS = 4;                                 // Maximum custom clients
-    static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(OpenAce::GDLData)); // Number of GDL packets that can be buffered
-    static constexpr uint16_t UDP_BUFFER_SIZE = NUM_GDL_PACKETS * sizeof(OpenAce::GDLData);
+    static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(GATAS::GDLData)); // Number of GDL packets that can be buffered
+    static constexpr uint16_t UDP_BUFFER_SIZE = NUM_GDL_PACKETS * sizeof(GATAS::GDLData);
 
     enum TaskState : uint32_t
     {
@@ -58,7 +58,7 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, Ope
     TaskHandle_t taskHandle;
     SemaphoreHandle_t mutex;
     etl::list<ClientConfig, GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
-    etl::set<uint32_t, OPENACE_MAXIMUM_TCP_CLIENTS> connectedClients;
+    etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts = {};
 
     CircularBuffer<UDP_BUFFER_SIZE> gdlDataBuffer;
@@ -73,13 +73,13 @@ public:
                                                                       pcb(nullptr),
                                                                       networkAddress(0)
     {
-        printf("Size of OpenAce::GDLData: %zu\n", sizeof(OpenAce::GDLData));
+        printf("Size of GATAS::GDLData: %zu\n", sizeof(GATAS::GDLData));
         getConfigurationNoMutex(config);
     }
 
     virtual ~GDLoverUDP() = default;
 
-    virtual OpenAce::PostConstruct postConstruct() override;
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
@@ -89,13 +89,13 @@ public:
 
     void on_receive_unknown(const etl::imessage &msg);
 
-    void on_receive(const OpenAce::AccessPointClientsMsg &msg);
+    void on_receive(const GATAS::AccessPointClientsMsg &msg);
 
-    void on_receive(const OpenAce::WifiConnectionStateMsg &msg);
+    void on_receive(const GATAS::WifiConnectionStateMsg &msg);
 
-    void on_receive(const OpenAce::GdlMsg &msg);
+    void on_receive(const GATAS::GdlMsg &msg);
 
-    void on_receive(const OpenAce::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
     static void gdlOverUDPTask(void *arg);
 

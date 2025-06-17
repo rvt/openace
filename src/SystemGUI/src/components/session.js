@@ -91,4 +91,4 @@ class Session extends El {
   }
 }
 
-customElements.define("openace-session", Session);
+customElements.define("gatas-session", Session);

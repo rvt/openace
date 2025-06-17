@@ -55,7 +55,7 @@ class GpsStatus extends El {
             ${this._row(html, "Groundspeed", (this.state.data?.groundspeed * 1.94).toFixed(0), "knt")}
             ${this._row(html, "Track", this.state.data?.track?.toFixed(0), "deg")}
             ${this._row(html, "pDOP", this.state.data?.pDop + " / " + this.state.data?.dopValue)} ${this._row(html, "Fix Quality", this.state.data?.fixQuality)}
-            ${this._row(html, "GGA Messages", this.state.data?.receivedGGA)} ${this._row(html, "OpenAce Build", this.state.data?.OpenAce_buildTime)}
+            ${this._row(html, "GGA Messages", this.state.data?.receivedGGA)} ${this._row(html, "GaTas Build", this.state.data?.GaTas_buildTime)}
           </tbody>
         </table>
       </div>

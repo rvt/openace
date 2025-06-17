@@ -17,27 +17,27 @@ public:
     virtual void stop()override
     {
     }
-    virtual OpenAce::PostConstruct postConstruct() override
+    virtual GATAS::PostConstruct postConstruct() override
     {
-        return OpenAce::PostConstruct::OK;
+        return GATAS::PostConstruct::OK;
     }
 
-    virtual const OpenAce::Config::OpenAceConfiguration openAceConfig() const override
+    virtual const GATAS::Config::GaTasConfiguration gaTasConfig() const override
     {
-        return OpenAce::Config::OpenAceConfiguration
+        return GATAS::Config::GaTasConfiguration
         {
-            OpenAce::AircraftCategory::ReciprocatingEngine,
-            OpenAce::AddressType::ICAO,
+            GATAS::AircraftCategory::ReciprocatingEngine,
+            GATAS::AddressType::ICAO,
             0x123456,
             false,
             false,
-            {OpenAce::DataSource::OGN1}
+            {GATAS::DataSource::OGN1}
         };
     }
 
-    virtual const OpenAce::PinTypeMap pinMap(const etl::string_view moduleName) const override
+    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName) const override
     {
-        OpenAce::PinTypeMap m;
+        GATAS::PinTypeMap m;
         return m;
     };
 
@@ -52,7 +52,7 @@ public:
     };
 
 
-    virtual const OpenAce::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override
+    virtual const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override
     {
         return "";
     }
@@ -62,21 +62,21 @@ public:
         return true;
     }
 
-    // virtual const OpenAce::Config::WifiNamePassword wifiClient() const override
+    // virtual const GATAS::Config::WifiNamePassword wifiClient() const override
     // {
-    //     return OpenAce::Config::WifiNamePassword
+    //     return GATAS::Config::WifiNamePassword
     //     {
     //         "",
     //         ""
     //     };
     // }
 
-    virtual const OpenAce::Config::WifiServiceData wifiService() const override
+    virtual const GATAS::Config::WifiServiceData wifiService() const override
     {
-        return OpenAce::Config::WifiServiceData{};
+        return GATAS::Config::WifiServiceData{};
     }
 
-    virtual const OpenAce::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const override
+    virtual const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const override
     {
         return {0, 0};
     };

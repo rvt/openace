@@ -72,13 +72,13 @@
 /* Memory allocation related definitions. */
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-/* OpenACE: Changed from 128 to 115 to 112*/
+/* GATAS: Changed from 128 to 115 to 112*/
 /* ArduinoJson is memory hungry, need to change that for something else, but for now just lowered memory */
 #define configTOTAL_HEAP_SIZE                   (74*1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */
-#if OPENACE_FREERTOS_DEBUG == 1
+#if GATAS_FREERTOS_DEBUG == 1
 /* Hook function related definitions. */
 #define configCHECK_FOR_STACK_OVERFLOW          2
 #define configUSE_MALLOC_FAILED_HOOK            1

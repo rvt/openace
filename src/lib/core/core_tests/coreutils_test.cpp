@@ -218,7 +218,7 @@ TEST_CASE( "getPath", "[single-file]" )
 TEST_CASE( "addChecksumToNMEA", "[single-file]" )
 {
     // Empty string stays empty
-    OpenAce::NMEAString pflau="$";
+    GATAS::NMEAString pflau="$";
     CoreUtils::addChecksumToNMEA(pflau);
     REQUIRE( pflau == "$*00\r\n" );
 

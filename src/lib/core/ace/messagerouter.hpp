@@ -13,7 +13,7 @@
 
 // The successor functionality is to allow routers to be chained together, so that if a message is not handled by the current router, then it will be passed on to the next.
 // Should we use a queue ?? QueuedMessageRouter.cpp
-namespace OpenAce
+namespace GATAS
 {
     static constexpr uint8_t SHOW_MESSAGEBUS_TIMING = true;
 
