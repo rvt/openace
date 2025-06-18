@@ -1,8 +1,5 @@
 # OpenAce Conspicuity Device
 
-> **_NOTE:_**:
-> I am in the process of uploading the necessary files to GitHub. More will be added soon, including the [OpenScad enclosure](https://github.com/rvt/OpenAce/tree/initial/enclosure), [Schematic/PCB](https://github.com/rvt/OpenAce/tree/initial/OpenACE%20V0.0.2), unit tests for the source code, and additional resources.
-
 > [!TIP]
 > Please visit the [OpenAce WIKI](https://github.com/rvt/OpenAce/wiki) for build information.
 
