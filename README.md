@@ -1,4 +1,4 @@
-# OpenAce Conspicuity Device
+# GA/TAS Conspicuity Device
 
 > [!TIP]
 > Please visit the [GA/TAS WIKI](https://github.com/rvt/OpenAce/wiki) for build information.
