@@ -12,13 +12,20 @@
 
 GATAS::PostConstruct RadioTunerRx::postConstruct()
 {
-    moduleByName(*this, Radio::NAMES[0]);
-    uint8_t numRadios = 1;
-    if (moduleByName(*this, Radio::NAMES[1]))
+    // Ensure at least one radio exists
+    if (!moduleByName(*this, Radio::NAMES[0]))
     {
-        numRadios++;
-    } else {
         return GATAS::PostConstruct::DEP_NOT_FOUND;
+    }
+
+    // Then count any other radios
+    uint8_t numRadios = 1;
+    for (int i = 1; i < GATAS_MAX_RADIOS; i++)
+    {
+        if (moduleByName(*this, Radio::NAMES[i]))
+        {
+            numRadios++;
+        }
     }
     addRadioTasks(numRadios);
     return GATAS::PostConstruct::OK;

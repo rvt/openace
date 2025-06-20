@@ -12,7 +12,8 @@
 		"C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
 		"files.associations": {
 			"compare": "cpp",
-			"cstdint": "cpp"
+			"cstdint": "cpp",
+			"*.in": "cpp"
 		},
 		"cmake.autoSelectActiveFolder": false
 	  }
