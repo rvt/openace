@@ -4,7 +4,6 @@ project(core VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/constants.cpp
     ace/models.cpp
     ace/basemodule.cpp
     ace/coreutils.cpp

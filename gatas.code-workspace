@@ -13,7 +13,8 @@
 		"files.associations": {
 			"compare": "cpp",
 			"cstdint": "cpp",
-			"*.in": "cpp"
+			"*.in": "cpp",
+			"valarray": "cpp"
 		},
 		"cmake.autoSelectActiveFolder": false
 	  }

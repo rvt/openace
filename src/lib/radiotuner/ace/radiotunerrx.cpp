@@ -226,38 +226,28 @@ void RadioTunerRx::enableDisableDatasources(const etl::ivector<GATAS::DataSource
     uint8_t remainingSources = dataSources.size() % radioTasks.size(); // Handle remainder for last radio
     uint8_t newDsPos = 0;
 
-    // Validate if there is a TX module loaded, if so use that as a source for the RX datasource so all protocols remain on the same radio
-    auto rTx = static_cast<const RadioTunerTx *>(BaseModule::moduleByName(*this, RadioTunerTx::NAME));
-
     for (auto &taskCtx : radioTasks)
     {
 
-        if (rTx != nullptr)
+        // Distribute data sources across radios
+        uint8_t sourcesForThisRadio = dsPerRadio;
+
+        // Distribute the remainder to the last radio
+        if (&taskCtx == &radioTasks.back())
         {
-            taskCtx.updateDataSources(rTx->datasourcesOnRadio(taskCtx.radio->radio()));
+            sourcesForThisRadio += remainingSources;
         }
-        else
+
+        sourcesForThisRadio = etl::min(static_cast<uint8_t>(GATAS_MAX_SOURCE_PER_RADIO), sourcesForThisRadio);
+        // Copy the assigned data sources for this radio
+        etl::vector<GATAS::DataSource, GATAS_MAX_SOURCE_PER_RADIO> newDataSources;
+        for (uint8_t i = 0; i < sourcesForThisRadio; ++i)
         {
-            // Distribute data sources across radios
-            uint8_t sourcesForThisRadio = dsPerRadio;
-
-            // Distribute the remainder to the last radio
-            if (&taskCtx == &radioTasks.back())
-            {
-                sourcesForThisRadio += remainingSources;
-            }
-
-            // Copy the assigned data sources for this radio
-            etl::vector<GATAS::DataSource, GATAS_MAX_SOURCE_PER_RADIO> newDataSources;
-            for (uint8_t i = 0; i < sourcesForThisRadio; ++i)
-            {
-                newDataSources.emplace_back(dataSources[newDsPos]);
-                newDsPos++;
-            }
-
-            // Step 4: Update task with new data sources
-            taskCtx.updateDataSources(newDataSources);
+            newDataSources.emplace_back(dataSources[newDsPos]);
+            newDsPos++;
         }
+
+        taskCtx.updateDataSources(newDataSources);
 
         // Unblock the task
         xTaskNotify(taskCtx.taskHandle, TaskState::UNBLOCK, eSetBits);
