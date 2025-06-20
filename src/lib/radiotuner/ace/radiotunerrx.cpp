@@ -119,13 +119,15 @@ void RadioTunerRx::radioTuneTask(void *arg)
             vTaskDelete(nullptr);
             return;
         }
-        else if (notifyValue & TaskState::BLOCK)
-        {
-            taskBlock = true;
-        }
-        else if (notifyValue & TaskState::UNBLOCK)
+        
+        // Don't shange this to a else/if structure because when protocols are setting very fast, both ebits are set we need to process them both        
+        if (notifyValue & TaskState::UNBLOCK)
         {
             taskBlock = false;
+        } 
+        if (notifyValue & TaskState::BLOCK)
+        {
+            taskBlock = true;
         }
 
         if (!taskBlock) {
@@ -133,8 +135,6 @@ void RadioTunerRx::radioTuneTask(void *arg)
             {
                 if (taskCtx->upcomingTimeslot != CountryRegulations::NONE_DATASOURCE.idx)
                 {
-    
-                    // printf("Set frequency to f:%ld ms:%d zone:%d source:%s\n", frequency, CoreUtils::msInSecond(), taskCtx->nextTimeSlot.zone, GATAS::dataSourceToString(radioTask->nextTimeSlot.source));
                     auto thisTimeSlot = CountryRegulations::protocolTimeslotById(taskCtx->upcomingTimeslot);
                     auto frequency = CountryRegulations::determineFrequency(thisTimeSlot);
     
@@ -142,11 +142,10 @@ void RadioTunerRx::radioTuneTask(void *arg)
                     taskCtx->controller->getBus().receive(GATAS::RadioControlMsg{
                         Radio::RadioParameters{thisTimeSlot.radioConfig, frequency, thisTimeSlot.frequency.powerdBm}, taskCtx->radio->radio()});
 
+                    // printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
+                    //        taskCtx->radio->name().cbegin(), GATAS::dataSourceToString(thisTimeSlot.radioConfig.dataSource), frequency, CoreUtils::msInSecond(), delay);
                     auto delay = taskCtx->advanceReceiveSlot() - GATAS_RX_OFFSET;
                     xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay < 1 ? 1 : delay), TASK_DELAY_MS(1));
-    
-                    // printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
-                    //        taskCtx->radio->name().cbegin(), dataSourceToString(thisTimeSlot.radioConfig.dataSource), frequency, CoreUtils::msInSecond(), delay);
     
                     taskCtx->statistics.rxRequests++;
                 }
@@ -164,7 +163,6 @@ void RadioTunerRx::radioTuneTask(void *arg)
                 xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(900), TASK_DELAY_MS(10));
             }
         }
-
     }
 }
 

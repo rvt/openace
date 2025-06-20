@@ -13,7 +13,7 @@ if test -d /volumes/RPI-RP2; then
     echo "###############################"
     echo "## Copied to /volumes/RPI-RP2 #"
     echo "###############################"
-    cp release_build/GaTas.uf2 /volumes/RPI-RP2
+    cp release_build_2040/GaTas.uf2 /volumes/RPI-RP2
 
 else
     echo "########################"

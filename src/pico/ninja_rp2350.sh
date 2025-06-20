@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if which ninja >/dev/null; then
-    cmake -B release_build_2350 -G Ninja -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=rp2350 -DPICO_BOARD=pico2_w && \
+    cmake -B release_build_2350 -G Ninja -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=rp2350 -DPICO_BOARD=pico2_w -DGATAS_UART_OVER_USB=1 && \
     ninja -C release_build_2350  $1
 else
     cmake -B release_build -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=rp2350 -DPICO_BOARD=pico2_w && \
@@ -9,11 +9,11 @@ else
     echo "done. P.S.: Consider installing ninja - it's faster"
 fi
 
-if test -d /volumes/RPI-RP2; then
+if test -d /volumes/RP2350; then
     echo "###############################"
     echo "## Copied to /volumes/RPI-RP2 #"
     echo "###############################"
-    cp release_build/GaTas.uf2 /volumes/RPI-RP2
+    cp release_build_2350/GaTas.uf2 /volumes/RP2350
 
 else
     echo "########################"

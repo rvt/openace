@@ -74,7 +74,11 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 /* GATAS: Changed from 128 to 115 to 112*/
 /* ArduinoJson is memory hungry, need to change that for something else, but for now just lowered memory */
+#if defined(PICO_RP2350)
+#define configTOTAL_HEAP_SIZE                   (200*1024)
+#else
 #define configTOTAL_HEAP_SIZE                   (74*1024)
+#endif
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */
