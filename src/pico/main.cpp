@@ -44,6 +44,7 @@
 #include "ace/bmp280.hpp"
 #include "ace/sx1262.hpp"
 #include "ace/radiotunerrx.hpp"
+//#include "ace/radiotunerrx2.hpp"
 #include "ace/radiotunertx.hpp"
 #include "ace/flarm2024.hpp"
 #include "ace/ogn1.hpp"
@@ -135,6 +136,7 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, const Conf
     if (name == ADSL::NAME) return new ADSL(bus, config);
     if (name == Flarm2024::NAME) return new Flarm2024(bus, config);
     if (name == ADSBDecoder::NAME) return new ADSBDecoder(bus, config);
+//    if (name == RadioTunerRx::NAME) return new RadioTunerRx2(bus, config);
     if (name == RadioTunerRx::NAME) return new RadioTunerRx(bus, config);
     if (name == RadioTunerTx::NAME) return new RadioTunerTx(bus, config);
     if (name == Sx1262::NAMES[0]) return new Sx1262(bus, config, 0);

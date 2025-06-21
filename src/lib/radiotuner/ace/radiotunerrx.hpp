@@ -8,6 +8,7 @@
 #include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/models.hpp"
+#include "ace/eventsync.hpp"
 
 #include "countryregulations.hpp"
 
@@ -44,7 +45,7 @@ public:
     static constexpr const uint8_t TIME_SLOT_SIZE = MAX_SLOTS_PER_SOURCE * GATAS_MAX_SOURCE_PER_RADIO;
     // Offset applies to the timing so that the receiver is set on time to new frequencies and/or modes
     static constexpr const uint8_t GATAS_RX_OFFSET = 1;
-
+    static constexpr const uint32_t BIT_EVENT_DONE = 1 << 0;
 
 private:
     // Each radio will get one task Context to handle
@@ -58,7 +59,7 @@ private:
 
         // Pointers needed to control the radio
         RadioTunerRx *controller;
-        Radio *radio;
+        uint8_t radioNo;
         TaskHandle_t taskHandle;
         TimerHandle_t timerHandle;
 
@@ -78,7 +79,7 @@ private:
         SlotReceive previousReceived = {};
 
         // Constructor
-        RadioProtocolCtx(RadioTunerRx *controller_, Radio *radio_) : controller(controller_), radio(radio_), taskHandle(nullptr), timerHandle(nullptr)
+        RadioProtocolCtx(RadioTunerRx *controller_, uint8_t radioNo_) : controller(controller_), radioNo(radioNo_), taskHandle(nullptr), timerHandle(nullptr)
         {
             prioritizeDatasources();
         }
@@ -105,7 +106,7 @@ private:
         void getData(etl::string_stream &stream) const
         {
 
-            stream << ",\"radio_" << radio->radio() << "\":[";
+            stream << ",\"radio_" << radioNo << "\":[";
             for (auto it = dataSourceTimeSlots.cbegin(); it != dataSourceTimeSlots.cend(); ++it)
             {
                 stream << "\"" << GATAS::dataSourceToString(*it) << "\"";
@@ -115,8 +116,8 @@ private:
                 }
             }
             stream << "]";
-            stream << ",\"timerMissedRadio_" << radio->radio() << "\":" << statistics.timerMissed;
-            stream << ",\"rxRequestsRadio_" << radio->radio() << "\":" << statistics.rxRequests;
+            stream << ",\"timerMissedRadio_" << radioNo << "\":" << statistics.timerMissed;
+            stream << ",\"rxRequestsRadio_" << radioNo << "\":" << statistics.rxRequests;
         }
 
         /**
@@ -231,7 +232,7 @@ private:
 
     // Current zone we are flying in
     volatile CountryRegulations::Zone currentZone;
-
+    EventSync eventSync;
 
 private:
     static void timerTuneCallback(TimerHandle_t xTimer);

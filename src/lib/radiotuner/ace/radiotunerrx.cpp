@@ -10,6 +10,8 @@
 
 #include "pico/rand.h"
 
+constexpr uint16_t TIMEOUT_TASK_DELAY = 2'000;
+
 GATAS::PostConstruct RadioTunerRx::postConstruct()
 {
     // Ensure at least one radio exists
@@ -60,9 +62,7 @@ void RadioTunerRx::addRadioTasks(uint8_t numRadios)
 {
     for (uint8_t radioNo = 0; radioNo < numRadios; radioNo++)
     {
-
-        auto radio = static_cast<Radio *>(moduleByName(*this, Radio::NAMES[radioNo]));
-        auto &ref = radioTasks.emplace_back(this, radio);
+        auto &ref = radioTasks.emplace_back(this, radioNo);
 
         ref.timerHandle = xTimerCreate("rxTaskTimer", TASK_DELAY_MS(1'000), pdFALSE /* Must not be autostart */, &ref, timerTuneCallback);
         if (ref.timerHandle == nullptr)
@@ -108,26 +108,28 @@ void RadioTunerRx::timerTuneCallback(TimerHandle_t xTimer)
 
 void RadioTunerRx::radioTuneTask(void *arg)
 {
-    constexpr uint16_t TIMEOUT_DELAY = 2'000;
     RadioTunerRx::RadioProtocolCtx *taskCtx = static_cast<RadioTunerRx::RadioProtocolCtx *>(arg);
     bool taskBlock = false;
+    puts("Task Started for radio ");
     while (true)
     {
-        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(TIMEOUT_DELAY));
+        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(TIMEOUT_TASK_DELAY));
         if (notifyValue & TaskState::EXIT)
         {
             vTaskDelete(nullptr);
             return;
         }
-        
-        // Don't shange this to a else/if structure because when protocols are setting very fast, both ebits are set we need to process them both        
+
+        // Don't shange this to a else/if structure because when protocols are setting very fast, both ebits are set we need to process them both
         if (notifyValue & TaskState::UNBLOCK)
         {
             taskBlock = false;
-        } 
+            taskCtx->controller->eventSync.set(BIT_EVENT_DONE);
+        }
         if (notifyValue & TaskState::BLOCK)
         {
             taskBlock = true;
+            taskCtx->controller->eventSync.set(BIT_EVENT_DONE);
         }
 
         if (!taskBlock) {
@@ -140,13 +142,13 @@ void RadioTunerRx::radioTuneTask(void *arg)
     
                     // Send a message to the radio to indicate to switch and listen to a different protocol
                     taskCtx->controller->getBus().receive(GATAS::RadioControlMsg{
-                        Radio::RadioParameters{thisTimeSlot.radioConfig, frequency, thisTimeSlot.frequency.powerdBm}, taskCtx->radio->radio()});
+                        Radio::RadioParameters{thisTimeSlot.radioConfig, frequency, thisTimeSlot.frequency.powerdBm}, taskCtx->radioNo});
 
                     // printf("RadioTunerRx: next: radio:%s protocol: %s Freq:%ld ms:%d delay:%d\n",
                     //        taskCtx->radio->name().cbegin(), GATAS::dataSourceToString(thisTimeSlot.radioConfig.dataSource), frequency, CoreUtils::msInSecond(), delay);
                     auto delay = taskCtx->advanceReceiveSlot() - GATAS_RX_OFFSET;
                     xTimerChangePeriod(taskCtx->timerHandle, TASK_DELAY_MS(delay < 1 ? 1 : delay), TASK_DELAY_MS(1));
-    
+
                     taskCtx->statistics.rxRequests++;
                 }
             }
@@ -216,7 +218,12 @@ void RadioTunerRx::enableDisableDatasources(const etl::ivector<GATAS::DataSource
     // Block all tasks first
     for (auto &taskCtx : radioTasks)
     {
+        eventSync.clear(BIT_EVENT_DONE);
         xTaskNotify(taskCtx.taskHandle, TaskState::BLOCK, eSetBits);
+        if (!eventSync.wait(BIT_EVENT_DONE, TASK_DELAY_MS(TIMEOUT_TASK_DELAY+100))) {
+            // TODO: Set some error condition or reboot?
+            return;
+        }
     }
 
     // Precompute how many protocols each radio should handle

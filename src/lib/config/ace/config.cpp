@@ -8,6 +8,8 @@
 #include "ace/coreutils.hpp"
 #include "etl/string.h"
 
+// #include "lwip/inet.h"
+
 static constexpr char SIGNATURE[] = "signature";
 
 etl::string_view Config::loadLocationToString(LoadLocation location) const
@@ -415,14 +417,14 @@ const GATAS::Config::IpPort Config::ipPortBypath(const etl::string_view pathToVa
 
     if (src.isNull())
     {
-        return GATAS::Config::IpPort{IPADDR_NONE, 0};
+        return GATAS::Config::IpPort{0xffffffffUL, 0};
     }
     else
     {
-        auto ip = src["ip"].as<const char *>();
+//        auto ip = src["ip"].as<const char *>();
         auto port = src["port"].as<uint16_t>();
         return GATAS::Config::IpPort{
-            inet_addr(ip),
+            0xffffffffUL, /*inet_addr(ip)*/
             port};
     }
 }

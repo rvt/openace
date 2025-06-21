@@ -61,7 +61,6 @@ namespace GATAS
         {DataSource::ADSL, "ADSL"},
         {DataSource::FANET, "FANET"},
         {DataSource::ADSB, "ADSB"},
-        {DataSource::MODES, "MODES"},
         {DataSource::OGN1, "OGN"},
         {DataSource::PAW, "PAW"}
     };
@@ -72,7 +71,6 @@ namespace GATAS
         {DataSource::ADSL, "L"},
         {DataSource::FANET, "N"},
         {DataSource::ADSB, "A"},
-        {DataSource::MODES, "M"},
         {DataSource::OGN1, "O"},
         {DataSource::PAW, "P"}
     };

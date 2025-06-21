@@ -154,10 +154,9 @@ namespace GATAS
         OGN1 = 3,
         _TRANSPROTOCOLS = 4, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         PAW = 4,
-        MODES = 5,
-        ADSB = 6,
-        NONE = 7,
-        _ITEMS = 8   // Maximum number of items eg last item + 1
+        ADSB = 5,
+        NONE = 6,
+        _ITEMS = 7   // Maximum number of items eg last item + 1
     };
 
     // Get a string representation of a datasource

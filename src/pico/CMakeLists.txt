@@ -9,6 +9,13 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/generated)
 set(DEFAULT_CONFIG_HEADER "${CMAKE_CURRENT_LIST_DIR}/generated/default_config.hpp")
 set(OPTIMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
                     gatas_default_config.json ${DEFAULT_CONFIG_HEADER})
+if(NOT DEFINED PICO_BOARD)
+    set(PICO_BOARD pico_w)
+endif()
+if(NOT DEFINED PICO_PLATFORM)
+    set(PICO_PLATFORM rp2040)
+endif()
+
 execute_process(
   COMMAND ${OPTIMIZE_SCRIPT}
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} ECHO_OUTPUT_VARIABLE ECHO_ERROR_VARIABLE)

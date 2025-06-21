@@ -4,6 +4,7 @@
 
 #include "FreeRTOSconfig.h"
 
+#define pdMS_TO_TICKS( x )     ( ( x ) / portTICK_PERIOD_MS )
 #define BaseType_t int
 #define TickType_t uint32_t
 typedef void (* TaskFunction_t)( void * );

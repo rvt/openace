@@ -15,8 +15,6 @@
 
 #include "ArduinoJson.hpp"
 
-#include "lwip/inet.h"
-
 using namespace ArduinoJson;
 
 typedef std::function<void(const char *NAME, const GATAS::PinTypeMap &map)> LoadModuleCallback;

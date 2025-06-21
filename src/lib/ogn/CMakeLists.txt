@@ -14,7 +14,6 @@ set(MODULE_TARGET_LINK
 )
 
 set(PICO_EXTRA_LIBS
-    pico_cyw43_arch_lwip_sys_freertos
     hardware_pio
 )
 

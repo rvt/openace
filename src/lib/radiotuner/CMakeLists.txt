@@ -5,8 +5,10 @@ set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
     ace/radiotunerrx.cpp 
+#    ace/radiotunerrx2.cpp 
     ace/radiotunertx.cpp
     ace/countryregulations.cpp
+#    ace/countryregulations2.cpp
 )
 
 set(PICO_EXTRA_LIBS

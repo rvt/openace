@@ -36,7 +36,6 @@ target_link_libraries(${PROJECT_NAME}
 
     ${PICO_EXTRA_LIBS}
     etl::etl
-    fanet::fanet
     ${TARGET_CORE}
     ${MODULE_TARGET_LINK}
 )

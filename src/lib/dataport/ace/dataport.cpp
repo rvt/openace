@@ -90,8 +90,6 @@ uint8_t DataPort::getPFLAASourceType(const GATAS::AircraftPositionInfo &position
     {
     case GATAS::DataSource::ADSB:
         return 1;
-    case GATAS::DataSource::MODES:
-        return 6;
     default:
         // FLARM OGN FANET
         return 0;

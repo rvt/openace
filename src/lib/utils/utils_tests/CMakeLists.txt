@@ -50,7 +50,6 @@ set( TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES} )
 set( ACE_SOURCE_FILES
  #    ${CMAKE_CURRENT_SOURCE_DIR}/../../../core/ace/messagerouter.cpp
       # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
-      # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/constants.cpp
       # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
       # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/utils.cpp
       # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/encryption.cpp
@@ -62,7 +61,6 @@ set( ACE_SOURCE_FILES
       ../ace/moreutils.cpp
       ../ace/manchester.cpp
 )
-
 
 foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
   add_executable(${name} ${ACE_SOURCE_FILES} ${name}.cpp)
