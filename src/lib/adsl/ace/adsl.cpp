@@ -7,33 +7,17 @@ constexpr float POSITION_DECODE = 0.0001f / 60.f;
 
 GATAS::PostConstruct ADSL::postConstruct()
 {
-    //    BaseModule::moduleByName(*this, Tuner::NAME);
-
-    frameConsumerQueue = xQueueCreate(4, sizeof(GATAS::RadioRxGfskMsg));
-    if (frameConsumerQueue == nullptr)
-    {
-        return GATAS::PostConstruct::XQUEUE_ERROR;
-    }
-
     return GATAS::PostConstruct::OK;
 }
 
 void ADSL::start()
 {
-    xTaskCreate(adslReceiveTask, ADSL::NAME.cbegin(), configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 2, &taskHandle);
-    // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->startListen(GATAS::DataSource::ADSL);
     getBus().subscribe(*this);
 };
 
 void ADSL::stop()
 {
     getBus().unsubscribe(*this);
-    // auto tuner = static_cast<Tuner*>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->stopListen(GATAS::DataSource::ADSL);
-
-    vTaskDelete(taskHandle);
-    vQueueDelete(frameConsumerQueue);
 };
 
 void ADSL::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -49,7 +33,6 @@ void ADSL::getData(etl::string_stream &stream, const etl::string_view path) cons
     stream << ",\"fecErr\":" << statistics.fecErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"encrypted\":" << statistics.encrypted;
-    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"relay\":" << statistics.relay;
     stream << "}\n";
 }
@@ -77,19 +60,38 @@ void ADSL::addReceiveStat(uint32_t frequency)
 }
 void ADSL::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
+    ADSL_Packet packet;
     if (msg.dataSource == GATAS::DataSource::ADSL)
     {
-        const GATAS::RadioRxGfskMsg cpy = msg;
-        if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
+        auto check = ADSL_Packet::Correct((uint8_t *)msg.frame, (uint8_t *)msg.err);
+        if (check == -1)
         {
-            statistics.queueFullErr++;
+            statistics.fecErr++;
+            return;
         }
+        memcpy(packet.data(), msg.frame, ADSL_Packet::TotalTxBytes);
+        packet.Descramble();
+
+        if (packet.key != 0)
+        {
+            statistics.encrypted++;
+            return;
+        }
+
+        // Ignore ownship address
+        if (packet.address == gaTasConfiguration.address)
+        {
+            return;
+        }
+
+        addReceiveStat(msg.frequency);
+        parseFrame(packet, msg.rssidBm);
     }
 }
 
 void ADSL::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = msg.position;
+    ownshipPosition.store(msg.position, etl::memory_order_release);
 }
 
 void ADSL::on_receive(const GATAS::GpsStatsMsg &msg)
@@ -219,12 +221,13 @@ ADSL_Packet::AircraftCategory ADSL::mapAircraftCategory(GATAS::AircraftCategory 
     }
 }
 
-
 void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
 
     if (msg.radioParameters.config.dataSource == GATAS::DataSource::ADSL)
     {
+        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+
         ADSL_Packet packet;
         packet.payloadIdent = 0x02; // ADS-L.4.SRD860.F.2.1 :: iConspicuity
         packet.addressMapping = addressTypeToAddressMap(gaTasConfiguration.addressType);
@@ -232,16 +235,16 @@ void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         packet.reserved1 = 0;
         packet.relay = 0;
         packet.timeStamp = (CoreUtils::msSinceEpoch() / 250) % 60;
-        packet.flightState = ownshipPosition.airborne ? ADSL_Packet::FlightState::FS_Airborne : ADSL_Packet::FlightState::FS_OnGround;
+        packet.flightState = ownship.airborne ? ADSL_Packet::FlightState::FS_Airborne : ADSL_Packet::FlightState::FS_OnGround;
         packet.aircraftCategory = mapAircraftCategory(gaTasConfiguration.category);
         packet.emergencyStatus = ADSL_Packet::ES_NoEmergency;
 
-        packet.setLatitude(ownshipPosition.lat);
-        packet.setLongitude(ownshipPosition.lon);
-        packet.setGroundSpeed(ownshipPosition.groundSpeed);
-        packet.setHeightHAE(static_cast<int32_t>(ownshipPosition.altitudeHAE));
-        packet.setVerticalRate(ownshipPosition.verticalSpeed);
-        packet.setTrack(ownshipPosition.course);
+        packet.setLatitude(ownship.lat);
+        packet.setLongitude(ownship.lon);
+        packet.setGroundSpeed(ownship.groundSpeed);
+        packet.setHeightHAE(static_cast<int32_t>(ownship.altitudeHAE));
+        packet.setVerticalRate(ownship.verticalSpeed);
+        packet.setTrack(ownship.course);
 
         packet.designAssurance = ADSL_Packet::DesignAsurance::DA_None;
         packet.navigationIntegrity = ADSL_Packet::NavigationIntegrity::NI_LessThan25m;
@@ -263,15 +266,14 @@ void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
     }
 }
 
-
-
 int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
 {
     uint32_t positionTs = CoreUtils::timeUs32();
+    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 
     float fLatitude = packet.getLatitude();
     float fLongitude = packet.getLongitude();
-    auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, fLatitude, fLongitude);
+    auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, fLatitude, fLongitude);
 
     if (fromOwn.distance > distanceIgnore)
     {
@@ -279,8 +281,8 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
         return -1;
     }
 
-//    printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
-//      packet.address, fLatitude, fLongitude, packet.getaltitudeGeoid(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
+    //    printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
+    //      packet.address, fLatitude, fLongitude, packet.getaltitudeGeoid(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
 
     GATAS::AircraftPositionMsg aircraftPosition{
         GATAS::AircraftPositionInfo{
@@ -308,40 +310,4 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
     statistics.receivedAircraftPositions++;
     getBus().receive(aircraftPosition);
     return 0;
-}
-
-void ADSL::adslReceiveTask(void *arg)
-{
-    ADSL *adsl = static_cast<ADSL *>(arg);
-    ADSL_Packet packet;
-    GATAS::RadioRxGfskMsg msg;
-    while (true)
-    {
-        // msg length expected to be 0x1b == 25byte
-        if (xQueueReceive(adsl->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
-        {
-            auto check = ADSL_Packet::Correct((uint8_t *)msg.frame, (uint8_t *)msg.err);
-            if (check == -1)
-            {
-                adsl->statistics.fecErr++;
-                continue;
-            }
-            memcpy(packet.data(), msg.frame, ADSL_Packet::TotalTxBytes);
-            packet.Descramble();
-
-            if (packet.key != 0)
-            {
-                adsl->statistics.encrypted++;
-                continue;
-            }
-
-            // Ignore ownship address
-            if (packet.address == adsl->gaTasConfiguration.address) {
-                continue;
-            }
-
-            adsl->addReceiveStat(msg.frequency);
-            adsl->parseFrame(packet, msg.rssidBm);
-        }
-    }
 }

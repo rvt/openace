@@ -6,8 +6,16 @@ runs:
     - name: Install Dependencies
       shell: bash
       run: |
-        sudo apt-get remove --purge gcc-11
-        sudo apt-get install tree git python3 ninja-build cmake gcc-12 gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev python3-pycryptodome
+        sudo apt-get remove --purge gcc-11 gcc-12 gcc-13
+        sudo apt-get install tree git python3 ninja-build cmake gcc-14 g++-14 gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev python3-pycryptodome
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+    - name: Verify GCC version
+      shell: bash
+      run: |
+        gcc --version
+        g++ --version
 
     - name: Checkout pico-sdk
       uses: actions/checkout@v4

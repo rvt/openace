@@ -3,6 +3,7 @@
 #include "pico/time.h"
 #include "etl/string_view.h"
 #include "coreutils.hpp"
+#include <inttypes.h>
 
 #ifndef NDEBUG
 
@@ -29,22 +30,22 @@
 struct Measure
 {
     const uint32_t start_;
-    const uint32_t id_ = 0;
+    const uint32_t id_ = 0xFFFFFFFF; 
     uint32_t alertTimeout_ = 5000;
     const etl::string_view name_ = "Took";
     Measure() : start_(CoreUtils::timeUs32Raw()) {}
     Measure(const etl::string_view name) : start_(CoreUtils::timeUs32Raw()), name_(name) {}
-    Measure(const etl::string_view name, uint32_t alertTimeout) : start_(CoreUtils::timeUs32Raw()), alertTimeout_(alertTimeout), name_(name) {}
-    Measure(const etl::string_view name, uint32_t alertTimeout, uint32_t id) : start_(CoreUtils::timeUs32Raw()), id_(id), alertTimeout_(alertTimeout), name_(name) {}
+    Measure(const etl::string_view name, uint32_t alertTimeoutUs) : start_(CoreUtils::timeUs32Raw()), alertTimeout_(alertTimeoutUs), name_(name) {}
+    Measure(const etl::string_view name, uint32_t alertTimeoutUs, uint32_t id) : start_(CoreUtils::timeUs32Raw()), id_(id), alertTimeout_(alertTimeoutUs), name_(name) {}
     ~Measure()
     {
         uint32_t duration = static_cast<uint32_t>(CoreUtils::timeUs32Raw() - start_);
         if (duration > alertTimeout_)
         {
-            if (id_) {
-                printf("%s %6ldus id:%08lX\n", name_.begin(), duration, id_);
+            if (id_ == 0xFFFFFFFF) {
+                printf("%s %" PRIu32 "us\n", name_.begin(), duration);
             } else {
-                printf("%s %6ldus\n", name_.begin(), duration);
+                printf("%s %" PRIu32 "us id:%08" PRIX32 "\n", name_.begin(), duration, id_);
             }
         }
     }

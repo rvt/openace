@@ -260,41 +260,23 @@ public:
     {
     }
 
-    enum class Mode
-    {
-        NONE,
-        GFSK,
-        LORA,
-    };
-
-    static const char *modeString(Mode mode)
-    {
-        switch (mode)
-        {
-        case Mode::GFSK:
-            return "GFSK";
-        case Mode::LORA:
-            return "LORA";
-        default:
-            return "UNK";
-        }
-    }
-
     struct ProtocolConfig
     {
-        Radio::Mode mode;               // Mode of the radio
-        GATAS::DataSource dataSource; // Data source
+        uint8_t pcId;                   // Internally used to opnise tranceiver state
+        GATAS::Modulation mode;         // Mode of the radio
+        GATAS::DataSource dataSource;   // Data source
         uint8_t packetLength;           // Total packet length including CRC
         uint8_t txPreambleLength;       // Preamble length in bits during transmission
         uint8_t codingRate;             // Coding rate for LORA packages
         uint8_t syncLength;
         etl::array<uint8_t, 10> syncWord; // Sync word
 
-        constexpr ProtocolConfig(Radio::Mode mode_, GATAS::DataSource dataSource_, uint8_t packetLength_, uint8_t txPreambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
-            : mode(mode_), dataSource(dataSource_), packetLength(packetLength_), txPreambleLength(txPreambleLength_), codingRate(codingRate_), syncLength(syncLength_), syncWord(syncWord_) {}
+        constexpr ProtocolConfig(uint8_t pcId_, GATAS::Modulation mode_, GATAS::DataSource dataSource_, uint8_t packetLength_, uint8_t txPreambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
+            : pcId(pcId_), mode(mode_), dataSource(dataSource_), packetLength(packetLength_), txPreambleLength(txPreambleLength_), codingRate(codingRate_), syncLength(syncLength_), syncWord(syncWord_) {}
 
         constexpr ProtocolConfig(const ProtocolConfig &other)
-            : mode(other.mode),
+            : pcId(other.pcId),
+              mode(other.mode),
               dataSource(other.dataSource),
               packetLength(other.packetLength),
               txPreambleLength(other.txPreambleLength),

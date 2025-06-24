@@ -30,8 +30,10 @@ namespace GATAS
     constexpr uint8_t MODULE_NAME_LENGTH = 16;
     constexpr uint8_t MANCHESTER = 2;
     constexpr uint8_t NMEA_MAX_LENGTH = 84;                                                    // Maximum length NMEA sentence + 1 for null terminator
-    constexpr uint8_t RADIO_MAX_FRAME_WORD_LENGTH = 7;                                         // OGN:26 FLARM:24 Maximum length expected for a frame received via Radio (OGN/ Flarm, Fannet etc...) This includes address bytes + Some zero's for parity calculations
-    constexpr uint8_t RADIO_MAX_FRAME_LENGTH = RADIO_MAX_FRAME_WORD_LENGTH * sizeof(uint32_t); // Maximum length expected for a frame received via Radio (OGN/ Flarm, Fannet etc...) This includes address bytes + Some zero's for parity calculations
+    constexpr uint8_t RADIO_MAX_GFX_FRAME_WORD_LENGTH = 7;                                         // OGN:26 FLARM:24 Maximum length expected for a frame received via Radio (OGN/ Flarm, etc...) This includes address bytes + Some zero's for parity calculations
+    constexpr uint8_t RADIO_MAX_GFX_FRAME_LENGTH = RADIO_MAX_GFX_FRAME_WORD_LENGTH * sizeof(uint32_t); // Maximum length expected for a frame received via Radio (OGN/ Flarm etc...) This includes address bytes + Some zero's for parity calculations
+    constexpr uint8_t MAXIMUM_RAW_FRAME_LENGTH = 128;
+
     constexpr uint8_t MAX_LENGTH_ADSB = 33;
     constexpr uint8_t MAX_LORA_MSG_SIZE = 128;
     constexpr float GROUNDSPEED_CONSIDERING_AIRBORN = 15.f; // groundspeed > 25ms is considered beeing airborn
@@ -45,8 +47,8 @@ namespace GATAS
     using ConfigPathString = etl::string<65>; // Maximum path length of value from the configuration including api name and module name
     using GDLData = etl::vector<uint8_t, 48>; // GDLXX Message
     using AircraftAddress = uint32_t;         // ICAO code, FLARM ID or OGN ID
-    using TxPacketType = etl::array<uint8_t, GATAS::RADIO_MAX_FRAME_LENGTH>;
-    using TxFrameType = etl::array<uint8_t, GATAS::RADIO_MAX_FRAME_LENGTH * MANCHESTER>;
+    using TxPacketType = etl::array<uint8_t, GATAS::RADIO_MAX_GFX_FRAME_LENGTH>;
+    using TxFrameType = etl::array<uint8_t, GATAS::RADIO_MAX_GFX_FRAME_LENGTH * MANCHESTER>;
     using SsidOrPasswdStr = etl::string<20>;
 
     enum class PinType : uint8_t;

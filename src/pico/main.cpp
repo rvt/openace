@@ -43,8 +43,8 @@
 #include "ace/acespi.hpp"
 #include "ace/bmp280.hpp"
 #include "ace/sx1262.hpp"
-#include "ace/radiotunerrx.hpp"
-//#include "ace/radiotunerrx2.hpp"
+#include "ace/radiotunerrx_v2.hpp"
+#include "ace/rxdataframequeue.hpp"
 #include "ace/radiotunertx.hpp"
 #include "ace/flarm2024.hpp"
 #include "ace/ogn1.hpp"
@@ -96,6 +96,7 @@ void registerModules()
     BaseModule::registerModule(Sx1262::NAMES[1], true);
     BaseModule::registerModule(RadioTunerTx::NAME, false);
     BaseModule::registerModule(RadioTunerRx::NAME, false);
+    BaseModule::registerModule(RxDataFrameQueue::NAME, false);
     BaseModule::registerModule(ADSBDecoder::NAME, false);
     BaseModule::registerModule(Flarm2024::NAME, false);
     BaseModule::registerModule(Ogn1::NAME, false);
@@ -136,9 +137,9 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, const Conf
     if (name == ADSL::NAME) return new ADSL(bus, config);
     if (name == Flarm2024::NAME) return new Flarm2024(bus, config);
     if (name == ADSBDecoder::NAME) return new ADSBDecoder(bus, config);
-//    if (name == RadioTunerRx::NAME) return new RadioTunerRx2(bus, config);
     if (name == RadioTunerRx::NAME) return new RadioTunerRx(bus, config);
     if (name == RadioTunerTx::NAME) return new RadioTunerTx(bus, config);
+    if (name == RxDataFrameQueue::NAME) return new RxDataFrameQueue(bus, config);
     if (name == Sx1262::NAMES[0]) return new Sx1262(bus, config, 0);
     if (name == Sx1262::NAMES[1]) return new Sx1262(bus, config, 1);
     if (name == PicoRtc::NAME) return new PicoRtc(bus, config);
@@ -242,7 +243,7 @@ static void loadModules(void *arch)
     load(AircraftTracker::NAME, bus, config, true);
     load(AceSpi::NAME, bus, config, true);
 
-    // HArdware timi ngs, GPS and connectivity
+    // Hardware timings, GPS and connectivity
     load(PicoRtc::NAME, bus, config, true);
     load(GpsDecoder::NAME, bus, config);
     load(UbloxM8N::NAME, bus, config);
@@ -251,6 +252,7 @@ static void loadModules(void *arch)
     load(GDLoverUDP::NAME, bus, config);
     load(DataPort::NAME, bus, config);
     load(AirConnect::NAME, bus, config);
+    load(Bmp280::NAME, bus, config);
 
     for (uint8_t i = 0; i < GATAS_MAX_RADIOS; i++)
     {
@@ -261,7 +263,7 @@ static void loadModules(void *arch)
     // Data sources
     load(RadioTunerTx::NAME, bus, config);
     load(RadioTunerRx::NAME, bus, config);
-    load(Bmp280::NAME, bus, config);
+    load(RxDataFrameQueue::NAME, bus, config, true);
     load(ADSBDecoder::NAME, bus, config);
 
     // Protocols

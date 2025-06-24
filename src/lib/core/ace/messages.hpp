@@ -177,10 +177,10 @@ namespace GATAS
     struct RadioRxGfskMsg : public etl::message<16>
     {
         // TODO: CHange to ETL::array
-        uint32_t frame[GATAS::RADIO_MAX_FRAME_WORD_LENGTH];
-        uint32_t err[GATAS::RADIO_MAX_FRAME_WORD_LENGTH];
+        uint32_t frame[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
+        uint32_t err[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
         uint32_t epochSeconds;
-        uint8_t length; // TODO: CHange this to length in words
+        uint8_t length; 
         int8_t rssidBm;
         uint32_t frequency;
         GATAS::DataSource dataSource;
@@ -204,14 +204,16 @@ namespace GATAS
         int8_t rssidBm;
         uint32_t frequency;
         GATAS::DataSource dataSource;
-        RadioRxLoraMsg(uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
-        {
-        };
-        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::NONE)
-        {
-        };
+        RadioRxLoraMsg(uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_) {
+                                                                                                                      };
+        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::NONE) {
+                           };
     };
 
+    /**
+     * @brief Message to instruct a protocol to transmit the current data over the protocol
+     *
+     */
     struct RadioTxPositionRequestMsg : public etl::message<2>
     {
         const Radio::RadioParameters radioParameters;
@@ -219,6 +221,20 @@ namespace GATAS
         RadioTxPositionRequestMsg(const Radio::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
     };
 
+    /**
+     * @brief RAW data frame from a radio
+     * 
+     */
+    struct DataFrameMsg : public etl::message<17>
+    {
+        const DataFrame& dataFrame; // Using a reference to avoid copying the data frame, Seems like about 4ms extra time is needed for the databus to process this
+        DataFrameMsg(const DataFrame &dataFrame_) : dataFrame(dataFrame_) {};
+    };
+
+    /**
+     * @brief Message send to transmit a frame over the radio
+     *
+     */
     struct RadioTxFrameMsg : public etl::message<18>
     {
         const Radio::TxPacket txPacket;
@@ -226,6 +242,10 @@ namespace GATAS
         RadioTxFrameMsg(const Radio::TxPacket &txPacket_, uint8_t radioNo_) : txPacket(txPacket_), radioNo(radioNo_) {}
     };
 
+    /**
+     * @brief Message to control the radio to a new protocol, frequency etc
+     *
+     */
     struct RadioControlMsg : public etl::message<28>
     {
         const Radio::RadioParameters radioParameters;

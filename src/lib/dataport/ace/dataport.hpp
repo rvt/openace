@@ -17,7 +17,7 @@
 class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GPSSentenceMsg>
 {
     friend class message_router;
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     GATAS::AircraftAddress address;
     GATAS::AircraftCategory category;
 

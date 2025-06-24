@@ -17,7 +17,7 @@
  * Wait for BUZY pin to go low or timeout.
  * When BUZY is low, the SX1262 is ready for new commands
  * returns 0 for sucess, 1 for timeout
- * Should this be a IRQ?
+ * This currently uses a spinlock with a timeoiut function
  */
 uint8_t sx126x_buzy_wait(uint8_t busyPin)
 {
@@ -99,7 +99,6 @@ sx126x_hal_status_t sx126x_hal_read(const void *context, const uint8_t *command,
 sx126x_hal_status_t sx126x_hal_reset(const void *context)
 {
     // Reset is already given once when the SPI starts up
-    // Sx1262 *sx1262 = (Sx1262 *)context;
     (void)context;
     puts("SX1262 Reset called");
     return SX126X_HAL_STATUS_OK;
@@ -107,7 +106,6 @@ sx126x_hal_status_t sx126x_hal_reset(const void *context)
 
 sx126x_hal_status_t sx126x_hal_wakeup(const void *context)
 {
-    // Sx1262 *sx1262 = (Sx1262 *)context;
     (void)context;
     puts("SX1262 wakeup called");
     return SX126X_HAL_STATUS_OK;

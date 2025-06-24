@@ -2,6 +2,11 @@
 
 #include <stdint.h>
 
+/**
+ * @brief Guards against recursive calls. It can potentially prevent stack races, use with care...
+ * 
+ * @tparam C 
+ */
 template <uint8_t C>
 class RecursiveGuard
 {

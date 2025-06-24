@@ -90,25 +90,17 @@ void Flarm2024::scramble(uint32_t *data, uint32_t timestamp) const
 
 GATAS::PostConstruct Flarm2024::postConstruct()
 {
-    frameConsumerQueue = xQueueCreate(4, sizeof(GATAS::RadioRxGfskMsg));
-    if (frameConsumerQueue == nullptr)
-    {
-        return GATAS::PostConstruct::XQUEUE_ERROR;
-    }
     return GATAS::PostConstruct::OK;
 }
 
 void Flarm2024::start()
 {
-    xTaskCreate(flarmReceiveTask, Flarm2024::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
 void Flarm2024::stop()
 {
     getBus().unsubscribe(*this);
-    vTaskDelete(taskHandle);
-    vQueueDelete(frameConsumerQueue);
 };
 
 void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -124,7 +116,6 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
     stream << ",\"crcErr\":" << statistics.crcErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"ownshipAddress\":" << gaTasConfiguration.address;
-    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"messageTypeNot0x02\":" << statistics.messageTypeNot0x02;
     stream << "}\n";
 }
@@ -192,11 +183,10 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
         return -2;
     }
 
-    auto ownlat = ownshipPosition.lat;
-    auto ownLon = ownshipPosition.lon;
+    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 
     // Calculate rounded latitude
-    int32_t ownLatInt = static_cast<int32_t>(ownlat * 1e7);
+    int32_t ownLatInt = static_cast<int32_t>(ownship.lat * 1e7);
     int32_t round_lat = (ownLatInt + (ownLatInt < 0 ? -26 : 26)) / 52;
 
     // Adjust latitude
@@ -209,7 +199,7 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
 
     // Calculate rounded longitude
     int lonDiv = lonDivisor(aircraftLat);
-    int32_t ownLonInt = static_cast<int32_t>(ownLon * 1e7);
+    int32_t ownLonInt = static_cast<int32_t>(ownship.lon * 1e7);
     int32_t round_lon = (ownLonInt + (ownLonInt < 0 ? -(lonDiv >> 1) : (lonDiv >> 1))) / lonDiv;
 
     // Adjust longitude
@@ -220,7 +210,7 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
     }
     auto aircraftLon = static_cast<float>((ilon + round_lon) * lonDiv) * 1e-7f;
 
-    auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownlat, ownLon, aircraftLat, aircraftLon);
+    auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, aircraftLat, aircraftLon);
 
     // printf("Distance from own: %ldm epoch:%ld flarmLSB:%d ownLSB:%d lat%2f, long%2f\n", fromOwn.distance, epochSeconds, radioPacket->flarmTimestampLSB, (uint8_t)(epochSeconds & 0x0F), aircraftLat, aircraftLon);
     if (fromOwn.distance > distanceIgnore)
@@ -263,51 +253,37 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
     return 0;
 }
 
-void Flarm2024::flarmReceiveTask(void *arg)
-{
-    Flarm2024 *flarm = static_cast<Flarm2024 *>(arg);
-    while (true)
-    {
-        GATAS::RadioRxGfskMsg msg;
-        if (xQueueReceive(flarm->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
-        {
-            // Validate checksum
-            RadioPacket *packet = (RadioPacket *)msg.frame;
-
-            uint16_t calculatedChecksum = flarmCalculateChecksum((uint8_t *)msg.frame, RadioPacket::packetLength);
-            if (calculatedChecksum != swapBytes16(packet->checksum))
-            {
-                flarm->statistics.crcErr++;
-                continue;
-            }
-
-            // Ignore ownship address
-            if (packet->aircraftID == flarm->gaTasConfiguration.address)
-            {
-                continue;
-            }
-
-            flarm->addReceiveStat(msg.frequency);
-            flarm->parseFrame(msg.frame, msg.epochSeconds, msg.rssidBm);
-        }
-    }
-}
-
 void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
     if (msg.dataSource == GATAS::DataSource::FLARM)
     {
-        const GATAS::RadioRxGfskMsg cpy = msg;
-        if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
+        uint32_t tempFrame[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
+        etl::copy_n(msg.frame, GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH, tempFrame);
+
+        // Validate checksum
+        RadioPacket *packet = (RadioPacket *)msg.frame;
+
+        uint16_t calculatedChecksum = flarmCalculateChecksum(reinterpret_cast<const uint8_t *>(tempFrame), RadioPacket::packetLength);
+        if (calculatedChecksum != swapBytes16(packet->checksum))
         {
-            statistics.queueFullErr++;
+            statistics.crcErr++;
+            return;
         }
+
+        // Ignore ownship address
+        if (packet->aircraftID == gaTasConfiguration.address)
+        {
+            return;
+        }
+
+        addReceiveStat(msg.frequency);
+        parseFrame(tempFrame, msg.epochSeconds, msg.rssidBm);
     }
 }
 
 void Flarm2024::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = msg.position;
+    ownshipPosition.store(msg.position, etl::memory_order_release);
 }
 
 void Flarm2024::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -326,27 +302,26 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         uint8_t addressType = static_cast<uint8_t>(gaTasConfiguration.addressType);
 
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
-        auto ownLat = ownshipPosition.lat;
-        auto ownLon = ownshipPosition.lon;
+        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 
         uint32_t latitude, longitude;
-        if (ownLat < 0.f)
+        if (ownship.lat < 0.f)
         {
-            latitude = (uint32_t)(-(((int32_t)(-ownLat * 1e7) + 26.f) / 52.f)) & 0x0FFFFF;
+            latitude = (uint32_t)(-(((int32_t)(-ownship.lat * 1e7) + 26.f) / 52.f)) & 0x0FFFFF;
         }
         else
         {
-            latitude = (uint32_t)((((uint32_t)(ownLat * 1e7) + 26.f) / 52.0f)) & 0x0FFFFF;
+            latitude = (uint32_t)((((uint32_t)(ownship.lat * 1e7) + 26.f) / 52.0f)) & 0x0FFFFF;
         }
 
-        auto divisor = lonDivisor(ownLat);
-        if (ownLon < 0.f)
+        auto divisor = lonDivisor(ownship.lat);
+        if (ownship.lon < 0.f)
         {
-            longitude = (uint32_t)(-(((int32_t)(-ownLon * 1e7) + (divisor >> 1)) / divisor)) & 0x0FFFFF;
+            longitude = (uint32_t)(-(((int32_t)(-ownship.lon * 1e7) + (divisor >> 1)) / divisor)) & 0x0FFFFF;
         }
         else
         {
-            longitude = (((uint32_t)(ownLon * 1e7) + (divisor >> 1)) / divisor) & 0x0FFFFF;
+            longitude = (((uint32_t)(ownship.lon * 1e7) + (divisor >> 1)) / divisor) & 0x0FFFFF;
         }
 
         Flarm2024::RadioPacket radioPacket =
@@ -363,16 +338,16 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
                 .flarmTimestampLSB = static_cast<uint8_t>(epochSeconds & 0x0F),
                 .aircraftType = static_cast<uint8_t>(gaTasConfiguration.category),
                 .reserved7 = 0x00,
-                .altitude = static_cast<uint16_t>(enscale<12, 1, false>(etl::max(static_cast<int16_t>(0), static_cast<int16_t>(ownshipPosition.altitudeHAE + 1000)))),
+                .altitude = static_cast<uint16_t>(enscale<12, 1, false>(etl::max(static_cast<int16_t>(0), static_cast<int16_t>(ownship.altitudeHAE + 1000)))),
                 .latitude = latitude,
                 .longitude = longitude,
-                .turnRate = static_cast<uint16_t>(enscale<6, 2, true>(ownshipPosition.hTurnRate * 20)),
-                .groundSpeed = static_cast<uint16_t>(enscale<8, 2, false>(ownshipPosition.groundSpeed * 10)),
-                .verticalSpeed = static_cast<uint16_t>(enscale<6, 2, true>(ownshipPosition.verticalSpeed * 10)),
-                .course = static_cast<uint16_t>(ownshipPosition.course * 2),
-                .movementStatus = static_cast<uint8_t>(ownshipPosition.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1), // TODO: Add support for Circling
-                .gnssHorizontalAccuracy = 0b010010,                                                                                     // enscale<3, 2, false>((gpsStats.hDop*2+5)/10),
-                .gnssVerticalAccuracy = 0b01010,                                                                                        // enscale<2, 3, false>((gpsStats.pDop*2+5)/10),
+                .turnRate = static_cast<uint16_t>(enscale<6, 2, true>(ownship.hTurnRate * 20)),
+                .groundSpeed = static_cast<uint16_t>(enscale<8, 2, false>(ownship.groundSpeed * 10)),
+                .verticalSpeed = static_cast<uint16_t>(enscale<6, 2, true>(ownship.verticalSpeed * 10)),
+                .course = static_cast<uint16_t>(ownship.course * 2),
+                .movementStatus = static_cast<uint8_t>(ownship.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1), // TODO: Add support for Circling
+                .gnssHorizontalAccuracy = 0b010010,                                                                                   // enscale<3, 2, false>((gpsStats.hDop*2+5)/10),
+                .gnssVerticalAccuracy = 0b01010,                                                                                      // enscale<2, 3, false>((gpsStats.pDop*2+5)/10),
                 .unknownData = 11,
                 .reserved8 = 0,
                 .checksum = 0}; // Will get calculated later.

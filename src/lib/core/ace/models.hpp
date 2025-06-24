@@ -14,19 +14,19 @@ namespace GATAS
      */
     enum class PostConstruct : uint8_t
     {
-        NA = 0,                     // No data yet avaiulable, use in the web modules
-        OK = 1,                     // Module is ready to be started
-        FAILED = 2,                 // Generale failure
-        MEMORY = 3,                 // Memory allocation issues
-        DEP_NOT_FOUND = 4,          // A dependency was needed but not loaded
-        XQUEUE_ERROR = 5,           // FreeRTOS X queue error
-        TASK_ERROR = 6,             // task creation failure
-        HARDWARE_NOT_FOUND = 7,     // Hardware  not found
-        HARDWARE_ERROR = 8,         // Hardware  found but not working correctly
-        NETWORK_ERROR = 9,          // Netowrk issue
-        CONFIG_ERROR = 10,          // Configuration issue (not found incorrect etc...)
-        TIMER_ERROR = 11,           // task creation failure
-        MUTEX_ERROR = 12,           // FreeRTOS X queue error
+        NA = 0,                      // No data yet avaiulable, use in the web modules
+        OK = 1,                      // Module is ready to be started
+        FAILED = 2,                  // Generale failure
+        MEMORY = 3,                  // Memory allocation issues
+        DEP_NOT_FOUND = 4,           // A dependency was needed but not loaded
+        XQUEUE_ERROR = 5,            // FreeRTOS X queue error
+        TASK_ERROR = 6,              // task creation failure
+        HARDWARE_NOT_FOUND = 7,      // Hardware  not found
+        HARDWARE_ERROR = 8,          // Hardware  found but not working correctly
+        NETWORK_ERROR = 9,           // Netowrk issue
+        CONFIG_ERROR = 10,           // Configuration issue (not found incorrect etc...)
+        TIMER_ERROR = 11,            // task creation failure
+        MUTEX_ERROR = 12,            // FreeRTOS X queue error
         HARDWARE_NOT_CONFIGURED = 13 // Indicate there was no configuration found
     };
 
@@ -156,7 +156,7 @@ namespace GATAS
         PAW = 4,
         ADSB = 5,
         NONE = 6,
-        _ITEMS = 7   // Maximum number of items eg last item + 1
+        _ITEMS = 7 // Maximum number of items eg last item + 1
     };
 
     // Get a string representation of a datasource
@@ -188,7 +188,7 @@ namespace GATAS
      */
     struct AircraftPositionInfo
     {
-        uint32_t timestamp; 
+        uint32_t timestamp;
         GATAS::CallSign callSign;
 
         AircraftAddress address;
@@ -201,15 +201,16 @@ namespace GATAS
         float lat;
         float lon;
         int16_t altitudeHAE; // Altitude above the GeoId (MSL) in meters. For aircraft where altitude is based from BARO, this is an estimate
-        float verticalSpeed;   // in m/s
-        float groundSpeed;     // in m/s
-        int16_t course;        // 0..359
-        float hTurnRate;       // deg/s Turn rate in the horizontal plane
+        float verticalSpeed; // in m/s
+        float groundSpeed;   // in m/s
+        int16_t course;      // 0..359
+        float hTurnRate;     // deg/s Turn rate in the horizontal plane
 
         // These can be used by received to understand where the target is relative to ownship
         uint32_t distanceFromOwn; // Distance to ownship in meters,
         int32_t relNorthFromOwn;  // relNorth to ownship in meters
         int32_t relEastFromOwn;   // relEast to ownship in meters
+        // TODO: Add relative vertical?
         int16_t bearingFromOwn;   // Bearing to ownship in degrees
 
         AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeHAE_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
@@ -229,10 +230,10 @@ namespace GATAS
     struct OwnshipPositionInfo
     {
         uint32_t timestamp; // Timestamp when the position was received
-        bool airborne;                 // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
+        bool airborne;      // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
         float lat;
         float lon;
-        int16_t altitudeHAE;       // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
+        int16_t altitudeHAE;     // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
         float verticalSpeed;     // in m/s
         float groundSpeed;       // in m/s
         float course;            // 0..359
@@ -241,7 +242,8 @@ namespace GATAS
         float velocityEast;      // East velocity in m/s
         int16_t geoidSeparation; // The distance from the surface of an ellipsoid to the surface of the geoid.
 
-        int16_t heightMsl() const {
+        int16_t heightMsl() const
+        {
             return altitudeHAE - geoidSeparation;
         }
     };
@@ -269,11 +271,11 @@ namespace GATAS
             GATAS::SsidOrPasswdStr ssid;
             GATAS::SsidOrPasswdStr password;
             WifiNamePassword() : ssid(""), password("") {}
-            WifiNamePassword(const etl::istring& ssid, const etl::istring& password)
+            WifiNamePassword(const etl::istring &ssid, const etl::istring &password)
                 : ssid(ssid), password(password)
             {
             }
-            WifiNamePassword(const char* ssid, const char* password)
+            WifiNamePassword(const char *ssid, const char *password)
                 : ssid(ssid), password(password)
             {
             }
@@ -298,5 +300,34 @@ namespace GATAS
             uint32_t ip;
             uint16_t port;
         };
+    };
+
+    enum class Modulation : uint8_t
+    {
+        NONE = 0,
+        GFSK = 1,
+        LORA = 2,
+    };
+
+    const char *modulationToString(GATAS::Modulation mode);
+
+    /**
+     * @brief Radio frame received by transceiver. Can contain both LORA and GFSK data frames
+     *
+     */
+    struct DataFrame
+    {
+        uint32_t epochSeconds;
+        uint32_t frequency;
+        int8_t rssidBm;
+        GATAS::DataSource dataSource;
+        GATAS::Modulation modulation;
+        uint8_t length;                         // Length of the data frame
+        uint8_t data[MAXIMUM_RAW_FRAME_LENGTH]; // Data frame content
+
+        static constexpr size_t maxFrameDataLength()
+        {
+            return sizeof(std::declval<DataFrame>().data);
+        }
     };
 };

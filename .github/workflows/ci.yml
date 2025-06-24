@@ -26,8 +26,23 @@ jobs:
       - name: Install Dependencies
         shell: bash
         run: |
-          sudo apt-get remove --purge gcc-11
-          sudo apt-get install tree git ninja-build cmake gcc-12 
+          sudo apt-get remove --purge gcc-11 gcc-12 gcc-13
+          sudo apt-get install tree git ninja-build cmake gcc-14 g++-14 libatomic1 libatomic-ops-dev
+          # sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          # sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+      - name: Install Clang 18
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget lsb-release gnupg
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 18
+
+      - name: Set Clang 18 as default compiler
+        run: |
+          echo "CC=clang-18" >> $GITHUB_ENV
+          echo "CXX=clang++-18" >> $GITHUB_ENV
 
       - name: Build and Test
         uses: ./.github/actions/build_project

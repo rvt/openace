@@ -38,7 +38,8 @@ RUN cd /opt/FreeRTOS-Kernel && git apply /opt/freertos.patch && cd /opt/FreeRTOS
 
 RUN mkdir -p /opt/src/
 
-# Copy the entrypoint and run it
-COPY ./docker-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+# Copy the entrypoints 
+COPY ./build-entrypoint.sh /build-entrypoint.sh
+COPY ./test-entrypoint.sh /test-entrypoint.sh
+
+RUN chmod +x /build-entrypoint.sh /test-entrypoint.sh

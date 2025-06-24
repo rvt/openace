@@ -42,7 +42,16 @@
 			"bitset": "cpp",
 			"queue": "cpp",
 			"random": "cpp",
-			"stack": "cpp"
+			"stack": "cpp",
+			"system_error": "cpp",
+			"__string": "cpp",
+			"any": "cpp",
+			"atomic": "cpp",
+			"ios": "cpp",
+			"__node_handle": "cpp",
+			"optional": "cpp",
+			"functional": "cpp",
+			"complex": "cpp"
 		},
 		"cmake.autoSelectActiveFolder": false
 	  }

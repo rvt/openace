@@ -86,7 +86,6 @@ private:
         uint32_t transmittedAircraftPositions = 0;
         uint32_t crcErr = 0;
         uint32_t outOfDistance = 0;
-        uint32_t queueFullErr = 0;
         uint32_t messageTypeNot0x02 = 0;
     } statistics;
 
@@ -97,9 +96,7 @@ private:
     };
     etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // Two frequencies (Europe)
 
-    TaskHandle_t taskHandle;
-    QueueHandle_t frameConsumerQueue;
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
     float deltaCourse;
     uint16_t distanceIgnore;
@@ -107,8 +104,6 @@ public:
     static constexpr const etl::string_view NAME = "Flarm";
     Flarm2024(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
-        taskHandle(nullptr),
-        frameConsumerQueue(nullptr),
         ownshipPosition(),
         deltaCourse(0.f)
     {
@@ -156,7 +151,6 @@ private:
      * Based on https://github.com/creaktive/flare/blob/master/flarm_decode.c
     */
     int8_t parseFrame(uint32_t *flarm_pkt, uint32_t epochSeconds, int16_t rssiDbm);
-    static void flarmReceiveTask(void *arg);
 
     void bteaDecode(uint32_t *data) const;
     void bteaEncode(uint32_t *data) const;

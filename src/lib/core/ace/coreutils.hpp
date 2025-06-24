@@ -139,7 +139,7 @@ public:
         }
         else
         {
-            return 1000 - ms + refMsInSecond;
+            return 1'000 - ms + refMsInSecond;
         }
     }
 

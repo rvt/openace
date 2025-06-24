@@ -5,17 +5,14 @@
 #include "ace/bitcount.hpp"
 #include "etl/algorithm.h"
 
+
 constexpr float POSITION_DECODE = 0.0001f / 60.f;
 constexpr float POSITION_ENDECODE = 1.f / POSITION_DECODE;
 
+LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH*8, 48> Ogn1::decoder; // 1248 bytes, should be 
+
 GATAS::PostConstruct Ogn1::postConstruct()
 {
-    frameConsumerQueue = xQueueCreate(4, sizeof(GATAS::RadioRxGfskMsg));
-    if (frameConsumerQueue == nullptr)
-    {
-        return GATAS::PostConstruct::XQUEUE_ERROR;
-    }
-
     if (sizeof(OGN1_Packet) != OGN_PACKET_LENGTH_FEC + 2) // 20byte + FEC == 6 byte + 2 extra for the word that is ignored
     {
         panic("OGN1 packet is smaller than expected");
@@ -27,20 +24,12 @@ GATAS::PostConstruct Ogn1::postConstruct()
 
 void Ogn1::start()
 {
-    xTaskCreate(ognReceiveTask, Ogn1::NAME.cbegin(), configMINIMAL_STACK_SIZE + 64, this, tskIDLE_PRIORITY + 2, &taskHandle);
-    // auto tuner = static_cast<Tuner *>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->startListen(GATAS::DataSource::OGN1);
     getBus().subscribe(*this);
 };
 
 void Ogn1::stop()
 {
     getBus().unsubscribe(*this);
-    // auto tuner = static_cast<Tuner *>(BaseModule::moduleByName(*this, Tuner::NAME));
-    // tuner->stopListen(GATAS::DataSource::OGN1);
-
-    vTaskDelete(taskHandle);
-    vQueueDelete(frameConsumerQueue);
 };
 
 void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -68,7 +57,6 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
     stream << ",\"fecErr\":" << statistics.fecErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"encrypted\":" << statistics.encrypted;
-    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"nonPositional\":" << statistics.nonPositional;
     stream << "}\n";
 }
@@ -95,7 +83,7 @@ void Ogn1::addReceiveStat(uint32_t frequency)
     }
 }
 
-uint8_t Ogn1::ErrCount(const uint8_t *err, uint8_t length) const // count detected manchester errors
+uint8_t Ogn1::ErrCount(const uint8_t *err, uint8_t length) // count detected manchester errors
 {
     uint8_t count = 0;
     for (uint8_t idx = 0; idx < length; idx++)
@@ -105,7 +93,7 @@ uint8_t Ogn1::ErrCount(const uint8_t *err, uint8_t length) const // count detect
     return count;
 }
 
-uint8_t Ogn1::ErrCount(const uint8_t *output, const uint8_t *data, const uint8_t *err, uint8_t length) const // count errors compared to data corrected by FEC
+uint8_t Ogn1::ErrCount(const uint8_t *output, const uint8_t *data, const uint8_t *err, uint8_t length)  // count errors compared to data corrected by FEC
 {
     uint8_t count = 0;
     for (uint8_t idx = 0; idx < length; idx++)
@@ -117,14 +105,15 @@ uint8_t Ogn1::ErrCount(const uint8_t *output, const uint8_t *data, const uint8_t
 
 uint8_t Ogn1::errorCorrect(uint8_t *output, uint8_t *data, uint8_t *err, uint8_t iter)
 {
+
     uint8_t check = 0;
     uint8_t errCount = ErrCount(err, OGN_PACKET_LENGTH); // conunt Manchester decoding errors
-    decoder.Input(data, err);                            // put data into the FEC decoder
+    Ogn1::decoder.Input(data, err);                            // put data into the FEC decoder
     do                                                   // more loops is more chance to recover the packet
     {
         check = decoder.ProcessChecks(); // do an iteration
     } while ((iter--) && check); // if FEC all fine: break
-    decoder.Output(output); // get corrected bytes into the OGN packet
+    Ogn1::decoder.Output(output); // get corrected bytes into the OGN packet
     errCount += ErrCount(output, data, err, OGN_PACKET_LENGTH);
 
     errCount = etl::min(errCount, (uint8_t)15);
@@ -178,7 +167,9 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
     float fLatitude = POSITION_DECODE * packet.DecodeLatitude();
     float fLongitude = POSITION_DECODE * packet.DecodeLongitude();
 
-    auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, fLatitude, fLongitude);
+    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+
+    auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, fLatitude, fLongitude);
 
 //    printf("OGN: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld offset:%d, stdaltitude:%ld climbRate:%d speed:%d heading:%0.2f turnRate:%0.2f\n",
 //       packet.Header.Address, fLatitude, fLongitude, packet.DecodeAltitude() * 10 + ownshipPosition.geoidOffset, ownshipPosition.geoidOffset, packet.DecodeStdAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
@@ -238,13 +229,14 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 
         packet.calcAddrParity();
 
-        packet.EncodeLatitude(ownshipPosition.lat * POSITION_ENDECODE);
-        packet.EncodeLongitude(ownshipPosition.lon * POSITION_ENDECODE);
-        packet.EncodeSpeed(ownshipPosition.groundSpeed * 10.f);
-        packet.EncodeHeading(ownshipPosition.course * 10.f);
-        packet.EncodeClimbRate(ownshipPosition.verticalSpeed * 10.f);
-        packet.EncodeTurnRate(ownshipPosition.hTurnRate * 10.f);
-        packet.EncodeAltitude(ownshipPosition.altitudeHAE);              
+        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+        packet.EncodeLatitude(ownship.lat * POSITION_ENDECODE);
+        packet.EncodeLongitude(ownship.lon * POSITION_ENDECODE);
+        packet.EncodeSpeed(ownship.groundSpeed * 10.f);
+        packet.EncodeHeading(ownship.course * 10.f);
+        packet.EncodeClimbRate(ownship.verticalSpeed * 10.f);
+        packet.EncodeTurnRate(ownship.hTurnRate * 10.f);
+        packet.EncodeAltitude(ownship.altitudeHAE);              
         packet.EncodeDOP(gpsStats.pDop + 0.5f);
 
         // TODO: Understand how baro Altitude really works in OGN
@@ -289,57 +281,39 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
     }
 }
 
-void Ogn1::ognReceiveTask(void *arg)
-{
-    Ogn1 *ogn1 = static_cast<Ogn1 *>(arg);
-    while (true)
-    {
-        OGN1_Packet packet;
-        GATAS::RadioRxGfskMsg msg;
-        // msg length expected to be 0x1a == 26byte
-        if (xQueueReceive(ogn1->frameConsumerQueue, &msg, portMAX_DELAY) == pdPASS)
-        {
-            // Validate packet, and correct if possible
-            uint8_t check = ogn1->errorCorrect((uint8_t *)&packet, (uint8_t *)msg.frame, (uint8_t *)msg.err);
-            if (check & 0x0F)
-            {
-                ogn1->statistics.fecErr++;
-                continue;
-            }
-            // dumpBuffer((uint8_t*)msg.frame, msg.length);
-            packet.Dewhiten();
-            if (packet.Header.Encrypted)
-            {
-                ogn1->statistics.encrypted++;
-                continue;
-            }
-
-            // Ignore ownship address
-            if (packet.Header.Address == ogn1->gaTasConfiguration.address) {
-                continue;
-            }
-
-            ogn1->addReceiveStat(msg.frequency);
-            ogn1->parseFrame(packet, msg.rssidBm);
-        }
-    }
-}
-
 void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
     if (msg.dataSource == GATAS::DataSource::OGN1)
     {
-        const GATAS::RadioRxGfskMsg cpy = msg;
-        if (xQueueSendToBack(frameConsumerQueue, &cpy, TASK_DELAY_MS(5)) != pdPASS)
+        OGN1_Packet packet;
+        // Validate packet, and correct if possible
+        uint8_t check = Ogn1::errorCorrect((uint8_t *)&packet, (uint8_t *)msg.frame, (uint8_t *)msg.err);
+        if (check & 0x0F)
         {
-            statistics.queueFullErr++;
+            statistics.fecErr++;
+            return;
         }
+        // dumpBuffer((uint8_t*)msg.frame, msg.length);
+        packet.Dewhiten();
+        if (packet.Header.Encrypted)
+        {
+            statistics.encrypted++;
+            return;
+        }
+
+        // Ignore ownship address
+        if (packet.Header.Address == gaTasConfiguration.address) {
+            return;
+        }
+
+        addReceiveStat(msg.frequency);
+        parseFrame(packet, msg.rssidBm);
     }
 }
 
 void Ogn1::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = msg.position;
+    ownshipPosition.store(msg.position, etl::memory_order_release);
 }
 
 void Ogn1::on_receive(const GATAS::BarometricPressureMsg &msg)

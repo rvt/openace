@@ -21,8 +21,8 @@ jobs:
       - name: Install Dependencies
         shell: bash
         run: |
-          sudo apt-get remove --purge gcc-11
-          sudo apt-get install tree git ninja-build cmake gcc-12
+          sudo apt-get remove --purge gcc-11 gcc-12 gcc-13
+          sudo apt-get install tree git ninja-build cmake gcc-14
 
       - name: Build and Test
         uses: ./.github/actions/build_project

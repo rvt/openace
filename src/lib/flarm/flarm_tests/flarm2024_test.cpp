@@ -45,7 +45,7 @@ public:
 GATAS::ThreadSafeBus<50> bus;
 MockConfig mockConfig{bus};
 Flarm2024 flarm{bus, mockConfig};
-auto protocol = Radio::ProtocolConfig{Radio::Mode::GFSK, GATAS::DataSource::FLARM, 24 + 2, 1*8, 0, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
+auto protocol = Radio::ProtocolConfig{1, GATAS::Modulation::GFSK, GATAS::DataSource::FLARM, 24 + 2, 1*8, 0, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
 
 TEST_CASE("RadioPacket size", "[single-file]")
 {

@@ -44,7 +44,7 @@ void FanetAce::FanetAceTask(void *arg)
     {
 
         auto delay = (waitUntil - CoreUtils::timeMs32()) + 1;
-        //printf("Delay %ld\n", delay);
+        // printf("Delay %ld\n", delay);
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(delay)))
         {
             (void)notifyValue;
@@ -75,15 +75,17 @@ void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     if (msg.radioParameters.config.dataSource == GATAS::DataSource::FANET)
     {
+        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+
         FANET::TrackingPayload payload;
-        payload.latitude(ownshipPosition.lat)
-            .longitude(ownshipPosition.lon)
-            .altitude(ownshipPosition.heightMsl())
-            .speed(ownshipPosition.groundSpeed * MS_TO_KPH)
-            .groundTrack(ownshipPosition.course)
-            .climbRate(ownshipPosition.verticalSpeed)
+        payload.latitude(ownship.lat)
+            .longitude(ownship.lon)
+            .altitude(ownship.heightMsl())
+            .speed(ownship.groundSpeed * MS_TO_KPH)
+            .groundTrack(ownship.course)
+            .climbRate(ownship.verticalSpeed)
             .tracking(!gaTasConfiguration.noTrack)
-            .turnRate(ownshipPosition.hTurnRate)
+            .turnRate(ownship.hTurnRate)
             .aircraftType(mapAircraftCategory(gaTasConfiguration.category));
 
         auto packet = FANET::Packet<1>()
@@ -125,11 +127,7 @@ void FanetAce::fanet_ackReceived(uint16_t id)
 
 void FanetAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    auto m = Measure("FanetAce::OwnshipPositionMsg", 5000);
-    if (auto guard = SemaphoreGuard<10>(mutex))
-    {
-        ownshipPosition = msg.position;
-    }
+    ownshipPosition.store(msg.position, etl::memory_order_release);
 }
 
 void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
@@ -153,13 +151,14 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
         return;
     }
     xTaskNotify(taskHandle, TaskState::HANDLETX, eSetBits);
+    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 
     switch (messageType)
     {
     case FANET::Header::MessageType::TRACKING:
     {
         FANET::TrackingPayload tp = etl::get<FANET::TrackingPayload>(packet.payload().value());
-        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, tp.latitude(), tp.longitude());
+        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, tp.latitude(), tp.longitude());
 
         if (fromOwn.distance > distanceIgnore)
         {
@@ -196,7 +195,7 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
     case FANET::Header::MessageType::GROUND_TRACKING:
     {
         FANET::GroundTrackingPayload tp = etl::get<FANET::GroundTrackingPayload>(packet.payload().value());
-        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, tp.latitude(), tp.longitude());
+        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, tp.latitude(), tp.longitude());
 
         if (fromOwn.distance > distanceIgnore)
         {
@@ -217,7 +216,7 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
                 false,
                 tp.latitude(),
                 tp.longitude(),
-                ownshipPosition.heightMsl(),
+                ownship.heightMsl(),
                 0,
                 0,
                 0,

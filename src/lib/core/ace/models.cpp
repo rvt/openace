@@ -158,4 +158,17 @@ namespace GATAS
             return pDopInterpretation::FAIR;
         return pDopInterpretation::POOR;
     }
+
+    constexpr Mapping<Modulation, const char *> modulationMapping[] =
+    {
+        {Modulation::GFSK, "Gfsk"},
+        {Modulation::LORA, "Lora"},
+    };
+
+    const char *modulationToString(GATAS::Modulation at)
+    {
+        return enumToString(modulationMapping, at, "-");
+    }
+
 }
+

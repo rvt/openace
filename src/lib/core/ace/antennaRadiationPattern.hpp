@@ -6,6 +6,11 @@
 
 namespace GATAS
 {
+    /**
+     * @brief Helper class to store antenna radiation pattern measurements.
+     * 
+     * @tparam NUM_RADIALS 
+     */
     template<size_t NUM_RADIALS = 8>
     class AntennaRadiationPattern
     {

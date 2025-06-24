@@ -13,6 +13,7 @@
 #include "ace/manchester.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/measure.hpp"
+#include "ace/models.hpp"
 
 /* PICO */
 #include "hardware/spi.h"
@@ -71,8 +72,7 @@ GATAS::PostConstruct Sx1262::postConstruct()
 
     radioInit();
 
-    // Added 512byte because Fanet can be up to 256 byte
-    if (xTaskCreate(sx1262Task, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
+    if (xTaskCreate(sx1262Task, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 64, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
     {
         return GATAS::PostConstruct::TASK_ERROR;
     }
@@ -100,7 +100,7 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << ",\"buzyWaitsTimeout\":" << statistics.buzyWaitsTimeout;
     stream << ",\"txQueueFull\":" << statistics.queueFull;
     stream << ",\"txQueueSize\":" << txQueue.size();
-    stream << ",\"mode\":" << "\"" << Radio::modeString(rxRadioParameters.config.mode) << "\"";
+    stream << ",\"mode\":" << "\"" << GATAS::modulationToString(rxRadioParameters.config.mode) << "\"";
     stream << ",\"dataSource\":" << "\"" << GATAS::dataSourceToString(rxRadioParameters.config.dataSource) << "\"";
     stream << ",\"frequency\":" << rxRadioParameters.frequency;
     stream << ",\"powerdBm\":" << rxRadioParameters.powerdBm;
@@ -205,38 +205,48 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
 {
     // 9.8 Transceiver Circuit Modes Graphical Illustration
     standBy();
-    // This routines takes about 250us
-    if (newParameters.config.mode == Radio::Mode::GFSK)
+
+    if (newParameters.config.pcId != lastPcId)
     {
-        sx126x_set_pkt_type(this, SX126X_PKT_TYPE_GFSK);
-        sx126x_set_gfsk_mod_params(this, &DEFAULT_MOD_PARAMS_GFSK);
+        auto m = Measure("Sx1262 configureSx1262", 1000);
 
-        auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
-        pkt_params_gfsk.pld_len_in_bytes = newParameters.config.packetLength * MANCHESTER;
-
-        if (forTx) {
-            pkt_params_gfsk.preamble_len_in_bits = newParameters.config.txPreambleLength;
-            pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_16BITS;
-        } else {
-            pkt_params_gfsk.preamble_len_in_bits = 0;
-            pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS;
-        }
-
-        pkt_params_gfsk.sync_word_len_in_bits = (newParameters.config.syncLength) * 8;
-        sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
-        sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data(), newParameters.config.syncLength);
-        // printf("Radio %d changed from %s to %s\n", radioNo, GATAS::dataSourceToString(lastParameters.config.dataSource), GATAS::dataSourceToString(newParameters.config.dataSource));
-    }
-    else if (newParameters.config.mode == Radio::Mode::LORA)
-    {
-        sx126x_set_pkt_type(this, SX126X_PKT_TYPE_LORA);
-        if (!forTx)
+        // This routines takes about 250us
+        if (newParameters.config.mode == GATAS::Modulation::GFSK)
         {
-            sx126x_set_lora_mod_params(this, &DEFAULT_MOD_PARAMS_LORA);
-            sx126x_set_lora_pkt_params(this, &DEFAULT_PKG_PARAMS_LORA);
+            sx126x_set_pkt_type(this, SX126X_PKT_TYPE_GFSK);
+            sx126x_set_gfsk_mod_params(this, &DEFAULT_MOD_PARAMS_GFSK);
+
+            auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
+            pkt_params_gfsk.pld_len_in_bytes = newParameters.config.packetLength * MANCHESTER;
+
+            if (forTx)
+            {
+                pkt_params_gfsk.preamble_len_in_bits = newParameters.config.txPreambleLength;
+                pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_16BITS;
+            }
+            else
+            {
+                pkt_params_gfsk.preamble_len_in_bits = 0;
+                pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS;
+            }
+
+            pkt_params_gfsk.sync_word_len_in_bits = (newParameters.config.syncLength) * 8;
+            sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
+            sx126x_set_gfsk_sync_word(this, newParameters.config.syncWord.data(), newParameters.config.syncLength);
+            // printf("Radio %d changed from %s to %s\n", radioNo, GATAS::dataSourceToString(lastParameters.config.dataSource), GATAS::dataSourceToString(newParameters.config.dataSource));
         }
-        sx126x_write_register(this, 0x0740, newParameters.config.syncWord.data(), newParameters.config.syncLength);
-        // printf("Radio %d changed frequency from %ld to %ld\n", radioNo, lastParameters.frequency, newParameters.frequency);
+        else if (newParameters.config.mode == GATAS::Modulation::LORA)
+        {
+            sx126x_set_pkt_type(this, SX126X_PKT_TYPE_LORA);
+            if (!forTx)
+            {
+                sx126x_set_lora_mod_params(this, &DEFAULT_MOD_PARAMS_LORA);
+                sx126x_set_lora_pkt_params(this, &DEFAULT_PKG_PARAMS_LORA);
+            }
+            sx126x_write_register(this, 0x0740, newParameters.config.syncWord.data(), newParameters.config.syncLength);
+            // printf("Radio %d changed frequency from %ld to %ld\n", radioNo, lastParameters.frequency, newParameters.frequency);
+        }
+        lastPcId = newParameters.config.pcId;
     }
 
     if (newParameters.frequency != rxRadioParameters.frequency || true)
@@ -340,25 +350,28 @@ void Sx1262::receiveGFSKPacket()
     {
         statistics.receivedPackets++;
         uint8_t receivedFrameLength = receivedPacketLength();
-        constexpr uint8_t maxFrameLength = GATAS::RADIO_MAX_FRAME_LENGTH * MANCHESTER;
-        if (receivedFrameLength > 0 && receivedFrameLength <= maxFrameLength)
+        if (receivedFrameLength > 0 && receivedFrameLength <= GATAS::DataFrame::maxFrameDataLength())
         {
-            uint8_t data[maxFrameLength];
-            sx126x_read_buffer(this, 0x80, data, receivedFrameLength);
+            GATAS::DataFrame frame{
+                .epochSeconds = CoreUtils::secondsSinceEpoch(),
+                .frequency = rxRadioParameters.frequency,
+                .rssidBm = pkt_status.rssi_avg,
+                .dataSource = rxRadioParameters.config.dataSource,
+                .modulation = rxRadioParameters.config.mode,
+                .length = receivedFrameLength,
+                .data = {0}};
+            sx126x_read_buffer(this, 0x80, frame.data, receivedFrameLength);
 
-            rxGfskMsg = GATAS::RadioRxGfskMsg{(uint8_t)(receivedFrameLength / MANCHESTER), CoreUtils::secondsSinceEpoch(), pkt_status.rssi_avg, rxRadioParameters.frequency, rxRadioParameters.config.dataSource};
-
-            // Seems like all GFSK packets are Manchester encoded, so we just decode here directly
-            manchesterDecode((uint8_t *)rxGfskMsg.frame, (uint8_t *)rxGfskMsg.err, data, receivedFrameLength);
+            sendToBus(GATAS::DataFrameMsg{frame});
             // dumpBuffer((uint8_t *)RadioRxGfskMsg.frame, RadioRxGfskMsg.length);
         }
-        else
-        {
-            // If we get here, there is some mis configuration going on
-            printf("Incorrect frame length expected:%d got:%d\n", maxFrameLength, receivedFrameLength);
-        }
     }
-    // printf("\n");
+    else
+    {
+        // If we get here, there is some mis configuration going on
+        sx126x_clear_device_errors(this);
+        sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
+    }
 }
 
 void Sx1262::receiveLORAPacket()
@@ -373,13 +386,27 @@ void Sx1262::receiveLORAPacket()
 
         statistics.receivedPackets++;
         uint8_t receivedFrameLength = receivedPacketLength();
-        if (receivedFrameLength > 0 && receivedFrameLength <= GATAS::MAX_LORA_MSG_SIZE)
+        if (receivedFrameLength > 0 && receivedFrameLength <= GATAS::DataFrame::maxFrameDataLength())
         {
-            rxLoraMsg = GATAS::RadioRxLoraMsg(CoreUtils::secondsSinceEpoch(), pkt_status.signal_rssi_pkt_in_dbm, rxRadioParameters.frequency, rxRadioParameters.config.dataSource);
-            rxLoraMsg.frame.resize(receivedFrameLength);
-            sx126x_read_buffer(this, 0x80, rxLoraMsg.frame.data(), receivedFrameLength);
+            GATAS::DataFrame frame{
+                .epochSeconds = CoreUtils::secondsSinceEpoch(),
+                .frequency = rxRadioParameters.frequency,
+                .rssidBm = pkt_status.signal_rssi_pkt_in_dbm,
+                .dataSource = rxRadioParameters.config.dataSource,
+                .modulation = rxRadioParameters.config.mode,
+                .length = receivedFrameLength,
+                .data = {0}};
+            sx126x_read_buffer(this, 0x80, frame.data, receivedFrameLength);
+            sendToBus(GATAS::DataFrameMsg{frame});
+
             // dumpBuffer((uint8_t *)RadioRxGfskMsg.frame, RadioRxGfskMsg.length);
         }
+    }
+    else
+    {
+        // If we get here, there is some mis configuration going on
+        sx126x_clear_device_errors(this);
+        sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
     }
 }
 
@@ -413,6 +440,7 @@ void Sx1262::standBy()
 
 void Sx1262::checkAndClearDeviceErrors()
 {
+    auto m = Measure("Sx1262 checkAndClearDeviceErrors", 200);
     sx126x_errors_mask_t errors;
     sx126x_status_t status = sx126x_get_device_errors(this, &errors);
     if (status != SX126X_STATUS_OK && ((uint8_t)errors) != 0)
@@ -432,18 +460,19 @@ sx126x_irq_mask_t Sx1262::getIrqStatus()
 
 void Sx1262::sendPacket(const TxPacket &txPacket)
 {
-
     // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, GATAS::dataSourceToString(command.txPacket.radioParameters.config.dataSource), CoreUtils::msInSecond());
     configureSx1262(txPacket.radioParameters, true);
 
-    if (txPacket.radioParameters.config.mode == Radio::Mode::GFSK)
+    if (txPacket.radioParameters.config.mode == GATAS::Modulation::GFSK)
     {
-        uint8_t frame[GATAS::RADIO_MAX_FRAME_LENGTH * 2];
+        auto m = Measure("Sx1262 sendGFSKPacket", 500);
+        uint8_t frame[GATAS::RADIO_MAX_GFX_FRAME_LENGTH * 2];
         manchesterEncode(frame, txPacket.data.data(), txPacket.length);
         sendGFSKPacket(txPacket.radioParameters, frame, txPacket.length * 2);
     }
-    else if (txPacket.radioParameters.config.mode == Radio::Mode::LORA)
+    else if (txPacket.radioParameters.config.mode == GATAS::Modulation::LORA)
     {
+        auto m = Measure("Sx1262 sendLORAPacket", 100);
         sendLORAPacket(txPacket.radioParameters, txPacket.data.data(), txPacket.length);
     }
 }
@@ -498,9 +527,9 @@ void Sx1262::sx1262Task(void *arg)
             if (notifyValue & TaskState::DIO1_RX_DONE)
             {
                 // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, GATAS::dataSourceToString(sx1262->rxRadioParameters.config.dataSource), CoreUtils::msInSecond());
-                if (sx1262->rxRadioParameters.config.mode == Radio::Mode::GFSK)
+                if (sx1262->rxRadioParameters.config.mode == GATAS::Modulation::GFSK)
                 {
-                    auto m = Measure("Receive receiveGFSKPacket (takes about 1.4ms)", 0);
+                    auto m = Measure("Receive receiveGFSKPacket (takes about 1.5ms)", 1500, sx1262->radioNo);
                     bool doSend;
                     if (auto guard = aceSpi->getLock(doSend))
                     {
@@ -508,15 +537,10 @@ void Sx1262::sx1262Task(void *arg)
                         sx1262->configureSx1262(sx1262->rxRadioParameters);
                         sx1262->listen();
                     }
-                    if (doSend)
-                    {
-                        sx1262->sendToBus(sx1262->rxGfskMsg);
-                    }
                 }
-                // clang-format on
-                else if (sx1262->rxRadioParameters.config.mode == Radio::Mode::LORA)
+                else if (sx1262->rxRadioParameters.config.mode == GATAS::Modulation::LORA)
                 {
-                    auto m = Measure("Receive receiveLoraPacket", 0);
+                    auto m = Measure("Receive receiveLoraPacket", 0, sx1262->radioNo);
                     bool doSend;
                     if (auto guard = aceSpi->getLock(doSend))
                     {
@@ -524,21 +548,17 @@ void Sx1262::sx1262Task(void *arg)
                         sx1262->configureSx1262(sx1262->rxRadioParameters);
                         sx1262->listen();
                     }
-                    if (doSend)
-                    {
-                        sx1262->sendToBus(sx1262->rxLoraMsg);
-                    }
                 }
                 // printf("%8ld RX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::dataSourceToString(sx1262->rxRadioParameters.config.dataSource));
             };
 
-            // Only in TX 
+            // Only in TX
             if (TxPacket txPacket; sx1262->txQueue.pop(txPacket))
             {
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
-                    auto m = Measure("Send Packet");
+                    auto m = Measure("Send Packet", sx1262->radioNo);
                     // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::dataSourceToString(txPacket.radioParameters.config.dataSource));
                     txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     sx1262->sendPacket(txPacket);

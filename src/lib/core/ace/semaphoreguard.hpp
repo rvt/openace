@@ -5,6 +5,10 @@
 #include "semphr.h"
 
 template <uint32_t TIMEMS>
+/**
+ * @brief Clasic semaphore Guard based on a FreeRTOS mutex
+ * 
+ */
 class SemaphoreGuard
 {
 private:

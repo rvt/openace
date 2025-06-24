@@ -39,6 +39,7 @@ set( SOURCES_IDIOMATIC_EXAMPLES
    
    # Tests
    countryregulations_test.cpp
+   countryregulations2_test.cpp
    # radiotunerrx_test.cpp
 )
 
@@ -54,7 +55,7 @@ set( ACE_SOURCE_FILES
 #      ${CMAKE_CURRENT_SOURCE_DIR}/mocks/pico/time.c
 
      ../ace/countryregulations.cpp
-     ../ace/radiotunerrx.cpp
+     ../ace/countryregulations2.cpp
      ../ace/radiotunertx.cpp
 )
 

@@ -51,7 +51,6 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
         uint32_t fecErr = 0;
         uint32_t outOfDistance = 0;
         uint32_t encrypted = 0;
-        uint32_t queueFullErr = 0;
         uint32_t relay = 0;
     } statistics;
 
@@ -62,9 +61,7 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
     };
     etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // 2 for 2 timeslots (europe)
 
-    TaskHandle_t taskHandle;
-    QueueHandle_t frameConsumerQueue;
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
     GATAS::GpsStatsMsg gpsStats;
     uint16_t distanceIgnore;
@@ -72,8 +69,6 @@ public:
     static constexpr const etl::string_view NAME = "ADSL";
     ADSL(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
-        taskHandle(nullptr),
-        frameConsumerQueue(nullptr),
         ownshipPosition()
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "ADSL", "distanceIgnore");
@@ -110,20 +105,11 @@ private:
     static uint8_t addressTypeToAddressMap(GATAS::AddressType addressType) ;
     static ADSL_Packet::AircraftCategory  mapAircraftCategory(GATAS::AircraftCategory category) ;
     /**
-     * Keep track of what timestamp (roughly) we receive flarm frames
+     * Keep track of what timestamp (roughly) we receive ADS-L frames
     */
     void addReceiveStat(uint32_t frequency);
 
     int8_t parseFrame(const ADSL_Packet &packet, int16_t rssiDbm);
-
-    /**
-     * Parse a flarm frame and send it
-     *
-     * Based on https://github.com/creaktive/flare/blob/master/flarm_decode.c
-    */
-//    int8_t ognParseFrame(flarmV7Packet_t *packet, int16_t rssiDbm);
-    static void adslReceiveTask(void *arg);
-
 
 };
 

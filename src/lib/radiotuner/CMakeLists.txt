@@ -4,11 +4,11 @@ project(radiotuner VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/radiotunerrx.cpp 
-#    ace/radiotunerrx2.cpp 
+    ace/radiotunerrx_v2.cpp
     ace/radiotunertx.cpp
     ace/countryregulations.cpp
-#    ace/countryregulations2.cpp
+    ace/countryregulations2.cpp
+    ace/rxdataframequeue.cpp
 )
 
 set(PICO_EXTRA_LIBS
@@ -17,6 +17,8 @@ set(PICO_EXTRA_LIBS
     pico_rand
 )
 
+set(MODULE_TARGET_LINK
+    utils
+)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)
-

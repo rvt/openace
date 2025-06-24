@@ -128,7 +128,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
             .ldro = 0,
         };
 
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{Radio::Mode::GFSK, GATAS::DataSource::NONE, 0, 1*8, 0, 1, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}; // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{0, GATAS::Modulation::GFSK, GATAS::DataSource::NONE, 0, 1*8, 0, 8, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
@@ -136,16 +136,14 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     const uint8_t radioNo;
     uint32_t offsetHz;
     bool txEnabled;
-    volatile bool hasGpsFix;
+    bool hasGpsFix;
+    uint8_t lastPcId;
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<TxPacket, 4, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
     Radio::RadioParameters rxRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
     Radio::RadioParameters newRxRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
     
-    // Keep two packages around that will get reasued and send to the message bus outside of a SPI block
-    GATAS::RadioRxLoraMsg rxLoraMsg;
-    GATAS::RadioRxGfskMsg rxGfskMsg;
     SemaphoreHandle_t xMutex;
 public:
     static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
@@ -158,6 +156,7 @@ public:
                                                                                                                              offsetHz(offsetHz_),
                                                                                                                              txEnabled(txEnabled_),
                                                                                                                              hasGpsFix(false),
+                                                                                                                             lastPcId(0),
                                                                                                                              spiHall(nullptr),
                                                                                                                              taskHandle(nullptr)
     {
@@ -175,8 +174,6 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    // virtual const char* name() const override;
 
     /**
      * SPI access for SX1262 driver, don't use for anything else

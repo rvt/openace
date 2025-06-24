@@ -156,7 +156,7 @@ class Flarm_2023 : public BaseModule, public etl::message_router<Flarm_2023, GAT
 
     TaskHandle_t taskHandle;
     QueueHandle_t frameConsumerQueue;
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     float deltaCourse;
     uint16_t distanceIgnore;
 public:
@@ -197,7 +197,7 @@ private:
 
     void on_receive(const GATAS::OwnshipPositionMsg &msg)
     {
-        ownshipPosition = msg.position;
+        ownshipPosition.store(msg.position, etl::memory_order_release);
     }
 
     /**

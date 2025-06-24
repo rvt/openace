@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(coreutils_tests)
+project(adsl_tests)
 include(FetchContent)
 
 message(STATUS "Building tests.")
@@ -41,7 +41,6 @@ endif()
 
 # These examples use the standard separate compilation
 set( SOURCES_IDIOMATIC_EXAMPLES
-   
    # Tests
    adsl_test.cpp
 )
@@ -71,20 +70,21 @@ foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
     COMMAND ${UNIT_TEST})
 endforeach()
 
-set(ALL_EXAMPLE_TARGETS
-  ${TARGETS_IDIOMATIC_EXAMPLES}
-)
+set(ALL_EXAMPLE_TARGETS ${TARGETS_IDIOMATIC_EXAMPLES})
 
 foreach( name ${ALL_EXAMPLE_TARGETS} )
-    target_link_libraries( 
-      ${name} 
-      Catch2WithMain 
-#      core
-      etl
-      )
+  target_link_libraries( 
+    ${name}  PRIVATE
+    Catch2WithMain 
+    etl
+    )
+  if(NOT APPLE)
+    target_link_libraries(${name} PRIVATE atomic)
+  endif()
 endforeach()
 
-
 list(APPEND CATCH_WARNING_TARGETS ${ALL_EXAMPLE_TARGETS})
-set(CATCH_WARNING_TARGETS ${CATCH_WARNING_TARGETS} PARENT_SCOPE)
-
+set(CATCH_WARNING_TARGETS
+    ${CATCH_WARNING_TARGETS}
+    PARENT_SCOPE
+)

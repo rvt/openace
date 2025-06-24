@@ -17,7 +17,7 @@ void DataPort::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
-    ownshipPosition = msg.position;
+    ownshipPosition.store(msg.position, etl::memory_order_release);
     if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
     {
 
@@ -51,6 +51,7 @@ void DataPort::on_receive(const GATAS::GPSSentenceMsg &msg)
  */
 void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
 {
+    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
     GATAS::NMEAString pflaa;
     etl::string_stream stream(pflaa);
 
@@ -65,7 +66,7 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
               "0,"                                                        // @todo Alarm Level
            << position.relNorthFromOwn << ","                             // Relative North Meters
            << position.relEastFromOwn << ","                              // Relative East Meters
-           << (position.altitudeHAE - ownshipPosition.altitudeHAE) << "," // Relative Vertical Meters
+           << (position.altitudeHAE - ownship.altitudeHAE) << "," // Relative Vertical Meters
            << getPFLAAAddressType(position.addressType) << ",";           // ID Type
     CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
     stream << ","                                       // HEXCode example 484FB3!PH-DHA

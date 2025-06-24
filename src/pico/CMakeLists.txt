@@ -9,6 +9,8 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/generated)
 set(DEFAULT_CONFIG_HEADER "${CMAKE_CURRENT_LIST_DIR}/generated/default_config.hpp")
 set(OPTIMIZE_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/external/optimizejson.py
                     gatas_default_config.json ${DEFAULT_CONFIG_HEADER})
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+
 if(NOT DEFINED PICO_BOARD)
     set(PICO_BOARD pico_w)
 endif()
@@ -51,7 +53,6 @@ if(PICO_SDK_VERSION_STRING VERSION_LESS "2.1.0")
 endif()
 
 project(GaTas C CXX ASM)
-set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 # Allow user to override this option from command line: -DGATAS_UART_OVER_USB=1
 option(GATAS_UART_OVER_USB "Enable UART over USB (1) or physical UART (0)" "")

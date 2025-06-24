@@ -32,7 +32,6 @@ private:
     {
         uint32_t send = 0;
         uint32_t received = 0;
-        uint32_t queueFullErr = 0;
         uint32_t outOfDistance = 0;
     } statistics;
 
@@ -59,7 +58,7 @@ private:
     uint8_t radioNo;
     uint16_t distanceIgnore;
 
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
     Radio::RadioParameters radioParameters;
 

@@ -26,6 +26,7 @@ class GaTasModules extends El {
       "PicoRtc",
       "RadioTunerTx",
       "RadioTunerRx",
+      "RxDataFrameQueue",
       "Sx1262_0",
       "Sx1262_1",
       "UbloxM8N",
@@ -92,6 +93,7 @@ class GaTasModules extends El {
       Sx1262_1: (html) => html`Radio module 2. Sends and receives ADS-L, OGN, and Flarm protocols.`,
       RadioTunerRx: (html) => html`Manages timings for receiving multiple protocols over one or more radios (Flarm, OGN, and ADS-L).`,
       RadioTunerTx: (html) => html`Manages sending regular position messages over different protocols like Flarm, OGN, and ADS-L.`,
+      RxDataFrameQueue: (html) => html`Receives the RAW dataframes from a transceiver and prepares to send them to the various protocols. This will freeup the tranceiver to do other work.`,
     };
   }
 
@@ -328,7 +330,7 @@ class GaTasModules extends El {
     if (this.info[item.name]) {
       info = html` <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
         ${html.raw(icon.help)}
-        <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-right text-left mh-200 overflow-auto">
+        <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
           ${this.info[item.name](html)}
         </p>
       </label>`;
@@ -337,7 +339,7 @@ class GaTasModules extends El {
     return html` <tr>
       <th style="width:25%" scope="row">${item.name} ${info}</th>
       <td>${this._postConstructToString(item.poststatus)}</td>
-      <td>${enabledBtn} ${configureBtn} ${monitorBtn}</td>
+      <td style="width:150px">${enabledBtn} ${configureBtn} ${monitorBtn}</td>
     </tr>`;
   }
 
@@ -362,7 +364,7 @@ class GaTasModules extends El {
   _showHeader(html) {
     let items = this._filteredItems();
     return html`
-      <div class="row md-columns-2 lg-columns-3" style="margin-top: 5px">
+      <div style="margin-top: 5px; gap: 1em;align-items: center;justify-content: center;display:flex">
           <div>${this._restartButton(html)}</div>
           <div>${this._usbBootButton(html)}</div>
           <div>${this._changeHwButton(html)}</div>

@@ -12,6 +12,7 @@ private.data/
 **/default_config.hpp
 **/build_time.hpp
 **/build_test*/
+**/docker_build_test*/
 **/generated/
 **/release_build*/
 **/build/
@@ -28,3 +29,5 @@ src/vendor/etl/
 package-lock.json
 **/.parcel-cache/
 **/node_modules/
+
+**/.trunk/
