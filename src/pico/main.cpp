@@ -45,7 +45,7 @@
 #include "ace/sx1262.hpp"
 #include "ace/radiotunerrx_v2.hpp"
 #include "ace/rxdataframequeue.hpp"
-#include "ace/radiotunertx.hpp"
+#include "ace/radiotunertx_v2.hpp"
 #include "ace/flarm2024.hpp"
 #include "ace/ogn1.hpp"
 #include "ace/adsl.hpp"

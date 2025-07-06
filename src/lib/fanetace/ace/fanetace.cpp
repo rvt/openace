@@ -73,7 +73,7 @@ void FanetAce::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 
 void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config.dataSource == GATAS::DataSource::FANET)
+    if (msg.radioParameters.config->dataSource == GATAS::DataSource::FANET)
     {
         auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 
@@ -111,8 +111,7 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
 {
     (void)data;
     statistics.send++;
-    radioParameters.config.codingRate = codingRate;
-
+    radioParameters.codingRate = codingRate;
     getBus().receive(GATAS::RadioTxFrameMsg{
         Radio::TxPacket{radioParameters, data},
         radioNo});

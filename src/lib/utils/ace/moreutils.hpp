@@ -51,22 +51,3 @@ public:
         return changed;
     }
 };
-
-/**
- * Dump the buffer as HEX to the terminal
- */
-//void print_buffer(uint8_t *buffer, uint8_t length);
-
-template <typename T>
-inline void printBuffer(T *buffer, uint8_t length, const char format[] = "%0X")
-{
-    printf("Length(%d) ", length);
-    for (uint8_t i = 0; i < length; i++)
-    {
-        printf(format, buffer[i]);
-        if (i < length - 1)
-        {
-            printf(" ");
-        }
-    }
-}

@@ -19,7 +19,6 @@
 #include "etl/span.h"
 #include "etl/delegate.h"
 
-
 // TODO: Change to a etl::delegate
 typedef std::function<void(const uint32_t)> pinIntrCallback_t;
 
@@ -101,7 +100,7 @@ public:
         moduleLoaderMap[name].result = result;
         moduleLoaderMap[name].module = nullptr;
     }
-    
+
     static const ModuleLoadMap &registeredModules()
     {
         return moduleLoaderMap;
@@ -262,39 +261,25 @@ public:
 
     struct ProtocolConfig
     {
-        uint8_t pcId;                   // Internally used to opnise tranceiver state
-        GATAS::Modulation mode;         // Mode of the radio
-        GATAS::DataSource dataSource;   // Data source
-        uint8_t packetLength;           // Total packet length including CRC
-        uint8_t txPreambleLength;       // Preamble length in bits during transmission
-        uint8_t codingRate;             // Coding rate for LORA packages
+        uint8_t pcId;                 // Internally used to opnise tranceiver state
+        GATAS::Modulation mode;       // Mode of the radio
+        GATAS::DataSource dataSource; // Data source
+        uint8_t packetLength;         // Total packet length including CRC
+        uint8_t txPreambleLength;     // Preamble length in bits during transmission
         uint8_t syncLength;
         etl::array<uint8_t, 10> syncWord; // Sync word
-
-        constexpr ProtocolConfig(uint8_t pcId_, GATAS::Modulation mode_, GATAS::DataSource dataSource_, uint8_t packetLength_, uint8_t txPreambleLength_, uint8_t codingRate_, uint8_t syncLength_, etl::array<uint8_t, 10> syncWord_)
-            : pcId(pcId_), mode(mode_), dataSource(dataSource_), packetLength(packetLength_), txPreambleLength(txPreambleLength_), codingRate(codingRate_), syncLength(syncLength_), syncWord(syncWord_) {}
-
-        constexpr ProtocolConfig(const ProtocolConfig &other)
-            : pcId(other.pcId),
-              mode(other.mode),
-              dataSource(other.dataSource),
-              packetLength(other.packetLength),
-              txPreambleLength(other.txPreambleLength),
-              codingRate(other.codingRate),
-              syncLength(other.syncLength),
-              syncWord(other.syncWord) {}
-
-        ProtocolConfig() = default;
     };
 
     struct RadioParameters
     {
-        Radio::ProtocolConfig config;
+        const Radio::ProtocolConfig *config;
         uint32_t frequency;
         int8_t powerdBm;
+        uint8_t codingRate = 8; // Coding rate for LORA packages
 
-        constexpr RadioParameters(const Radio::ProtocolConfig &_config, uint32_t _frequency, int8_t _powerdBm) : config(_config), frequency(_frequency), powerdBm(_powerdBm) {}
-        constexpr RadioParameters(const Radio::RadioParameters &_params) : config(_params.config), frequency(_params.frequency), powerdBm(_params.powerdBm) {}
+        constexpr RadioParameters(const Radio::ProtocolConfig *config_, uint32_t frequency_, int8_t powerdBm_, uint8_t codingRate_) : config(config_), frequency(frequency_), powerdBm(powerdBm_), codingRate(codingRate_) {}
+        constexpr RadioParameters(const Radio::ProtocolConfig *config_, uint32_t frequency_, int8_t powerdBm_) : config(config_), frequency(frequency_), powerdBm(powerdBm_) {}
+        constexpr RadioParameters(const Radio::RadioParameters &params) : config(params.config), frequency(params.frequency), powerdBm(params.powerdBm), codingRate(params.codingRate) {}
         RadioParameters() = default;
         RadioParameters &operator=(const RadioParameters &other) = default;
     };
@@ -302,23 +287,33 @@ public:
     struct TxPacket
     {
         RadioParameters radioParameters;
-        uint8_t length;
-        GATAS::TxPacketType data;
+        uint8_t length;                     // In bytes
+        union
+        {
+            GATAS::TxPacketType data;
+            GATAS::TxPacketType32 data32;
+        };
+
         TxPacket() = default;
         TxPacket(const RadioParameters &radioParameters_, etl::span<const uint8_t> dataSpan)
             : radioParameters(radioParameters_), length(static_cast<uint8_t>(dataSpan.size()))
         {
-            if (dataSpan.size() > data.size())
+            // Default to writing into .data (assumed default member)
+            if (dataSpan.size() > sizeof(data))
             {
                 puts("TxPacket: Frame length too large for this packet, clearing out");
-                memset(data.data(), 0, data.size());
-            } else {
-                memcpy(data.data(), dataSpan.data(), dataSpan.size());
+                memset(&data, 0, sizeof(data));
+            }
+            else
+            {
+                memcpy(&data, dataSpan.data(), dataSpan.size());
             }
         }
 
         TxPacket(const RadioParameters &radioParameters_, uint8_t length_, const void *data_)
-            : TxPacket(radioParameters_, etl::span<const uint8_t>(static_cast<const uint8_t *>(data_), length_)) {}
+            : TxPacket(radioParameters_, etl::span<const uint8_t>(static_cast<const uint8_t *>(data_), length_))
+        {
+        }
     };
 
     struct RxMode

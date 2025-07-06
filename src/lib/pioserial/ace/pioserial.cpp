@@ -157,7 +157,7 @@ void __isr __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex
             if (c == '\n' || c == '\r')
             {
                 // Ignore any newline or return characters on index 0
-                if (pioSerial->charIndex > 0)
+                if (pioSerial->charIndex > 0 && pioSerial->charIndex < pioSerial->buffer.size() - 1)
                 {
                     pioSerial->buffer[pioSerial->charIndex] = '\0';
                     pioSerial->callback(pioSerial->buffer);

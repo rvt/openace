@@ -157,7 +157,7 @@ target_link_libraries(
           bmp280
           sx1262
           adsl
-          flarm
+          flarmgatas
           fanetace
           ogn
           radiotuner

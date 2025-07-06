@@ -155,13 +155,13 @@ namespace GATAS
         _TRANSPROTOCOLS = 4, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         PAW = 4,
         ADSB = 5,
-        NONE = 6,
-        _ITEMS = 7 // Maximum number of items eg last item + 1
+        _ITEMS = 6, // Maximum number of items eg last item + 1
+        UNKNOWN = 255 // Note: Never use this! Unly used for stringToEnum(..)
     };
 
     // Get a string representation of a datasource
     const char *dataSourceIntToString(uint8_t ds);
-    const char *dataSourceToString(DataSource ds);
+    const char *toString(DataSource ds);
     DataSource stringToDataSource(const char *str);
 
     // Get a character representation of a datasource
@@ -218,7 +218,7 @@ namespace GATAS
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeHAE(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::ADSL), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeHAE(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
         {
         }
 

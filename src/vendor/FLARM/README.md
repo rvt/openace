@@ -39,12 +39,14 @@ But I think the example speak for themselse fairly well.
 
 ### How to decode a FLARM packet:
 
+msg.frame is an `uint32_t frame[7]`, this usually comes from your tranceiver.
+
 ```c++
   auto epochSeconds = CoreUtils::secondsSinceEpoch();
 
     Flarm2024Packet packet;
     auto ownship = ownshipPosition.load(etl::memory_order_acquire);
-    auto result = packet.loadFromBuffer(epochSeconds, {msg.frame, Flarm2024Packet::TOTAL_LENGTH_WORDS});
+    auto result = packet.loadFromBuffer(epochSeconds, {frame, Flarm2024Packet::TOTAL_LENGTH_WORDS});
     if (result == -1) {
         statistics.crcErr++;
         return;

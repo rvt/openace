@@ -68,9 +68,6 @@ static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2; // Number is scans done an
     };
 
     ConnectionState connectionState;
-    // using ConnectionOrder = etl::array<const ConnectionState, 3>;
-    // static constexpr ConnectionOrder connectionState = {ConnectionState::CLIENTMODE, ConnectionState::APMODE};
-    // ConnectionOrder::iterator connectionStateIt;
 
     dhcp_server_t dhcp_server;
     dns_server_t dns_server;

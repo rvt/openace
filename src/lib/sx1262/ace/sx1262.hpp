@@ -38,7 +38,6 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
 {
     static constexpr uint32_t MAX_LISTEN_TIMEOUT = 150000; // maximum time we listen for packages before we timeout and reset the Sx1262
     static constexpr uint8_t MANCHESTER = 2;               // Used to just clarify why we sometime multiply by 2
-    static constexpr uint8_t CRCBYTES = 2;                 // Used for clarifications in calculations
 
     enum TaskState : uint8_t
     {
@@ -128,7 +127,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
             .ldro = 0,
         };
 
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{0, GATAS::Modulation::GFSK, GATAS::DataSource::NONE, 0, 1*8, 0, 8, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{0, GATAS::Modulation::GFSK, GATAS::DataSource::ADSL, 0, 1*8, 8, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
@@ -141,12 +140,12 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<TxPacket, 4, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
-    Radio::RadioParameters rxRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
-    Radio::RadioParameters newRxRadioParameters{PROTOCOL_NONE, 868'000'000, -100};
+    Radio::RadioParameters rxRadioParameters{&PROTOCOL_NONE, 868'000'000, -100, 0};
+    Radio::RadioParameters newRxRadioParameters{&PROTOCOL_NONE, 868'000'000, -100, 0};
     
     SemaphoreHandle_t xMutex;
 public:
-    static constexpr etl::array<etl::string_view, 2> NAMES{"Sx1262_0", "Sx1262_1"};
+    static constexpr etl::array<etl::string_view, 4> NAMES{"Sx1262_0", "Sx1262_1", "Sx1262_2", "Sx1262_3"};
 
     Sx1262(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, uint8_t radioNo_, bool txEnabled_, uint32_t offsetHz_) : Radio(bus, Radio::NAMES[radioNo_]),
                                                                                                                              csPin(pins.at(GATAS::PinType::CS)),

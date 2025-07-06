@@ -11,7 +11,7 @@
 #include "ace/eventsync.hpp"
 #include "ace/property.hpp"
 
-#include "countryregulations2.hpp"
+#include "countryregulations_v2.hpp"
 
 #include "etl/map.h"
 #include "etl/message_bus.h"
@@ -19,20 +19,12 @@
 #include "etl/array.h"
 #include "etl/algorithm.h"
 #include "etl/string.h"
-#include "etl/bitset.h"
-#include "etl/circular_iterator.h"
 #include "etl/utility.h"
 
 #include "timers.h"
 
-// When set, also set's the PICO's rtc
-
 /**
- * This class is responsible for controlling the radio's
- */
-/**
- * Note: Currently using array's indexed on datasource to give fast lookups on statistics but will cost a bit more memory
- * The downside is that only one protocol can be configured on one radio so listening on the same protocol on two radios would not be possible
+ * This class is responsible for setting up timings to receive data for each protocol
  */
 class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx, GATAS::OwnshipPositionMsg, GATAS::AircraftPositionMsg, GATAS::ConfigUpdatedMsg>
 {
@@ -54,7 +46,7 @@ private:
             uint32_t taskActivity = 0;
         } statistics;
 
-        using OnAirTimings = etl::vector<const CountryRegulations2::ProtocolTimeSlot2 *, (static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS) + MAX_EXTRA_SLOTS)>;
+        using OnAirTimings = etl::vector<const CountryRegulations::ProtocolTimeSlot *, (static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS) + MAX_EXTRA_SLOTS)>;
 
         OnAirTimings protocolTimings;
         uint8_t protocolTimingIdx = 0; // Index of the current timing in the timings vector
@@ -63,7 +55,7 @@ private:
         RadioTunerRx *controller;
         uint8_t radioNo;
 
-        etl::pair<uint8_t, CountryRegulations2::Channel> lastConfig = etl::make_pair(0, CountryRegulations2::Channel::NOP); // Last configured channel and protocol ID
+        etl::pair<uint8_t, CountryRegulations::Channel> lastConfig = etl::make_pair(0, CountryRegulations::Channel::NOP); // Last configured channel and protocol ID
 
         // The DataSources this radio will handle
         etl::vector<GATAS::DataSource, GATAS_MAX_SOURCE_PER_RADIO> dataSources;
@@ -85,7 +77,7 @@ private:
             stream << ",\"radio_" << radioNo << "\":[";
             for (auto it = protocolTimings.begin(); it != protocolTimings.end(); ++it)
             {
-                stream << "\"" << GATAS::dataSourceToString((*it)->radioConfig.dataSource) << "\"";
+                stream << "\"" << GATAS::toString((*it)->radioConfig.dataSource) << "\"";
                 if (etl::next(it) != protocolTimings.end())
                 {
                     stream << ",";
@@ -101,15 +93,15 @@ private:
          */
         void prioritizeDatasources()
         {
-            CountryRegulations2::Zone zone = controller->currentZone.value();
+            CountryRegulations::Zone zone = controller->currentZone.value();
             protocolTimings.clear();
 
             auto extraSlotCnt = 0;
             for (const auto &ds : dataSources)
             {
-                const auto &slot = CountryRegulations2::getSlot(zone, ds);
+                const auto &slot = CountryRegulations::getSlot(zone, ds);
                 // Don't add datasources that are NONE because do don't transmit anything nor receive
-                if (slot.radioConfig.dataSource == GATAS::DataSource::NONE)
+                if (slot.zone == CountryRegulations::Zone::ZONE0)
                 {
                     continue;
                 }
@@ -134,8 +126,6 @@ private:
             }
 
             protocolTimingIdx = 0;
-            // Re-initialize the circular iterator after modifying the dataSourceTimeSlots
-            // upcomingDataSource = CircularDataSourceIterator{timings.begin(), timings.end()};
         }
     };
 
@@ -143,7 +133,7 @@ private:
     SlotReceive slotReceive;
 
     // Keep track of one task per each radio
-    etl::vector<RadioProtocolCtx, GATAS_MAX_RADIOS> radioTasks;
+    etl::vector<RadioProtocolCtx, GATAS_MAX_RADIOS> radioCtxList;
 
     enum TaskState : uint32_t
     {
@@ -156,7 +146,7 @@ private:
     friend class message_router;
 
     // Current zone we are flying in
-    Property<CountryRegulations2::Zone> currentZone;
+    Property<CountryRegulations::Zone> currentZone;
     EventSync eventSync;
     TaskHandle_t taskHandle;
     uint8_t numRadios = 0;
@@ -177,7 +167,7 @@ public:
     static constexpr const etl::string_view NAME = "RadioTunerRx";
 
     RadioTunerRx(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                         currentZone(CountryRegulations2::Zone::ZONE0)
+                                                                         currentZone(CountryRegulations::Zone::ZONE0)
     {
         (void)config;
     }

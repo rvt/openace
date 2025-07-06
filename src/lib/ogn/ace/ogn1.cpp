@@ -213,7 +213,7 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
 
 void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config.dataSource == GATAS::DataSource::OGN1)
+    if (msg.radioParameters.config->dataSource == GATAS::DataSource::OGN1)
     {
         OGN1_Packet packet;
         packet.Header =
@@ -293,7 +293,7 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
             statistics.fecErr++;
             return;
         }
-        // dumpBuffer((uint8_t*)msg.frame, msg.length);
+
         packet.Dewhiten();
         if (packet.Header.Encrypted)
         {

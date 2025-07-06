@@ -1,91 +1,8 @@
 #include <stdio.h>
 
 #include "flarm2024.hpp"
-#include <cstring>
+#include "flarm/flarm2024packet.hpp"
 #include "ace/manchester.hpp"
-
-inline uint32_t MX(uint32_t z, uint32_t y, uint32_t sum, uint8_t e, uint8_t p, const etl::span<const uint32_t> &keys)
-{
-    return (((z >> 5) ^ (y << 2)) + ((y >> 3) ^ (z << 4))) ^ ((sum ^ y) + (keys[(p & 3) ^ e] ^ z));
-}
-
-void Flarm2024::bteaEncode(uint32_t *data) const
-{
-    auto rounds = BTEA_ROUNDS;
-    uint32_t sum = 0;
-    uint32_t z = data[BTEA_N - 1];
-    do
-    {
-        uint32_t y;
-        sum += BTEA_DELTA;
-        uint8_t e = (sum >> 2) & 3;
-        for (uint8_t p = 0; p < BTEA_N - 1; p++)
-        {
-            y = data[p + 1];
-            z = data[p] += MX(z, y, sum, e, p, BTEA_KEYS);
-        }
-        y = data[0];
-        z = data[BTEA_N - 1] += MX(z, y, sum, e, BTEA_N - 1, BTEA_KEYS);
-    } while (--rounds);
-}
-
-void Flarm2024::bteaDecode(uint32_t *data) const
-{
-    auto rounds = BTEA_ROUNDS;
-    uint32_t sum = rounds * BTEA_DELTA;
-    uint32_t y = data[0];
-    do
-    {
-        uint32_t z;
-        uint8_t e = (sum >> 2) & 3;
-        for (uint8_t p = BTEA_N - 1; p > 0; p--)
-        {
-            z = data[p - 1];
-            y = data[p] -= MX(z, y, sum, e, p, BTEA_KEYS);
-        }
-        z = data[BTEA_N - 1];
-        y = data[0] -= MX(z, y, sum, e, 0, BTEA_KEYS);
-        sum -= BTEA_DELTA;
-    } while (--rounds);
-}
-
-void Flarm2024::scramble(uint32_t *data, uint32_t timestamp) const
-{
-    constexpr uint8_t numKeys = 4;
-    constexpr uint8_t numIterations = 2;
-    constexpr uint8_t byteLength = numKeys * sizeof(uint32_t);
-
-    uint32_t wkeys[] = {data[0], data[1], timestamp >> 4, SCRAMBLE};
-    uint8_t *bkeys = reinterpret_cast<uint8_t *>(wkeys);
-
-    uint16_t y, x;
-    uint8_t z = bkeys[byteLength - 1];
-    uint32_t sum = 0;
-
-    for (auto q = 0; q < numIterations; ++q)
-    {
-        sum += BTEA_DELTA;
-        y = bkeys[0];
-        for (uint8_t p = 0; p < byteLength - 1; ++p)
-        {
-            x = y;
-            y = bkeys[p + 1];
-            x += ((((z >> 5) ^ (y << 2)) + ((y >> 3) ^ (z << 4))) ^ (sum ^ y));
-            bkeys[p] = static_cast<uint8_t>(x);
-            z = x & 0xff;
-        }
-        x = y;
-        y = bkeys[0];
-        x += ((((z >> 5) ^ (y << 2)) + ((y >> 3) ^ (z << 4))) ^ (sum ^ y));
-        bkeys[byteLength - 1] = static_cast<uint8_t>(x);
-        z = x & 0xff;
-    }
-
-    for (uint8_t i = 0; i < numKeys; ++i)
-    {
-        data[2 + i] ^= wkeys[i];
-    }
-}
 
 GATAS::PostConstruct Flarm2024::postConstruct()
 {
@@ -141,145 +58,70 @@ void Flarm2024::addReceiveStat(uint32_t frequency)
     }
 }
 
-int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rssiDbm)
-{
-    // Flarm messages are send well after PPS (400..1200ms after) so it would rarly
-    // happen we are not using the correct TS and thus decryption failures
-    RadioPacket *radioPacket = (RadioPacket *)packet;
-
-#if !defined(UNIT_TESTING)
-    bteaDecode(packet + 2);
-    scramble(packet, epochSeconds);
-
-    // Algorithm to find a possible epochTime where the received packed was scrambled at
-    // It currently assumes that only when the epochSec & 0x0F rolls over there is a potential
-    // This assumes the received packages is always send 'back' in time, echt current Epoch is always > epoch where
-    // the packages was scrambled at.
-    if (radioPacket->messageType != 0x02)
-    {
-        scramble(packet, epochSeconds);
-        uint32_t packetCpy[sizeof(RadioPacket)];
-        RadioPacket *radioPacketCpy = (RadioPacket *)packetCpy;
-        for (auto offset : {-7, 7})
-        {
-            memcpy(packetCpy, packet, sizeof(RadioPacket));
-            scramble(packetCpy, epochSeconds + offset);
-            if (radioPacketCpy->messageType == 0x02)
-            {
-                // printf("Found time:%6ld LSB %d offset %d\n", CoreUtils::timeMs32(), radioPacketCpy->flarmTimestampLSB, offset);
-                memcpy(packet, packetCpy, sizeof(RadioPacket));
-                break;
-            }
-        }
-    }
-#endif
-
-    // printf("Rx: ");
-    // CoreUtils::printBufferHex(etl::span<uint8_t>(reinterpret_cast<uint8_t*>(packet), sizeof(RadioPacket)));
-    // printf("\n");
-
-    // If it's not 0x02, it's not position data
-    if (radioPacket->messageType != 0x02)
-    {
-        statistics.messageTypeNot0x02++;
-        return -2;
-    }
-
-    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
-
-    // Calculate rounded latitude
-    int32_t ownLatInt = static_cast<int32_t>(ownship.lat * 1e7);
-    int32_t round_lat = (ownLatInt + (ownLatInt < 0 ? -26 : 26)) / 52;
-
-    // Adjust latitude
-    int32_t ilat = (radioPacket->latitude - round_lat) & 0x0FFFFF;
-    if (ilat >= 0x080000)
-    {
-        ilat -= 0x100000;
-    }
-    auto aircraftLat = static_cast<float>((ilat + round_lat) * 52) * 1e-7f;
-
-    // Calculate rounded longitude
-    int lonDiv = lonDivisor(aircraftLat);
-    int32_t ownLonInt = static_cast<int32_t>(ownship.lon * 1e7);
-    int32_t round_lon = (ownLonInt + (ownLonInt < 0 ? -(lonDiv >> 1) : (lonDiv >> 1))) / lonDiv;
-
-    // Adjust longitude
-    int32_t ilon = (radioPacket->longitude - round_lon) & 0x0FFFFF;
-    if (ilon >= 0x080000)
-    {
-        ilon -= 0x0100000;
-    }
-    auto aircraftLon = static_cast<float>((ilon + round_lon) * lonDiv) * 1e-7f;
-
-    auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, aircraftLat, aircraftLon);
-
-    // printf("Distance from own: %ldm epoch:%ld flarmLSB:%d ownLSB:%d lat:%2f, long:%2f\n", fromOwn.distance, epochSeconds, radioPacket->flarmTimestampLSB, (uint8_t)(epochSeconds & 0x0F), aircraftLat, aircraftLon);
-    if (fromOwn.distance > distanceIgnore)
-    {
-        statistics.outOfDistance++;
-        return -1;
-    }
-
-    float groundSpeed = descale<8, 2, false>(radioPacket->groundSpeed) / 10.0f;
-
-    //    printf("FLARM: time:%d address:%06X latitude:%0.6f longitude:%0.6f altitude:%d climbRate:%0.2f speed:%0.2f heading:%d turnRate:%0.2f\n",
-    //       (uint16_t)(CoreUtils::msSinceEpoch() % 1000), radioPacket->aircraftID, aircraftLat, aircraftLon, descale<12, 1, false>(radioPacket->altitude) - 1000, descale<6, 2, true>(radioPacket->verticalSpeed) / 10.0f, groundSpeed, static_cast<int16_t>(radioPacket->course >> 1), descale<6, 2, true>(radioPacket->turnRate) / 20.0f);
-
-    statistics.receivedAircraftPositions++;
-    GATAS::AircraftPositionMsg aircraftPosition{
-        GATAS::AircraftPositionInfo{
-            CoreUtils::timeUs32(),
-            "",
-            radioPacket->aircraftID,
-            addressTypeFromFlarm(radioPacket->addressType),
-            GATAS::DataSource::FLARM,
-            static_cast<GATAS::AircraftCategory>(radioPacket->aircraftType),
-            radioPacket->stealth,
-            radioPacket->noTrack,
-            groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN,
-            aircraftLat,
-            aircraftLon,
-            descale<12, 1, false>(radioPacket->altitude) - 1000,
-            descale<6, 2, true>(radioPacket->verticalSpeed) / 10.0f,
-            groundSpeed,
-            static_cast<int16_t>(radioPacket->course >> 1),
-            descale<6, 2, true>(radioPacket->turnRate) / 20.0f,
-            fromOwn.distance,
-            fromOwn.relNorth,
-            fromOwn.relEast,
-            fromOwn.bearing},
-        rssiDbm};
-
-    getBus().receive(aircraftPosition);
-    return 0;
-}
-
 void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
     if (msg.dataSource == GATAS::DataSource::FLARM)
     {
-        uint32_t tempFrame[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
-        etl::copy_n(msg.frame, GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH, tempFrame);
+        auto epochSeconds = CoreUtils::secondsSinceEpoch();
 
-        // Validate checksum
-        RadioPacket *packet = (RadioPacket *)tempFrame;
-
-        uint16_t calculatedChecksum = flarmCalculateChecksum(reinterpret_cast<const uint8_t *>(tempFrame), RadioPacket::packetLength);
-        if (calculatedChecksum != swapBytes16(packet->checksum))
-        {
+        Flarm2024Packet packet;
+        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+        auto result = packet.loadFromBuffer(epochSeconds, {msg.frame, Flarm2024Packet::TOTAL_LENGTH_WORDS});
+        if (result == -1) {
             statistics.crcErr++;
             return;
+        } else if (result != 0) {
+            // LSB seconds error not matched, or any other
+            return;
+        }
+        addReceiveStat(msg.frequency);
+
+        if ( packet.messageType() != 0x02) {
+            statistics.messageTypeNot0x02++;
+            return;
         }
 
-        // Ignore ownship address in the case you have flarm equiment and you still want to enable the protocol
-        if (packet->aircraftID == gaTasConfiguration.address)
+        if (packet.aircraftId() == gaTasConfiguration.address)
         {
             return;
         }
 
-        addReceiveStat(msg.frequency);
-        parseFrame(tempFrame, msg.epochSeconds, msg.rssidBm);
+        auto otherPos = packet.getPosition(ownship.lat, ownship.lon);
+        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, otherPos.latitude, otherPos.longitude);
+
+        if (fromOwn.distance > distanceIgnore)
+        {
+            statistics.outOfDistance++;
+            return;
+        }
+
+        statistics.receivedAircraftPositions++;
+        GATAS::AircraftPositionMsg aircraftPosition{
+            GATAS::AircraftPositionInfo{
+                CoreUtils::timeUs32(),
+                "",
+                packet.aircraftId(),
+                addressTypeFromFlarm(packet.addressType()),
+                GATAS::DataSource::FLARM,
+                static_cast<GATAS::AircraftCategory>(packet.aircraftType()),
+                packet.stealth(),
+                packet.noTrack(),
+                packet.groundSpeed() > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN,
+                otherPos.latitude,
+                otherPos.longitude,
+                packet.altitude(),
+                packet.verticalSpeed(),
+                packet.groundSpeed(),
+                (int16_t)(packet.groundTrack() + 0.5f),
+                packet.turnRate(),
+                fromOwn.distance,
+                fromOwn.relNorth,
+                fromOwn.relEast,
+                fromOwn.bearing},
+            msg.rssidBm};
+
+        statistics.transmittedAircraftPositions++;
+        getBus().receive(aircraftPosition);
     }
 }
 
@@ -301,65 +143,31 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
     if (msg.radioParameters.config->dataSource == GATAS::DataSource::FLARM)
     {
         Flarm2024Packet packet;
-
-        uint8_t addressType = static_cast<uint8_t>(gaTasConfiguration.addressType);
-
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
-
-
         auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 
+        packet.aircraftId(gaTasConfiguration.address);
+        packet.messageType(0x02);
+        packet.addressType(static_cast<uint8_t>(gaTasConfiguration.addressType));
+        packet.stealth(gaTasConfiguration.stealth);
+        packet.noTrack(gaTasConfiguration.noTrack);
+        packet.epochSeconds(epochSeconds);
+        packet.aircraftType( static_cast<uint8_t>(gaTasConfiguration.category));
+        packet.altitude(ownship.altitudeHAE);
+        packet.setPosition(ownship.lat, ownship.lon);
+        packet.turnRate(ownship.hTurnRate);
+        packet.groundSpeed(ownship.groundSpeed);
+        packet.verticalSpeed(ownship.verticalSpeed);
+        packet.groundTrack(ownship.course);
+        packet.movementStatus(ownship.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1);
 
-        packet.aicraftId(gaTasConfiguration.address);
-        
-        Flarm2024::RadioPacket radioPacket =
-            {
-                .aircraftID = gaTasConfiguration.address, // ownshipPosition.address,
-                .messageType = 0x02,
-                .addressType = addressType <= 2 ? addressType : uint8_t(0),
-                .reserved1 = 0,
-                .stealth = gaTasConfiguration.stealth,
-                .noTrack = gaTasConfiguration.noTrack,
-                .reserved3 = 0b11,
-                .reserved4 = 0b11,
-                .reserved5 = 0x00,
-                .flarmTimestampLSB = static_cast<uint8_t>(epochSeconds & 0x0F),
-                .aircraftType = static_cast<uint8_t>(gaTasConfiguration.category),
-                .reserved7 = 0x00,
-                .altitude = static_cast<uint16_t>(enscale<12, 1, false>(etl::max(static_cast<int16_t>(0), static_cast<int16_t>(ownship.altitudeHAE + 1000)))),
-                .latitude = latitude,
-                .longitude = longitude,
-                .turnRate = static_cast<uint16_t>(enscale<6, 2, true>(ownship.hTurnRate * 20)),
-                .groundSpeed = static_cast<uint16_t>(enscale<8, 2, false>(ownship.groundSpeed * 10)),
-                .verticalSpeed = static_cast<uint16_t>(enscale<6, 2, true>(ownship.verticalSpeed * 10)),
-                .course = static_cast<uint16_t>(ownship.course * 2),
-                .movementStatus = static_cast<uint8_t>(ownship.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1), // TODO: Add support for Circling
-                .gnssHorizontalAccuracy = 0b010010,                                                                           // enscale<3, 2, false>((gpsStats.hDop*2+5)/10),
-                .gnssVerticalAccuracy = 0b01010,                                                                              // enscale<2, 3, false>((gpsStats.pDop*2+5)/10),
-                .unknownData = 11,
-                .reserved8 = 0,
-                .checksum = 0}; // Will get calculated later.
+        Radio::TxPacket txPacket;
+        txPacket.radioParameters = msg.radioParameters;
+        txPacket.length = Flarm2024Packet::TOTAL_LENGTH;
 
-        uint32_t data[Flarm2024::RadioPacket::totalLengthWCRC / 4 + 1];
-        std::memcpy(data, &radioPacket, sizeof(radioPacket));
-
-#if !defined(UNIT_TESTING)
-        scramble(data, epochSeconds);
-        bteaEncode(data + 2);
-        // btea2(data, true);
-#endif
-
-        data[6] = swapBytes16(flarmCalculateChecksum(reinterpret_cast<uint8_t *>(data), RadioPacket::packetLength));
-        statistics.transmittedAircraftPositions++;
-
-        printf(" epoch: %ld ", epochSeconds);
-        CoreUtils::printBufferHex<uint32_t>(etl::span{data, Flarm2024::RadioPacket::totalLengthWCRC / 4 + 1});
-        printf("\n");
+        packet.writeToBuffer(epochSeconds, txPacket.data32);
         getBus().receive(GATAS::RadioTxFrameMsg{
-            Radio::TxPacket{
-                msg.radioParameters,
-                RadioPacket::totalLengthWCRC,
-                data},
+            txPacket,
             msg.radioNo});
     }
 }

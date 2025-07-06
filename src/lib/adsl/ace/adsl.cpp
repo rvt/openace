@@ -224,7 +224,7 @@ ADSL_Packet::AircraftCategory ADSL::mapAircraftCategory(GATAS::AircraftCategory 
 void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
 
-    if (msg.radioParameters.config.dataSource == GATAS::DataSource::ADSL)
+    if (msg.radioParameters.config->dataSource == GATAS::DataSource::ADSL)
     {
         auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 

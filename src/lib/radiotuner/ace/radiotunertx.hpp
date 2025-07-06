@@ -8,7 +8,7 @@
 #include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
 
-#include "countryregulations.hpp"
+#include "countryregulations_v2.hpp"
 
 #include "etl/message_bus.h"
 #include "etl/list.h"
@@ -60,8 +60,8 @@ private:
 
         void getData(etl::string_stream &stream) const
         {
-            stream << ",\"timerMissed_" << dataSourceToString(source) << "\":" << statistics.timerMissed;
-            stream << ",\"txRequests_" << dataSourceToString(source) << "\":" << statistics.txRequests;
+            stream << ",\"timerMissed_" << toString(source) << "\":" << statistics.timerMissed;
+            stream << ",\"txRequests_" << toString(source) << "\":" << statistics.txRequests;
         }
     };
 

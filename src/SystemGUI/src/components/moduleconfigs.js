@@ -440,7 +440,7 @@ class GDLoverUDPConfig extends ModuleConfig {
           Up to 4 different ports can be configured
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
-            <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-right text-left mh-200 overflow-auto">
+            <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
               Each device connected to GaTas will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to four
               different ports can be configured to accommodate devices that listen on other ports. Default port is <b>4000</b>
             </p>
@@ -461,7 +461,7 @@ class GDLoverUDPConfig extends ModuleConfig {
           Up to 4 different IP's can be configured
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
-            <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-right text-left mh-200 overflow-auto">
+            <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
               In addition to ports, up to 4 separate IP addresses can be configured. This is usually only useful if your system connects to an access point.
               Default port is <b>4000</b>
             </p>
@@ -623,7 +623,7 @@ class SX1262 extends ModuleConfig {
             Offset(Hz)
             <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
               ${html.raw(icon.help)}
-              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-right text-left mh-200 overflow-auto">
+              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
                 Add's an additional offset to the frequency for the protocol in this device. To calibrate you can use an existing (correctly calibrated) OGN
                 receiver and use it's frequency offset. When shown as a negative value,use a positive value in the below input field to offset the frequency.
               </p> </label
@@ -633,7 +633,7 @@ class SX1262 extends ModuleConfig {
           <label for="txEnabled">
             <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
               TX Enabled ${html.raw(icon.help)}
-              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-right text-left mh-200 overflow-auto">
+              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
                 Allow to enable or disable complete transmission of any frames from the radio. Normally you want to have this enabled so others can see you.
               </p> </label
             >:

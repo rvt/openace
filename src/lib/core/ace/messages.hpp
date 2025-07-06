@@ -176,7 +176,6 @@ namespace GATAS
 
     struct RadioRxGfskMsg : public etl::message<16>
     {
-        // TODO: CHange to ETL::array
         uint32_t frame[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
         uint32_t err[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
         uint32_t epochSeconds;
@@ -186,14 +185,9 @@ namespace GATAS
         GATAS::DataSource dataSource;
         RadioRxGfskMsg(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
         {
-            // TODO: Decide if we need to do this
-            memset(frame, 0, sizeof(frame));
-            memset(err, 0, sizeof(frame));
         };
-        RadioRxGfskMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::NONE)
+        RadioRxGfskMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::ADSL)
         {
-            memset(frame, 0, sizeof(frame));
-            memset(err, 0, sizeof(frame));
         };
     };
 
@@ -206,7 +200,7 @@ namespace GATAS
         GATAS::DataSource dataSource;
         RadioRxLoraMsg(uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_) {
                                                                                                                       };
-        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::NONE) {
+        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::ADSL) {
                            };
     };
 

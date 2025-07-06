@@ -130,13 +130,14 @@ def generateEntry(filePath, fileName):
 def writeCArray(output, fileData, fileName):
     formattedName = getFormattedName(fileName)
     output.write(f'const unsigned char __in_flash() data_{formattedName}[] = {{\n\t')
-        
-    for i, byte in enumerate(fileData):
-        output.write(f"0x{byte:02x}, ")
-        if (i + 1) % 10 == 0:
-            output.write("\n\t")
-    
-    output.write("\n};\n\n")
+
+    for i in range(0, len(fileData), 10):
+        chunk = fileData[i:i+10]
+        line = ', '.join(f"0x{byte:02x}" for byte in chunk)
+        output.write(line)
+        output.write(",\n\t" if i + 10 < len(fileData) else "\n")
+
+    output.write("};\n\n")
 
 def writeFileStructs(output, directory, files):
     numFiles = len(files)

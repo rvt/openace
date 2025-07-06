@@ -5,9 +5,8 @@ set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
     ace/radiotunerrx_v2.cpp
-    ace/radiotunertx.cpp
-    ace/countryregulations.cpp
-    ace/countryregulations2.cpp
+    ace/radiotunertx_v2.cpp
+    ace/countryregulations_v2.cpp
     ace/rxdataframequeue.cpp
 )
 

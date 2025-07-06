@@ -56,7 +56,6 @@ namespace GATAS
 
     constexpr Mapping<DataSource, const char *> dataSourceMappings1[] =
     {
-        {DataSource::NONE, "-"},
         {DataSource::FLARM, "FLARM"},
         {DataSource::ADSL, "ADSL"},
         {DataSource::FANET, "FANET"},
@@ -66,7 +65,6 @@ namespace GATAS
     };
     constexpr Mapping<DataSource, const char *> dataSourceMappings2[] =
     {
-        {DataSource::NONE, "-"},
         {DataSource::FLARM, "F"},
         {DataSource::ADSL, "L"},
         {DataSource::FANET, "N"},
@@ -77,15 +75,15 @@ namespace GATAS
 
     const char *dataSourceIntToString(uint8_t ds)
     {
-        return dataSourceToString(static_cast<DataSource>(ds));
+        return toString(static_cast<DataSource>(ds));
     }
-    const char *dataSourceToString(DataSource ds)
+    const char *toString(DataSource ds)
     {
         return enumToString(dataSourceMappings1, ds, "UNKNOWN");
     }
     DataSource stringToDataSource(const char *str)
     {
-        return stringToEnum(dataSourceMappings1, str, DataSource::NONE);
+        return stringToEnum(dataSourceMappings1, str, DataSource::UNKNOWN);
     }
 
     const char *dataSourceToChar(DataSource ds)

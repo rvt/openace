@@ -41,7 +41,6 @@ endif()
 set(SOURCES_IDIOMATIC_EXAMPLES 
   # Tests
   flarm2024_test.cpp 
-  flarm_utils_test.cpp
 )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
@@ -55,7 +54,7 @@ set(ACE_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/encryption.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/ognconv.cpp
     ../ace/flarm2024.cpp
-    ../ace/flarm_utils.cpp)
+)
 
 foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
   add_executable(${name} ${ACE_SOURCE_FILES} ${name}.cpp)
@@ -76,7 +75,7 @@ foreach( name ${ALL_EXAMPLE_TARGETS} )
     ${name}  PRIVATE
     Catch2WithMain 
     etl
-    flarm::flarm
+    flarm
     )
   if(NOT APPLE)
     target_link_libraries(${name} PRIVATE atomic)

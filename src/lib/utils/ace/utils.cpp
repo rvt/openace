@@ -27,22 +27,3 @@ bool add_pio_program(const pio_program_t *program, PIO *pio_hw, int *sm, uint *o
 #endif
     return true;
 }
-
-
-/**
- * Dump a buffer as a hexidecimal string for terminal output
-*/
-void print_buffer(uint8_t *buffer, uint8_t length)
-{
-    printf("Length(%d) ", length);
-    for (uint8_t i = 0; i < length; i++)
-    {
-        printf("0x%02X", buffer[i]);
-        if (i < length-1)
-        {
-            printf(", ");
-        }
-    }
-}
-
-

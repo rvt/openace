@@ -3,7 +3,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
-#include "radiotunertx.hpp"
+#include "countryregulations_v2.hpp"
 
 #include "etl/algorithm.h"
 #include "etl/pseudo_moving_average.h"
@@ -25,10 +25,10 @@ GATAS::PostConstruct RadioTunerRx::postConstruct()
         numRadios++;
     }
 
-    radioTasks.clear();
+    radioCtxList.clear();
     for (auto radioNo = 0; radioNo < numRadios; radioNo++)
     {
-        radioTasks.emplace_back(this, radioNo);
+        radioCtxList.emplace_back(this, radioNo);
     }
 
     if (xTaskCreate(radioTuneTask, RadioTunerRx::NAME.cbegin(), configMINIMAL_STACK_SIZE + 64, this, tskIDLE_PRIORITY + 2, &taskHandle) != pdPASS)
@@ -54,7 +54,7 @@ void RadioTunerRx::stop()
 {
     getBus().unsubscribe(*this);
 
-    radioTasks.clear();
+    radioCtxList.clear();
 };
 
 void RadioTunerRx::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -62,11 +62,11 @@ void RadioTunerRx::getData(etl::string_stream &stream, const etl::string_view pa
     (void)path;
     stream << "{";
     stream << "\"_dummy\": 0";
-    for (auto it = radioTasks.cbegin(); it != radioTasks.cend(); ++it)
+    for (auto it = radioCtxList.cbegin(); it != radioCtxList.cend(); ++it)
     {
         it->getData(stream);
     }
-    stream << ",\"zone\":\"" << CountryRegulations2::zoneToString(currentZone.value()) << "\"";
+    stream << ",\"zone\":\"" << CountryRegulations::zoneToString(currentZone.value()) << "\"";
     stream << "}\n";
 }
 
@@ -95,11 +95,12 @@ void RadioTunerRx::radioTuneTask(void *arg)
         if (notifyValue & TaskState::BLOCK)
         {
             taskBlock = true;
-            // Disable the ranceivers during reconfiguration
-            for (auto &ref : radioTunerRx->radioTasks)
+            // Disable the tranceivers during reconfiguration
+            for (auto &ref : radioTunerRx->radioCtxList)
             {
                 radioTunerRx->getBus().receive(GATAS::RadioControlMsg{
-                    Radio::RadioParameters{CountryRegulations2::timings2[0].radioConfig, CountryRegulations2::Europe.baseFrequency, 0}, ref.radioNo});
+                    Radio::RadioParameters{&CountryRegulations::protocolTimimgs[0].radioConfig, CountryRegulations::Europe.baseFrequency, 0, 8},
+                    ref.radioNo});
             }
             radioTunerRx->eventSync.set(BIT_EVENT_DONE);
         }
@@ -118,8 +119,8 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
                 // Add 50ms to the current time to ensure we are wel within the current slot,
                 // this avoids timings issues where CoreUtils::msInSecond()  might report a few ms to eurly including the -5ms
-                auto currentSlot = ((CoreUtils::msInSecond() + 50) / 200) % 5;
-                for (auto &ref : radioTunerRx->radioTasks)
+                auto currentSlot = ((CoreUtils::msInSecond() + 50) / CountryRegulations::SLOT_MS) % 5;
+                for (auto &ref : radioTunerRx->radioCtxList)
                 {
                     // First prioritize the datasources, this will ensure that the datasources are set correctly, but could be empty if teh zoen changed
                     if (performPriority)
@@ -136,17 +137,18 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
                     ref.protocolTimingIdx = (ref.protocolTimingIdx + 1) % ref.protocolTimings.size();
                     auto const timeSlot = ref.protocolTimings[ref.protocolTimingIdx];
-                    etl::pair<uint8_t, CountryRegulations2::Channel> current = etl::make_pair(timeSlot->ptsId, timeSlot->timing[currentSlot]);
+                    etl::pair<uint8_t, CountryRegulations::Channel> current = etl::make_pair(timeSlot->ptsId, timeSlot->timing[currentSlot]);
 
-                    if (current != ref.lastConfig && timeSlot->timing[currentSlot] != CountryRegulations2::Channel::NOP)
+                    if (current != ref.lastConfig && timeSlot->timing[currentSlot] != CountryRegulations::Channel::NOP)
                     {
                         // Calculate delay to next slot
-                        auto frequency = CountryRegulations2::getFrequency(timeSlot->frequency, timeSlot->timing[currentSlot]);
+                        auto frequency = CountryRegulations::getFrequency(timeSlot->frequency, timeSlot->timing[currentSlot]);
                         radioTunerRx->getBus().receive(GATAS::RadioControlMsg{
-                            Radio::RadioParameters{timeSlot->radioConfig, frequency, timeSlot->frequency.powerdBm}, ref.radioNo});
+                            Radio::RadioParameters(&timeSlot->radioConfig, frequency, timeSlot->frequency.powerdBm),
+                            ref.radioNo});
 
                         ref.statistics.taskActivity++;
-                        //                        printf("RadioTunerRx: %d, protocol: %s slot %d, ms:%d fr:%ld\n", ref.radioNo, GATAS::dataSourceToString(timeSlot->radioConfig.dataSource), currentSlot, CoreUtils::msInSecond(), frequency);
+                        //                        printf("RadioTunerRx: %d, protocol: %s slot %d, ms:%d fr:%ld\n", ref.radioNo, GATAS::toString(timeSlot->radioConfig.dataSource), currentSlot, CoreUtils::msInSecond(), frequency);
 
                         ref.lastConfig = current;
                     }
@@ -154,7 +156,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
                 performPriority = false;
 
                 // Calculate delay to next slot
-                nextDelay = CoreUtils::msDelayToReference((currentSlot + 1) * 200 - 5, CoreUtils::msInSecond()); // Takes about 5ms to set, so we set the next delay to 5ms before the next slot starts
+                nextDelay = CoreUtils::msDelayToReference((currentSlot + 1) * CountryRegulations::SLOT_MS - 5, CoreUtils::msInSecond()); // Takes about 5ms to set, so we set the next delay to 5ms before the next slot starts
             }
         }
     }
@@ -170,7 +172,7 @@ void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
     if (static_cast<uint8_t>(currentZone.value()) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0) || CoreUtils::isUsReached(lastTime))
     {
         lastTime = CoreUtils::timeUs32() + UPDATE_ZONE_REGULATION_EVERY;
-        currentZone.set(CountryRegulations2::zone(msg.position.lat, msg.position.lon));
+        currentZone.set(CountryRegulations::zone(msg.position.lat, msg.position.lon));
     }
 }
 
@@ -200,19 +202,19 @@ void RadioTunerRx::assignDataSources(const etl::ivector<GATAS::DataSource> &data
 
     // Expetced is 200ms per tick, we wait 10 times as long, much much longer 
     // We 'should' never end up here??
-    if (!eventSync.wait(BIT_EVENT_DONE, pdMS_TO_TICKS(200 * 20))) 
+    if (!eventSync.wait(BIT_EVENT_DONE, pdMS_TO_TICKS(CountryRegulations::SLOT_MS * 20))) 
     {
         return;
     }
 
-    const size_t itemsPerRadio = dataSources.size() / radioTasks.size();
+    const size_t itemsPerRadio = dataSources.size() / radioCtxList.size();
     auto it = dataSources.cbegin();
-    for (uint8_t i = 0; i < radioTasks.size(); ++i)
+    for (uint8_t i = 0; i < radioCtxList.size(); ++i)
     {
-        auto &taskCtx = radioTasks[i];
+        auto &taskCtx = radioCtxList[i];
         taskCtx.dataSources.clear();
 
-        if (i == radioTasks.size() - 1)
+        if (i == radioCtxList.size() - 1)
         {
             taskCtx.dataSources.assign(it, dataSources.cend()); // take remaining
         }

@@ -10,7 +10,7 @@ using TickType_t = uint32_t;
 
 #define pdTRUE  1
 #define pdFALSE 0
-#define portMAX_DELAY 0xFFFFFFFF
+// #define portMAX_DELAY 0xFFFFFFFF
 
 // Mock handles
 inline EventGroupHandle_t lastCreatedEventGroup = reinterpret_cast<void*>(0x12345678);

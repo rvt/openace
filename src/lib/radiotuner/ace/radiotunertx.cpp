@@ -60,7 +60,7 @@ void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "\"protocols\":[";
     for (auto it = txTasks.cbegin(); it != txTasks.cend(); ++it)
     {
-        stream << "\"" << dataSourceToString(it->source) << "\"";
+        stream << "\"" << toString(it->source) << "\"";
         if (std::next(it) != txTasks.cend())
         {
             stream << ",";
@@ -118,7 +118,7 @@ void RadioTunerTx::radioTxTask(void *arg)
                 uint32_t frequency = CountryRegulations::determineFrequency(protocolTimeSlot);
                 auto msInSecond = CoreUtils::msInSecond();
 
-//                printf("RadioTunerTX: %d %s currentMs:%d sinceLast:%d\n",taskCtx->radioNo, GATAS::dataSourceToString(protocolTimeSlot.radioConfig.dataSource), msInSecond, (uint16_t)(CoreUtils::msSinceEpoch()-lastTx));
+//                printf("RadioTunerTX: %d %s currentMs:%d sinceLast:%d\n",taskCtx->radioNo, GATAS::toString(protocolTimeSlot.radioConfig.dataSource), msInSecond, (uint16_t)(CoreUtils::msSinceEpoch()-lastTx));
 //                lastTx = CoreUtils::msSinceEpoch();
 
                 taskCtx->controller->getBus().receive(

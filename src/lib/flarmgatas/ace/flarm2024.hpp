@@ -18,6 +18,7 @@
 /* Vendor. */
 #include "etl/message_bus.h"
 #include "etl/string.h"
+#include "etl/bitset.h"
 
 /* GATAS. */
 #include "ace/constants.hpp"
@@ -100,12 +101,6 @@ private:
     */
     void addReceiveStat(uint32_t frequency);
 
-    /**
-     * Parse a flarm frame and send it
-     *
-     * Based on https://github.com/creaktive/flare/blob/master/flarm_decode.c
-    */
-    int8_t parseFrame(uint32_t *flarm_pkt, uint32_t epochSeconds, int16_t rssiDbm);
 
 };
 

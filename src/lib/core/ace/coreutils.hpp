@@ -3,6 +3,8 @@
 #include "constants.hpp"
 #include <stdint.h>
 #include <time.h>
+#include <type_traits>
+#include <inttypes.h>
 
 #include "pico/time.h"
 
@@ -16,10 +18,62 @@
 class CoreUtils
 {
     // Putting these in scratch mem does work __scratch_y("GaTasMem")
-    inline static uint64_t offsetTimeToAbsolute = 0;
-    inline static uint32_t timeUs32PpsOffset = 0; // monotonic timestamp at which PPS happened
+    inline static uint64_t offsetTimeToAbsolute = 0; // Offset in ms
+    inline static uint32_t timeUs32PpsOffset = 0;    // monotonic timestamp at which PPS happened
 
 public:
+    /**
+     * Dump a buffer as a hexidecimal string for terminal output
+     */
+    static void printBuffer(etl::span<uint8_t> buffer)
+    {
+        printf("Length(%d) ", static_cast<int>(buffer.size()));
+        for (size_t i = 0; i < buffer.size(); ++i)
+        {
+            printf("0x%02X", buffer[i]);
+            if (i + 1 < buffer.size())
+            {
+                printf(", ");
+            }
+        }
+    }
+
+    template <typename T>
+    static void printBufferHex(etl::span<T> buffer)
+    {
+        static_assert(std::is_integral<T>::value, "T must be an integral type");
+
+        printf("Length(%d) ", static_cast<int>(buffer.size()));
+
+        for (size_t i = 0; i < buffer.size(); ++i)
+        {
+            if constexpr (sizeof(T) == 1)
+                printf("0x%02" PRIX8, static_cast<uint8_t>(buffer[i]));
+            else if constexpr (sizeof(T) == 2)
+                printf("0x%04" PRIX16, static_cast<uint16_t>(buffer[i]));
+            else if constexpr (sizeof(T) == 4)
+                printf("0x%08" PRIX32, static_cast<uint32_t>(buffer[i]));
+            else
+                printf("0x%X", static_cast<unsigned int>(buffer[i])); // fallback
+
+            if (i + 1 < buffer.size())
+                printf(", ");
+        }
+    }
+
+    // static void printBufferHex(etl::span<uint32_t> buffer)
+    // {
+    //     printf("Length(%d) ", static_cast<int>(buffer.size()));
+    //     for (size_t i = 0; i < buffer.size(); ++i)
+    //     {
+    //         printf("0x%08X", buffer[i]);
+    //         if (i + 1 < buffer.size())
+    //         {
+    //             printf(", ");
+    //         }
+    //     }
+    // }
+
     /**
      * Convert and timestamp to an uint32_t which is synced with GPS time such that at PPS the ms should reppresents (somewhere close) to a ms
      * eg: 45'453'010 = represents 10ms after PPS
@@ -508,3 +562,28 @@ public:
         return defaultValue;
     }
 };
+
+static inline uint8_t reverseBits8(uint8_t data)
+{
+    return (data ^ (data & 0xff)) | ((data & 0xf) << 4) | ((data & 0xf0) >> 4);
+    ;
+}
+static inline uint16_t reverseBits16(uint16_t n)
+{
+    return (reverseBits8(n & 0xFF) << 8) | reverseBits8(n >> 8);
+}
+static inline uint32_t reverseBits32(uint32_t n)
+{
+    return (static_cast<uint32_t>(reverseBits16(n & 0xFFFF)) << 16) |
+           reverseBits16(n >> 16);
+}
+
+template <typename T>
+static T reverseBits(T value);
+
+template <>
+inline uint8_t reverseBits<uint8_t>(uint8_t v) { return reverseBits8(v); }
+template <>
+inline uint16_t reverseBits<uint16_t>(uint16_t v) { return reverseBits16(v); }
+template <>
+inline uint32_t reverseBits<uint32_t>(uint32_t v) { return reverseBits32(v); }
