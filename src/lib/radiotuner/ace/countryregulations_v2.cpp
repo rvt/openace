@@ -62,11 +62,10 @@ uint32_t CountryRegulations::getFrequency(const Frequency &frequency, CountryReg
 
 uint32_t CountryRegulations::nextRandomTime(const CountryRegulations::ProtocolTimeSlot& pts)
 {
-    constexpr auto  variations = etl::make_array<int16_t>(0, -200, 200);
-
     constexpr uint32_t MS_IN_SECOND = 1000;
+    constexpr auto  variations = etl::make_array<int16_t>(0, -200, 200); // Variations in case with are in an area where Channel::NOP
 
-    const auto now = CoreUtils::timeMs32();
+    const auto now = CoreUtils::timeMs32();  // Time in ms from power up but alligned with PPS from the GPS
     const auto maxRandTime = pts.txMaxTime - pts.txMinTime;
     const auto baseOffset = ((get_rand_64() >> 4) % maxRandTime) + pts.txMinTime; // >>4 is used, becaus there was a bug where the lowest 4 bits where not truly random
 
