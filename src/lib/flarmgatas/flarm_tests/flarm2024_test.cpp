@@ -45,7 +45,7 @@ public:
 GATAS::ThreadSafeBus<50> bus;
 MockConfig mockConfig{bus};
 Flarm2024 flarm{bus, mockConfig};
-auto protocol = Radio::ProtocolConfig{1, GATAS::Modulation::GFSK, GATAS::DataSource::FLARM, 24 + 2, 1*8, 0, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
+auto protocol = Radio::ProtocolConfig{1, GATAS::Modulation::GFSK, GATAS::DataSource::FLARM, 24 + 2, 1*8, 7, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
 
 TEST_CASE("RadioPacket size", "[single-file]")
 {
@@ -90,11 +90,9 @@ TEST_CASE("bteaAndScramble test for 100 seconds", "[single-file]")
 
         flarm.bteaDecode(work + 2);
         flarm.scramble(work, epoch);
-        // printf("%4d %4d %8d %2d \n", i, memcmp(work, org, 26), t >> 4, (t & 0x0f));
         REQUIRE(memcmp(work, org, sizeof(org)) == 0);
     }
 
-    // print_buffer_hex_uint32(work, 7);
     REQUIRE((work[6] & 0xFFFF0000) == 0xabcd0000);
 }
 

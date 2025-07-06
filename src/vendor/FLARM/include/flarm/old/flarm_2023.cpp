@@ -141,7 +141,6 @@ void Flarm::addReceiveStat(uint32_t frequency)
 
 int8_t Flarm::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rssiDbm)
 {
-    // dumpBuffer(msg.frame, msg.length);
     // Flarm messages are send well after PPS (400..1200ms after) so it would rarly
     // happen we are not using the correct TS and thus decryption failures
 #if !defined(UNIT_TESTING)

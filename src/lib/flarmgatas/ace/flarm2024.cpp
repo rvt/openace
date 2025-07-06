@@ -1,8 +1,7 @@
 #include <stdio.h>
 
-#include <math.h>
 #include "flarm2024.hpp"
-#include "flarm_utils.hpp"
+#include <cstring>
 #include "ace/manchester.hpp"
 
 inline uint32_t MX(uint32_t z, uint32_t y, uint32_t sum, uint8_t e, uint8_t p, const etl::span<const uint32_t> &keys)
@@ -57,7 +56,7 @@ void Flarm2024::scramble(uint32_t *data, uint32_t timestamp) const
     constexpr uint8_t byteLength = numKeys * sizeof(uint32_t);
 
     uint32_t wkeys[] = {data[0], data[1], timestamp >> 4, SCRAMBLE};
-    uint8_t *bkeys = reinterpret_cast<uint8_t *>(&wkeys);
+    uint8_t *bkeys = reinterpret_cast<uint8_t *>(wkeys);
 
     uint16_t y, x;
     uint8_t z = bkeys[byteLength - 1];
@@ -144,7 +143,6 @@ void Flarm2024::addReceiveStat(uint32_t frequency)
 
 int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rssiDbm)
 {
-    // dumpBuffer(msg.frame, msg.length);
     // Flarm messages are send well after PPS (400..1200ms after) so it would rarly
     // happen we are not using the correct TS and thus decryption failures
     RadioPacket *radioPacket = (RadioPacket *)packet;
@@ -175,6 +173,10 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
         }
     }
 #endif
+
+    // printf("Rx: ");
+    // CoreUtils::printBufferHex(etl::span<uint8_t>(reinterpret_cast<uint8_t*>(packet), sizeof(RadioPacket)));
+    // printf("\n");
 
     // If it's not 0x02, it's not position data
     if (radioPacket->messageType != 0x02)
@@ -212,7 +214,7 @@ int8_t Flarm2024::parseFrame(uint32_t *packet, uint32_t epochSeconds, int16_t rs
 
     auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, aircraftLat, aircraftLon);
 
-    // printf("Distance from own: %ldm epoch:%ld flarmLSB:%d ownLSB:%d lat%2f, long%2f\n", fromOwn.distance, epochSeconds, radioPacket->flarmTimestampLSB, (uint8_t)(epochSeconds & 0x0F), aircraftLat, aircraftLon);
+    // printf("Distance from own: %ldm epoch:%ld flarmLSB:%d ownLSB:%d lat:%2f, long:%2f\n", fromOwn.distance, epochSeconds, radioPacket->flarmTimestampLSB, (uint8_t)(epochSeconds & 0x0F), aircraftLat, aircraftLon);
     if (fromOwn.distance > distanceIgnore)
     {
         statistics.outOfDistance++;
@@ -261,7 +263,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
         etl::copy_n(msg.frame, GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH, tempFrame);
 
         // Validate checksum
-        RadioPacket *packet = (RadioPacket *)msg.frame;
+        RadioPacket *packet = (RadioPacket *)tempFrame;
 
         uint16_t calculatedChecksum = flarmCalculateChecksum(reinterpret_cast<const uint8_t *>(tempFrame), RadioPacket::packetLength);
         if (calculatedChecksum != swapBytes16(packet->checksum))
@@ -270,7 +272,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
             return;
         }
 
-        // Ignore ownship address
+        // Ignore ownship address in the case you have flarm equiment and you still want to enable the protocol
         if (packet->aircraftID == gaTasConfiguration.address)
         {
             return;
@@ -296,34 +298,20 @@ void Flarm2024::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 
 void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config.dataSource == GATAS::DataSource::FLARM)
+    if (msg.radioParameters.config->dataSource == GATAS::DataSource::FLARM)
     {
+        Flarm2024Packet packet;
 
         uint8_t addressType = static_cast<uint8_t>(gaTasConfiguration.addressType);
 
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
+
+
         auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 
-        uint32_t latitude, longitude;
-        if (ownship.lat < 0.f)
-        {
-            latitude = (uint32_t)(-(((int32_t)(-ownship.lat * 1e7) + 26.f) / 52.f)) & 0x0FFFFF;
-        }
-        else
-        {
-            latitude = (uint32_t)((((uint32_t)(ownship.lat * 1e7) + 26.f) / 52.0f)) & 0x0FFFFF;
-        }
 
-        auto divisor = lonDivisor(ownship.lat);
-        if (ownship.lon < 0.f)
-        {
-            longitude = (uint32_t)(-(((int32_t)(-ownship.lon * 1e7) + (divisor >> 1)) / divisor)) & 0x0FFFFF;
-        }
-        else
-        {
-            longitude = (((uint32_t)(ownship.lon * 1e7) + (divisor >> 1)) / divisor) & 0x0FFFFF;
-        }
-
+        packet.aicraftId(gaTasConfiguration.address);
+        
         Flarm2024::RadioPacket radioPacket =
             {
                 .aircraftID = gaTasConfiguration.address, // ownshipPosition.address,
@@ -346,13 +334,14 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
                 .verticalSpeed = static_cast<uint16_t>(enscale<6, 2, true>(ownship.verticalSpeed * 10)),
                 .course = static_cast<uint16_t>(ownship.course * 2),
                 .movementStatus = static_cast<uint8_t>(ownship.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1), // TODO: Add support for Circling
-                .gnssHorizontalAccuracy = 0b010010,                                                                                   // enscale<3, 2, false>((gpsStats.hDop*2+5)/10),
-                .gnssVerticalAccuracy = 0b01010,                                                                                      // enscale<2, 3, false>((gpsStats.pDop*2+5)/10),
+                .gnssHorizontalAccuracy = 0b010010,                                                                           // enscale<3, 2, false>((gpsStats.hDop*2+5)/10),
+                .gnssVerticalAccuracy = 0b01010,                                                                              // enscale<2, 3, false>((gpsStats.pDop*2+5)/10),
                 .unknownData = 11,
                 .reserved8 = 0,
                 .checksum = 0}; // Will get calculated later.
 
-        uint32_t *data = reinterpret_cast<uint32_t *>(&radioPacket);
+        uint32_t data[Flarm2024::RadioPacket::totalLengthWCRC / 4 + 1];
+        std::memcpy(data, &radioPacket, sizeof(radioPacket));
 
 #if !defined(UNIT_TESTING)
         scramble(data, epochSeconds);
@@ -360,11 +349,12 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         // btea2(data, true);
 #endif
 
-        uint16_t calculatedChecksum = flarmCalculateChecksum(reinterpret_cast<uint8_t *>(data), RadioPacket::packetLength);
-        radioPacket.checksum = swapBytes16(calculatedChecksum);
-
+        data[6] = swapBytes16(flarmCalculateChecksum(reinterpret_cast<uint8_t *>(data), RadioPacket::packetLength));
         statistics.transmittedAircraftPositions++;
 
+        printf(" epoch: %ld ", epochSeconds);
+        CoreUtils::printBufferHex<uint32_t>(etl::span{data, Flarm2024::RadioPacket::totalLengthWCRC / 4 + 1});
+        printf("\n");
         getBus().receive(GATAS::RadioTxFrameMsg{
             Radio::TxPacket{
                 msg.radioParameters,

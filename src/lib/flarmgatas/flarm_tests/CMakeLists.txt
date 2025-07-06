@@ -76,7 +76,7 @@ foreach( name ${ALL_EXAMPLE_TARGETS} )
     ${name}  PRIVATE
     Catch2WithMain 
     etl
-    libcrc
+    flarm::flarm
     )
   if(NOT APPLE)
     target_link_libraries(${name} PRIVATE atomic)
