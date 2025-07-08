@@ -35,6 +35,7 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
     # This project is part of a larger build
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/libcrc libcrc)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/FLARM flarm)
 endif()
 
 # These examples use the standard separate compilation

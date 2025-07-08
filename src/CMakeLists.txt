@@ -9,7 +9,7 @@ message("=======================================================================
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/etl etlcpp)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcrc libcrc)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/libmodes libmodes)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/flarm flarm::flarm)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/FLARM flarm::flarm)
 
 # Add subdirectories for each project
 add_subdirectory(lib/adsl/adsl_tests)
