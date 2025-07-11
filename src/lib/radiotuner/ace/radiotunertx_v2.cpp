@@ -90,9 +90,9 @@ void RadioTunerTx::radioTuneTask(void *arg)
                             radioTunerRx->dataSourceTxQueue.reschedule(radioTunerRx->currentZone.value());
 
                             auto channel = timing.timeSlot->timing[(timing.atTime % 1000) / CountryRegulations::SLOT_MS];
-                            if (channel == CountryRegulations::Channel::NOP)
+                            if (channel == CountryRegulations::Channel::NOOP)
                             {
-                                // puts("RadioTunerTx: IS Nop");
+                                // puts("RadioTunerTx: IS NOOP");
                                 continue;
                             }
                             // printf("RadioTunerTx: ds:%s delay:%ld ms:%ld\n", GATAS::toString(timing.timeSlot->radioConfig.dataSource) , nextDelay,timing.atTime % 1000 );

@@ -55,7 +55,7 @@ private:
         RadioTunerRx *controller;
         uint8_t radioNo;
 
-        etl::pair<uint8_t, CountryRegulations::Channel> lastConfig = etl::make_pair(0, CountryRegulations::Channel::NOP); // Last configured channel and protocol ID
+        etl::pair<uint8_t, CountryRegulations::Channel> lastConfig = etl::make_pair(0, CountryRegulations::Channel::NOOP); // Last configured channel and protocol ID
 
         // The DataSources this radio will handle
         etl::vector<GATAS::DataSource, GATAS_MAX_SOURCE_PER_RADIO> dataSources;

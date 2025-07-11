@@ -12,8 +12,4 @@ set(MODULE_TARGET_LINK
     flarm
 )
 
-set(PICO_EXTRA_LIBS
-    flarm
-)
-
 include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)

@@ -139,7 +139,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
                     auto const timeSlot = ref.protocolTimings[ref.protocolTimingIdx];
                     etl::pair<uint8_t, CountryRegulations::Channel> current = etl::make_pair(timeSlot->ptsId, timeSlot->timing[currentSlot]);
 
-                    if (current != ref.lastConfig && timeSlot->timing[currentSlot] != CountryRegulations::Channel::NOP)
+                    if (current != ref.lastConfig && timeSlot->timing[currentSlot] != CountryRegulations::Channel::NOOP)
                     {
                         // Calculate delay to next slot
                         auto frequency = CountryRegulations::getFrequency(timeSlot->frequency, timeSlot->timing[currentSlot]);

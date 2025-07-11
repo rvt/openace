@@ -51,13 +51,29 @@ uint32_t CountryRegulations::getFrequency(const Frequency &frequency, CountryReg
 {
     switch (channel)
     {
-    case Channel::CH0:
+    case Channel::CH00:
         return frequency.baseFrequency + (frequency.channelSeperation * 0);
-    case Channel::CH1:
+    case Channel::CH01:
         return frequency.baseFrequency + (frequency.channelSeperation * 1);
+    case Channel::CH24:
+        return frequency.baseFrequency + CountryRegulations::frequencyByTimestamp(CoreUtils::secondsSinceEpoch(), 24) * frequency.channelSeperation;
+    case Channel::CH65:
+        return frequency.baseFrequency + CountryRegulations::frequencyByTimestamp(CoreUtils::secondsSinceEpoch(), 65) * frequency.channelSeperation;
     default:
         return frequency.baseFrequency; // NOP
     }
+}
+
+uint32_t CountryRegulations::frequencyByTimestamp(uint32_t timestamp, uint32_t nch)
+{
+    uint32_t nts = ~timestamp;
+    uint32_t ts16 = timestamp * 32768 + nts;
+    uint32_t v4096 = (ts16 >> 12) ^ ts16;
+    uint32_t v5 = 5 * v4096;
+    uint32_t v16 = (v5 >> 4) ^ v5;
+    uint32_t v2057 = 2057 * v16;
+    uint32_t v9 = (v2057 >> 16) ^ v2057;
+    return v9 % nch;
 }
 
 uint32_t CountryRegulations::nextRandomTime(const CountryRegulations::ProtocolTimeSlot& pts)
@@ -76,7 +92,7 @@ uint32_t CountryRegulations::nextRandomTime(const CountryRegulations::ProtocolTi
         uint32_t targetMs = (now + totalOffset) % MS_IN_SECOND;
         size_t slotIndex = targetMs / SLOT_MS;
 
-        if (pts.timing[slotIndex] != Channel::NOP &&
+        if (pts.timing[slotIndex] != Channel::NOOP &&
             totalOffset >= pts.txMinTime &&
             totalOffset <= pts.txMaxTime)
         {
@@ -88,4 +104,17 @@ uint32_t CountryRegulations::nextRandomTime(const CountryRegulations::ProtocolTi
 
     // fallback: 1s from now
     return now + 1000;
+}
+
+uint32_t CountryRegulations::getFrequency(float lat, float lon, GATAS::DataSource dataSource) {
+    auto zone = CountryRegulations::zone(lat, lon);
+    auto &timeSlot = CountryRegulations::getSlot(zone, dataSource);
+
+    // WHen no datasource could be found
+    if (timeSlot.zone == CountryRegulations::ZONE0) {
+        return 0;
+    }
+
+    auto currentSlot = ((CoreUtils::msInSecond() + 50) / CountryRegulations::SLOT_MS) % 5;
+    return CountryRegulations::getFrequency(timeSlot.frequency, timeSlot.timing[currentSlot]);
 }

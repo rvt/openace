@@ -13,3 +13,6 @@
 [submodule "src/vendor/etl"]
 	path = src/vendor/etl
 	url = https://github.com/ETLCPP/etl.git
+[submodule "src/vendor/FLARM"]
+	path = src/vendor/FLARM
+	url = https://github.com/rvt/FLARM
