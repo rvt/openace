@@ -11,6 +11,7 @@
 #include "etl/list.h"
 #include "etl/string.h"
 #include "etl/queue_spsc_atomic.h"
+#include "etl/bit_stream.h"
 
 /* GaTas */
 #include "ace/constants.hpp"
@@ -117,7 +118,8 @@ private:
     static void eraseBonding();
     static void heartbeat_handler(struct btstack_timer_source *ts);
 
-    static void parseAircraftPosition( uint8_t* data, size_t size);
+    static void parseCobs( uint8_t* cobsData, size_t size);
+    static void parseAircraftPosition( etl::bit_stream_reader &reader, size_t size);
     static void processIncomingBuffer( uint8_t* data, size_t size);
 
     // Lists of bluetooth contexts

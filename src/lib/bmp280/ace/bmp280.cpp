@@ -130,32 +130,27 @@ void Bmp280::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void Bmp280::on_receive(const GATAS::IdleMsg &msg)
+void Bmp280::on_receive(const GATAS::Every30SecMsg &msg)
 {
-    static uint8_t everyOnceAWhile = 0;
     (void)msg;
 
     bool sendData;
-    if (everyOnceAWhile % 30 == 0)
-    {
-        uint8_t buffer[8]; // I think this can be buffer[6] (No humidity needed)
-        if (auto guard = aceSpi->getLock(sendData)) {
-            aceSpi->read_registers_select(cs, 0xF7);
-            aceSpi->read_registers_read(cs, buffer, sizeof(buffer));
-        }
-
-        if (sendData)
-        {
-            int32_t pressure = ((uint32_t)buffer[0] << 12) | ((uint32_t)buffer[1] << 4) | (buffer[2] >> 4);
-            int32_t temperature = ((uint32_t)buffer[3] << 12) | ((uint32_t)buffer[4] << 4) | (buffer[5] >> 4);
-
-            temperature = compensate_temp(temperature);
-            pressure = compensate_pressure(pressure);
-
-            statistics.lastPressurehPa = (pressure + compensation) / 100.0f;
-            getBus().receive(GATAS::BarometricPressureMsg{statistics.lastPressurehPa, CoreUtils::timeUs32()});
-        }
-
-        everyOnceAWhile++;
+    uint8_t buffer[8]; // I think this can be buffer[6] (No humidity needed)
+    if (auto guard = aceSpi->getLock(sendData)) {
+        aceSpi->read_registers_select(cs, 0xF7);
+        aceSpi->read_registers_read(cs, buffer, sizeof(buffer));
     }
+
+    if (sendData)
+    {
+        int32_t pressure = ((uint32_t)buffer[0] << 12) | ((uint32_t)buffer[1] << 4) | (buffer[2] >> 4);
+        int32_t temperature = ((uint32_t)buffer[3] << 12) | ((uint32_t)buffer[4] << 4) | (buffer[5] >> 4);
+
+        temperature = compensate_temp(temperature);
+        pressure = compensate_pressure(pressure);
+
+        statistics.lastPressurehPa = (pressure + compensation) / 100.0f;
+        getBus().receive(GATAS::BarometricPressureMsg{statistics.lastPressurehPa, CoreUtils::timeUs32()});
+    }
+
 }

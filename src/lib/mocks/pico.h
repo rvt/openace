@@ -19,6 +19,10 @@ inline void panic(const char *msg)
     printf("panic: %s\n", msg);
 }
 
+inline uint8_t get_core_num() {
+    return 0;
+}
+
 #define __time_critical_func(func_name) func_name
 
 #define __scratch_y(func_name) 
@@ -28,3 +32,5 @@ inline void panic(const char *msg)
 #define __isr 
 
 #define __in_flash() 
+
+#define __uninitialized_ram

@@ -556,7 +556,7 @@ void Bluetooth::processIncomingBuffer(uint8_t *data, size_t size)
             {
                 memcpy(carryBuffer + carrySize, cursor, toCopy);
                 // Number of bytes is somehwat variable depending on callsign length
-                Bluetooth::parseAircraftPosition(carryBuffer, toCopy);
+                Bluetooth::parseCobs(carryBuffer, toCopy);
                 cursor += toCopy;
                 remaining = remaining - toCopy;
             }
@@ -574,7 +574,7 @@ void Bluetooth::processIncomingBuffer(uint8_t *data, size_t size)
             size_t packetSize = static_cast<uint8_t *>(packetEndlocation) - cursor + 1;
             if (packetSize > 0) // Number of bytes is somehwat variable depending on callsign length
             {
-                Bluetooth::parseAircraftPosition(cursor, packetSize);
+                Bluetooth::parseCobs(cursor, packetSize);
             }
 
             size_t consumed = packetSize;
@@ -637,24 +637,25 @@ GATAS::AircraftCategory mapAircraftCategoryToType(uint8_t category)
     }
 }
 
-void Bluetooth::parseAircraftPosition(uint8_t *data, size_t size)
-{
-    auto MAX_CALLSIGN_LENGTH = 12;
-    auto packetSize = decodeCOBS_inplace(data, size);
+void Bluetooth::parseCobs(uint8_t *cobsData, size_t size) {
+    auto packetSize = decodeCOBS_inplace(cobsData, size);
 
-    if (packetSize == 0)
-    {
-        return;
-    }
-    auto timeStamp = CoreUtils::timeUs32();
-    etl::bit_stream_reader reader(data, packetSize, etl::endian::big);
+    etl::bit_stream_reader reader(cobsData, packetSize, etl::endian::big);
 
     // --- Decode fields inline ---
     uint8_t frameType = reader.read_unchecked<uint8_t>(8U);
-    if (frameType != 1)
+    packetSize -= 1;
+    if (frameType == 1)
     {
-        return;
+        parseAircraftPosition(reader, packetSize);
     }
+}
+
+void Bluetooth::parseAircraftPosition(etl::bit_stream_reader &reader, size_t size)
+{
+    (void)size;
+    auto MAX_CALLSIGN_LENGTH = 12;
+    auto timeStamp = CoreUtils::timeUs32();
 
     float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
     float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;

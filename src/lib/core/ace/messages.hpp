@@ -287,19 +287,31 @@ namespace GATAS
     };
 
     /**
-     * Idle Message send at intervals that allows to due small tasks without creating a new task
-     * Modules using this message should never block a task
-     */
-    struct IdleMsg : public etl::message<25>
-    {
-    };
-
-    /**
      * Message send of the current adaptive radius size.
      */
     struct AdapativeRadiusMsg : public etl::message<26>
     {
         uint32_t radius;
         AdapativeRadiusMsg(uint32_t radius_) : radius(radius_) {};
+    };
+
+        /**
+     * Idle Message send at intervals that allows to due small tasks without creating a new task
+     * Modules using this message should never block a task
+     */
+    struct IdleMsg : public etl::message<25>
+    {
+    };
+    struct Every1SecMsg : public etl::message<29>
+    {
+    };
+    struct Every5SecMsg : public etl::message<30>
+    {
+    };
+    struct Every15SecMsg : public etl::message<31>
+    {
+    };
+    struct Every30SecMsg : public etl::message<32>
+    {
     };
 }

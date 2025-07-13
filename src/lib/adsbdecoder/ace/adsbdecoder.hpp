@@ -25,7 +25,7 @@
 /**
  * ADSBDecoder decodes ADSB message from a ADSB device and forwards that as NMEA Strings
  */
-class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, GATAS::ADSBMessageBin, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::IdleMsg, GATAS::AdapativeRadiusMsg>
+class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, GATAS::ADSBMessageBin, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::Every5SecMsg, GATAS::AdapativeRadiusMsg>
 {
 private:
     static constexpr uint8_t MAX_PLANES_TRACKED = 64;
@@ -53,7 +53,7 @@ private:
     int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed
     mode_s_t state;      
     SemaphoreHandle_t mutex;
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     uint32_t filterRadius=100'000;
     
 public:
@@ -83,7 +83,7 @@ private:
 
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
-    void on_receive(const GATAS::IdleMsg &msg);
+    void on_receive(const GATAS::Every5SecMsg &msg);
 
     void on_receive(const GATAS::AdapativeRadiusMsg &msg);
 
@@ -95,11 +95,8 @@ private:
     virtual void receiveBinary(const uint8_t* data, uint8_t length) override;
     void processAdsbData(const uint8_t* data, uint8_t length);
 
-    bool outOfAltitudeRange(int32_t otheraltitudeHAE)
-    {
-        return (otheraltitudeHAE - ownshipPosition.altitudeHAE) > filterAbove || (ownshipPosition.altitudeHAE - otheraltitudeHAE) > filterBelow;
-    }
-
+    bool outOfAltitudeRange(int32_t otheraltitudeHAE);
+    
     void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;

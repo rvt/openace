@@ -40,6 +40,7 @@ namespace GATAS
         {AddressType::FLARM, "FLARM"},
         {AddressType::OGN, "OGN"},
         {AddressType::FANET, "FANET"},
+        {AddressType::ADSL, "ADSL"},
         {AddressType::RESERVED, "RESERVED"},
         {AddressType::UNKNOWN, "UNKNOWN"}
     };

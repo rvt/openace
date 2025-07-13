@@ -29,7 +29,7 @@ void ADSBDecoder::stop()
 
 void ADSBDecoder::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = msg.position;
+    ownshipPosition.store(msg.position, etl::memory_order_release);
 }
 
 void ADSBDecoder::getConfiguration(const Configuration &config)
@@ -160,7 +160,8 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             statistics.totalMsgReceived++;
             auto &current = adsbDataCollector.current();
 
-            auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, current.lat, current.lon);
+            auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+            auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, current.lat, current.lon);
 
             // Altitude filtering + Radius filtering
             // to prevent aircraft taking up resources that are not a factor.
@@ -212,7 +213,13 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     }
 }
 
-void ADSBDecoder::on_receive(const GATAS::IdleMsg &msg)
+bool ADSBDecoder::outOfAltitudeRange(int32_t otheraltitudeHAE)
+{
+    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+    return (otheraltitudeHAE - ownship.altitudeHAE) > filterAbove || (ownship.altitudeHAE - otheraltitudeHAE) > filterBelow;
+}
+
+void ADSBDecoder::on_receive(const GATAS::Every5SecMsg &msg)
 {
     (void)msg;
     if (auto guard = SemaphoreGuard<10>(mutex))

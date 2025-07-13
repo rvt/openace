@@ -96,6 +96,7 @@ if (VISUALIZE_OTHERS) {
         position(TOP) down(0.01) cuboid(ADJSIZE + [0,0,WALL_THICKNESS+0.1], rounding=3, anchor=BOTTOM, edges=[LEFT+FWD, RIGHT+FWD,
     LEFT+BACK, RIGHT+BACK]) {
           position(TOP) down(0.01) cuboid(ADJSIZE+[0.2,0.2,0.2], rounding=3, anchor=BOTTOM, edges=[LEFT+FWD, RIGHT+FWD, LEFT+BACK, RIGHT+BACK]);
+          position(TOP) down(0.01) up(0.2) cuboid(ADJSIZE+[0.4,0.4,0.2], rounding=3, anchor=BOTTOM, edges=[LEFT+FWD, RIGHT+FWD, LEFT+BACK, RIGHT+BACK]);
         }
       }
       

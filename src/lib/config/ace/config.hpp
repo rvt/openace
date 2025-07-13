@@ -19,7 +19,7 @@ using namespace ArduinoJson;
 
 typedef std::function<void(const char *NAME, const GATAS::PinTypeMap &map)> LoadModuleCallback;
 
-class Config : public Configuration, public etl::message_router<Config, GATAS::ConfigUpdatedMsg, GATAS::IdleMsg>
+class Config : public Configuration, public etl::message_router<Config, GATAS::ConfigUpdatedMsg, GATAS::Every5SecMsg>
 {
 private:
     enum LoadLocation : uint8_t
@@ -153,15 +153,9 @@ private:
         }
     }
 
-    void on_receive(const GATAS::IdleMsg &msg)
+    void on_receive(const GATAS::Every5SecMsg &msg)
     {
         (void)msg;
-        // if (auto guard = SemaphoreGuard<10>(mutex))
-        // {
-        //     //auto usTime = CoreUtils::timeUs32Raw();
-        //     //ignoredAirplanes.evictOldEntries(usTime);
-        //     //adsbDataCollector.evictOldEntries(usTime);
-        // }
     }
 
 private:
@@ -212,5 +206,5 @@ public:
 
     virtual const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const override;
 
-    virtual bool isModuleEnabled(const etl::string_view moduleName) const;
+    virtual bool isModuleEnabled(const etl::string_view moduleName) const override;
 };

@@ -19,20 +19,20 @@ class Test : public etl::message_router<Test, GATAS::AircraftPositionMsg>
 
 public:
     GATAS::AircraftPositionInfo position;
-    etl::imessage_bus *bus;
+    etl::imessage_bus &bus;
     bool received = false;
-    Test(etl::imessage_bus *bus_) : bus(bus_)
+    Test(etl::imessage_bus &bus_) : bus(bus_)
     {
-        bus->subscribe(*this);
+        bus.subscribe(*this);
     }
     ~Test()
     {
-        bus->unsubscribe(*this);
+        bus.unsubscribe(*this);
     }
 
     void on_receive(const GATAS::AircraftPositionMsg &msg)
     {
-        // printf("AircraftPosition Received\n");
+//        printf("AircraftPosition Received\n");
         received = true;
         position = msg.position;
     }
@@ -42,7 +42,7 @@ public:
     }
 };
 
-GATAS::ThreadSafeBus<50> bus;
+etl::message_bus<4> bus;
 MockConfig mockConfig{bus};
 
 auto ownship = GATAS::OwnshipPositionInfo{
@@ -66,10 +66,9 @@ TEST_CASE("Test filter below and above", "[single-file]")
     xSemaphoreTakeValue = pdTRUE;
     ADSBDecoder adsbDecoder{bus, mockConfig};
     adsbDecoder.on_receive(GATAS::AdapativeRadiusMsg{10'000'000});
-    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
     uint8_t data[24];
-    Test test{&bus};
+    Test test{bus};
 
     namespace fs = std::filesystem;
     std::string filename = "adsb.txt";
@@ -83,7 +82,8 @@ TEST_CASE("Test filter below and above", "[single-file]")
     int lowestPlane = 50000;
 
     std::string line;
-    adsbDecoder.ownshipPosition.altitudeHAE = 10000;
+    ownship.altitudeHAE = 10000;
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
     adsbDecoder.filterAbove = 50000;
     adsbDecoder.filterBelow = 50000;
     while (std::getline(infile, line))
@@ -115,7 +115,9 @@ TEST_CASE("Test filter below and above", "[single-file]")
     infile.seekg(0, std::ios::beg); // back to the start!
     adsbDecoder.filterAbove = 1000;
     adsbDecoder.filterBelow = 1000;
-    adsbDecoder.ownshipPosition.altitudeHAE = lowestPlane - adsbDecoder.filterAbove;
+    ownship.altitudeHAE = lowestPlane - adsbDecoder.filterAbove;
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
+
     get_absolute_timeValue += 10000000;
     while (std::getline(infile, line))
     {
@@ -137,7 +139,9 @@ TEST_CASE("Test filter below and above", "[single-file]")
     adsbDecoder.postConstruct();    // Also clears current internal status
     adsbDecoder.filterAbove = 1000;
     adsbDecoder.filterBelow = 1000;
-    adsbDecoder.ownshipPosition.altitudeHAE = higestPlane;
+    ownship.altitudeHAE = higestPlane;
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
+
     get_absolute_timeValue += 100'000'000;
     totalPlanes = 0;
     while (std::getline(infile, line))
@@ -151,7 +155,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
         {
             totalPlanes++;
         }
-        adsbDecoder.on_receive(GATAS::IdleMsg());
+        adsbDecoder.on_receive(GATAS::Every5SecMsg());
     }
     printf("Total Planes below: %d\n", totalPlanes);
     REQUIRE(totalPlanes == 4600);
@@ -161,18 +165,19 @@ TEST_CASE("Test filter below and above", "[single-file]")
 TEST_CASE("Test heading and direction received aircraft", "[single-file]")
 {
     xSemaphoreTakeValue = pdTRUE;
-    ADSBDecoder adsbDecoder{bus, mockConfig};
+    ADSBDecoder adsbDecoder(bus, mockConfig);
     adsbDecoder.on_receive(GATAS::AdapativeRadiusMsg{1'000'000});
-    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
-    Test test{&bus};
+    Test test(bus);
     adsbDecoder.filterAbove = 50000;
     adsbDecoder.filterBelow = 50000;
 
     test.received = false;
-    adsbDecoder.ownshipPosition.altitudeHAE = 10000;
-    adsbDecoder.ownshipPosition.lat = 52.1;
-    adsbDecoder.ownshipPosition.lon = 4.8;
+    ownship.lat = 52.1;
+    ownship.lon = 4.8;
+    ownship.altitudeHAE = 10000;
+//    bus.receive(GATAS::OwnshipPositionMsg{ownship}); // TODO: Find out why this does not work
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
 
     uint8_t data[14];
     CoreUtils::hexStrToByteArray("8d502cd1589992ecbaf1a4140b65", data);
@@ -206,16 +211,17 @@ TEST_CASE("Test descending aircraft", "[single-file]")
     xSemaphoreTakeValue = pdTRUE;
     ADSBDecoder adsbDecoder{bus, mockConfig};
     adsbDecoder.on_receive(GATAS::AdapativeRadiusMsg{1'000'000});
-    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
     adsbDecoder.postConstruct();
-    Test test{&bus};
+    Test test{bus};
     adsbDecoder.filterAbove = 50000;
     adsbDecoder.filterBelow = 50000;
 
     test.received = false;
-    adsbDecoder.ownshipPosition.altitudeHAE = 10000;
-    adsbDecoder.ownshipPosition.lat = 52.1;
-    adsbDecoder.ownshipPosition.lon = 4.8;
+    ownship.lat = 52.1;
+    ownship.lon = 4.8;
+    ownship.altitudeHAE = 10000;
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
+
 
     uint8_t data[14];
     CoreUtils::hexStrToByteArray("8d407a055817867d1ce5ecbe8fdd", data); // odd

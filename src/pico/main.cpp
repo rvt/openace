@@ -163,7 +163,8 @@ volatile static bool loadIndicator = false;
 volatile static int8_t ledStatusIndicatorPin = -1;
 static void load(const etl::string_view str, etl::imessage_bus &bus, const Configuration &config, bool force = false)
 {
-    if (ledStatusIndicatorPin > -1) {
+    if (ledStatusIndicatorPin > -1)
+    {
         gpio_put(ledStatusIndicatorPin, loadIndicator);
         loadIndicator = !loadIndicator;
     }
@@ -284,6 +285,12 @@ static void loadModules(void *arch)
 
 static void gaTasIdleTask(void *arch)
 {
+    uint32_t tick = 0;
+    uint8_t msgFlags = 0;
+    constexpr uint8_t DO_5S = 1 << 0;
+    constexpr uint8_t DO_15S = 1 << 1;
+    constexpr uint8_t DO_30S = 1 << 2;
+
     (void)arch;
 #ifdef NDEBUG
     watchdog_enable(3000, 0);
@@ -293,14 +300,48 @@ static void gaTasIdleTask(void *arch)
 #ifdef NDEBUG
         watchdog_update();
 #endif
+        tick++;
+
         if (cyw43_arch_async_context())
         {
             // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
             gpio_put(ledStatusIndicatorPin, 1);
             vTaskDelay(TASK_DELAY_MS(100));
-            bus.receive(GATAS::IdleMsg());
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+
+            bus.receive(GATAS::Every1SecMsg());
+
+            if (tick % 5 == 0) {
+                msgFlags |= DO_5S;
+            }
+            if (tick % 15 == 0) {
+                msgFlags |= DO_15S;
+            }
+            if (tick % 30 == 0) {
+                msgFlags |= DO_30S;
+            }
+
+            if (msgFlags & DO_30S)
+            {
+                bus.receive(GATAS::Every30SecMsg());
+                msgFlags &= ~DO_30S;
+            }
+            else if (msgFlags & DO_15S)
+            {
+                bus.receive(GATAS::Every15SecMsg());
+                msgFlags &= ~DO_15S;
+            }
+            else if (msgFlags & DO_5S)
+            {
+                bus.receive(GATAS::Every5SecMsg());
+                msgFlags &= ~DO_5S;
+            }
+            else
+            {
+                bus.receive(GATAS::IdleMsg());
+            }
+
             gpio_put(ledStatusIndicatorPin, 0);
             // Sync blink the LED with GPS
             vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
@@ -376,7 +417,7 @@ void vDiagnosticsTask(void *pvParameters)
         }
 
         // Run every 5 seconds (adjust as needed)
-        vTaskDelay(pdMS_TO_TICKS(50000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
 #endif

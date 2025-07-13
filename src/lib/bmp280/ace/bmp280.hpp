@@ -17,7 +17,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class Bmp280 : public BaseModule, public etl::message_router<Bmp280, GATAS::ConfigUpdatedMsg, GATAS::IdleMsg>
+class Bmp280 : public BaseModule, public etl::message_router<Bmp280, GATAS::ConfigUpdatedMsg, GATAS::Every30SecMsg>
 {
     friend class message_router;
     struct
@@ -52,7 +52,7 @@ private:
 
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
-    void on_receive(const GATAS::IdleMsg &msg);
+    void on_receive(const GATAS::Every30SecMsg &msg);
 
 public:
     static constexpr const etl::string_view NAME = "Bmp280";

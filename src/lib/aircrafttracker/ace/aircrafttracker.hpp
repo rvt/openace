@@ -25,7 +25,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class AircraftTracker : public BaseModule, public etl::message_router<AircraftTracker, GATAS::ConfigUpdatedMsg, GATAS::AircraftPositionMsg, GATAS::IdleMsg>
+class AircraftTracker : public BaseModule, public etl::message_router<AircraftTracker, GATAS::ConfigUpdatedMsg, GATAS::AircraftPositionMsg, GATAS::Every5SecMsg>
 {
 private:
     friend class message_router;
@@ -73,7 +73,7 @@ private:
     void on_receive_unknown(const etl::imessage &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive(const GATAS::AircraftPositionMsg &msg);
-    void on_receive(const GATAS::IdleMsg &msg);
+    void on_receive(const GATAS::Every5SecMsg &msg);
     static void aircraftTrackerTask(void *arg);
     void handleNew();
     void sendEligibleAircraft();

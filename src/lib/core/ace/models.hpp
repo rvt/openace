@@ -101,8 +101,9 @@ namespace GATAS
     template <typename EnumType, typename MappingType, size_t Size>
     EnumType stringToEnum(const Mapping<EnumType, MappingType> (&mapping)[Size], const char *str, EnumType defaultValue)
     {
-        if (!str)
+        if (!str) {
             return defaultValue;
+        }
         for (const auto &entry : mapping)
         {
             if (strcasecmp(entry.name, str) == 0)

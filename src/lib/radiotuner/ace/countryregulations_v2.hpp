@@ -24,7 +24,7 @@ public:
     };
 
     inline static constexpr GATAS::Mapping<Zone, const char *> ZoneMapping[] =
-        {
+    {
             {Zone::ZONE0, "ZONE0"},
             {Zone::ZONE1, "ZONE1"},
             {Zone::ZONE2, "ZONE2"},
@@ -88,21 +88,24 @@ public:
         uint8_t waitAfterCatEnd;
     };
 
-    static constexpr __in_flash() etl::array<const ProtocolTimeSlot, 10> protocolTimimgs{
+    static constexpr __in_flash() auto protocolTimimgs = etl::make_array<const ProtocolTimeSlot>(
         ProtocolTimeSlot{ 1, CountryRegulations::Zone::ZONE0, Europe,       PROTOCOL_NONE,  {Channel::NOOP, Channel::NOOP, Channel::NOOP, Channel::NOOP, Channel::NOOP},  000, 0000, 00, 000},
         ProtocolTimeSlot{ 2, CountryRegulations::Zone::ZONE1, Europe,       PROTOCOL_FLARM, {Channel::CH01, Channel::NOOP, Channel::CH00, Channel::CH00, Channel::CH01},  600, 1400, 15, 150},
         ProtocolTimeSlot{ 3, CountryRegulations::Zone::ZONE1, Europe,       PROTOCOL_OGN1,  {Channel::CH00, Channel::NOOP, Channel::CH01, Channel::CH01, Channel::CH00},  600, 1400, 15, 150},
         ProtocolTimeSlot{ 4, CountryRegulations::Zone::ZONE1, Europe,       PROTOCOL_ADSL,  {Channel::CH00, Channel::NOOP, Channel::CH01, Channel::CH01, Channel::CH00},  600, 1400, 15, 250},
         ProtocolTimeSlot{ 5, CountryRegulations::Zone::ZONE1, Europe,       PROTOCOL_FANET, {Channel::CH00, Channel::CH00, Channel::CH00, Channel::CH00, Channel::CH00}, 2000, 3000, 15, 000},
 
-        ProtocolTimeSlot{ 6, CountryRegulations::Zone::ZONE5, Israel,       PROTOCOL_FLARM, {Channel::CH24, Channel::CH24, Channel::CH24, Channel::CH24, Channel::CH24}, 600, 1400, 15, 150},
-        ProtocolTimeSlot{ 7, CountryRegulations::Zone::ZONE2, NorthAmerica, PROTOCOL_FLARM, {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65}, 600, 1400, 15, 150},
+        ProtocolTimeSlot{ 6, CountryRegulations::Zone::ZONE2, NorthAmerica, PROTOCOL_FLARM, {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65}, 600, 1400, 15, 150},
+        ProtocolTimeSlot{ 7, CountryRegulations::Zone::ZONE2, NorthAmerica, PROTOCOL_OGN1, {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65}, 600, 1400, 15, 150},
+        ProtocolTimeSlot{ 8, CountryRegulations::Zone::ZONE2, NorthAmerica, PROTOCOL_ADSL, {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65}, 600, 1400, 15, 150},
+        ProtocolTimeSlot{ 9, CountryRegulations::Zone::ZONE2, NorthAmerica, PROTOCOL_FANET, {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65}, 600, 1400, 15, 150},
 
-        // New Zeland not tested
-        ProtocolTimeSlot{ 8, CountryRegulations::Zone::ZONE3, NewZealand,   PROTOCOL_FLARM, {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65},  600, 1400, 15, 150},
-        ProtocolTimeSlot{ 9, CountryRegulations::Zone::ZONE3, NewZealand,   PROTOCOL_OGN1,  {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65},  600, 1400, 15, 150},
-        ProtocolTimeSlot{10, CountryRegulations::Zone::ZONE1, Europe,       PROTOCOL_FANET, {Channel::CH00, Channel::CH00, Channel::CH00, Channel::CH00, Channel::CH00}, 2000, 3000, 15, 000},
-    };
+        ProtocolTimeSlot{10, CountryRegulations::Zone::ZONE5, Israel,       PROTOCOL_FLARM, {Channel::CH24, Channel::CH24, Channel::CH24, Channel::CH24, Channel::CH24}, 600, 1400, 15, 150},
+
+        ProtocolTimeSlot{11, CountryRegulations::Zone::ZONE3, NewZealand,   PROTOCOL_FLARM, {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65}, 600, 1400, 15, 150},
+        ProtocolTimeSlot{12, CountryRegulations::Zone::ZONE3, NewZealand,   PROTOCOL_OGN1,  {Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65, Channel::CH65}, 600, 1400, 15, 150}
+    );
+
     // clang-format on
 private:
     CountryRegulations() = delete;

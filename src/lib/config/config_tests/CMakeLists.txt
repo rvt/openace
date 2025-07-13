@@ -7,44 +7,48 @@ message(STATUS "Building tests.")
 add_definitions(-DCATCH_CONFIG_NO_POSIX_SIGNALS)
 add_definitions(-DUNIT_TESTING)
 add_definitions(-DGATAS_MAXIMUM_TCP_CLIENTS=4)
-add_definitions(-DGATAS_MAX_RADIOS=2)
-add_definitions(-DGATAS_STATSCOLLECTOR_NUM_RADIALS=8)
-
+add_definitions(-D__flash_binary_end=0x4000000)
+add_definitions(-DXIP_BASE=0x6000000)
+add_definitions(-DGATAS_FLASH_SIGNATURE=4321)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+
+configure_file(test.json test.json COPYONLY)
 
 # Pull in the Catch2 framework.
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG v3.5.1)
+  GIT_TAG        v3.5.1)
 FetchContent_MakeAvailable(Catch2)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../ace")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 
 # Add vendor modules
 if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/ArduinoJson ArduinoJson)
 endif()
 
 # These examples use the standard separate compilation
-set(SOURCES_IDIOMATIC_EXAMPLES
-    trackerdata_test.cpp 
+set( SOURCES_IDIOMATIC_EXAMPLES
+   config_test.cpp
 )
 
-string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
-               "${SOURCES_IDIOMATIC_EXAMPLES}")
-set(TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES})
+string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAMPLES}" )
+set( TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES} )
 
-set(ACE_SOURCE_FILES
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../../../core/ace/messagerouter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/models.cpp
-    # ${CMAKE_CURRENT_SOURCE_DIR}/mocks/pico/time.c
-    ../ace/aircrafttracker.cpp)
+set( ACE_SOURCE_FILES
+      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/models.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
+     ../ace/config.cpp
+     ../ace/inmemorystore.cpp
+)
+
 
 foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
   add_executable(${name} ${ACE_SOURCE_FILES} ${name}.cpp)
@@ -58,13 +62,19 @@ foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
     COMMAND ${UNIT_TEST})
 endforeach()
 
-set(ALL_EXAMPLE_TARGETS ${TARGETS_IDIOMATIC_EXAMPLES})
+set(ALL_EXAMPLE_TARGETS
+  ${TARGETS_IDIOMATIC_EXAMPLES}
+)
 
-foreach(name ${ALL_EXAMPLE_TARGETS})
-  target_link_libraries(
-    ${name} Catch2WithMain
-    etl)
+foreach( name ${ALL_EXAMPLE_TARGETS} )
+    target_link_libraries( 
+      ${name} 
+      Catch2WithMain 
+      etl
+      ArduinoJson
+)
 endforeach()
+
 
 list(APPEND CATCH_WARNING_TARGETS ${ALL_EXAMPLE_TARGETS})
 set(CATCH_WARNING_TARGETS

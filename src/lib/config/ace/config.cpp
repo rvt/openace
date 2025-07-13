@@ -41,6 +41,7 @@ GATAS::PostConstruct Config::postConstruct()
         // Still error, load default
         if (error || signatureMismatch || loadDefaultConfig)
         {
+            volatileStore.rewind();
             volatileStore.write(defaultConfig, strlen((const char *)defaultConfig) + 1);
             deserializeJson(doc, volatileStore.data());
             statistics.location = DEFAULT;

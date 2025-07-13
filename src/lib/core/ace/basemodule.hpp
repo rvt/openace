@@ -122,7 +122,7 @@ public:
         return moduleName;
     }
 
-    etl::imessage_bus &getBus() const
+    inline etl::imessage_bus &getBus() const
     {
         return bus;
     }

@@ -10,6 +10,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/etl etlcpp)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcrc libcrc)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/libmodes libmodes)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/FLARM flarm::flarm)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/ArduinoJson ArduinoJson)
 
 # Add subdirectories for each project
 add_subdirectory(lib/adsl/adsl_tests)
@@ -19,3 +20,4 @@ add_subdirectory(lib/core/core_tests)
 add_subdirectory(lib/utils/utils_tests)
 add_subdirectory(lib/radiotuner/radiotuner_tests)
 add_subdirectory(lib/aircrafttracker/aircrafttracker_tests)
+add_subdirectory(lib/config/config_tests)

@@ -38,7 +38,7 @@ void AircraftTracker::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void AircraftTracker::on_receive(const GATAS::IdleMsg &msg)
+void AircraftTracker::on_receive(const GATAS::Every5SecMsg &msg)
 {
     (void)msg;
     xTaskNotify(taskHandle, TaskState::MAINTAIN, eSetBits);
