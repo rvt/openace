@@ -76,6 +76,14 @@ uint32_t CountryRegulations::frequencyByTimestamp(uint32_t timestamp, uint32_t n
     return v9 % nch;
 }
 
+//    static uint32_t FreqHopHash(uint32_t Time)
+//    { Time  = (Time<<15) + (~Time);
+//      Time ^= Time>>12;
+//      Time += Time<<2;
+//      Time ^= Time>>4;
+//      Time *= 2057;
+//      return Time ^ (Time>>16); }
+
 uint32_t CountryRegulations::nextRandomTime(const CountryRegulations::ProtocolTimeSlot& pts)
 {
     constexpr uint32_t MS_IN_SECOND = 1000;

@@ -4,6 +4,8 @@
 #include "ace/semaphoreguard.hpp"
 #include "ace/moreutils.hpp"
 
+constexpr const bool DEBUG_DATAPORT = false;
+
 void DataPort::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
@@ -40,6 +42,10 @@ void DataPort::on_receive(const GATAS::GPSSentenceMsg &msg)
 {
     GATAS::NMEAString sentence = msg.sentence;
     sentence.append("\r\n");
+    if (DEBUG_DATAPORT) 
+    {
+        puts(sentence.c_str());
+    }
     getBus().receive(GATAS::DataPortMsg{sentence});
     statistics.messages++;
 }
@@ -80,6 +86,10 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
            << "";                                       // RSSI
 
     CoreUtils::addChecksumToNMEA(pflaa);
+    if (DEBUG_DATAPORT) 
+    {
+        puts(pflaa.c_str());
+    }
     // printf("t:%08ld %s", CoreUtils::timeMs32(), pflaa.c_str());
     getBus().receive(GATAS::DataPortMsg{pflaa});
     statistics.messages++;

@@ -657,14 +657,10 @@ void Bluetooth::parseAircraftPosition(etl::bit_stream_reader &reader, size_t siz
     auto MAX_CALLSIGN_LENGTH = 12;
     auto timeStamp = CoreUtils::timeUs32();
 
+    uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
     float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
     float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
-    int16_t heightHAE = reader.read_unchecked<int16_t>(16U); // Aircraft message needs to be in ellipsoid
-
-    int32_t relNorth = reader.read_unchecked<int32_t>(24U);
-    int32_t relEast = reader.read_unchecked<int32_t>(24U);
-    // int16_t relAltitude = reader.read_unchecked<int16_t>(16U);
-    int16_t bearing = reader.read_unchecked<int16_t>(16U);
+    int16_t heightHAE = reader.read_unchecked<int16_t>(16U) - 100; // Aircraft message needs to be in ellipsoid
 
     float track = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
     float turnRate = static_cast<float>(reader.read_unchecked<int8_t>(8U)) / 5.0f;
@@ -672,7 +668,6 @@ void Bluetooth::parseAircraftPosition(etl::bit_stream_reader &reader, size_t siz
     float verticalRate = static_cast<float>(reader.read_unchecked<int16_t>(16U)) / 100.f;
     uint8_t aircraftTypeIndex = reader.read_unchecked<uint8_t>(8U);
 
-    uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
 
     uint8_t callSignLen = etl::min((uint8_t)MAX_CALLSIGN_LENGTH, reader.read_unchecked<uint8_t>(8));
     char callSignBuffer[MAX_CALLSIGN_LENGTH + 1] = {0};
@@ -680,6 +675,11 @@ void Bluetooth::parseAircraftPosition(etl::bit_stream_reader &reader, size_t siz
     {
         callSignBuffer[i] = static_cast<char>(reader.read_unchecked<uint8_t>(8));
     }
+    int32_t relNorth = reader.read_unchecked<int32_t>(24U);
+    int32_t relEast = reader.read_unchecked<int32_t>(24U);
+    int16_t bearing = reader.read_unchecked<int16_t>(16U);
+    uint16_t distance = reader.read_unchecked<uint16_t>(16U);
+
 
     auto api = GATAS::AircraftPositionInfo(
         timeStamp,
@@ -698,7 +698,7 @@ void Bluetooth::parseAircraftPosition(etl::bit_stream_reader &reader, size_t siz
         groundSpeed,
         track,
         turnRate,
-        static_cast<uint32_t>(sqrtf((relNorth * relNorth) + (relEast * relEast))),
+        distance,
         relNorth,
         relEast,
         bearing);
