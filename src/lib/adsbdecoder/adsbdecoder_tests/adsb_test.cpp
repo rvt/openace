@@ -201,8 +201,8 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
     REQUIRE(test.position.verticalSpeed == Catch::Approx(4.552).margin(0.001));
 
     REQUIRE(test.position.distanceFromOwn == Catch::Approx(32551).margin(1));
-    REQUIRE(test.position.relNorthFromOwn == Catch::Approx(32107).margin(1));
-    REQUIRE(test.position.relEastFromOwn == Catch::Approx(-5359).margin(1));
+    REQUIRE(test.position.relNorthFromOwn == Catch::Approx(32099).margin(1));
+    REQUIRE(test.position.relEastFromOwn == Catch::Approx(-5402).margin(1));
     REQUIRE(test.position.bearingFromOwn == Catch::Approx(351).margin(0.5));
 }
 

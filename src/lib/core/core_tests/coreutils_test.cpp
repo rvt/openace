@@ -143,8 +143,6 @@ TEST_CASE( "distanceFast", "[single-file]" )
 TEST_CASE( "bearingFromInRad", "[single-file]" )
 {
     using namespace Catch::literals;
-    time_us_Value = 0;
-
     int lat, lon;
 
     lat=50;
@@ -186,14 +184,14 @@ TEST_CASE( "getDistanceRelNorthRelEastFloat", "[single-file]" )
     lat=50;
     lon=4;
     auto result = CoreUtils::getDistanceRelNorthRelEastFloat( lat,  lon, lat+0.1, lon+0.1);
-    REQUIRE( result.relNorthMeter == 11127.22363_a );
-    REQUIRE( result.relEastMeter == 7134.56885_a );
+    REQUIRE( result.relNorthMeter == 11113.73047_a );
+    REQUIRE( result.relEastMeter == 7155.56982_a );
 
     lat=50;
     lon=4;
     result = CoreUtils::getDistanceRelNorthRelEastFloat( lat,  lon, lat-0.1, lon-0.1);
-    REQUIRE( result.relNorthMeter == -11110.86914_a );
-    REQUIRE( result.relEastMeter == -7160.01123_a );
+    REQUIRE( result.relNorthMeter == -11113.73047_a );
+    REQUIRE( result.relEastMeter == -7155.5698_a );
 }
 
 TEST_CASE( "getRadialSection", "[single-file]" )
@@ -289,3 +287,18 @@ TEST_CASE("egmGeoidOffset Example case (-34, 4) outside of grid", "[altitude]") 
     REQUIRE(result  == 0);
 }
 
+TEST_CASE("northEastDistance", "[single-file]")
+{
+    using namespace Catch::literals;
+    float lat, lon;
+
+    lat=50.0;
+    lon=4.0;
+    auto result = CoreUtils::northEastDistance( lat,  lon, lat+0.1, lon+0.1);
+    REQUIRE( result.east == 7155.56982_a );
+    REQUIRE( result.north ==  11113.73047_a );
+
+    result = CoreUtils::northEastDistance( lat,  lon, lat-0.1, lon-0.1);
+    REQUIRE( result.east == -7155.5698_a );
+    REQUIRE( result.north == -11113.73047_a );
+}

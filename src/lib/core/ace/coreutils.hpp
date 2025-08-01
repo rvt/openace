@@ -282,13 +282,13 @@ public:
     {
         struct relNorthRllEast
         {
-            float north;
+            float north;  
             float east;
         };
 
         float kx = cosf(fromLat * DEG_TO_RADS) * 111321;
-        float dx = (fromLon - toLon) * kx;
-        float dy = (fromLat - toLat) * 111139;
+        float dx = (toLon - fromLon) * kx;
+        float dy = (toLat - fromLat) * 111139;
         return relNorthRllEast{dy, dx};
     }
 
@@ -385,13 +385,6 @@ public:
     static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(float fromLat, float fromLon, float toLat, float toLon)
     {
         auto drne = getDistanceRelNorthRelEastFloat(fromLat, fromLon, toLat, toLon);
-        // float fbearing = CoreUtils::bearingFromInRad(fromLat, fromLon, toLat, toLon);
-        // float fdistance = CoreUtils::distanceFast(fromLat, fromLon, toLat, toLon);
-        // int32_t relNorth = static_cast<int32_t>(cosf(fbearing) * fdistance + 0.5f);
-        // int32_t relEast = static_cast<int32_t>(sinf(fbearing) * fdistance + 0.5f);
-        // int16_t bearing = static_cast<int16_t>((fbearing * RADS_TO_DEG) + 0.5f);
-        // int32_t distance = static_cast<int32_t>(fdistance);
-
         int16_t bearing = toBearing(static_cast<int16_t>(drne.bearing + 0.5f));
 
         return {static_cast<uint32_t>(drne.distance + 0.5f),
@@ -405,12 +398,10 @@ public:
      */
     static distanceRelNorthRelEastFloat getDistanceRelNorthRelEastFloat(float fromLat, float fromLon, float toLat, float toLon)
     {
-        float fbearing = CoreUtils::bearingFromInRad(fromLat, fromLon, toLat, toLon);
-        float fdistance = CoreUtils::distanceFast(fromLat, fromLon, toLat, toLon);
-        float relNorth = cosf(fbearing) * fdistance;
-        float relEast = sinf(fbearing) * fdistance;
-        float bearing = fbearing * RADS_TO_DEG;
-        return {fdistance, relNorth, relEast, bearing};
+        auto ne = northEastDistance(fromLat, fromLon, toLat, toLon);
+        float bearing = CoreUtils::bearingFromInRad(fromLat, fromLon, toLat, toLon) * RADS_TO_DEG;
+        float distance = sqrtf((ne.north * ne.north) + (ne.east * ne.east));
+        return {distance, ne.north, ne.east, bearing};
     }
 
     /**
@@ -427,7 +418,7 @@ public:
     template <int SECTIONS>
     static int getRadialSection(int16_t degree)
     {
-        int16_t sectionSize = 360 / SECTIONS;
+        constexpr int16_t sectionSize = 360 / SECTIONS;
 
         // Calculate the section
         return fmodf((degree + (sectionSize >> 1)) / sectionSize, SECTIONS);

@@ -71,8 +71,16 @@ configure_file(adsb.txt adsb.txt COPYONLY)
 
 set(ALL_EXAMPLE_TARGETS ${TARGETS_IDIOMATIC_EXAMPLES})
 
-foreach(name ${ALL_EXAMPLE_TARGETS})
-  target_link_libraries(${name} PRIVATE Catch2WithMain  libmodes etl)
+foreach( name ${ALL_EXAMPLE_TARGETS} )
+  target_link_libraries( 
+    ${name}  PRIVATE
+    Catch2WithMain 
+    etl
+    libmodes
+    )
+  if(NOT APPLE)
+    target_link_libraries(${name} PRIVATE atomic)
+  endif()
 endforeach()
 
 list(APPEND CATCH_WARNING_TARGETS ${ALL_EXAMPLE_TARGETS})

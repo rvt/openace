@@ -11,7 +11,7 @@ RUN apt-get update && \
         git python3 ninja-build cmake gcc-arm-none-eabi \
         libnewlib-arm-none-eabi build-essential \
         libstdc++-arm-none-eabi-newlib libusb-dev gnutls-bin \
-        python3-pycryptodome && \
+        python3-pycryptodome libatomic1 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt

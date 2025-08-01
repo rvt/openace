@@ -677,6 +677,11 @@ void Bluetooth::parseAircraftPosition(etl::bit_stream_reader &reader, size_t siz
     }
     int32_t relNorth = reader.read_unchecked<int32_t>(24U);
     int32_t relEast = reader.read_unchecked<int32_t>(24U);
+
+    // reader.read_unchecked<int32_t>(24U);
+    // reader.read_unchecked<int32_t>(24U);
+    // auto rel = CoreUtils::getDistanceRelNorthRelEastInt(52.89264087181, 4.73626016, lat, lon);
+
     int16_t bearing = reader.read_unchecked<int16_t>(16U);
     uint16_t distance = reader.read_unchecked<uint16_t>(16U);
 
