@@ -6,14 +6,9 @@
 #include <stdint.h>
 #include <algorithm>
 
-/* Vendor. */
-#include "FreeRTOS.h"
-#include "queue.h"
-#include "message_buffer.h"
-
-/* PICO. */
-#include "pico/stdlib.h"
-#include "pico/binary_info.h"
+///* PICO. */
+//#include "pico/stdlib.h"
+//#include "pico/binary_info.h"
 
 /* Vendor. */
 #include "etl/message_bus.h"
@@ -29,7 +24,7 @@
 
 
 
-class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, GATAS::ConfigUpdatedMsg, 
+class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024,
 GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
 {
     friend class message_router;
@@ -83,7 +78,6 @@ private:
     */
     void on_receive(const GATAS::RadioRxGfskMsg &msg);
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
-    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
 
     void on_receive_unknown(const etl::imessage& msg)
@@ -101,6 +95,8 @@ private:
     */
     void addReceiveStat(uint32_t frequency);
 
+    GATAS::AircraftCategory toAircraftCategory(uint8_t flarmCode) const;
+    uint8_t fromAircraftCategory(GATAS::AircraftCategory category) const;
 
 };
 

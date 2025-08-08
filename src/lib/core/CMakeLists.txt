@@ -4,9 +4,10 @@ project(core VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/models.cpp
-    ace/basemodule.cpp
-    ace/coreutils.cpp
+    ace/src/models.cpp
+    ace/src/basemodule.cpp
+    ace/src/coreutils.cpp
+    ace/src/lib_crc.cpp
 )
 
 set(MODULE_TARGET_LINK

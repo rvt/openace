@@ -27,3 +27,6 @@ All files in the `SystemGUI/dist` directory are automatically packaged into `src
 - `.parcelrcrelease` Release configuration using in the build process to compress using gzip
 - `package.json` npm package file
 - `src` Directory containing the project files with css and various components
+
+
+TODO: Update to npm install chota

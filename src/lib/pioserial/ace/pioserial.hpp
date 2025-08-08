@@ -3,13 +3,8 @@
 /* System. */
 #include <stdint.h>
 
-/* FreeRTOS. */
-#include "FreeRTOS.h"
-#include "task.h"
-
 /* PICO. */
 #include "pico/stdlib.h"
-#include "hardware/pio.h"
 #include "uart_rx.pio.h"
 #include "uart_rx_f.h"
 #include "uart_tx.pio.h"

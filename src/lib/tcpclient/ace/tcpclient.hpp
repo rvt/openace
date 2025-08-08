@@ -6,14 +6,8 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-#include "etl/map.h"
-#include "etl/message_bus.h"
 #include "etl/function.h"
 
-#include "ace/constants.hpp"
-#include "ace/messagerouter.hpp"
-#include "ace/basemodule.hpp"
-#include "ace/messages.hpp"
 
 /**
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages

@@ -167,6 +167,7 @@ target_link_libraries(
           aircrafttracker
           dataport
           airconnect
+          gatasconnect
           bluetooth
           )
 

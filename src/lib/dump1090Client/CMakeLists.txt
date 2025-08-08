@@ -4,7 +4,7 @@ project(dump1090client VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/dump1090client.cpp
+    ace/src/dump1090client.cpp
 )
 
 set(MODULE_TARGET_LINK

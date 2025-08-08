@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdint.h>
 
 #include <etl/array.h>
 

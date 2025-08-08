@@ -45,22 +45,30 @@ TEST_CASE( "Fully Configured", "[single-file]" )
 
     Config config(bus, store, permanentStore, DEFAULT_GATAS_CONFIG);
     config.postConstruct();
+
+    SECTION( "IPv4", "[single-file]" )
+    {
+        REQUIRE( 1689430208 == config.parseIpv4String("192.168.178.100", 0xffffffffUL));
+        REQUIRE( 0xffffffff == config.parseIpv4String("300", 0xffffffffUL));
+        REQUIRE( 43200 == config.parseIpv4String("192.168", 0xffffffffUL));
+    }
+
     SECTION( "AircraftHwConfig" )
     {
         auto hwConfig = config.gaTasConfig();
-        REQUIRE( hwConfig.address == 12345678 );
-        REQUIRE( hwConfig.addressType == GATAS::AddressType::ADSL );
-        REQUIRE( hwConfig.category == GATAS::AircraftCategory::ReciprocatingEngine );
+        REQUIRE( 12345678 == hwConfig.conspicuity.address );
+        REQUIRE( GATAS::AddressType::OGN == hwConfig.conspicuity.addressType );
+        REQUIRE( GATAS::AircraftCategory::SMALL == hwConfig.conspicuity.category );
 //        REQUIRE ( (hwConfig.privacy == 0) );
-        REQUIRE( hwConfig.protocols.size() == 3 );
-        REQUIRE( hwConfig.protocols[0] == GATAS::DataSource::OGN1 );
-        REQUIRE( hwConfig.protocols[1] == GATAS::DataSource::ADSL );
-        REQUIRE( hwConfig.protocols[2] == GATAS::DataSource::FLARM );
+        REQUIRE( 3 == hwConfig.protocols.size() );
+        REQUIRE( GATAS::DataSource::OGN1 == hwConfig.protocols[0] );
+        REQUIRE( GATAS::DataSource::ADSL == hwConfig.protocols[1] );
+        REQUIRE( GATAS::DataSource::FLARM == hwConfig.protocols[2] );
     }
 
     SECTION( "Arrays" )
     {
-        //         char path[] = "defaultPorts/X";
+        // char path[] = "defaultPorts/X";
         // path[sizeof(path) - 2] = i;
         // int32_t port = config.valueByPath(GDL90OVERUDP_DEFAULT_PORT, NAME, path);
 
@@ -76,11 +84,11 @@ TEST_CASE( "Fully Configured", "[single-file]" )
         SECTION( "valid" )
         {
             GATAS::PinTypeMap map = config.pinMap("Sx1262_1");
-            REQUIRE( (map.size() == 4) );
-            REQUIRE( (map[GATAS::PinType::BUSY] == 13) );
-            REQUIRE( (map[GATAS::PinType::CS] == 12) );
-            REQUIRE( (map[GATAS::PinType::DIO1] == 19) );
-            REQUIRE( (map[GATAS::PinType::SPI] == 0) );
+            REQUIRE( map.size() == 4 );
+            REQUIRE( map[GATAS::PinType::BUSY] == 13 );
+            REQUIRE( map[GATAS::PinType::CS] == 12 );
+            REQUIRE( map[GATAS::PinType::DIO1] == 19 );
+            REQUIRE( map[GATAS::PinType::SPI] == 0 );
         }
 
         SECTION( "NoPort andInvalidPort" )

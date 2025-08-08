@@ -55,11 +55,11 @@ set( ACE_SOURCE_FILES
       # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/encryption.cpp
       # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/ognconv.cpp
 
-      ../ace/encryption.cpp
-      ../ace/EMA.cpp
-      ../ace/utils.cpp
-      ../ace/moreutils.cpp
-      ../ace/manchester.cpp
+        ../ace/src/encryption.cpp
+        ../ace/src/EMA.cpp
+        ../ace/src/utils.cpp
+        ../ace/src/moreutils.cpp
+        ../ace/src/manchester.cpp
 )
 
 foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})

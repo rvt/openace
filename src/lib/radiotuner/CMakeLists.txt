@@ -4,15 +4,15 @@ project(radiotuner VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/radiotunerrx_v2.cpp
-    ace/radiotunertx_v2.cpp
-    ace/countryregulations_v2.cpp
-    ace/rxdataframequeue.cpp
+        ace/src/radiotunerrx_v2.cpp
+        ace/src/radiotunertx_v2.cpp
+        ace/src/countryregulations_v2.cpp
+        ace/src/rxdataframequeue.cpp
 )
 
 set(PICO_EXTRA_LIBS
     pico_cyw43_arch_lwip_sys_freertos
-    pico_time 
+#    pico_time
     pico_rand
 )
 

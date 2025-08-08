@@ -4,7 +4,7 @@ project(acespi VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/acespi.cpp
+    ace/src/acespi.cpp
 )
 
 set(PICO_EXTRA_LIBS

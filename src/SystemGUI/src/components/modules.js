@@ -41,8 +41,9 @@ class GaTasModules extends El {
       "AirConnect",
       "Bluetooth",
       "Webserver",
+      "GatasConnect"
     ];
-    this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "Bluetooth"];
+    this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "Bluetooth", "GatasConnect"];
     this.enablers = [
       "ADSBDecoder",
       "Ogn1",
@@ -62,6 +63,7 @@ class GaTasModules extends El {
       "RadioTunerTx",
       "DataPort",
       "AirConnect",
+      "GatasConnect",
       "Bluetooth",
     ];
     this.info = {
@@ -245,6 +247,7 @@ class GaTasModules extends El {
         }
       })
       .catch((e) => {
+        console.log("Error" + e);
         this.state.modules.length = 0;
       })
       .then((data) => {

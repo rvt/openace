@@ -4,8 +4,8 @@ project(sx1262 VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/sx1262.cpp
-    ace/sx1262_hal.cpp
+    ace/src/sx1262.cpp
+    ace/src/sx1262_hal.cpp
 
     # Driver from Semtech
     driver/src/sx126x.c 
@@ -20,7 +20,6 @@ set(MODULE_TARGET_LINK
 
 set(PICO_EXTRA_LIBS
     hardware_spi
-    hardware_pio
 )
 
 

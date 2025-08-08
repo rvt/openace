@@ -34,7 +34,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
     # This project is part of a larger build
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/libcrc libcrc)
+#    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/libcrc libcrc)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/FLARM flarm)
 endif()
 
@@ -49,12 +49,12 @@ string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
 set(TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES})
 
 set(ACE_SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/utils.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/encryption.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/ognconv.cpp
-    ../ace/flarm2024.cpp
+        ../../core/ace/src/basemodule.cpp
+        ../../core/ace/src/coreutils.cpp
+        ../../utils/ace/src/utils.cpp
+        ../../utils/ace/src/encryption.cpp
+        ../../utils/ace/src/ognconv.cpp
+        ../ace/src/flarm2024.cpp
 )
 
 foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})

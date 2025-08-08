@@ -4,9 +4,9 @@ project(gps VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/ubloxm8n.cpp
-    ace/L76B.cpp
-    ace/AbstractGnss.cpp
+        ace/src/ubloxm8n.cpp
+        ace/src/L76B.cpp
+        ace/src/AbstractGnss.cpp
 )
 
 set(MODULE_TARGET_LINK

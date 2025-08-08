@@ -3,10 +3,6 @@
 /* System. */
 #include <stdint.h>
 
-/* FreeRTOS. */
-#include "FreeRTOS.h"
-#include "timers.h"
-
 /* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
@@ -47,7 +43,7 @@ public:
 
     //  TcpClient::CallBackFunction::create([this](const char *sentence)
     //                                                                                                                         {
-    //             statistics.totalReceived++;
+    //             statistics.totalReceived += 1;
     //               getBus().receive(GATAS::ADSBMessage{sentence}); })
 
     Dump1090Client(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),

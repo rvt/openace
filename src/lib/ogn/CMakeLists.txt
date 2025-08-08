@@ -5,11 +5,10 @@ set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
     ace/ognpacket.cpp
-    ace/ogn1.cpp
+        ace/src/ogn1.cpp
 )
 
 set(MODULE_TARGET_LINK
-    libcrc
     utils
 )
 

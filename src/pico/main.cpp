@@ -53,6 +53,7 @@
 #include "ace/gdloverudp.hpp"
 #include "ace/dataport.hpp"
 #include "ace/airconnect.hpp"
+#include "ace/gatasconnect.hpp"
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
 
@@ -110,6 +111,7 @@ void registerModules()
     BaseModule::registerModule(AircraftTracker::NAME, false);
     BaseModule::registerModule(DataPort::NAME, false);
     BaseModule::registerModule(AirConnect::NAME, false);
+    BaseModule::registerModule(GatasConnect::NAME, false);
     BaseModule::registerModule(Bluetooth::NAME, false);
     BaseModule::registerModule(FanetAce::NAME, false);
 
@@ -121,10 +123,11 @@ void registerModules()
 
 BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, const Configuration &config)
 {
-    // clang-format off
+    // clang-format off 
     if (name == Ogn1::NAME) return new Ogn1(bus, config);
     if (name == FanetAce::NAME) return new FanetAce(bus, config);
     if (name == AirConnect::NAME) return new AirConnect(bus, config);
+    if (name == GatasConnect::NAME) return new GatasConnect(bus, config);
     if (name == Bluetooth::NAME) return new Bluetooth(bus, config);
     if (name == DataPort::NAME) return new DataPort(bus, config);
     if (name == AircraftTracker::NAME) return new AircraftTracker(bus, config);
@@ -253,6 +256,7 @@ static void loadModules(void *arch)
     load(GDLoverUDP::NAME, bus, config);
     load(DataPort::NAME, bus, config);
     load(AirConnect::NAME, bus, config);
+    load(GatasConnect::NAME, bus, config);
     load(Bmp280::NAME, bus, config);
 
     for (uint8_t i = 0; i < GATAS_MAX_RADIOS; i++)

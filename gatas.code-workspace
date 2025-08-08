@@ -5,9 +5,6 @@
 	},
 	{
 		"path": "."
-	},
-	{
-		"path": "src/vendor/FLARM"
 	}
 ]
   	,
@@ -109,7 +106,10 @@
 			"typeindex": "cpp",
 			"typeinfo": "cpp",
 			"variant": "cpp",
-			"__config": "cpp"
+			"__config": "cpp",
+			"__locale": "cpp",
+			"locale": "cpp",
+			"__assertion_handler": "cpp"
 		},
 		"cmake.autoSelectActiveFolder": false
 	  }

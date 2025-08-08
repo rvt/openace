@@ -119,7 +119,6 @@ private:
     static void heartbeat_handler(struct btstack_timer_source *ts);
 
     static void parseCobs( uint8_t* cobsData, size_t size);
-    static void parseAircraftPosition( etl::bit_stream_reader &reader, size_t size);
     static void processIncomingBuffer( uint8_t* data, size_t size);
 
     // Lists of bluetooth contexts

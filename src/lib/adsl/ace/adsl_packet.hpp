@@ -507,7 +507,7 @@ private:
                         BadBitMask[BadBits]=Mask;
                         Syndrome[BadBits]=CRCsyndrome(ByteIdx*8+BitIdx);
                     }
-                    BadBits++;
+                    BadBits += 1;
                 }
                 Mask>>=1;
             }
@@ -526,7 +526,7 @@ private:
             uint8_t Bit=0;
             while(BitExp>>=1)
             {
-                Bit++;
+                Bit += 1;
             }
             PktData[BadBitIdx[Bit]]^=BadBitMask[Bit];
             CRC^=Syndrome[Bit];

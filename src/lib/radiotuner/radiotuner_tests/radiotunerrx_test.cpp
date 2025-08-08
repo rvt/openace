@@ -42,15 +42,15 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
 
         SECTION("FLARM Data Received", "[single-file]")
         {
-            slotReceived[(uint8_t)(GATAS::DataSource::FLARM)]++;
+            slotReceived[(uint8_t)(GATAS::DataSource::FLARM)] += 1;
             ctx.updateSlotReceive(slotReceived);
             ctx.prioritizeDatasources();
             REQUIRE(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL} == ctx.dataSourceTimeSlots);
 
             SECTION("OGN and FLARM Data Received", "[single-file]")
             {
-                slotReceived[(uint8_t)(GATAS::DataSource::FLARM)]++;
-                slotReceived[(uint8_t)(GATAS::DataSource::OGN1)]++;
+                slotReceived[(uint8_t)(GATAS::DataSource::FLARM)] += 1;
+                slotReceived[(uint8_t)(GATAS::DataSource::OGN1)] += 1;
                 ctx.updateSlotReceive(slotReceived);
                 ctx.prioritizeDatasources();
                 REQUIRE(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL} == ctx.dataSourceTimeSlots);
@@ -78,7 +78,7 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
 
             SECTION("OGN Data, no FLARM Received", "[single-file]")
             {
-                slotReceived[(uint8_t)(GATAS::DataSource::OGN1)]++;
+                slotReceived[(uint8_t)(GATAS::DataSource::OGN1)] += 1;
                 ctx.updateSlotReceive(slotReceived);
                 ctx.prioritizeDatasources();
                 REQUIRE(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL} == ctx.dataSourceTimeSlots);

@@ -1,6 +1,7 @@
 {
     "_comment_signature": "A signature used to decide if the JSON loaded, even when it was correct that it was an GATAS configuration. Format YYMMDD and only changes when HW config changes that is not backward compatible",
-    "signature": 250207,
+    "_comment_signature_II": "Don't forget ot modify GATAS_FLASH_SIGNATURE",
+    "signature": 250801,
     "_comment_hardware": "Hardware configuration used.",
     "hardware": {
         "type": "PICO_2RADIO"
@@ -25,6 +26,17 @@
                 "ADSL",
                 "FLARM"
             ]
+        }
+    },
+    "GatasConnect": {
+        "_comment_ip": "IP Address of the Linode server running GA/TAS Server",
+        "gatasServer": {
+            "ip": "192.168.178.237",
+            "port": 16256
+        },
+        "remote": {
+            "ip": "178.79.150.232",
+            "port": 16256
         }
     },
     "ADSBDecoder": {

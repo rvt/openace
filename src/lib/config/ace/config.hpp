@@ -158,6 +158,8 @@ private:
         (void)msg;
     }
 
+    uint32_t parseIpv4String(const etl::string_view ipStr, uint32_t defaultValue) const;
+
 private:
     friend class message_router;
     JsonDocument doc;

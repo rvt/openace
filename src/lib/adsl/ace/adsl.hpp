@@ -37,8 +37,7 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
     GATAS::RadioRxGfskMsg,
     GATAS::OwnshipPositionMsg,
     GATAS::RadioTxPositionRequestMsg,
-    GATAS::GpsStatsMsg,
-    GATAS::ConfigUpdatedMsg>
+    GATAS::GpsStatsMsg>
 {
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int MAX_IGNORE_DISTANCE = 50000;
@@ -62,7 +61,6 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
     etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // 2 for 2 timeslots (europe)
 
     etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
-    GATAS::Config::GaTasConfiguration gaTasConfiguration;
     GATAS::GpsStatsMsg gpsStats;
     uint16_t distanceIgnore;
 public:
@@ -73,7 +71,6 @@ public:
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "ADSL", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
-        gaTasConfiguration = config.gaTasConfig();
     }
 
     virtual ~ADSL() = default;

@@ -431,7 +431,7 @@ float fns_buf2coord_compressed(uint16_t *buf, float mycoord)
 		if(sub_deg > mysub_deg)
 			mycood_rounded--;
 		else
-			mycood_rounded++;
+			mycood_rounded += 1;
 	}
 
 	return mycood_rounded + sub_deg;

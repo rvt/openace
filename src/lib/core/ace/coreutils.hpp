@@ -9,11 +9,9 @@
 #include "pico/time.h"
 
 #include "messages.hpp"
-#include "coreutils.hpp"
 
 #include "etl/string.h"
-#include "etl/string_utilities.h"
-#include "etl/absolute.h"
+//#include "etl/absolute.h"
 
 class CoreUtils
 {
@@ -452,7 +450,7 @@ public:
         while (nmea[i] && nmea[i] != '*')
         {
             chk ^= nmea[i];
-            i++;
+            i += 1;
         }
 
         if (i > (nmea.capacity() - 5))
@@ -491,10 +489,11 @@ public:
     static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, GATAS::AddressType addressType, etl::string_view callSign = "")
     {
         (void)addressType;
-        stream << etl::hex << etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << GATAS::RESET_FORMAT;
         if (callSign.size() > 0)
         {
-            stream << "!" << callSign;
+            stream << callSign;
+        } else {
+            stream << etl::hex << etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << GATAS::RESET_FORMAT;
         }
     }
 

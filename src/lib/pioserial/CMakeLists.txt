@@ -4,7 +4,7 @@ project(pioserial VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/pioserial.cpp
+        ace/src/pioserial.cpp
 )
 
 set(MODULE_PIO_FILES

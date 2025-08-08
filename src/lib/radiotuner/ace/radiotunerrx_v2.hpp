@@ -13,7 +13,6 @@
 
 #include "countryregulations_v2.hpp"
 
-#include "etl/map.h"
 #include "etl/message_bus.h"
 #include "etl/vector.h"
 #include "etl/array.h"
@@ -120,7 +119,7 @@ private:
                 if (controller->slotReceive[static_cast<uint8_t>(ds)] > 0 && extraSlotCnt < MAX_EXTRA_SLOTS)
                 {
                     protocolTimings.push_back(&slot);
-                    extraSlotCnt++;
+                    extraSlotCnt += 1;
                 }
                 controller->slotReceive[static_cast<uint8_t>(ds)] = 0;
             }

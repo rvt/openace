@@ -47,14 +47,14 @@ set( TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES} )
 
 set( ACE_SOURCE_FILES
  #    ${CMAKE_CURRENT_SOURCE_DIR}/../../../core/ace/messagerouter.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/models.cpp
+        ../../core/ace/src/basemodule.cpp
+        ../../core/ace/src/coreutils.cpp
+        ../../core/ace/src/models.cpp
 
 #      ${CMAKE_CURRENT_SOURCE_DIR}/mocks/pico/time.c
 
-     ../ace/countryregulations_v2.cpp
-     ../ace/radiotunertx_v2.cpp
+        ../ace/src/countryregulations_v2.cpp
+        ../ace/src/radiotunertx_v2.cpp
 )
 
 

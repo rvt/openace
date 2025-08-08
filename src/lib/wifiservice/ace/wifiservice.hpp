@@ -1,21 +1,16 @@
+#pragma once
 #include "FreeRTOS.h"
 #include "timers.h"
 
-#include "etl/map.h"
 #include "etl/message_bus.h"
 #include "etl/string.h"
 #include "etl/set.h"
 
-#include "pico/cyw43_arch.h"
-#include "pico/lwip_freertos.h"
-#include "pico/stdlib.h"
-#include "lwip/pbuf.h"
-#include "lwip/tcp.h"
-
-#include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
+
+#include "pico/cyw43_arch.h"
 
 #include "../dhcpserver/dhcpserver.h"
 #include "../dnsserver/dnsserver.h"

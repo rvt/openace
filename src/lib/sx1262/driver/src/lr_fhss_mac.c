@@ -787,7 +787,7 @@ STATIC uint16_t lr_fhss_payload_interleaving( const uint8_t* data_in, uint16_t d
                 st_idx += step_v;
                 if( st_idx >= step )
                 {
-                    st_idx_init++;
+                    st_idx_init += 1;
                     st_idx = st_idx_init;
                 }
                 pos = st_idx;

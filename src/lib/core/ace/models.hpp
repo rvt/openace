@@ -2,9 +2,10 @@
 
 #include "constants.hpp"
 
-#include "etl/string.h"
-#include "etl/map.h"
+//#include "etl/string.h"
+// #include "etl/map.h"
 #include "etl/vector.h"
+#include "etl/enum_type.h"
 
 namespace GATAS
 {
@@ -54,29 +55,72 @@ namespace GATAS
     // PinType alias to uint8_t
     PinType stringToPinType(const char *str);
 
-    /**
-     * Typee of aircraft
-     * MUST follow Flarm's DataPort spec. If this is changed, DataPort / Flarm must be updated
-     * Should we support : https://openskynetwork.github.io/opensky-api/rest.html ??
-     */
-    enum class AircraftCategory : uint8_t
+    // Assigments follows closly GDL90 specification
+    struct AircraftCategory
     {
-        Unknown = 0x00,
-        GliderMotorGlider = 0x01,
-        TowPlane = 0x02,
-        Helicopter = 0x03,
-        Skydiver = 0x04,
-        DropPlane = 0x05,
-        HangGlider = 0x06,
-        Paraglider = 0x07,
-        ReciprocatingEngine = 0x08,
-        JetTurbopropEngine = 0x09,
-        Reserved = 0x0a,
-        Balloon = 0x0b,
-        Airship = 0x0c,
-        Uav = 0x0d,
-        ReservedE = 0x0e,
-        StaticObstacle = 0x0f
+        enum enum_type : uint8_t
+        {
+            UNKNOWN = 0,
+            LIGHT = 1,       // < 15.500lbs
+            SMALL = 2,       //   15.500lbs to 75.000lbs
+            LARGE = 3,       // < 75.000lbs to 300.000lbs
+            HIGH_VORTEX = 4, // Such as Boing 757
+            HEAVY_ICAO = 5,  // > 300.000lbs
+            AEROBATIC = 6,
+            ROTORCRAFT = 7,
+            // UnAssigned
+            GLIDER = 9,
+            LIGHT_THAN_AIR = 10, 
+            SKY_DIVER = 11,
+            ULTRA_LIGHT_FIXED_WING = 12, // < 1500 lbs Fixed Wing only
+            // UnAssigned
+            UN_MANNED = 14,
+            SPACE_VEHICLE = 15,
+            // UnAssigned
+            SURFACE_EMERGENCY_VEHICLE = 17,
+            SURFACE_VEHICLE = 18, // SurfaceVehicle
+            POINT_OBSTACLE = 19,
+            CLUSTER_OBSTACLE = 20,
+            LINE_OBSTACLE = 21,
+            // .. reserved to 39
+            // From below are custom values 
+            GYROCOPTER = 40,
+            HANG_GLIDER = 41,
+            PARA_GLIDER = 42,
+            DROP_PLANE = 43,
+            MILITARY = 44,
+        };
+
+        ETL_DECLARE_ENUM_TYPE(AircraftCategory, uint8_t)
+        ETL_ENUM_TYPE(UNKNOWN, "Unknown")
+        ETL_ENUM_TYPE(LIGHT, "Light")
+        ETL_ENUM_TYPE(SMALL, "Small")
+        ETL_ENUM_TYPE(LARGE, "Large")
+        ETL_ENUM_TYPE(HIGH_VORTEX, "High Vortex")
+        ETL_ENUM_TYPE(HEAVY_ICAO, "Heavy (ICAO)")
+        ETL_ENUM_TYPE(AEROBATIC, "Aerobatic")
+        ETL_ENUM_TYPE(ROTORCRAFT, "Helicopter")
+        // Unassigned
+        ETL_ENUM_TYPE(GLIDER, "Glider")
+        ETL_ENUM_TYPE(LIGHT_THAN_AIR, "Baloon")
+        ETL_ENUM_TYPE(SKY_DIVER, "Sky Diver")
+        ETL_ENUM_TYPE(ULTRA_LIGHT_FIXED_WING, "Ultra Light")
+        // Unassigned
+        ETL_ENUM_TYPE(UN_MANNED, "Unmanned aerial vehicle")
+        ETL_ENUM_TYPE(SPACE_VEHICLE, "Space Vehicle")
+        // Unassigned
+        ETL_ENUM_TYPE(SURFACE_EMERGENCY_VEHICLE, "Surface Emergency Vehicle")
+        ETL_ENUM_TYPE(SURFACE_VEHICLE, "Surface Vehicle")
+        ETL_ENUM_TYPE(POINT_OBSTACLE, "Point Obstacle")
+        ETL_ENUM_TYPE(CLUSTER_OBSTACLE, "Cluster Obstacle")
+        ETL_ENUM_TYPE(LINE_OBSTACLE, "Line Obstacle")
+        // From below are custom values
+        ETL_ENUM_TYPE(GYROCOPTER, "Gyrocopter")
+        ETL_ENUM_TYPE(HANG_GLIDER, "Hang Glider")
+        ETL_ENUM_TYPE(PARA_GLIDER, "Para Glider")
+        ETL_ENUM_TYPE(DROP_PLANE, "Drop Plane")
+        ETL_ENUM_TYPE(MILITARY, "Military")
+        ETL_END_ENUM_TYPE
     };
 
     template <typename EnumType, typename MappingType>
@@ -101,7 +145,8 @@ namespace GATAS
     template <typename EnumType, typename MappingType, size_t Size>
     EnumType stringToEnum(const Mapping<EnumType, MappingType> (&mapping)[Size], const char *str, EnumType defaultValue)
     {
-        if (!str) {
+        if (!str)
+        {
             return defaultValue;
         }
         for (const auto &entry : mapping)
@@ -156,7 +201,7 @@ namespace GATAS
         _TRANSPROTOCOLS = 4, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         PAW = 4,
         ADSB = 5,
-        _ITEMS = 6, // Maximum number of items eg last item + 1
+        _ITEMS = 6,   // Maximum number of items eg last item + 1
         UNKNOWN = 255 // Note: Never use this! Unly used for stringToEnum(..)
     };
 
@@ -197,15 +242,15 @@ namespace GATAS
         DataSource dataSource;
         AircraftCategory aircraftType;
         bool stealth;  // Privacy/Stealth option
-        bool noTrack;  // Tracking info (heading) unknown
+        bool noTrack;  // this aircraft does not want to be tracked
         bool airborne; // Is the aircraft airborne
         float lat;
         float lon;
-        int16_t altitudeHAE; // Altitude above the GeoId (MSL) in meters. For aircraft where altitude is based from BARO, this is an estimate
-        float verticalSpeed; // in m/s
-        float groundSpeed;   // in m/s
-        int16_t course;      // 0..359
-        float hTurnRate;     // deg/s Turn rate in the horizontal plane
+        int16_t ellipseHeight; // Altitude above the GeoId (MSL) in meters. For aircraft where altitude is based from BARO, this is an estimate
+        float verticalSpeed;   // in m/s
+        float groundSpeed;     // in m/s
+        int16_t course;        // 0..359
+        float hTurnRate;       // deg/s Turn rate in the horizontal plane
 
         // These can be used by received to understand where the target is relative to ownship
         uint32_t distanceFromOwn; // Distance to ownship in meters,
@@ -214,12 +259,12 @@ namespace GATAS
         // TODO: Add relative vertical?
         int16_t bearingFromOwn;   // Bearing to ownship in degrees
 
-        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t altitudeHAE_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
-            : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), altitudeHAE(altitudeHAE_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_), bearingFromOwn(bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_, int16_t bearingFromOwn_)
+            : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_), bearingFromOwn(bearingFromOwn_)
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::ADSL), aircraftType(AircraftCategory::Unknown), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), altitudeHAE(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::ADSL), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN), bearingFromOwn(INT16_MIN)
         {
         }
 
@@ -228,39 +273,23 @@ namespace GATAS
         }
     };
 
-    struct OwnshipPositionInfo
-    {
-        uint32_t timestamp; // Timestamp when the position was received
-        bool airborne;      // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
-        float lat;
-        float lon;
-        int16_t altitudeHAE;     // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
-        float verticalSpeed;     // in m/s
-        float groundSpeed;       // in m/s
-        float course;            // 0..359
-        float hTurnRate;         // deg/s Turn rate in the horizontal plane
-        float velocityNorth;     // North velocity in m/s
-        float velocityEast;      // East velocity in m/s
-        int16_t geoidSeparation; // The distance from the surface of an ellipsoid to the surface of the geoid.
-
-        int16_t heightMsl() const
-        {
-            return altitudeHAE - geoidSeparation;
-        }
-    };
-
     namespace Config
     {
+        struct Conspicuity
+        {
+            AircraftAddress address;
+            AircraftCategory category;
+            AddressType addressType;
+            bool stealth;
+            bool noTrack;
+        };
+
         /**
          * Object that specifies how to configure GATAS for this aircraft
          */
         struct GaTasConfiguration
         {
-            AircraftCategory category;
-            AddressType addressType;
-            AircraftAddress address;
-            bool stealth;
-            bool noTrack;
+            Conspicuity conspicuity;
             etl::vector<DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
         };
 
@@ -301,6 +330,27 @@ namespace GATAS
             uint32_t ip;
             uint16_t port;
         };
+    };
+
+    struct OwnshipPositionInfo
+    {
+        uint32_t timestamp;              // Timestamp when the position was received
+        float lat;
+        float lon;
+        int16_t ellipseHeight;           // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
+        float verticalSpeed;             // in m/s
+        float groundSpeed;               // in m/s
+        float course;                    // 0..359
+        float hTurnRate;                 // deg/s Turn rate in the horizontal plane
+        float velocityNorth;             // North velocity in m/s
+        float velocityEast;              // East velocity in m/s
+        int16_t geoidSeparation;         // The distance from the surface of an ellipsoid to the surface of the geoid.
+        bool airborne;                   // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
+        Config::Conspicuity conspicuity; // Configuration for this aircraft, used to send out the correct data
+        int16_t heightMsl() const
+        {
+            return ellipseHeight - geoidSeparation;
+        }
     };
 
     enum class Modulation : uint8_t

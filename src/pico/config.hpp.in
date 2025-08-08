@@ -139,7 +139,7 @@
 
 // Signature for Flash configuration. When this signature changes, a compete new and fresh configuration will be loaded
 // Make sure this value is the same as in gatas_default_config.json
-#define GATAS_FLASH_SIGNATURE ( 250207 )
+#define GATAS_FLASH_SIGNATURE ( 250801 )
 
 #define DISALLOW_COPY_AND_MOVE(Type)       \
     Type(const Type&) = delete;            \

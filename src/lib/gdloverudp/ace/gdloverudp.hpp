@@ -3,9 +3,6 @@
 #include <stdint.h>
 #include <sys/time.h>
 
-/* PICO. */
-#include "pico/time.h"
-
 /* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
@@ -14,7 +11,6 @@
 #include "ace/circularbuffer.hpp"
 
 /* LwIP */
-#include "lwip/pbuf.h"
 #include "lwip/udp.h"
 
 /* ETL CPP */
@@ -47,17 +43,11 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
         uint32_t sendFailureErr = 0;
     } statistics;
 
-    struct ClientConfig
-    {
-        uint32_t ip = IPADDR_NONE;
-        uint16_t port = 0;
-    };
-
     udp_pcb *pcb;
     uint32_t networkAddress;
     TaskHandle_t taskHandle;
     SemaphoreHandle_t mutex;
-    etl::list<ClientConfig, GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
+    etl::list<GATAS::Config::IpPort, GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
     etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts = {};
 

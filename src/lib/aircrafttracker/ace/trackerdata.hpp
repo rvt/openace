@@ -145,7 +145,7 @@ public:
             printf("%3d icao:%6lX sendTime:%8ld time:%8ld  dist:%ld lat:%.6f lon:%.6f\n",
                    c, it.position.address, it.sendTime, CoreUtils::timeUs32Raw(),
                    it.position.distanceFromOwn, it.position.lat, it.position.lon);
-            c++;
+            c += 1;
         }
     }
 
@@ -198,7 +198,7 @@ public:
                 {
                     return SLICE_SIZE_MS;
                 }
-                count++;
+                count += 1;
             }
         }
         return SLICE_SIZE_MS;

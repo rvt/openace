@@ -7,7 +7,6 @@
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 
-#include "etl/map.h"
 #include "etl/message_bus.h"
 
 class Webserver : public BaseModule, public etl::message_router<Webserver, GATAS::WifiConnectionStateMsg>

@@ -14,8 +14,8 @@
         "XX-XXX": {
             "callSign": "XX-XXX",
             "address": 12345678,
-            "addressType": "ADSL",
-            "category": "ReciprocatingEngine",
+            "addressType": "OGN",
+            "category": "Small",
             "privacy": 0,
             "noTrack": 0,
             "protocols": [
@@ -72,7 +72,7 @@
     },
     "GDLoverUDP": {
         "defaultPorts": [
-            4000,4001
+            4000, 4001
         ],
         "ips": [
             {

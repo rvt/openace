@@ -115,7 +115,7 @@ public:
             Mask<<=1;
             if(Mask==0)
             {
-                Idx++;
+                Idx += 1;
                 Mask=1;
             }
         }
@@ -197,7 +197,7 @@ public:
         for(uint8_t Row=0; Row<ParityBits; Row++)
         {
             int16_t Ret=ProcessCheck(Row);
-            if(Ret<=0) Count++;
+            if(Ret<=0) Count += 1;
         }
         // printf("%d parity checks fail\n", Count);
         if(Count==0) return 0;
@@ -310,7 +310,7 @@ public:
                 if(Word&Mask)
                 {
                     ParityCheckIndex[ParBit][RowWeight++]=Bit;
-                    ParityCheckColWeight[Bit]++;
+                    ParityCheckColWeight[Bit] += 1;
                 }
                 Mask<<=1;
             }
@@ -380,7 +380,7 @@ public:
             Mask<<=1;
             if(Mask==0)
             {
-                Idx++;
+                Idx += 1;
                 Mask=1;
             }
         }
@@ -450,7 +450,7 @@ public:
         for(int Row=0; Row<ParityBits; Row++)                               // process all parity checks and count how many have failed
         {
             Float Ret=ProcessCheck(Row);
-            if(Ret<=0) Count++;
+            if(Ret<=0) Count += 1;
         }
         // printf("%d parity checks fail\n", Count);
         if(Count==0) return 0;                                              // if all passed, then return
@@ -508,7 +508,7 @@ public:
         {
             bool Inp=InpBit[Idx]>0;
             bool Out=OutBit[Idx]>0;
-            if(Inp!=Out) Count++;
+            if(Inp!=Out) Count += 1;
         }
         return Count;
     }
