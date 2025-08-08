@@ -432,7 +432,7 @@ void vDiagnosticsTask(void *pvParameters)
 
 void vLaunch(void)
 {
-    // Bootstap
+    // Bootstrap
     BaseModule::initBase();
     puts("--");
     config.postConstruct();

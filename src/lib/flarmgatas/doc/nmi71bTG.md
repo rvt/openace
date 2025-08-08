@@ -121,7 +121,7 @@ the wind when doing the computations on the receiving device?  Since gliders oft
 circle in wind velocities that are a significant percentage of the glider airspeed,
 their trajectories (in ground reference) are very different from circles, turning
 tightly upwind and opening up downwind.  Look at a soaring bird circling in a
-breeze for a demostration of that.  Collision predictions that ignore this would
+breeze for a demonstration of that.  Collision predictions that ignore this would
 be of poor quality.
 
 Perhaps very old FLARM devices do that poor calculation, and more recent models
