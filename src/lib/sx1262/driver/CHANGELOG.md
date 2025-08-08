@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- `sx126x_set_gfsk_pkt_address()` function - configure both GFSK node and brodcast filtering addresses
+- `sx126x_set_gfsk_pkt_address()` function - configure both GFSK node and broadcast filtering addresses
 - `sx126x_handle_rx_done()` function - perform all requested actions when the chip leaves the Rx mode
 
 ## [2.0.1] - 2021-11-23

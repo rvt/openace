@@ -168,7 +168,7 @@ class AircraftConfig extends El {
 
       <div class="section row g-3">
         <div>
-            <h6>Protocols to Enable (Send and Receive)</h5>
+            <h6>Protocols to Enable (Send and Receive)</h6>
             
             ${this.protocolTypes.map(
               (item) => html`
@@ -186,12 +186,12 @@ class AircraftConfig extends El {
           <label for="privacy">
             <input type="checkbox" id="privacy" ref="privacy" />Privacy
           </label>
-          <small>GaTas Will use an random address and send it for the duration of the session.</small> -->
+          <small>GaTas will use a random address and send it for the duration of the session.</small> -->
 
           <label for="noTrack">
             <input type="checkbox" id="noTrack" ref="noTrack" />No Track
           </label>
-            <small>GaTas will indicate to other receiver that you don't want to be tracked.</small>  
+            <small>GaTas will indicate to other receivers that you don't want to be tracked.</small>
         </div>
       </div>
 
@@ -220,9 +220,9 @@ class AircraftConfig extends El {
               <p>
                 <b>Your official Transponder</b><br />
                 <ul>
-                  <li>If you have an mode-s transponder, use that code, select ADSL under <i>Your official Transponder</i>
-                  <li>If you only have an FLARM transponder, use the code from that device, select FLARM under <i>Your official Transponder</i>
-                  <li>For OGN/ADSL transponders use the code from these devices, select OGN/ADSL under <i>Your official Transponder</i>
+                  <li>If you have a mode-s transponder, use that code, select ADSL under <i>Your official Transponder</i>.
+                  <li>If you only have a FLARM transponder, use the code from that device, select FLARM under <i>Your official Transponder</i>.
+                  <li>For OGN/ADSL transponders use the code from these devices, select OGN/ADSL under <i>Your official Transponder</i>.
                 </ul>
                 From the above protocols, only enable the protocols of the devices you don't own yet to
                 avoid duplicate transmissions on the same protocol.
@@ -230,8 +230,8 @@ class AircraftConfig extends El {
 
             <p>            
             <b>Protocols to Enable</b><br />
-            Enable the protocols that are used to send/receive aircraft information on. To enable ADS-B use the correct module under 'modules'.
-            </P>
+            Enable the protocols that are used to send/receive aircraft information on. To enable ADS-B use the correct module under 'Modules'.
+            </p>
           </div>
           <footer class="px-2 jc-end">
               <button type="button" class="btn btn-primary sm ml-1 md-ml-3" onclick=${() => (this.state.showHelp = false)}>Close</button>

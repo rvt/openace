@@ -2,14 +2,14 @@
 
 ## Class RadioTuner {}
 
-* Module that handles timing's of protocols and configures the Radio's accordingly to listen and request for sending on the radio frequencies according to the protocols and required maximum power output
-* Module keeps track on what protocols traffic is received on and will prioritise the timeslots based on received data.  
-* Can configure and controle 1..N Radio modules. Usually 1 or 2 will be installed
+* Module that handles timings of protocols and configures the Radios accordingly to listen and request for sending on the radio frequencies according to the protocols and required maximum power output
+* Module keeps track of what protocols traffic is received on and will prioritize the timeslots based on received data.
+* Can configure and control 1..N Radio modules. Usually 1 or 2 will be installed
 
 
 ### Limitations
 
-* All radio's must beable to handle all protocols. This module won't beable to decide if a spacific radio is not beable to handle given modulations or frequencies.
+* All radios must be able to handle all protocols. This module won't be able to decide if a specific radio is not able to handle given modulations or frequencies.
 
 #### General operation
 
