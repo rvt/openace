@@ -1,5 +1,7 @@
 # GA/TAS Conspicuity Device
 
+[![Build GaTas](https://github.com/rvt/openace/actions/workflows/ci.yml/badge.svg)](https://github.com/rvt/openace/actions/workflows/ci.yml)
+
 > [!TIP]
 > Please visit the [GA/TAS WIKI](https://github.com/rvt/OpenAce/wiki) for build information.
 
