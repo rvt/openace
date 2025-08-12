@@ -6,7 +6,6 @@
 
 #include "etl/message.h"
 #include "etl/message_router.h"
-#include "etl/message_broker.h"
 #include "etl/message_bus.h"
 #include "etl/string.h"
 #include "etl/set.h"
@@ -54,6 +53,14 @@ namespace GATAS
         int16_t rssidBm; // Received signal strength indicator in dB
         AircraftPositionMsg(const AircraftPositionInfo &position_, int16_t rssidBm_) : position(position_), rssidBm(rssidBm_) {}
         AircraftPositionMsg(const AircraftPositionInfo &position_) : position(position_), rssidBm(INT16_MIN) {}
+    };
+
+    struct AircraftPositionsMsg : public etl::message<33>
+    {
+        const etl::vector<AircraftPositionInfo, 8> positions;
+        int16_t rssidBm; // Received signal strength indicator in dB
+        AircraftPositionsMsg(const etl::vector<AircraftPositionInfo, 8> &positions_, int16_t rssidBm_) : positions(positions_), rssidBm(rssidBm_) {}
+        AircraftPositionsMsg(const etl::vector<AircraftPositionInfo, 8> &positions_) : positions(positions_), rssidBm(INT16_MIN) {}
     };
 
     /**

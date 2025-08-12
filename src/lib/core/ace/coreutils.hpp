@@ -11,7 +11,6 @@
 #include "messages.hpp"
 
 #include "etl/string.h"
-//#include "etl/absolute.h"
 
 class CoreUtils
 {
@@ -23,7 +22,7 @@ public:
     /**
      * Dump a buffer as a hexidecimal string for terminal output
      */
-    static void printBuffer(etl::span<uint8_t> buffer)
+    static void printBuffer(etl::span<uint8_t> buffer, bool lf = false)
     {
         printf("Length(%d) ", static_cast<int>(buffer.size()));
         for (size_t i = 0; i < buffer.size(); ++i)
@@ -33,6 +32,10 @@ public:
             {
                 printf(", ");
             }
+        }
+        if (lf)
+        {
+            printf("\n");
         }
     }
 
@@ -280,7 +283,7 @@ public:
     {
         struct relNorthRllEast
         {
-            float north;  
+            float north;
             float east;
         };
 
@@ -489,11 +492,10 @@ public:
     static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, GATAS::AddressType addressType, etl::string_view callSign = "")
     {
         (void)addressType;
+        stream << etl::hex << etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << GATAS::RESET_FORMAT;
         if (callSign.size() > 0)
         {
-            stream << callSign;
-        } else {
-            stream << etl::hex << etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << GATAS::RESET_FORMAT;
+            stream << "!" << callSign;
         }
     }
 

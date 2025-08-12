@@ -5,6 +5,9 @@
 	},
 	{
 		"path": "."
+	},
+	{
+		"path": "src/lib/utils/utils_tests"
 	}
 ]
   	,
@@ -109,7 +112,8 @@
 			"__config": "cpp",
 			"__locale": "cpp",
 			"locale": "cpp",
-			"__assertion_handler": "cpp"
+			"__assertion_handler": "cpp",
+			"print": "cpp"
 		},
 		"cmake.autoSelectActiveFolder": false
 	  }

@@ -39,6 +39,7 @@
  */
  #include <stddef.h>  // needed for size_t data type
  #include <stdint.h>  // needed for uint8_t data type
+ #include <etl/span.h>  // needed for uint8_t data type
  
  size_t getCOBSBufferSize(size_t input_size,
                           bool   with_trailing_zero=true);
@@ -55,5 +56,5 @@
                    size_t outputlen);
  
  size_t decodeCOBS_inplace(uint8_t *inptr, size_t inputlen);
- 
+ size_t decodeCOBS_inplace(etl::span<uint8_t> data);
  #endif

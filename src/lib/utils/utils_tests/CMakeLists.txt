@@ -7,6 +7,7 @@ message(STATUS "Building tests.")
 add_definitions(-DCATCH_CONFIG_NO_POSIX_SIGNALS)
 add_definitions(-DUNIT_TESTING)
 add_definitions(-DGATAS_EMAFLOAT_K_FACTOR_5PS=1.9f)
+add_definitions(-DGATAS_MAXIMUM_TCP_CLIENTS=4)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -24,7 +25,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../ace")
 
 # Other dependencies
-# include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
 #include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 # include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 
@@ -42,6 +43,7 @@ set( SOURCES_IDIOMATIC_EXAMPLES
    utils_test.cpp
    circularbuffer_test.cpp
    moreutils_test.cpp
+   cobssmartbuffer_test.cpp
 )
 
 string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAMPLES}" )

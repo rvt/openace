@@ -89,8 +89,6 @@
 #define ETL_STRING_TRUNCATION_IS_ERROR ( 1 ) 
 #define ETL_NO_EXCEPTIONS ( 1 ) // Disable exceptions
 #define ETL_USING_CPP11 ( 1 )
-// TODO: Re-enable so we can use etl::delegate and get rid of std
-// #define ETL_NO_STL ( 1 ) 
 
 // ***** GaTas configurations 
 

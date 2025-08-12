@@ -5,20 +5,20 @@ import JustValidate from "just-validate";
 class AircraftConfig extends El {
   created() {
     this.types = [
-      "Glider",
-      "GliderMotorGlider",
-      "TowPlane",
+      "Light",
+      "Aerobatic",
       "Helicopter",
-      "Skydiver",
-      "DropPlane",
-      "HangGlider",
-      "Paraglider",
-      "ReciprocatingEngine",
-      "JetTurbopropEngine",
+      "Glider",
+      "Hang Glider",
+      "Para Glider",
+      "Sky Diver",
       "Balloon",
       "Airship",
-      "Uav",
-      "StaticObstacle",
+      "Ultralight",
+      "Gyrocopter",
+      "Drop Plane",
+      "Unmanned aerial vehicle",
+      "StaticObstacle"
     ];
     this.transponderTypes = ["ICAO", "FLARM", "OGN", "ADSL"];
     this.protocolTypes = ["FLARM", "OGN", "ADSL", "FANET"];
@@ -126,7 +126,7 @@ class AircraftConfig extends El {
       });
     } else {
       return Promise.resolve({
-        category: "ReciprocatingEngine",
+        category: "Light",
         addressType: "ICAO",
         protocols: ["OGN", "ADSL"],
       });

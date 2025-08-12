@@ -4,7 +4,7 @@
 #include "ace/semaphoreguard.hpp"
 #include "ace/moreutils.hpp"
 
-constexpr const bool DEBUG_DATAPORT = true;
+constexpr const bool DEBUG_DATAPORT = false;
 
 void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {

@@ -6,7 +6,7 @@ class MockConfig : public Configuration
 {
 
 public:
-    MockConfig(etl::imessage_bus& bus) : Configuration(bus)
+    MockConfig(etl::imessage_bus &bus) : Configuration(bus)
     {
     }
     virtual ~MockConfig() = default;
@@ -14,7 +14,7 @@ public:
     virtual void start() override
     {
     }
-    virtual void stop()override
+    virtual void stop() override
     {
     }
     virtual GATAS::PostConstruct postConstruct() override
@@ -24,15 +24,15 @@ public:
 
     virtual const GATAS::Config::GaTasConfiguration gaTasConfig() const override
     {
-        return GATAS::Config::GaTasConfiguration
-        {
-            GATAS::AircraftCategory::ReciprocatingEngine,
-            GATAS::AddressType::ICAO,
-            0x123456,
-            false,
-            false,
-            {GATAS::DataSource::OGN1}
-        };
+        return GATAS::Config::GaTasConfiguration{
+            {
+                0x123456,
+                GATAS::AircraftCategory::LIGHT,
+                GATAS::AddressType::ICAO,
+                false,
+                false
+            },
+            {GATAS::DataSource::OGN1}};
     }
 
     virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName) const override
@@ -50,7 +50,6 @@ public:
     {
         return 0;
     };
-
 
     virtual const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override
     {
@@ -80,6 +79,4 @@ public:
     {
         return {0, 0};
     };
-
-
 };

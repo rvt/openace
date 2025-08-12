@@ -11,7 +11,7 @@ GATAS::PostConstruct AircraftTracker::postConstruct()
 
 void AircraftTracker::start()
 {
-    xTaskCreate(aircraftTrackerTask, AircraftTracker::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 3, &taskHandle);
+    xTaskCreate(aircraftTrackerTask, AircraftTracker::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 6, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -42,8 +42,6 @@ void AircraftTracker::on_receive(const GATAS::Every5SecMsg &msg)
 {
     (void)msg;
     xTaskNotify(taskHandle, TaskState::MAINTAIN, eSetBits);
-
-    getBus().receive(GATAS::AdapativeRadiusMsg(trackedAircraft.radius()));
 }
 
 void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -61,6 +59,30 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     stream << ",\"positionsProcessed\":" << statistics.positionsProcessed;
     stream << ",\"adaptiveRadius\":" << trackedAircraft.radius();
     stream << "}\n";
+}
+
+void AircraftTracker::on_receive(const GATAS::AircraftPositionsMsg &msg)
+{
+    bool full=false;
+    for (const auto &aircraft : msg.positions)
+    {
+        if (!queue.full())
+        {
+            queue.push(aircraft);
+            puts("P");
+        }
+        else
+        {
+            puts("F");
+            xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
+            statistics.queueFullErr += 1;
+            full=true;
+        }
+    }
+    xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
+    if (full) {
+        vTaskDelay(TASK_DELAY_MS(100));
+    }
 }
 
 void AircraftTracker::on_receive(const GATAS::AircraftPositionMsg &msg)
@@ -90,7 +112,6 @@ void AircraftTracker::on_receive(const GATAS::AircraftPositionMsg &msg)
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
 }
 
-
 void AircraftTracker::aircraftTrackerTask(void *arg)
 {
     AircraftTracker *at = static_cast<AircraftTracker *>(arg);
@@ -106,6 +127,7 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
         if (notifyValue & TaskState::MAINTAIN)
         {
             at->maintenance();
+            at->getBus().receive(GATAS::AdapativeRadiusMsg(at->trackedAircraft.radius()));
         }
 
         // Handle timers

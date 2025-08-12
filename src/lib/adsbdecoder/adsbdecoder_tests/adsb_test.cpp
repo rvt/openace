@@ -47,7 +47,6 @@ MockConfig mockConfig{bus};
 
 auto ownship = GATAS::OwnshipPositionInfo{
     CoreUtils::timeUs32(),
-    true,
     52.2,
     4.2,
     1500, // Altitude above WGS84 ellipsoid in meters
@@ -57,8 +56,17 @@ auto ownship = GATAS::OwnshipPositionInfo{
     0,    // deg/s Turn rate in the horizontal plane
     50,   // North velocity in m/s
     0,    // East velocity in m/s
-    20    // Height of geoid above WGS84 ellipsoid
+    20,    // Height of geoid above WGS84 ellipsoid
+    true,
+    {
+        0x123456,
+        GATAS::AircraftCategory::LIGHT,
+        GATAS::AddressType::ICAO,
+        false,
+        false
+    },
 };
+
 
 // This test needs a bit more validation
 TEST_CASE("Test filter below and above", "[single-file]")
@@ -191,7 +199,7 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
     REQUIRE(test.position.address == 0x502CD1);
     REQUIRE(test.position.addressType == GATAS::AddressType::ICAO);
     REQUIRE(test.position.dataSource == GATAS::DataSource::ADSB);
-    REQUIRE(test.position.aircraftType == GATAS::AircraftCategory::Unknown);
+    REQUIRE(test.position.aircraftType == GATAS::AircraftCategory::UNKNOWN);
     // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html  for 52.3888,4.7209
     REQUIRE(test.position.ellipseHeight == /*9029*/ 9072); // geoid aprox 43m
     REQUIRE(test.position.groundSpeed == Catch::Approx(230.98).margin(0.1)); // in m/s

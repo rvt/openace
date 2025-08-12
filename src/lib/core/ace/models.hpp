@@ -102,7 +102,7 @@ namespace GATAS
         ETL_ENUM_TYPE(ROTORCRAFT, "Helicopter")
         // Unassigned
         ETL_ENUM_TYPE(GLIDER, "Glider")
-        ETL_ENUM_TYPE(LIGHT_THAN_AIR, "Baloon")
+        ETL_ENUM_TYPE(LIGHT_THAN_AIR, "Balloon")
         ETL_ENUM_TYPE(SKY_DIVER, "Sky Diver")
         ETL_ENUM_TYPE(ULTRA_LIGHT_FIXED_WING, "Ultra Light")
         // Unassigned

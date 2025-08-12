@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include "etl/array.h"
 
+/**
+ * Use the circular buffer if you need to add chunks of data on one end
+ * and read the data on the other end where settign and reading data might happen at different times
+ * TODO: refactor to use etlcpp and spans
+ */
 template <size_t BUFFER_SIZE>
 class CircularBuffer
 {
@@ -57,24 +62,6 @@ public:
         count += len;
         return true;
     }
-
-    // 3️⃣ Peeks up to `maxlen` bytes from the buffer into `dest`
-    // Untested!!
-    // size_t peek(char* dest, size_t maxlen) const {
-    //     size_t to_read = (maxlen < count) ? maxlen : count;
-
-    //     size_t end_space = BufferSize - tail;
-    //     if (to_read <= end_space) {
-    //         // Data is contiguous
-    //         memcpy(dest, &buffer[tail], to_read);
-    //     } else {
-    //         // Split the data into two parts
-    //         memcpy(dest, &buffer[tail], end_space);
-    //         memcpy(dest + end_space, buffer, to_read - end_space);
-    //     }
-
-    //     return to_read;
-    // }
 
     // Returns a direct pointer to the internal buffer and the length of contiguous data
     auto peek() const

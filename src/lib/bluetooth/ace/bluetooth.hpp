@@ -19,6 +19,7 @@
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 #include "ace/circularbuffer.hpp"
+#include "ace/cobsstreamhandler.hpp"
 
 /* BT Stack*/
 #include "btstack.h"
@@ -52,6 +53,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
     struct
     {
         uint32_t dataPortMsgMissedErr=0;
+        uint32_t cobsErr= 0;
     } statistics;
 
     struct BtContext
@@ -118,9 +120,6 @@ private:
     static void eraseBonding();
     static void heartbeat_handler(struct btstack_timer_source *ts);
 
-    static void parseCobs( uint8_t* cobsData, size_t size);
-    static void processIncomingBuffer( uint8_t* data, size_t size);
-
     // Lists of bluetooth contexts
     using BluetoothConnections = etl::list<BtContext, GATAS_MAX_BLUETOOTH_CONNECTIONS>;
     inline static BluetoothConnections connections;
@@ -161,11 +160,11 @@ private:
     inline static SemaphoreHandle_t mutex = nullptr;
     GATAS::SsidOrPasswdStr localName;
     bool rfComm;
-
+    CobsStreamHandler cobsStreamHandler;
 public:
 
     static constexpr const char *NAME = "Bluetooth";
-    Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), rfComm(false)
+    Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), rfComm(false), cobsStreamHandler(CobsStreamHandler(bus))
     {
         instance = this;
         localName = config.strValueByPath("GaTas", NAME, "localName");

@@ -139,6 +139,7 @@ void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path)
         stream << "{";
         stream << "\"connections\":" << connections.size();
         stream << ",\"dataPortMsgMissedErr\":" << statistics.dataPortMsgMissedErr;
+        stream << ",\"cobsErr\":" << statistics.cobsErr;
         stream << ",\"ctxBufferOverrunErr\":[";
         for (auto &it : Bluetooth::connections)
         {
@@ -503,7 +504,7 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     break;
     case ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE:
     {
-        processIncomingBuffer(buffer, buffer_size);
+        Bluetooth::instance->cobsStreamHandler.handle(etl::span<uint8_t>(buffer, buffer_size));
     }
     break;
     default:
@@ -522,101 +523,6 @@ uint16_t Bluetooth::attReadCallback(hci_con_handle_t connection_handle, uint16_t
     }
     return 0;
 }
-
-void Bluetooth::processIncomingBuffer(uint8_t *data, size_t size)
-{
-    constexpr size_t MAX_PACKET_SIZE = 64; // 30 bytes max, with headroom
-    static uint8_t carryBuffer[MAX_PACKET_SIZE];
-    static size_t carrySize = 0;
-
-    auto cursor = data;
-    auto remaining = size;
-    if (carrySize > 0)
-    {
-        auto packetEndlocation = memchr(cursor, 0, remaining);
-        if (!packetEndlocation)
-        {
-            // When this package does not contain a cobs end sigature \0
-            if (remaining + carrySize < MAX_PACKET_SIZE)
-            {
-                memcpy(carryBuffer + carrySize, cursor, remaining);
-                carrySize += remaining;
-            }
-            else
-            {
-                carrySize = 0;
-            }
-            return;
-        }
-        else
-        {
-            // When this cobs package does contain a \0 parse the carryBuffer
-            auto toCopy = static_cast<uint8_t *>(packetEndlocation) - cursor + 1;
-            auto carryBufferSize = toCopy + carrySize;
-            if (carryBufferSize < MAX_PACKET_SIZE)
-            {
-                memcpy(carryBuffer + carrySize, cursor, toCopy);
-                // Number of bytes is somehwat variable depending on callsign length
-                Bluetooth::parseCobs(carryBuffer, toCopy);
-                cursor += toCopy;
-                remaining = remaining - toCopy;
-            }
-            carrySize = 0;
-        }
-    }
-
-    // Parse remaining packets in de buffer
-    // Each remaining packet is separated by a \0
-    while (remaining > 0)
-    {
-        void *packetEndlocation = memchr(cursor, 0x00, remaining);
-        if (packetEndlocation != nullptr)
-        {
-            size_t packetSize = static_cast<uint8_t *>(packetEndlocation) - cursor + 1;
-            if (packetSize > 0) // Number of bytes is somehwat variable depending on callsign length
-            {
-                Bluetooth::parseCobs(cursor, packetSize);
-            }
-
-            size_t consumed = packetSize;
-            cursor += consumed;
-            remaining -= consumed;
-        }
-        else
-        {
-            // Incomplete packet left at end
-            if (remaining <= MAX_PACKET_SIZE)
-            {
-                memcpy(carryBuffer, cursor, remaining);
-                carrySize = remaining;
-            }
-            else
-            {
-                carrySize = 0; // too large, drop
-            }
-            break;
-        }
-    }
-}
-
-void Bluetooth::parseCobs(uint8_t *cobsData, size_t size) {
-    auto decodedSize = decodeCOBS_inplace(cobsData, size);
-    etl::bit_stream_reader reader(cobsData, decodedSize, etl::endian::big);
-
-    // Get the type of packet and call up the right handler
-    uint8_t frameType = reader.read_unchecked<uint8_t>(8U);
-    decodedSize -= 1;
-    if (frameType == BinaryMessages::DataType::AIRCRAFT_POSITION_TYPE_V1)
-    {
-        reader.restart();
-        Bluetooth::instance->getBus().receive(GATAS::AircraftPositionMsg(BinaryMessages::AircraftPositionInfo(reader)));
-    } else {
-        // When this packet cannot be handled, just skip the packetSize
-        // ther emight be packets we know how to handle
-        reader.skip(size); 
-    }
-}
-
 
 /*
  * @section Security Manager Packet Handler

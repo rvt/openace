@@ -35,7 +35,6 @@ public:
     static GATAS::AircraftPositionInfo AircraftPositionInfo(etl::bit_stream_reader &reader)
     {
         auto timeStamp = CoreUtils::timeUs32();
-        constexpr uint8_t MAX_CALLSIGN_LENGTH = 12;
         auto type = reader.read_unchecked<uint8_t>(8U);
         if (type != DataType(DataType::AIRCRAFT_POSITION_TYPE_V1).get_value())
         {
@@ -53,8 +52,8 @@ public:
         float verticalRate = static_cast<float>(reader.read_unchecked<int16_t>(16U)) / 100.f;
         uint8_t aircraftCategoryIdx = reader.read_unchecked<uint8_t>(8U);
 
-        uint8_t callSignLen = etl::min((uint8_t)MAX_CALLSIGN_LENGTH, reader.read_unchecked<uint8_t>(8));
-        char callSignBuffer[MAX_CALLSIGN_LENGTH + 1] = {0};
+        uint8_t callSignLen = etl::min(GATAS::MAX_CALLSIGN_LENGTH, reader.read_unchecked<uint8_t>(8U));
+        char callSignBuffer[GATAS::MAX_CALLSIGN_LENGTH + 1] = {0};
         for (int i = 0; i < callSignLen; ++i)
         {
             callSignBuffer[i] = static_cast<char>(reader.read_unchecked<uint8_t>(8));
