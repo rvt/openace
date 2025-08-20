@@ -4,10 +4,10 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-template <uint32_t TIMEMS>
+template <uint32_t TIMEMS, bool RECURSIVE = false>
 /**
  * @brief Clasic semaphore Guard based on a FreeRTOS mutex
- * 
+ *
  */
 class SemaphoreGuard
 {
@@ -16,12 +16,20 @@ private:
     bool acquired;
 
 public:
-    SemaphoreGuard(SemaphoreHandle_t &sem_) : sem(sem_), acquired(xSemaphoreTake(sem, TASK_DELAY_MS(TIMEMS)) == pdTRUE) {}
+    SemaphoreGuard(SemaphoreHandle_t &sem_) : sem(sem_), acquired(RECURSIVE ? xSemaphoreTakeRecursive(sem, TASK_DELAY_MS(TIMEMS)) == pdTRUE : xSemaphoreTake(sem, TASK_DELAY_MS(TIMEMS)) == pdTRUE) {}
+
     ~SemaphoreGuard()
     {
         if (acquired)
         {
-            xSemaphoreGive(sem);
+            if (RECURSIVE)
+            {
+                xSemaphoreGiveRecursive(sem);
+            }
+            else
+            {
+                xSemaphoreGive(sem);
+            }
         }
     }
 

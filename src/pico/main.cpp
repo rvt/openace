@@ -294,6 +294,7 @@ static void gaTasIdleTask(void *arch)
     constexpr uint8_t DO_5S = 1 << 0;
     constexpr uint8_t DO_15S = 1 << 1;
     constexpr uint8_t DO_30S = 1 << 2;
+    constexpr uint8_t DO_300S = 1 << 3;
 
     (void)arch;
 #ifdef NDEBUG
@@ -308,7 +309,6 @@ static void gaTasIdleTask(void *arch)
 
         if (cyw43_arch_async_context())
         {
-            // printf("Free: %ld\n", xPortGetFreeHeapSize()); vTaskDelay(10);
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
             gpio_put(ledStatusIndicatorPin, 1);
             vTaskDelay(TASK_DELAY_MS(100));
@@ -325,8 +325,16 @@ static void gaTasIdleTask(void *arch)
             if (tick % 30 == 0) {
                 msgFlags |= DO_30S;
             }
+            if (tick % 300 == 0) {
+                msgFlags |= DO_300S;
+            }
 
-            if (msgFlags & DO_30S)
+            if (msgFlags & DO_300S)
+            {
+                bus.receive(GATAS::Every300SecMsg());
+                msgFlags &= ~DO_300S;
+            }
+            else if (msgFlags & DO_30S)
             {
                 bus.receive(GATAS::Every30SecMsg());
                 msgFlags &= ~DO_30S;

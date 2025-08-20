@@ -320,8 +320,8 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
             0.0,
             fromOwn.distance,
             fromOwn.relNorth,
-            fromOwn.relEast,
-            fromOwn.bearing},
+            fromOwn.relEast
+        },
         rssiDbm};
     statistics.receivedAircraftPositions += 1;
     getBus().receive(aircraftPosition);

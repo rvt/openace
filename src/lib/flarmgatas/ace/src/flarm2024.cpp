@@ -118,8 +118,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
                 packet.turnRate(),
                 fromOwn.distance,
                 fromOwn.relNorth,
-                fromOwn.relEast,
-                fromOwn.bearing},
+                fromOwn.relEast},
             msg.rssidBm};
 
         statistics.transmittedAircraftPositions += 1;

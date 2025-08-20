@@ -35,7 +35,7 @@
  * The only one that requires a mutex is to see if we need a notification in on_receive(const GATAS::DataPortMsg &msg)
  * The queue is a lock free queue so no mutex needed
  */
-class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg>
+class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg, GATAS::OwnshipPositionMsg>
 {
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
@@ -101,6 +101,8 @@ private:
 
     void on_receive_unknown(const etl::imessage &msg);
 
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
+
     void createAdvData();
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
@@ -161,6 +163,7 @@ private:
     GATAS::SsidOrPasswdStr localName;
     bool rfComm;
     CobsStreamHandler cobsStreamHandler;
+    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
 public:
 
     static constexpr const char *NAME = "Bluetooth";

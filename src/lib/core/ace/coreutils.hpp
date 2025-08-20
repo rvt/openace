@@ -312,6 +312,7 @@ public:
     /**
      * Calculate the bearing between two points on earth
      * returns bearing in degrees 0≤x<360
+     * For short distances you can also use bearingFromInDegShort
      * https://www.movable-type.co.uk/scripts/latlong.html
      */
     static float bearingFromInRad(float fromLat, float fromLon, float toLat, float toLon)
@@ -335,6 +336,19 @@ public:
     }
 
     /**
+     * A faster method than using bearingFromInRad that works with the relative coordinates we have to calculate anyways
+     * This works for shorter distances well but cannot be used for long distances (>1000Km)
+     */
+    static float __time_critical_func(bearingFromInDegShort)(float east, float north)
+    {
+        float theta = std::atan2f(east, north);
+        float deg = theta * 180.f / M_PI;
+        if (deg < 0.f)
+            deg += 360.f;
+        return deg;
+    }
+
+    /**
      * Get the relative North, Eats and distance from a position to a position
      * Distance returned is distance inmeters and take in considation the altitude
      * All values returned are in meters
@@ -348,14 +362,27 @@ public:
         uint32_t distance;
         int32_t relNorth;
         int32_t relEast;
-        int16_t bearing;
+        uint16_t bearing() {
+            auto bearing = bearingFromInDegShort(relEast, relNorth);
+            if (bearing >= 360)
+            {
+                bearing = 0;
+            }
+            return bearing;
+        }
+        //        int16_t bearing;
     };
     struct distanceRelNorthRelEastFloat
     {
         float distance;
         float relNorthMeter;
         float relEastMeter;
-        float bearing;
+        float bearing()
+        {
+            return bearingFromInDegShort(relEastMeter, relNorthMeter);
+        }
+
+        //        float bearing;
     };
 
     static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const GATAS::AircraftPositionInfo &from, const GATAS::AircraftPositionInfo &to)
@@ -383,26 +410,36 @@ public:
         return angle;
     }
 
-    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(float fromLat, float fromLon, float toLat, float toLon)
+    /**
+     * Calculates the relative North and East + Bearing of two coordinates
+     *
+     * Note: This function takea around 75us..100us to complete
+     */
+    static distanceRelNorthRelEastInt __time_critical_func(getDistanceRelNorthRelEastInt)(float fromLat, float fromLon, float toLat, float toLon)
     {
         auto drne = getDistanceRelNorthRelEastFloat(fromLat, fromLon, toLat, toLon);
-        int16_t bearing = toBearing(static_cast<int16_t>(drne.bearing + 0.5f));
 
-        return {static_cast<uint32_t>(drne.distance + 0.5f),
-                static_cast<int32_t>(drne.relNorthMeter + 0.5f),
-                static_cast<int32_t>(drne.relEastMeter + 0.5f),
-                bearing};
+        // int16_t bearing = drne.bearing + 0.5f;
+        // if (bearing >= 360)
+        // {
+        //     bearing = 0;
+        // }
+        return {
+            static_cast<uint32_t>(drne.distance + 0.5f),
+            static_cast<int32_t>(drne.relNorthMeter + 0.5f),
+            static_cast<int32_t>(drne.relEastMeter + 0.5f),
+        };
     }
 
     /**
      * From two lat/lon points calculate relativeNorth/relativeEast distance and bearing between the two points
      */
-    static distanceRelNorthRelEastFloat getDistanceRelNorthRelEastFloat(float fromLat, float fromLon, float toLat, float toLon)
+    static distanceRelNorthRelEastFloat __time_critical_func(getDistanceRelNorthRelEastFloat)(float fromLat, float fromLon, float toLat, float toLon)
     {
         auto ne = northEastDistance(fromLat, fromLon, toLat, toLon);
-        float bearing = CoreUtils::bearingFromInRad(fromLat, fromLon, toLat, toLon) * RADS_TO_DEG;
+        // float bearing = bearingFromInDegShort(ne.east, ne.north);
         float distance = sqrtf((ne.north * ne.north) + (ne.east * ne.east));
-        return {distance, ne.north, ne.east, bearing};
+        return {distance, ne.north, ne.east};
     }
 
     /**

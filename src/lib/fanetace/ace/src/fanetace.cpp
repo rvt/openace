@@ -185,8 +185,7 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
                 tp.turnRate(),
                 fromOwn.distance,
                 fromOwn.relNorth,
-                fromOwn.relEast,
-                fromOwn.bearing},
+                fromOwn.relEast},
             msg.rssidBm};
         getBus().receive(aircraftPosition);
     }
@@ -222,8 +221,7 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
                 0,
                 fromOwn.distance,
                 fromOwn.relNorth,
-                fromOwn.relEast,
-                fromOwn.bearing},
+                fromOwn.relEast},
             msg.rssidBm};
         getBus().receive(aircraftPosition);
     }

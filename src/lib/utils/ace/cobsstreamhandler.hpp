@@ -18,7 +18,7 @@ public:
     {
     }
 
-    void handle(etl::span<uint8_t> cobsBuffer)
+    void handle(float ownShipLat, float ownShipLon, etl::span<uint8_t> cobsBuffer)
     {
         etl::vector<GATAS::AircraftPositionInfo, 8> positionMessages;
 
@@ -37,10 +37,9 @@ public:
             reader.restart();
             if (frameType == BinaryMessages::DataType::AIRCRAFT_POSITION_TYPE_V1)
             {
-                auto aircraftPosition = BinaryMessages::AircraftPositionInfo(reader);
+                auto aircraftPosition = BinaryMessages::AircraftPositionInfo(ownShipLat,ownShipLon,reader);
                 if (positionMessages.full())
                 {
-                    puts("send Batch");
                     bus.receive(GATAS::AircraftPositionsMsg(positionMessages));
                     positionMessages.clear();
                 }
@@ -50,8 +49,11 @@ public:
         // Send the left over if any
         if (!positionMessages.empty())
         {
-            printf("send left %d", positionMessages.size());
             bus.receive(GATAS::AircraftPositionsMsg(positionMessages));
         }
+    }
+
+    void clear() {
+        buffer.clear();
     }
 };

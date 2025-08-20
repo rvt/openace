@@ -30,7 +30,7 @@ GATAS::PostConstruct Bluetooth::postConstruct()
         return GATAS::PostConstruct::MEMORY;
     }
 
-    mutex = xSemaphoreCreateMutex();
+    mutex = xSemaphoreCreateRecursiveMutex();
     if (mutex == nullptr)
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
@@ -133,7 +133,7 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
+    //    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
     {
         (void)path;
         stream << "{";
@@ -152,6 +152,11 @@ void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path)
 void Bluetooth::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
+}
+
+void Bluetooth::on_receive(const GATAS::OwnshipPositionMsg &msg)
+{
+    ownshipPosition.store(msg.position, etl::memory_order_release);
 }
 
 void Bluetooth::createAdvData()
@@ -182,12 +187,6 @@ void Bluetooth::createAdvData()
  */
 void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 {
-    // Some code to do some visual checking - Disabled for production
-    // char type[4] = {msg.sentence[3], msg.sentence[4], msg.sentence[5], '\0'};
-    // if (etl::string_view(type) == "RMC") {
-    //     printf("RMC: %d %s\n", CoreUtils::msInSecond(), msg.sentence.c_str());
-    // }
-
     if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
     {
         for (auto &ctx : Bluetooth::connections)
@@ -206,7 +205,7 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 
 bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
 {
-    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<1000, true>(Bluetooth::mutex))
     {
         if (!Bluetooth::connections.full())
         {
@@ -219,40 +218,47 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t 
 
 void Bluetooth::removeConnection(uint16_t hciHandle)
 {
-    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<1000, true>(Bluetooth::mutex))
     {
         Bluetooth::connections.remove_if([hciHandle](const BtContext &ctx)
                                          { return ctx.hciHandle == hciHandle; });
     }
 }
 
+/**
+ * The heartbeat handler will be called from within an BT Task, so there is nu need to place a mutex around it?
+ */
 void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
 {
     (void)ts;
 
     auto time = CoreUtils::timeUs32Raw();
-    for (auto &btContext : Bluetooth::connections)
-    {
-        // AFter att_server_request_to_send_notification is called, the bluetooth stack will send data.
-        // As long as we are sending data, we will call ourselve, but once done the time will be set to 'now' and new data will be send asap
-        if (CoreUtils::isUsReachedRaw(btContext.nextCheckNotification, time))
+    if (auto guard = SemaphoreGuard<10, true>(Bluetooth::mutex))
+        for (auto &btContext : Bluetooth::connections)
         {
-            if (btContext.buffer.length() > MINIMUM_BLE_PACKET_SIZE)
+            // AFter att_server_request_to_send_notification is called, the bluetooth stack will send data.
+            // As long as we are sending data, we will call ourselve, but once done the time will be set to 'now' and new data will be send asap
+            if (CoreUtils::isUsReachedRaw(btContext.nextCheckNotification, time))
             {
                 btContext.nextCheckNotification = time + 1'000'000;
+                {
+                    if (btContext.buffer.length() > MINIMUM_BLE_PACKET_SIZE)
+                    {
 
-                // Request to send more data
-                if (btContext.hciHandle)
-                {
-                    att_server_request_to_send_notification(&btContext.callBack, btContext.hciHandle);
-                }
-                else if (btContext.rfcommChannelId)
-                {
-                    rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
+                        // Request to send more data
+                        if (btContext.hciHandle)
+                        {
+                            //                    putchar('.');
+                            att_server_request_to_send_notification(&btContext.callBack, btContext.hciHandle);
+                        }
+                        else if (btContext.rfcommChannelId)
+                        {
+                            rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
+                        }
+                    }
                 }
             }
         }
-    }
 
     btstack_run_loop_set_timer(ts, 100);
     btstack_run_loop_add_timer(ts);
@@ -271,7 +277,7 @@ void Bluetooth::attContextCallback(void *context)
             static char intermediateBuffer[255];
             size_t writePos = 0;
 
-            if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
+            if (auto guard = SemaphoreGuard<10, true>(Bluetooth::mutex))
             {
                 // SkyDemon requires per message to be full sentence
                 while (writePos + GATAS::NMEA_MAX_LENGTH <= sizeof(intermediateBuffer))
@@ -292,7 +298,7 @@ void Bluetooth::attContextCallback(void *context)
 
                     size_t copyLen = (sentenceEnd == 0) ? peekLen : sentenceEnd;
 
-                    // ✅ Check if this chunk fits in the remaining space
+                    // Check if it fits in remaining space
                     if (writePos + copyLen > sizeof(intermediateBuffer))
                         break;
 
@@ -335,6 +341,7 @@ void Bluetooth::attContextCallback(void *context)
         }
     }
 
+    // This ensures that the system wil try to push data asap
     btContext->nextCheckNotification = CoreUtils::timeUs32Raw();
 }
 
@@ -504,7 +511,8 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     break;
     case ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE:
     {
-        Bluetooth::instance->cobsStreamHandler.handle(etl::span<uint8_t>(buffer, buffer_size));
+        auto ownship = Bluetooth::instance->ownshipPosition.load(etl::memory_order_acquire);
+        Bluetooth::instance->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(buffer, buffer_size));
     }
     break;
     default:

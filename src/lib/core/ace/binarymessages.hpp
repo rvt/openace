@@ -9,12 +9,12 @@
 #include "lib_crc.hpp"
 #include "coreutils.hpp"
 #include "models.hpp"
+#include "ace/measure.hpp"
 
 class BinaryMessages
 {
 public:
-
-// Assigments follows closly GDL90 specification
+    // Assigments follows closly GDL90 specification
     struct DataType
     {
         enum enum_type : uint8_t
@@ -32,7 +32,7 @@ public:
     /**
      * Read Aircraft Position Info from a bit stream reader
      */
-    static GATAS::AircraftPositionInfo AircraftPositionInfo(etl::bit_stream_reader &reader)
+    static GATAS::AircraftPositionInfo AircraftPositionInfo(float ownshipLat, float ownshipLon, etl::bit_stream_reader &reader)
     {
         auto timeStamp = CoreUtils::timeUs32();
         auto type = reader.read_unchecked<uint8_t>(8U);
@@ -48,8 +48,8 @@ public:
         int16_t heightHAE = reader.read_unchecked<int16_t>(16U) - 100; // Aircraft message needs to be in ellipsoid
         float track = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
         float turnRate = static_cast<float>(reader.read_unchecked<int8_t>(8U)) / 5.0f;
-        float groundSpeed = static_cast<float>(reader.read_unchecked<uint16_t>(16U)) / 10.f;
-        float verticalRate = static_cast<float>(reader.read_unchecked<int16_t>(16U)) / 100.f;
+        float groundSpeed = static_cast<float>(reader.read_unchecked<uint16_t>(16U)) / 100.f;
+        float verticalRate = static_cast<float>(reader.read_unchecked<int16_t>(16U)) / 1024.f;
         uint8_t aircraftCategoryIdx = reader.read_unchecked<uint8_t>(8U);
 
         uint8_t callSignLen = etl::min(GATAS::MAX_CALLSIGN_LENGTH, reader.read_unchecked<uint8_t>(8U));
@@ -59,20 +59,24 @@ public:
             callSignBuffer[i] = static_cast<char>(reader.read_unchecked<uint8_t>(8));
         }
 
-        int32_t relNorth = reader.read_unchecked<int32_t>(24U);
-        int32_t relEast = reader.read_unchecked<int32_t>(24U);
-        int16_t bearing = reader.read_unchecked<int16_t>(16U);
-        uint16_t distance = reader.read_unchecked<uint16_t>(16U);
+        //        int32_t relNorth = reader.read_unchecked<int32_t>(24U);
+        //        int32_t relEast = reader.read_unchecked<int32_t>(24U);
+        //        int16_t bearing = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
+        //        uint32_t distance = static_cast<uint32_t>(reader.read_unchecked<uint16_t>(16U)) * 4;
 
         // reader.read_unchecked<int32_t>(24U);
         // reader.read_unchecked<int32_t>(24U);
-        // auto rel = CoreUtils::getDistanceRelNorthRelEastInt(52.89264087181, 4.73626016, lat, lon);
+        // CoreUtils::distanceRelNorthRelEastInt v;
+        // {
+//        auto m = Measure("getDistanceRelNorthRelEastInt ", 0);
+        auto rel = CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, lat, lon);
+        // }
 
         return GATAS::AircraftPositionInfo(
             timeStamp,
             GATAS::CallSign(callSignBuffer),
             static_cast<GATAS::AircraftAddress>(addressRaw),
-            static_cast<GATAS::AddressType>(addressTypeIdx), 
+            static_cast<GATAS::AddressType>(addressTypeIdx),
             static_cast<GATAS::DataSource>(dataSourceIdx),
             static_cast<GATAS::AircraftCategory>(aircraftCategoryIdx),
             false, // stealth
@@ -85,10 +89,9 @@ public:
             groundSpeed,
             track,
             turnRate,
-            distance,
-            relNorth,
-            relEast,
-            bearing);
+            rel.distance,
+            rel.relNorth,
+            rel.relEast);
     }
 
     /**
@@ -112,11 +115,11 @@ public:
     }
 
     /**
-     * 
+     *
      */
     static GATAS::AircraftCategory safeMapAircraftCategoryToType(uint8_t category)
     {
-        // won't work well due to not mapping to unknown correctly 
+        // won't work well due to not mapping to unknown correctly
         // return GATAS::AircraftCategory(category);
         // clang-format off
         switch (category)
@@ -206,5 +209,4 @@ public:
 
         return crc16;
     }
-
 };

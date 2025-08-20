@@ -48,8 +48,8 @@ void GatasConnect::getData(etl::string_stream &stream, const etl::string_view pa
 {
     (void)path;
     stream << "{";
-    stream << "\"msgSend\":" << statistics.msgSend;
-    stream << ",\"msgReceived\":" << statistics.msgReceived;
+    stream << "\"bytesSend\":" << statistics.bytesSend;
+    stream << ",\"bytesReceived\":" << statistics.bytesReceived;
     stream << ",\"bufferAllocErr\":" << statistics.bufferAllocErr;
     stream << "}\n";
 }
@@ -97,50 +97,26 @@ void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     }
 }
 
+void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg) {
+    hasGpsFix = msg.fixType == 3;
+}
+
+
 void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
                                      struct pbuf *p, const ip_addr_t *addr, u16_t port)
 {
     (void)arg;
     (void)pcb;
-    //    (void)p;
     (void)addr;
     (void)port;
-    GatasConnect *taskCtx = (GatasConnect *)(arg);
-    taskCtx->statistics.msgReceived += 1;
-
-    auto payload = etl::span<uint8_t>(reinterpret_cast<uint8_t *>(p->payload), p->tot_len);
-    auto offset = payload.begin();
-    while (true)
-    {
-        auto result = etl::find(offset, payload.end(), 0);
-
-        // End reached
-        if (result == payload.end())
-        {
-            break;
-        }
-
-        // When we hit a 0 byte
-        auto length = result - offset;
-        if (length <= 1)
-        {
-            offset = offset + length + 1;
-            continue;
-        }
-
-        // // Decode in-place
-        size_t decodedSize = decodeCOBS_inplace(offset, length);
-
-        etl::bit_stream_reader reader(offset, decodedSize, etl::endian::big);
-        uint8_t frameType = reader.read_unchecked<uint8_t>(8U);
-        if (frameType == BinaryMessages::DataType::AIRCRAFT_POSITION_TYPE_V1)
-        {
-            reader.restart();
-            taskCtx->getBus().receive(GATAS::AircraftPositionMsg(BinaryMessages::AircraftPositionInfo(reader)));
-        }
-        offset += decodedSize + 1;
+    if ( p == nullptr) {
+        return;
     }
-
+    GatasConnect *taskCtx = (GatasConnect *)(arg);
+    auto ownship = taskCtx->ownshipPosition.load(etl::memory_order_acquire);
+    taskCtx->statistics.bytesReceived += p->tot_len;
+    taskCtx->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(reinterpret_cast<uint8_t *>(p->payload), p->tot_len));
+    taskCtx->cobsStreamHandler.clear();
     pbuf_free(p);
 }
 
@@ -151,8 +127,13 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 {
     GatasConnect *taskCtx = (GatasConnect *)pvTimerGetTimerID(xTimer);
 
+    // Don't send anything if there is no gpsFix
+    if (!taskCtx->hasGpsFix) {
+        return;
+    }
+
     // Write the ownship
-    std::array<uint8_t, 26 + 2> storage; // MSG + CRC
+    std::array<uint8_t, GATAS::OwnshipPositionInfo::COBS_SIZE + 2> storage; // MSG + CRC
     etl::bit_stream_writer writer(storage.data(), storage.size(), etl::endian::big);
     BinaryMessages::fromOwnshipPositionInfo(writer, taskCtx->ownshipPosition.load(etl::memory_order_acquire));
     auto checksum = BinaryMessages::binaryMsgChecksum(etl::span<uint8_t>(storage.data(), writer.size_bytes()));
@@ -185,6 +166,6 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
         taskCtx->statistics.msgSendFailed += 1;
         return;
     }
-    taskCtx->statistics.msgSend += 1;
+    taskCtx->statistics.bytesSend += size;
     // Request a new position in one second
 }

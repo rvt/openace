@@ -205,8 +205,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                  0.0f,
                  fromOwn.distance,
                  fromOwn.relNorth,
-                 fromOwn.relEast,
-                 fromOwn.bearing}});
+                 fromOwn.relEast}});
         }
     } else {
         statistics.msgMissed += 1;

@@ -321,4 +321,7 @@ namespace GATAS
     struct Every30SecMsg : public etl::message<32>
     {
     };
+    struct Every300SecMsg : public etl::message<33>
+    {
+    };
 }

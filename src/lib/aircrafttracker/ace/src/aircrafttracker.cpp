@@ -63,24 +63,28 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 
 void AircraftTracker::on_receive(const GATAS::AircraftPositionsMsg &msg)
 {
-    bool full=false;
+    bool full = false;
     for (const auto &aircraft : msg.positions)
     {
         if (!queue.full())
         {
+            if (ownshipAddress == aircraft.address)
+            {
+                // Ignore ownship so we don't get our own plane on EFB's
+                return;
+            }
             queue.push(aircraft);
-            puts("P");
         }
         else
         {
-            puts("F");
             xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
             statistics.queueFullErr += 1;
-            full=true;
+            full = true;
         }
     }
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
-    if (full) {
+    if (full)
+    {
         vTaskDelay(TASK_DELAY_MS(100));
     }
 }
@@ -133,7 +137,7 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
         // Handle timers
         if (notifyValue == 0 || notifyValue & TaskState::TIMER)
         {
-            at->sendEligibleAircraft();
+           at->sendEligibleAircraft();
         }
 
         // Handle new aircraft
