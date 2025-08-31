@@ -67,7 +67,7 @@ void FanetAce::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     if (msg.moduleName == Configuration::CONFIG)
     {
         gaTasConfiguration = msg.config.gaTasConfig();
-        protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.address});
+        protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.icaoAddress});
     }
 }
 

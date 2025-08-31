@@ -23,13 +23,12 @@
  * GatasConnect protocol for EFB's that only support GatasConnect.
  * THis protocol is currently not recommende if you can also use GDL90, if you need to use NMEA and have BLE, use that
  */
-class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, 
-GATAS::IdleMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg>
+class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg>
 {
     friend class message_router;
     struct
     {
-        uint16_t bytesReceived = 0;
+        uint32_t bytesReceived = 0;
         uint32_t bytesSend = 0;
         uint32_t bufferAllocErr = 0;
         uint32_t msgSendFailed = 0;
@@ -42,6 +41,10 @@ GATAS::IdleMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsSt
     etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     GATAS::Config::IpPort gatasServer = {IPADDR_NONE, 0};
     CobsStreamHandler cobsStreamHandler;
+
+    uint64_t gatasId;
+    uint32_t currentAddress;
+    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
     bool hasGpsFix;
 private:
     virtual GATAS::PostConstruct postConstruct() override;
@@ -56,7 +59,6 @@ private:
 
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
 
-    void on_receive(const GATAS::IdleMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
 
     void on_receive_unknown(const etl::imessage &msg);
@@ -68,13 +70,15 @@ private:
     static void requestTimerCallback(TimerHandle_t xTimer);
     static void receiveUdpMessage(void *arg, struct udp_pcb *pcb,
                            struct pbuf *p, const ip_addr_t *addr, u16_t port);
+
+    void getConfig(const Configuration &config);
 public:
     static constexpr const char *NAME = "GatasConnect";
-    GatasConnect(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), wifiConnected(false), pcbSend(nullptr), cobsStreamHandler(CobsStreamHandler(bus)), hasGpsFix(false)
+    GatasConnect(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), wifiConnected(false), pcbSend(nullptr), cobsStreamHandler(CobsStreamHandler(bus, config)), hasGpsFix(false)
     {
         (void)config;
-        gatasServer = config.ipPortBypath(NAME, "gatasServer");
+        getConfig(config);
     }
-
+    
     virtual ~GatasConnect() = default;
 };

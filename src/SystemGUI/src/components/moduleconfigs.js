@@ -747,12 +747,6 @@ class GatasConnectConfig extends ModuleConfig {
     const validator = new JustValidate(this.$refs.form);
 
     validator
-      .addField(this.$refs.port, [
-        {
-          rule: "required",
-        },
-        ...portValidation,
-      ])
       .addField(this.$refs.ip, [
         {
           rule: "required",
@@ -770,14 +764,12 @@ class GatasConnectConfig extends ModuleConfig {
 
   _setFormData(data) {
     this.$refs.ip.value = data.gatasServer.ip;
-    this.$refs.port.value = data.gatasServer.port;
   }
 
   _getFormData() {
     return {
       gatasServer: {
         ip: this.$refs.ip.value,
-        port: this.$refs.port.value,
       }
     };
   }
@@ -802,10 +794,6 @@ class GatasConnectConfig extends ModuleConfig {
               <label for="ip">
                 IP Address of GA/TAS Server:
                 <input type="text" id="ip" ref="ip" placeholder="178.79.150.232" } />
-              </label>
-              <label for="port">
-                Port:
-                <input type="text" id="port" ref="port" placeholder="16256" } />
               </label>
             </div>
         </div>

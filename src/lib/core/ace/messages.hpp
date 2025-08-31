@@ -284,6 +284,7 @@ namespace GATAS
 
     /**
      * Message send when WIFI connection state changes
+     * NOTE: Don't change message ID!
      */
     struct WifiConnectionStateMsg : public etl::message<24>
     {
@@ -321,7 +322,7 @@ namespace GATAS
     struct Every30SecMsg : public etl::message<32>
     {
     };
-    struct Every300SecMsg : public etl::message<33>
+    struct Every300SecMsg : public etl::message<34>
     {
     };
 }

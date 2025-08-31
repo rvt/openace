@@ -36,7 +36,7 @@ void Dump1090Client::start()
 void Dump1090Client::processNewSentence(const char *sentence)
 {
     constexpr uint8_t ADSBDATALENGTH = 28;
-    static_assert(GATAS::ADSBMessageBin::MAX_BINARY_LENGTH * 2 == ADSBDATALENGTH, "Must be equal");
+    GATAS_ASSERT(GATAS::ADSBMessageBin::MAX_BINARY_LENGTH * 2 == ADSBDATALENGTH, "Must be equal");
 
     // Fast detection of msgType 17 and hexStrToByteArray to reduce resources
     if (sentence != nullptr && sentence[1] == '8' && (sentence[2] == 'D' || sentence[2] == 'A' || sentence[2] == '0'))

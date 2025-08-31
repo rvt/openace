@@ -23,7 +23,8 @@ export class GaTasStore {
       numberOfAircrafts: 0,
       configModified: false,
       hardware: {},
-      hardwareName: ""
+      hardwareName: "",
+      gatasId: ""
     });
   }
 
@@ -49,6 +50,11 @@ export class GaTasStore {
    */
   async init()  {
       // Fetch config.json
+    const config = await this.fetch("/api/Config.json");
+    this.state.gatasId = (config.gatasId).toString(16).toUpperCase();
+    
+
+    // Fetch current aircraft and hw config
     const configData = await this.fetch("/api/_Configuration/config.json");
     this.state.aircraftId = configData.aircraftId;
     this.state.configModified = configData._dirty;

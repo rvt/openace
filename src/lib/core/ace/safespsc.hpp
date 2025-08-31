@@ -11,7 +11,7 @@ class SafeSPSC {
 public:
     SafeSPSC() : seq(0) {
         //static_assert(std::atomic<T>::is_lock_free, "T must be lock-free for atomic access.");
-        static_assert(etl::is_trivially_copyable<T>::value, "T must be trivially copyable.");
+        GATAS_ASSERT(etl::is_trivially_copyable<T>::value, "T must be trivially copyable.");
     }
 
     void store(const T& value) {

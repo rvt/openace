@@ -387,7 +387,9 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
             Bluetooth::withHandle(att_event_mtu_exchange_complete_get_handle(packet), 
                 etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
                 {
-                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16;
+                    // We remove minus 16 because of additional header data that needs to fit
+                    // This is different from what I was reading in the documentation, but this worked for us.
+                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16; 
                 })
             );
             // clang-format on
@@ -487,7 +489,6 @@ void Bluetooth::rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8
 int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size)
 {
     UNUSED(offset);
-    UNUSED(buffer_size);
 
     if (transaction_mode != ATT_TRANSACTION_MODE_NONE || transaction_mode == ATT_TRANSACTION_MODE_CANCEL)
     {
@@ -511,6 +512,8 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     break;
     case ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE:
     {
+        // Expected to receives COBS from bluetooth 
+        // TODO: Create a bluetooth channel for this?
         auto ownship = Bluetooth::instance->ownshipPosition.load(etl::memory_order_acquire);
         Bluetooth::instance->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(buffer, buffer_size));
     }

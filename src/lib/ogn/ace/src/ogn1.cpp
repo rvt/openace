@@ -219,7 +219,7 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         OGN1_Packet packet;
         packet.Header =
             {
-                .Address = ownship.conspicuity.address, // Address
+                .Address = ownship.conspicuity.icaoAddress, // Address
                 .AddrType = addressTypeToOgn(ownship.conspicuity.addressType),
                 .NonPos = 0,    // 0 = position packet, 1 = other information like status
                 .Parity = 0,    // parity takes into account bits 0..27 thus only the 28 lowest bits
@@ -303,7 +303,7 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
         // Ignore ownship address
         auto ownship = ownshipPosition.load(etl::memory_order_acquire);
-        if (packet.Header.Address == ownship.conspicuity.address) {
+        if (packet.Header.Address == ownship.conspicuity.icaoAddress) {
             return;
         }
 

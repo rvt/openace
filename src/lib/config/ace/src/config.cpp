@@ -10,7 +10,7 @@
 #include "ace/binarymessages.hpp"
 #include "etl/string.h"
 
-// #include "lwip/inet.h"
+#include "pico/rand.h"
 
 static constexpr char SIGNATURE[] = "signature";
 
@@ -31,19 +31,38 @@ etl::string_view Config::loadLocationToString(LoadLocation location) const
 
 GATAS::PostConstruct Config::postConstruct()
 {
+    auto iStore = internalStore();
+    if (iStore->magic != GATAS::BinaryStore::MAGIC)
+    {
+        GATAS::BinaryStore defaultStore;
+        defaultStore.magic = GATAS::BinaryStore::MAGIC;
+        defaultStore.gatasId = get_rand_64();
+        internalStore(defaultStore);
+    }
+    
     // Load a configuration in this order
-    // volatileStore -> persistentStore -> Defaul configuration
-    auto error = deserializeJson(doc, volatileStore.data());
     auto loadDefaultConfig = false; // Only usefull for developers, this ensures the default config is always loaded when set to true
-    // THis signatureMismatch only get's triggered during development
+    if (loadDefaultConfig)
+    {
+        volatileStore.rewind();
+        volatileStore.write(defaultConfig, strlen((const char *)defaultConfig) + 1);
+        deserializeJson(doc, volatileStore.data());
+        statistics.location = DEFAULT;
+    }
+
+    volatileStore.rewind();
+    permanentStore.rewind();
+    auto error = deserializeJson(doc, volatileStore.data());
     auto signatureMismatch = doc[SIGNATURE].as<uint32_t>() != GATAS_FLASH_SIGNATURE;
-    if (error || loadDefaultConfig || signatureMismatch)
+
+
+    if (error || loadDefaultConfig)
     {
         error = deserializeJson(doc, permanentStore.data());
         signatureMismatch = doc[SIGNATURE].as<uint32_t>() != GATAS_FLASH_SIGNATURE;
 
         // Still error, load default
-        if (error || signatureMismatch || loadDefaultConfig)
+        if (error || signatureMismatch)
         {
             volatileStore.rewind();
             volatileStore.write(defaultConfig, strlen((const char *)defaultConfig) + 1);
@@ -82,14 +101,12 @@ void Config::getData(etl::string_stream &stream, const etl::string_view fullPath
         etl::string_stream &stream;
         CustomWriter(etl::string_stream &stream_) : stream(stream_) {};
 
-        // Writes one byte, returns the number of bytes written (0 or 1)
         size_t write(uint8_t c)
         {
             stream.str().append(1, (char)c);
             return 1;
         }
 
-        // Writes several bytes, returns the number of bytes written
         size_t write(const uint8_t *buffer, size_t length)
         {
             etl::string_view view((const char *)buffer, length);
@@ -106,6 +123,7 @@ void Config::getData(etl::string_stream &stream, const etl::string_view fullPath
         stream << "{";
         stream << "\"configuration\":\"" << loadLocationToString(statistics.location) << "\"";
         stream << ",\"pStoreSize\":" << statistics.persistentStoreSize;
+        stream << ",\"gatasId\":" << static_cast<uint32_t>(internalStore()->gatasId);
         stream << "}\n";
     }
     else
@@ -320,22 +338,22 @@ const GATAS::Config::WifiServiceData Config::wifiService() const
 
 const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
 {
-    ccharptr aircraft = (ccharptr)doc["config"]["aircraftId"];
-    JsonObjectConst aircraftConfig = doc["aircraft"][aircraft];
+    ccharptr aircraftId = (ccharptr)doc["config"]["aircraftId"];
+    JsonObjectConst aircraftConfig = doc["aircraft"][aircraftId];
 
     // Default if no aircraft config was found
     etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
     if (aircraftConfig.isNull())
     {
-
         return {
             .conspicuity = {
-                .address = 0,
+                .icaoAddress = 0,
                 .category = GATAS::AircraftCategory::LIGHT,
                 .addressType = GATAS::AddressType::ADSL,
                 .stealth = false,
                 .noTrack = false},
-            .protocols = protocols};
+            .protocols = protocols,
+            .allIcaoAddresses = {}};
     }
 
     for (auto protocol : aircraftConfig["protocols"].as<JsonArrayConst>())
@@ -343,15 +361,24 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
         protocols.push_back(GATAS::stringToDataSource(protocol.as<const char *>()));
     }
 
+    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
+    auto aircrafts = doc["aircraft"];
+    for (JsonPairConst kv : aircrafts.as<JsonObjectConst>())
+    {
+        uint32_t address = kv.value()["address"];
+        allIcaoAddresses.push_back(address);
+    }
+
     return {
         .conspicuity = {
-            .address = aircraftConfig["address"],
+            .icaoAddress = aircraftConfig["address"],
             .category = BinaryMessages::mapAircraftCategoryToType((ccharptr)aircraftConfig["category"]),
             .addressType = GATAS::stringToAddressType((ccharptr)aircraftConfig["addressType"]),
             .stealth = aircraftConfig["stealth"],
             .noTrack = aircraftConfig["noTrack"],
         },
-        .protocols = protocols};
+        .protocols = protocols,
+        .allIcaoAddresses = allIcaoAddresses};
 };
 
 bool Config::isModuleEnabled(const etl::string_view moduleName) const
@@ -460,4 +487,42 @@ const GATAS::Config::IpPort Config::ipPortBypath(const etl::string_view pathToVa
             ip,
             port};
     }
+}
+
+const GATAS::BinaryStore *Config::internalStore() const
+{
+    return reinterpret_cast<const GATAS::BinaryStore *>(binaryStore.data());
+}
+
+void Config::internalStore(const GATAS::BinaryStore &store)
+{
+    binaryStore.write(reinterpret_cast<const uint8_t *>(&store), sizeof(GATAS::BinaryStore));
+}
+
+GATAS::CallSign Config::getCallSignFromHex(uint32_t transponderHex) const
+{
+    auto aircrafts = doc["aircraft"];
+    for (JsonPairConst kv : aircrafts.as<JsonObjectConst>())
+    {
+        uint32_t address = kv.value()["address"];
+        if (transponderHex == address) {
+            return kv.value()["callSign"].as<const char *>();
+        }
+    }
+
+    return "";
+}
+
+void Config::setValueBypath(const etl::string_view pathToValue, etl::string_view value)
+{
+    auto path = CoreUtils::parsePath(pathToValue);
+    auto src = configValueBypath<JsonVariant>(path);
+    src.set(value);
+}
+
+void Config::setValueBypath(const etl::string_view pathToValue, uint64_t value)
+{
+    auto path = CoreUtils::parsePath(pathToValue);
+    auto src = configValueBypath<JsonVariant>(path);
+    src.set(value);
 }

@@ -277,7 +277,7 @@ namespace GATAS
     {
         struct Conspicuity
         {
-            AircraftAddress address;
+            AircraftAddress icaoAddress;
             AircraftCategory category;
             AddressType addressType;
             bool stealth;
@@ -291,6 +291,7 @@ namespace GATAS
         {
             Conspicuity conspicuity;
             etl::vector<DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
+            etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses; // List of all configured hex codes of all aircraft
         };
 
         /**
@@ -351,8 +352,6 @@ namespace GATAS
         {
             return ellipseHeight - geoidSeparation;
         }
-
-        static const uint8_t COBS_SIZE = 26;
     };
 
     enum class Modulation : uint8_t
@@ -383,4 +382,20 @@ namespace GATAS
             return sizeof(std::declval<DataFrame>().data);
         }
     };
+
+    /**
+     * Binry store is used to store occasionaly data that does not require user modification
+     * Usually hardware status and performance..
+     */
+    struct BinaryStore
+    {
+        static constexpr uint32_t MAGIC=0xCAFEBABE;
+        // Magic to test if the flash needs to be reset
+        uint32_t magic = MAGIC;
+        // Unique ID to track this device. 
+        // This is used to beable to show a website to the user uniqely without
+        // other hijacking it's configuration. THis is not used to track the user.
+        uint64_t gatasId;    
+    };
+
 };

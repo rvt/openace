@@ -25,13 +25,11 @@ public:
     virtual const GATAS::Config::GaTasConfiguration gaTasConfig() const override
     {
         return GATAS::Config::GaTasConfiguration{
-            {
-                0x123456,
-                GATAS::AircraftCategory::LIGHT,
-                GATAS::AddressType::ICAO,
-                false,
-                false
-            },
+            {0x000000,
+             GATAS::AircraftCategory::LIGHT,
+             GATAS::AddressType::ICAO,
+             false,
+             false},
             {GATAS::DataSource::OGN1}};
     }
 
@@ -79,4 +77,28 @@ public:
     {
         return {0, 0};
     };
+
+    virtual const GATAS::BinaryStore *internalStore() const override
+    {
+        static GATAS::BinaryStore store{GATAS::BinaryStore::MAGIC, 0xCAFEBABE};
+
+        return &store;
+    }
+
+    virtual void internalStore(const GATAS::BinaryStore &store) override
+    {
+    }
+
+    virtual GATAS::CallSign getCallSignFromHex(uint32_t) const override
+    {
+        return "PH-XXX";
+    }
+
+    virtual void setValueBypath(const etl::string_view pathToValue, etl::string_view value) override
+    {
+    }
+
+    virtual void setValueBypath(const etl::string_view pathToValue, uint64_t value) override
+    {
+    }
 };

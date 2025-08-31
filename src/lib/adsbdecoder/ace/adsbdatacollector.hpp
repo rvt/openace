@@ -148,7 +148,7 @@ public:
         {
             for (auto it = cache.cbegin(); it != cache.cend();)
             {
-                if (it->second.evict || (-CoreUtils::usToReference(it->second.lastSeen, usTime) > evictTime))
+                if (it->second.evict || (-CoreUtils::usToReferenceRaw(it->second.lastSeen, usTime) > evictTime))
                 {                    
                     // printf("Evict: icao:%06X lastSee:%ld usTime:%ld, diff:%ld\n", it->second.icao, it->second.lastSeen, usTime, CoreUtils::usFromReference(it->second.lastSeen, usTime));
               //      printf(".");
@@ -170,7 +170,7 @@ public:
         for (const auto &entry : cache)
         {
             const auto &data = entry.second; // Access the value part of the pair
-            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usToReference(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.ellipseHeight);
+            printf("icao:%06X status:%02X elsapsed:%06d address:%s gnssAltitude: %d\n", data.icao, data.messageStatus, CoreUtils::usToReferenceRaw(data.lastSeen, usTime) / 1000, data.icaoAddress.c_str(), data.ellipseHeight);
         }
     }
 

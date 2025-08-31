@@ -42,7 +42,7 @@ public:
     template <typename T>
     static void printBufferHex(etl::span<T> buffer)
     {
-        static_assert(std::is_integral<T>::value, "T must be an integral type");
+        GATAS_ASSERT(std::is_integral<T>::value, "T must be an integral type");
 
         printf("Length(%d) ", static_cast<int>(buffer.size()));
 
@@ -132,11 +132,33 @@ public:
      */
     __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
     {
-        return static_cast<int32_t>(referenceUs - us);
+        auto diff = static_cast<int32_t>(referenceUs - us);
+#if GATAS_DEBUG == 1
+        if (diff < -15 * 60 * 1'000'000 || diff > 15 * 60 * 1'000'000)
+        {
+            // These Routines usToReferenceRaw/usToReference/usDiff/isUsReached/isUsReachedRaw/timeUs32/timeUs32Raw are designed
+            // for short durations only, eg what will happen in the next second, or perhaps a few minutes. They are not suitable for
+            // very long delays. They can only be used up to 30minutes maximum before counters start to wrap over (wrap over is at ~ 1.2hour)
+            puts("WARNING: Large references far in the future are not expected from usToReference, please check code.");
+        }
+#endif
+        return diff;
     }
-    __force_inline static int32_t usToReferenceRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
+
+    __force_inline static int32_t usToReferenceRaw(uint32_t referenceUsRaw, uint32_t us = timeUs32Raw())
     {
-        return static_cast<int32_t>(referenceUs - us);
+        auto diff = static_cast<int32_t>(referenceUsRaw - us);
+#if GATAS_DEBUG == 1
+        if (diff < -15 * 60 * 1'000'000 || diff > 15 * 60 * 1'000'000)
+        {
+            // These Routines usToReferenceRaw/usToReference/usDiff/isUsReached/isUsReachedRaw/timeUs32/timeUs32Raw are designed
+            // for short durations only, eg what will happen in the next second, or perhaps a few minutes. They are not suitable for
+            // very long delays. They can only be used up to 30minutes maximum before counters start to wrap over (wrap over is at ~ 1.2hour)
+            // This is for developers only
+            puts("WARNING: Large references far in the future are not expected from usToReferenceRaw, please check code.");
+        }
+#endif
+        return diff;
     }
 
     static int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
@@ -362,7 +384,8 @@ public:
         uint32_t distance;
         int32_t relNorth;
         int32_t relEast;
-        uint16_t bearing() {
+        uint16_t bearing()
+        {
             auto bearing = bearingFromInDegShort(relEast, relNorth);
             if (bearing >= 360)
             {

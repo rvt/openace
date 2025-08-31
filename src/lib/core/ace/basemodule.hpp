@@ -5,6 +5,7 @@
 #include "semaphoreguard.hpp"
 
 #include "pico.h"
+#include "assert.hpp"
 
 /* FreeRTOS. */
 #include "FreeRTOS.h"
@@ -97,6 +98,7 @@ public:
     }
     static void setModuleStatus(const etl::string_view name, GATAS::PostConstruct result)
     {
+        GATAS_ASSERT(result == GATAS::PostConstruct::OK, "setModuleStatus(const etl::string_view name, BaseModule *base) to set OK status!");
         moduleLoaderMap[name].result = result;
         moduleLoaderMap[name].module = nullptr;
     }
@@ -287,7 +289,7 @@ public:
     struct TxPacket
     {
         RadioParameters radioParameters;
-        uint8_t length;                     // In bytes
+        uint8_t length; // In bytes
         union
         {
             GATAS::TxPacketType data;
@@ -330,7 +332,7 @@ class Configuration : public BaseModule
 
 public:
     static constexpr const etl::string_view NAME = "_Configuration";
-    static constexpr const etl::string_view CONFIG = "config";
+    static constexpr const etl::string_view CONFIG = "Config";
     Configuration(etl::imessage_bus &bus) : BaseModule(bus, NAME)
     {
     }
@@ -346,17 +348,52 @@ public:
         return valueByPath(defaultValue, pathToValue, "");
     };
 
+    /**
+     * Returns a value from path
+     * example: auto value = config.strValueByPath("-", "GDLoverUDP/ips/0", "ip");
+     *
+     */
     virtual const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const = 0;
     const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue) const
     {
         return strValueByPath(defaultValue, pathToValue, "");
     }
 
+    /**
+     * Validate if a module is enabled or not
+     */
     virtual bool isModuleEnabled(const etl::string_view moduleName) const = 0;
+
+    /**
+     * Returns teh WIFI Service configuration
+     */
     virtual const GATAS::Config::WifiServiceData wifiService() const = 0;
+
+    /**
+     * Returns an IP and Port combination
+     */
     virtual const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const = 0;
     const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue) const
     {
         return ipPortBypath(pathToValue, "");
     }
+
+    /**
+     * Returns a pointer to the flash mempry to the internal storage
+     * Internal Store is used for program counters, antenna measurements etc..
+     */
+    virtual const GATAS::BinaryStore *internalStore() const = 0;
+
+    /**
+     * Store the complete data of the binaryStore
+     */
+    virtual void internalStore(const GATAS::BinaryStore &store) = 0;
+
+    /**
+     * Find a aircraft from it's transponder code
+     */
+    virtual GATAS::CallSign getCallSignFromHex(uint32_t transponderId) const = 0;
+
+    virtual void setValueBypath(const etl::string_view pathToValue, etl::string_view value) = 0;
+    virtual void setValueBypath(const etl::string_view pathToValue, uint64_t value) = 0;
 };

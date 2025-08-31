@@ -43,7 +43,7 @@ def main():
 
     data = read_json(args.input_file)
     filtered_data = filter_json(data)
-    print(filtered_data)
+    print(json.dumps(filtered_data, separators=(',', ':')))
     write_cpp_header(filtered_data, args.output_file)
 
 if __name__ == '__main__':

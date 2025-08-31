@@ -55,7 +55,7 @@ class Session extends El {
         <input
           type="submit"
           class="btn"
-          value="Add ${store.state.numberOfAircrafts > 3 ? "(Max 4)" : ""}"
+          value="Add ${store.state.numberOfAircrafts > 5 ? "(Max 6)" : ""}"
           onclick=${this._add}
           ${store.state.numberOfAircrafts > 3 ? "disabled" : ""}
         />

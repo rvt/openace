@@ -6,6 +6,7 @@
 #include "pico/binary_info.h"
 
 #include "ace/utils.hpp"
+#include "ace/assert.hpp"
 
 GATAS::PostConstruct PioSerial::postConstruct()
 {
@@ -37,7 +38,7 @@ GATAS::PostConstruct PioSerial::postConstruct()
         return GATAS::PostConstruct::HARDWARE_ERROR;
     }
 
-    static_assert(PIO0_IRQ_1 == PIO0_IRQ_0 + 1 && PIO1_IRQ_1 == PIO1_IRQ_0 + 1, "");
+    GATAS_ASSERT(PIO0_IRQ_1 == PIO0_IRQ_0 + 1 && PIO1_IRQ_1 == PIO1_IRQ_0 + 1, "");
     uint8_t pio_irq = (rxPio == pio0) ? PIO0_IRQ_0 : PIO1_IRQ_0; // pio_irq will become 7,8,9,10
     if (irq_get_exclusive_handler(pio_irq))
     {

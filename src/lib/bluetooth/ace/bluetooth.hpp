@@ -167,7 +167,7 @@ private:
 public:
 
     static constexpr const char *NAME = "Bluetooth";
-    Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), rfComm(false), cobsStreamHandler(CobsStreamHandler(bus))
+    Bluetooth(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), rfComm(false), cobsStreamHandler(CobsStreamHandler(bus, config))
     {
         instance = this;
         localName = config.strValueByPath("GaTas", NAME, "localName");

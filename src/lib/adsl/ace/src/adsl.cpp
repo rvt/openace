@@ -80,7 +80,7 @@ void ADSL::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
         // Ignore ownship address
         auto ownship = ownshipPosition.load(etl::memory_order_acquire);
-        if (packet.address == ownship.conspicuity.address)
+        if (packet.address == ownship.conspicuity.icaoAddress)
         {
             return;
         }
@@ -247,7 +247,7 @@ void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         ADSL_Packet packet;
         packet.payloadIdent = 0x02; // ADS-L.4.SRD860.F.2.1 :: iConspicuity
         packet.addressMapping = addressTypeToAddressMap(ownship.conspicuity.addressType);
-        packet.address = ownship.conspicuity.address;
+        packet.address = ownship.conspicuity.icaoAddress;
         packet.reserved1 = 0;
         packet.relay = 0;
         packet.timeStamp = (CoreUtils::msSinceEpoch() / 250) % 60;

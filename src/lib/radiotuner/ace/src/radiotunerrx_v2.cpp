@@ -165,12 +165,14 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
 void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    static auto lastTime = 0;
+    // Set to current time else bluetooth connections will fail
+    static auto lastTime = CoreUtils::timeUs32Raw();
     // Update ZONE every 30 seconds, or when still at ZONE0
     // Does not require to often since this module requiresZONE information
-    if (static_cast<uint8_t>(currentZone.value()) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0) || CoreUtils::isUsReached(lastTime))
+
+    if (CoreUtils::isUsReachedRaw(lastTime) || static_cast<uint8_t>(currentZone.value()) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0))
     {
-        lastTime = CoreUtils::timeUs32() + UPDATE_ZONE_REGULATION_EVERY;
+        lastTime = CoreUtils::timeUs32Raw() + UPDATE_ZONE_REGULATION_EVERY;
         currentZone.set(CountryRegulations::zone(msg.position.lat, msg.position.lon));
     }
 }

@@ -40,6 +40,9 @@ public:
     virtual size_t write(uint8_t c) override;
     virtual size_t write(const uint8_t *data, size_t size) override;
 
+    /**
+     * Returns a pointer to the in memory data object
+     */
     virtual const uint8_t *data() const override;
 
 };

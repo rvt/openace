@@ -14,25 +14,44 @@
 class BinaryMessages
 {
 public:
+    /**
+     * Object that can be used by binary messages to indicate how many bytes it will consume
+     * A function 'items' is provided to calculate the number of items that can be expected to calculate
+     * total length.
+     */
+    struct SizeType
+    {
+        size_t base;
+        size_t size;
+        constexpr size_t items(size_t items)
+        {
+            return base + size * items;
+        };
+    };
+
     // Assigments follows closly GDL90 specification
     struct DataType
     {
         enum enum_type : uint8_t
         {
-            AIRCRAFT_POSITION_TYPE_V1 = 1,
-            AIRCRAFT_POSITION_REQUEST_V1 = 2
+            AIRCRAFT_POSITION_TYPE_V1 = 1,    // BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
+            AIRCRAFT_POSITION_REQUEST_V1 = 2, // Binary message of a request for other aircraft from gatasConnect
+            AIRCRAFT_CONFIGURATIONS_V1 = 3,   // Current GATAS COnfiguration
+            SET_ICAO_ADDRESS_V1 = 4           // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
         };
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V1, "Aircraft Data")
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_REQUEST_V1, "Conspcuity Data Request")
+        ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V1, "Current GATAS Configuration")
+        ETL_ENUM_TYPE(SET_ICAO_ADDRESS_V1, "Set new aircraft from configuration")
         ETL_END_ENUM_TYPE
     };
 
     /**
      * Read Aircraft Position Info from a bit stream reader
      */
-    static GATAS::AircraftPositionInfo AircraftPositionInfo(float ownshipLat, float ownshipLon, etl::bit_stream_reader &reader)
+    static GATAS::AircraftPositionInfo deserializeAircraftPositionV1(float ownshipLat, float ownshipLon, etl::bit_stream_reader &reader)
     {
         auto timeStamp = CoreUtils::timeUs32();
         auto type = reader.read_unchecked<uint8_t>(8U);
@@ -58,19 +77,7 @@ public:
         {
             callSignBuffer[i] = static_cast<char>(reader.read_unchecked<uint8_t>(8));
         }
-
-        //        int32_t relNorth = reader.read_unchecked<int32_t>(24U);
-        //        int32_t relEast = reader.read_unchecked<int32_t>(24U);
-        //        int16_t bearing = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
-        //        uint32_t distance = static_cast<uint32_t>(reader.read_unchecked<uint16_t>(16U)) * 4;
-
-        // reader.read_unchecked<int32_t>(24U);
-        // reader.read_unchecked<int32_t>(24U);
-        // CoreUtils::distanceRelNorthRelEastInt v;
-        // {
-//        auto m = Measure("getDistanceRelNorthRelEastInt ", 0);
         auto rel = CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, lat, lon);
-        // }
 
         return GATAS::AircraftPositionInfo(
             timeStamp,
@@ -95,13 +102,14 @@ public:
     }
 
     /**
-     * Create a bitstream from an OwnshipPositionInfo
+     * Create a bitstream from an OwnshipPositionInfo to be send to gatasServer witg a requets
+     * to send back aircraft
      */
-    static size_t fromOwnshipPositionInfo(etl::bit_stream_writer &writer, const GATAS::OwnshipPositionInfo &ownship)
+    static void serializeOwnshipPositionV1(etl::bit_stream_writer &writer, const GATAS::OwnshipPositionInfo &ownship)
     {
         writer.write_unchecked(DataType(DataType::AIRCRAFT_POSITION_REQUEST_V1).get_value(), 8U);
         writer.write_unchecked(CoreUtils::secondsSinceEpoch(), 32U);
-        writer.write_unchecked(ownship.conspicuity.address, 24U);
+        writer.write_unchecked(ownship.conspicuity.icaoAddress, 24U);
         writer.write_unchecked(static_cast<uint8_t>(ownship.conspicuity.addressType), 8U);
         writer.write_unchecked(GATAS::AircraftCategory(ownship.conspicuity.category).get_value(), 8U);
         writer.write_unchecked(static_cast<int32_t>(ownship.lat * 1E7 + 0.5f), 32U);
@@ -111,7 +119,55 @@ public:
         writer.write_unchecked(static_cast<int8_t>(ownship.hTurnRate * 5.0f), 8U);
         writer.write_unchecked(static_cast<uint16_t>(ownship.groundSpeed * 10.f), 16U);
         writer.write_unchecked(static_cast<int16_t>(ownship.verticalSpeed * 100.f), 16U);
-        return 1 + 4 + 3 + 1 + 1 + 4 + 4 + 2 + 1 + 1 + 2 + 2;
+    }
+
+    constexpr static BinaryMessages::SizeType serializeOwnshipPositionSizeV1()
+    {
+        size_t size = 1 + 4 + 3 + 1 + 1 + 4 + 4 + 2 + 1 + 1 + 2 + 2;
+        return BinaryMessages::SizeType {
+            .base = 0,
+            .size = size};
+    }
+
+    /**
+     * Inform gatasServer the configuration of this device
+     */
+    static void serializeAircraftConfigurationV1(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t currentAddress, const etl::span<uint32_t> &addresses)
+    {
+        writer.write_unchecked(DataType(DataType::AIRCRAFT_CONFIGURATIONS_V1).get_value(), 8U);
+        writer.write_unchecked(gatasId, 32U);
+        writer.write_unchecked(currentAddress, 24U);
+
+        // options how to set the addres as a response
+        // Examples could be:
+        // 0 Not allowed at all
+        // 1 Only set by user request, ia app or via website
+        // 2 By automation
+        writer.write_unchecked(0, 8U);
+
+        writer.write_unchecked(addresses.size(), 8U);
+        for (auto &addr : addresses)
+        {
+            writer.write_unchecked(addr, 24U);
+        }
+    }
+
+    constexpr static BinaryMessages::SizeType serializeAircraftConfigurationV1Size()
+    {
+        return BinaryMessages::SizeType {
+            .base = 1 + 4 + 3 + 1 + 1, // By default we will use 4 bytes 10
+            .size = 3                  // For each additional item 3 bytes
+        };
+    }
+
+    static uint32_t deserializeSetIcaoAddressV1(etl::bit_stream_reader &reader)
+    {
+        auto type = reader.read_unchecked<uint8_t>(8U);
+        if (type != DataType(DataType::SET_ICAO_ADDRESS_V1).get_value())
+        {
+            return 0x00;
+        }
+        return reader.read_unchecked<uint32_t>(24U);
     }
 
     /**

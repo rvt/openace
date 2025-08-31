@@ -74,7 +74,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
         {
             uint16_t millis = frame.time.microseconds / 1000;
 
-#ifndef NDEBUG
+#if GATAS_DEBUG == 1
             // Print the time difference between the RMC and the local time
             // It's required to have this within a second accurate since some protocols like FLARM
             // depends on high accurate seconds since EPOCH

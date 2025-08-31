@@ -4,6 +4,7 @@
 #include "ace/coreutils.hpp"
 #include "ace/binarymessages.hpp"
 #include "ace/cobs.hpp"
+#include "ace/assert.hpp"
 
 /* LwIP */
 #include "lwip/ip_addr.h"
@@ -13,8 +14,8 @@
 GATAS::PostConstruct GatasConnect::postConstruct()
 {
     requestTimer = xTimerCreate(GatasConnect::NAME,
-                                TASK_DELAY_MS(250),
-                                pdFALSE,
+                                TASK_DELAY_MS(1000),
+                                pdTRUE,
                                 this,
                                 requestTimerCallback);
 
@@ -41,6 +42,7 @@ void GatasConnect::start()
 
 void GatasConnect::stop()
 {
+    xTimerStop(requestTimer, portMAX_DELAY);
     getBus().unsubscribe(*this);
 };
 
@@ -67,22 +69,6 @@ void GatasConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
     wifiConnected = wcs.connected;
 }
 
-/**
- * Starts and stop LWiP when wifi connects or disconnects to cleanup any resources
- */
-void GatasConnect::on_receive(const GATAS::IdleMsg &msg)
-{
-    (void)msg;
-    if (wifiConnected)
-    {
-        xTimerChangePeriod(requestTimer, TASK_DELAY_MS(1000), portMAX_DELAY);
-    }
-    else
-    {
-        xTimerStop(requestTimer, portMAX_DELAY);
-    }
-}
-
 void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     ownshipPosition.store(msg.position, etl::memory_order_release);
@@ -91,16 +77,27 @@ void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
 
-    if (msg.moduleName == GatasConnect::NAME)
+    if (msg.moduleName == Configuration::CONFIG)
     {
-        gatasServer = msg.config.ipPortBypath(NAME, "gatasServer");
+        getConfig(msg.config);
     }
 }
 
-void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg) {
-    hasGpsFix = msg.fixType == 3;
+void GatasConnect::getConfig(const Configuration &config)
+{
+    gatasServer = config.ipPortBypath(NAME, "gatasServer");
+    gatasServer.port = GATAS_CONNECT_PORT;
+
+    auto gatasConfig = config.gaTasConfig();
+    currentAddress = config.gaTasConfig().conspicuity.icaoAddress;
+    allIcaoAddresses = config.gaTasConfig().allIcaoAddresses;
+    gatasId = config.internalStore()->gatasId;
 }
 
+void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg)
+{
+    hasGpsFix = msg.fixType == 3;
+}
 
 void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
                                      struct pbuf *p, const ip_addr_t *addr, u16_t port)
@@ -109,7 +106,8 @@ void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
     (void)pcb;
     (void)addr;
     (void)port;
-    if ( p == nullptr) {
+    if (p == nullptr)
+    {
         return;
     }
     GatasConnect *taskCtx = (GatasConnect *)(arg);
@@ -125,47 +123,63 @@ void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
  */
 void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 {
-    GatasConnect *taskCtx = (GatasConnect *)pvTimerGetTimerID(xTimer);
-
     // Don't send anything if there is no gpsFix
-    if (!taskCtx->hasGpsFix) {
+    GatasConnect *taskCtx = (GatasConnect *)pvTimerGetTimerID(xTimer);
+    if (!taskCtx->wifiConnected)
+    {
         return;
     }
+    constexpr size_t COBS_EXTRA_BYTES = 3; // Size Byte + 0 handling byte + 0 end byte
+    constexpr size_t maxSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1) + BinaryMessages::serializeAircraftConfigurationV1Size().items(GATAS::MAX_AIRCRAFT_CONFIGURATIONS);
+    GATAS_ASSERT(maxSize < 255, "Must be smaller than 255 due to cobs encoding");
+
+    size_t currentSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1) + BinaryMessages::serializeAircraftConfigurationV1Size().items(taskCtx->allIcaoAddresses.size());
+
+    std::array<uint8_t, maxSize> storage;
+    etl::bit_stream_writer writer(storage.data(), storage.size(), etl::endian::big);
 
     // Write the ownship
-    std::array<uint8_t, GATAS::OwnshipPositionInfo::COBS_SIZE + 2> storage; // MSG + CRC
-    etl::bit_stream_writer writer(storage.data(), storage.size(), etl::endian::big);
-    BinaryMessages::fromOwnshipPositionInfo(writer, taskCtx->ownshipPosition.load(etl::memory_order_acquire));
-    auto checksum = BinaryMessages::binaryMsgChecksum(etl::span<uint8_t>(storage.data(), writer.size_bytes()));
-    writer.write(checksum, 16U);
+    if (taskCtx->hasGpsFix)
+    {
+        BinaryMessages::serializeOwnshipPositionV1(writer, taskCtx->ownshipPosition.load(etl::memory_order_acquire));
+    }
 
-    // Transform to Cobs
-    std::array<uint8_t, storage.size() + 1 + 1> cobsstorage; // 1Byte for COBS Zero padding, 1 Byte because datasize is < 256byte for zero termination
-    auto size = encodeCOBS(storage.data(), writer.size_bytes(), cobsstorage.data(), cobsstorage.size(), true);
+    // Inform current basic confiuration
+    BinaryMessages::serializeAircraftConfigurationV1(writer, taskCtx->gatasId, taskCtx->currentAddress, taskCtx->allIcaoAddresses);
 
     // Send to the server
     auto server = taskCtx->gatasServer;
     ip_addr_t addr;
     ip4_addr_set_u32(&addr, server.ip);
     cyw43_arch_lwip_begin();
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, size, PBUF_RAM);
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, currentSize + COBS_EXTRA_BYTES, PBUF_RAM); 
     if (p == nullptr)
     {
         taskCtx->statistics.bufferAllocErr += 1;
         cyw43_arch_lwip_end();
         return;
     }
-    memcpy((char *)p->payload, cobsstorage.data(), size);
-    auto err = udp_sendto(taskCtx->pcbSend, p, &addr, server.port);
+
+    // For now, just use cobs on all the messages as this is easer on the controller.
+    // If we change that one day, we could simply create a new version... Then use a different port and on gatasServer
+    // we enable that on the port
+    auto size = encodeCOBS(storage.data(), currentSize, (uint8_t *)p->payload, currentSize + COBS_EXTRA_BYTES, true);
+    if (size)
+    {
+        // Trim to right size so the cobs decoder on the receiving end does not get confused
+        p->len = size;
+        p->tot_len = size;
+        auto err = udp_sendto(taskCtx->pcbSend, p, &addr, server.port);
+        if (err != ERR_OK)
+        {
+            taskCtx->statistics.msgSendFailed += 1;
+        }
+        else
+        {
+            taskCtx->statistics.bytesSend += size;
+        }
+    }
     pbuf_free(p);
     cyw43_arch_lwip_end();
     xTimerChangePeriod(taskCtx->requestTimer, TASK_DELAY_MS(1000), portMAX_DELAY);
-
-    if (err != ERR_OK)
-    {
-        taskCtx->statistics.msgSendFailed += 1;
-        return;
-    }
-    taskCtx->statistics.bytesSend += size;
-    // Request a new position in one second
 }

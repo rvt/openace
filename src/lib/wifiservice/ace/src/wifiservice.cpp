@@ -202,7 +202,10 @@ void WifiService::startAccessPoint()
 {
     // puts("Starting access point");
     cyw43_arch_enable_ap_mode(wifiData.ap.ssid.c_str(), wifiData.ap.password.c_str(), CYW43_AUTH_WPA2_AES_PSK);
-    cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
+    //cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
+    // https://github.com/raspberrypi/pico-sdk/issues/1661#issuecomment-3238252048
+    // TODO: Still testing, this might solve a STALL issue we have seen very rarely
+    cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
 
     ip4_addr_t mask;
     ip_addr_t gw;
@@ -328,13 +331,17 @@ uint8_t WifiService::connectClient()
 
 bool WifiService::checkIfClientActive(int itf)
 {
-    return cyw43_tcpip_link_status(&cyw43_state, itf) == CYW43_LINK_UP;
+    (void)itf;
+    return netif_default && netif_is_up(netif_default) && netif_is_link_up(netif_default);
+//    return cyw43_tcpip_link_status(&cyw43_state, itf) == CYW43_LINK_UP;
 }
 
 void WifiService::enableSta()
 {
     cyw43_arch_enable_sta_mode();
-    cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
+    // cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
+    // https://github.com/raspberrypi/pico-sdk/issues/1661#issuecomment-3238252048
+    cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
 }
 
 void WifiService::disableSta()

@@ -5,7 +5,7 @@
 #include "coreutils.hpp"
 #include <inttypes.h>
 
-#ifndef NDEBUG
+#if GATAS_DEBUG == 1
 
 /**
  * @class Measure

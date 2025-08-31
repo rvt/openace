@@ -19,7 +19,7 @@ using namespace ArduinoJson;
 
 typedef std::function<void(const char *NAME, const GATAS::PinTypeMap &map)> LoadModuleCallback;
 
-class Config : public Configuration, public etl::message_router<Config, GATAS::ConfigUpdatedMsg, GATAS::Every5SecMsg>
+class Config : public Configuration, public etl::message_router<Config>
 {
 private:
     enum LoadLocation : uint8_t
@@ -120,11 +120,9 @@ private:
 
         if (pathParsed.size() == 0)
         {
-            return Result
-            {
+            return Result{
                 etl::to_arithmetic_result<int>{},
-                pathParsed
-            };
+                pathParsed};
         }
 
         // When the last last item is a number, it's expected to be an entry in an array
@@ -135,28 +133,13 @@ private:
             pathParsed.pop_back();
         }
 
-        return Result
-        {
+        return Result{
             index,
-            pathParsed
-        };
+            pathParsed};
     }
 
     void serializeToVolatile();
     void serializeToPersistent();
-
-    void on_receive(const GATAS::ConfigUpdatedMsg &msg)
-    {
-        if (msg.moduleName == Configuration::CONFIG)
-        {
-            // ownshipAddress = msg.config.gaTasConfig().address;
-        }
-    }
-
-    void on_receive(const GATAS::Every5SecMsg &msg)
-    {
-        (void)msg;
-    }
 
     uint32_t parseIpv4String(const etl::string_view ipStr, uint32_t defaultValue) const;
 
@@ -165,10 +148,11 @@ private:
     JsonDocument doc;
     ConfigStore &volatileStore;
     ConfigStore &permanentStore;
+    ConfigStore &binaryStore;
     const uint8_t *defaultConfig;
 
 public:
-    Config(etl::imessage_bus &bus, ConfigStore &volatileStore_, ConfigStore &permanentStore_, const uint8_t *defaultConfig_) : Configuration(bus), volatileStore(volatileStore_), permanentStore(permanentStore_), defaultConfig(defaultConfig_)
+    Config(etl::imessage_bus &bus, ConfigStore &volatileStore_, ConfigStore &permanentStore_, ConfigStore &binaryStore_, const uint8_t *defaultConfig_) : Configuration(bus), volatileStore(volatileStore_), permanentStore(permanentStore_), binaryStore(binaryStore_), defaultConfig(defaultConfig_)
     {
     }
 
@@ -180,8 +164,14 @@ public:
 
     virtual void stop() override;
 
+    /**
+     * Get data from the modules itself, or from teh configuration
+     */
     virtual void getData(etl::string_stream &stream, const etl::string_view fullPath) const override;
 
+    /**
+     * Set's data the configuration, can only be called from the Web API and only suppose JSON strings
+     */
     virtual bool setData(const etl::string_view data, const etl::string_view fullPath) override;
 
     virtual bool deleteData(const etl::string_view fullPath) override;
@@ -193,7 +183,6 @@ public:
      *
      */
     virtual const GATAS::Config::GaTasConfiguration gaTasConfig() const override;
-
 
     virtual const GATAS::Config::WifiServiceData wifiService() const override;
 
@@ -209,4 +198,13 @@ public:
     virtual const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const override;
 
     virtual bool isModuleEnabled(const etl::string_view moduleName) const override;
+
+    virtual const GATAS::BinaryStore *internalStore() const override;
+    virtual void internalStore(const GATAS::BinaryStore &store) override;
+
+    virtual GATAS::CallSign getCallSignFromHex(uint32_t) const override;
+
+    virtual void setValueBypath(const etl::string_view pathToValue, etl::string_view value) override;
+    virtual void setValueBypath(const etl::string_view pathToValue, uint64_t value) override;
+
 };

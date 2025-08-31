@@ -16,7 +16,7 @@
         "_comment": "All aircrafts and their configurations settings, config::aircraftId will be used to setup the hardware and load the configuration for that aircraft",
         "XX-XXX": {
             "callSign": "XX-XXX",
-            "address": 0,
+            "address": 16777215,
             "addressType": "ADSL",
             "category": "Light",
             "privacy": 0,
@@ -32,11 +32,9 @@
         "_comment_ip": "IP Address of the server running GA/TAS Server",
         "gatasServer": {
             "ip": "192.168.178.237",
-            "port": 16256
         },
         "remote": {
             "ip": "178.79.150.232",
-            "port": 16256
         }
     },
     "ADSBDecoder": {

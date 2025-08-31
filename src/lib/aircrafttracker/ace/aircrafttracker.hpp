@@ -91,7 +91,7 @@ public:
     AircraftTracker(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                            taskHandle(nullptr)
     {
-        ownshipAddress = config.gaTasConfig().conspicuity.address;
+        ownshipAddress = config.gaTasConfig().conspicuity.icaoAddress;
     }
 
     virtual ~AircraftTracker() = default;

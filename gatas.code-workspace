@@ -8,6 +8,9 @@
 	},
 	{
 		"path": "src/lib/utils/utils_tests"
+	},
+	{
+		"path": "../gatasServer/ServerGui"
 	}
 ]
   	,

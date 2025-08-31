@@ -29,7 +29,7 @@ void AircraftTracker::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        ownshipAddress = msg.config.gaTasConfig().conspicuity.address;
+        ownshipAddress = msg.config.gaTasConfig().conspicuity.icaoAddress;
     }
 }
 

@@ -83,7 +83,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
             return;
         }
 
-        if (packet.aircraftId() == ownship.conspicuity.address)
+        if (packet.aircraftId() == ownship.conspicuity.icaoAddress)
         {
             return;
         }
@@ -139,7 +139,7 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
         auto ownship = ownshipPosition.load(etl::memory_order_acquire);
 
-        packet.aircraftId(ownship.conspicuity.address);
+        packet.aircraftId(ownship.conspicuity.icaoAddress);
         packet.messageType(0x02);
         packet.addressType(static_cast<uint8_t>(ownship.conspicuity.addressType));
         packet.stealth(ownship.conspicuity.stealth);

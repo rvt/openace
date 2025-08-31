@@ -121,50 +121,87 @@ void registerModules()
     }
 }
 
-BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, const Configuration &config)
+BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configuration &config)
 {
-    // clang-format off 
-    if (name == Ogn1::NAME) return new Ogn1(bus, config);
-    if (name == FanetAce::NAME) return new FanetAce(bus, config);
-    if (name == AirConnect::NAME) return new AirConnect(bus, config);
-    if (name == GatasConnect::NAME) return new GatasConnect(bus, config);
-    if (name == Bluetooth::NAME) return new Bluetooth(bus, config);
-    if (name == DataPort::NAME) return new DataPort(bus, config);
-    if (name == AircraftTracker::NAME) return new AircraftTracker(bus, config);
-    if (name == Dump1090Client::NAME) return new Dump1090Client(bus, config);
-    if (name == SerialADSB::NAME) return new SerialADSB(bus, config);
-    if (name == L76B::NAME) return new L76B(bus, config);
-    if (name == UbloxM8N::NAME) return new UbloxM8N(bus, config);
-    if (name == GpsDecoder::NAME) return new GpsDecoder(bus, config);
-    if (name == GDLoverUDP::NAME) return new GDLoverUDP(bus, config);
-    if (name == ADSL::NAME) return new ADSL(bus, config);
-    if (name == Flarm2024::NAME) return new Flarm2024(bus, config);
-    if (name == ADSBDecoder::NAME) return new ADSBDecoder(bus, config);
-    if (name == RadioTunerRx::NAME) return new RadioTunerRx(bus, config);
-    if (name == RadioTunerTx::NAME) return new RadioTunerTx(bus, config);
-    if (name == RxDataFrameQueue::NAME) return new RxDataFrameQueue(bus, config);
-    if (name == Sx1262::NAMES[0]) return new Sx1262(bus, config, 0);
-    if (name == Sx1262::NAMES[1]) return new Sx1262(bus, config, 1);
-    if (name == PicoRtc::NAME) return new PicoRtc(bus, config);
-    if (name == Webserver::NAME) return new Webserver(bus, config);
-    if (name == WifiService::NAME) return new WifiService(bus, config);
-    if (name == Gdl90Service::NAME) return new Gdl90Service(bus, config);
-    if (name == Bmp280::NAME) return new Bmp280(bus, config);
-    if (name == AceSpi::NAME) return new AceSpi(bus, config);
+    // clang-format off
+    if (name == Ogn1::NAME)
+        return new Ogn1(bus, config);
+    if (name == FanetAce::NAME)
+        return new FanetAce(bus, config);
+    if (name == AirConnect::NAME)
+        return new AirConnect(bus, config);
+    if (name == GatasConnect::NAME)
+        return new GatasConnect(bus, config);
+    if (name == Bluetooth::NAME)
+        return new Bluetooth(bus, config);
+    if (name == DataPort::NAME)
+        return new DataPort(bus, config);
+    if (name == AircraftTracker::NAME)
+        return new AircraftTracker(bus, config);
+    if (name == Dump1090Client::NAME)
+        return new Dump1090Client(bus, config);
+    if (name == SerialADSB::NAME)
+        return new SerialADSB(bus, config);
+    if (name == L76B::NAME)
+        return new L76B(bus, config);
+    if (name == UbloxM8N::NAME)
+        return new UbloxM8N(bus, config);
+    if (name == GpsDecoder::NAME)
+        return new GpsDecoder(bus, config);
+    if (name == GDLoverUDP::NAME)
+        return new GDLoverUDP(bus, config);
+    if (name == ADSL::NAME)
+        return new ADSL(bus, config);
+    if (name == Flarm2024::NAME)
+        return new Flarm2024(bus, config);
+    if (name == ADSBDecoder::NAME)
+        return new ADSBDecoder(bus, config);
+    if (name == RadioTunerRx::NAME)
+        return new RadioTunerRx(bus, config);
+    if (name == RadioTunerTx::NAME)
+        return new RadioTunerTx(bus, config);
+    if (name == RxDataFrameQueue::NAME)
+        return new RxDataFrameQueue(bus, config);
+    if (name == Sx1262::NAMES[0])
+        return new Sx1262(bus, config, 0);
+    if (name == Sx1262::NAMES[1])
+        return new Sx1262(bus, config, 1);
+    if (name == PicoRtc::NAME)
+        return new PicoRtc(bus, config);
+    if (name == Webserver::NAME)
+        return new Webserver(bus, config);
+    if (name == WifiService::NAME)
+        return new WifiService(bus, config);
+    if (name == Gdl90Service::NAME)
+        return new Gdl90Service(bus, config);
+    if (name == Bmp280::NAME)
+        return new Bmp280(bus, config);
+    if (name == AceSpi::NAME)
+        return new AceSpi(bus, config);
     // if (name == Config::NAME) return new Config(bus, FlashStore, DEFAULT_GATAS_CONFIG); // Uncomment if needed
     // clang-format on
 
     return nullptr; // Unknown name
 }
 
-static InMemoryStore volatileStore;
+constexpr size_t VOL_DATA_SIZE = 512;
+uint8_t __uninitialized_ram( store[VOL_DATA_SIZE]);
+static InMemoryStore<VOL_DATA_SIZE> volatileStore(store);
 // Bluetooth stores bonding information at the last sector
+// Flash memory Map
+//     |--------------|---------------|----------------|-------------------|
+//     | xxBytes.     | 4096Bytes.    | 4096 Bytes.    | 4096 Bytes.       |
+//     | Application  | Binary Store  | permanentStore | Bluetooth Bonding |
+
+// Used to store Application Configuration
 static FlashStore permanentStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 2}; // FLASH_SECTOR_SIZE => 4096 on the PICO
+// Used to store runtime information not stored in permanent store, counters, id's etc...
+static FlashStore binaryStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 3}; // FLASH_SECTOR_SIZE => 4096 on the PICO
 static GATAS::ThreadSafeBus<25> bus;
-static Config config(bus, volatileStore, permanentStore, DEFAULT_GATAS_CONFIG);
+static Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
 volatile static bool loadIndicator = false;
 volatile static int8_t ledStatusIndicatorPin = -1;
-static void load(const etl::string_view str, etl::imessage_bus &bus, const Configuration &config, bool force = false)
+static void load(const etl::string_view str, etl::imessage_bus &bus, Configuration &config, bool force = false)
 {
     if (ledStatusIndicatorPin > -1)
     {
@@ -172,27 +209,29 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, const Confi
         loadIndicator = !loadIndicator;
     }
 
+#if GATAS_DEBUG == 1
     struct HeapLogger
     {
         ~HeapLogger() { printf("\nFree: %d\n\n", xPortGetFreeHeapSize()); }
     } heapLogger;
+#endif
 
     auto registeredModules = BaseModule::registeredModules();
 
     if (registeredModules[str].hwCheck && config.pinMap(str).empty())
     {
         BaseModule::setModuleStatus(str, GATAS::PostConstruct::HARDWARE_NOT_CONFIGURED);
-        printf("Module %s has no hardware configuration", str.cbegin());
+        printf("\nModule %s has no hardware configuration", str.cbegin());
         return;
     }
 
     if (!(config.isModuleEnabled(str) || force))
     {
-        printf("Module %s disabled", str.cbegin());
+        printf("\nModule %s disabled", str.cbegin());
         return;
     }
 
-    printf("Loading %s ...", str.cbegin());
+    printf("\nLoading %s ...", str.cbegin());
 
     if (!registeredModules.contains(str))
     {
@@ -227,7 +266,8 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, const Confi
 static void loadModules(void *arch)
 {
     (void)arch;
-    vTaskDelay(5000);
+    BaseModule::setModuleStatus(Configuration::CONFIG, &config);
+
     load(WifiService::NAME, bus, config, true);
 
     WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME));
@@ -281,7 +321,23 @@ static void loadModules(void *arch)
     // SerialADSB messes up the serial terminal, but it will load beyond this point
     // load(SerialADSB::NAME, bus, config);
     // puts("\033[2J\033[H");
+
     puts("All modules loaded!\n");
+
+    printf(
+        R"=(
+
+         ██████╗ ██████╗ ███████╗███╗   ██╗ █████╗  ██████╗███████╗
+        ██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔════╝██╔════╝
+        ██║   ██║██████╔╝█████╗  ██╔██╗ ██║███████║██║     █████╗
+        ██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║██╔══██║██║     ██╔══╝
+        ╚██████╔╝██║     ███████╗██║ ╚████║██║  ██║╚██████╗███████╗
+         ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝╚══════╝
+
+        GA/TAS Device ID: %lX
+
+        )=",
+        static_cast<uint32_t>(config.internalStore()->gatasId));
     gpio_put(ledStatusIndicatorPin, 1);
 
     vTaskDelete(nullptr);
@@ -297,12 +353,12 @@ static void gaTasIdleTask(void *arch)
     constexpr uint8_t DO_300S = 1 << 3;
 
     (void)arch;
-#ifdef NDEBUG
+#if GATAS_DEBUG != 1
     watchdog_enable(3000, 0);
 #endif
     while (true)
     {
-#ifdef NDEBUG
+#if GATAS_DEBUG != 1
         watchdog_update();
 #endif
         tick++;
@@ -316,16 +372,20 @@ static void gaTasIdleTask(void *arch)
 
             bus.receive(GATAS::Every1SecMsg());
 
-            if (tick % 5 == 0) {
+            if (tick % 5 == 0)
+            {
                 msgFlags |= DO_5S;
             }
-            if (tick % 15 == 0) {
+            if (tick % 15 == 0)
+            {
                 msgFlags |= DO_15S;
             }
-            if (tick % 30 == 0) {
+            if (tick % 30 == 0)
+            {
                 msgFlags |= DO_30S;
             }
-            if (tick % 300 == 0) {
+            if (tick % 300 == 0)
+            {
                 msgFlags |= DO_300S;
             }
 
@@ -447,7 +507,6 @@ void vLaunch(void)
     // Bootstap
     BaseModule::initBase();
     puts("--");
-    config.postConstruct();
 
     /*** Turn on LED ASAP to indicate that the device is on */
     ledStatusIndicatorPin = config.valueByPath(26, "port5", "O0");
@@ -504,44 +563,32 @@ int main()
         at200Mhz = true;
     }
     stdio_init_all();
-    printf(
-        R"=(
-
-         ██████╗ ██████╗ ███████╗███╗   ██╗ █████╗  ██████╗███████╗
-        ██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔════╝██╔════╝
-        ██║   ██║██████╔╝█████╗  ██╔██╗ ██║███████║██║     █████╗
-        ██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║██╔══██║██║     ██╔══╝
-        ╚██████╔╝██║     ███████╗██║ ╚████║██║  ██║╚██████╗███████╗
-         ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝╚══════╝
-
-)=");
-
     overflowTest();
-#ifndef NDEBUG
-    etl::error_handler::set_callback<etlcpp_receive_error>();
-#endif
 
-#if FREE_RTOS_KERNEL_SMP
-    puts("FreeRTOS SMP Kernel");
+    // Load config very eurly in the process so it might be easer to recover
+    config.postConstruct();
+
+#if GATAS_DEBUG == 1
+    etl::error_handler::set_callback<etlcpp_receive_error>();
 #endif
 
     const char *rtos_name;
 #if (configNUMBER_OF_CORES > 1)
-    rtos_name = "GaTas SMP";
+    rtos_name = "GaTas FreeRTOS SMP";
 #else
-    rtos_name = "GaTas";
+    rtos_name = "GaTas FreeRTOS";
 #endif
 
 #if (configNUMBER_OF_CORES > 1)
-    printf("Starting %s on both cores at %dMHZ:\n\n", rtos_name, at200Mhz ? 200 : 125);
+    printf("        Starting %s on both cores at %dMHZ:\n\n", rtos_name, at200Mhz ? 200 : 125);
     vLaunch();
 #elif (RUN_FREERTOS_ON_CORE == 1)
-    printf("Starting %s on core 1:\n\n", rtos_name);
+    printf("        Starting %s on core 1:\n\n", rtos_name);
     multicore_launch_core1(vLaunch);
     while (true)
         ;
 #else
-    printf("Starting %s on core 0:\n\n", rtos_name);
+    printf("        Starting %s on core 0:\n\n", rtos_name);
     vLaunch();
 #endif
 

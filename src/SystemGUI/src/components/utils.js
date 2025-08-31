@@ -40,11 +40,11 @@ export const ipValidation = [
 export const ssidValidation = [
   {
     rule: "minLength",
-    value: 4,
+    value: 3,
   },
   {
     rule: "maxLength",
-    value: 12,
+    value: 16,
   },
 ];
 

@@ -139,7 +139,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
             true,
             GDL90::ALERT_STATUS::INACTIVE,
             type,
-            pos.conspicuity.address,
+            pos.conspicuity.icaoAddress,
             latitude,
             longitude,
             altitude,

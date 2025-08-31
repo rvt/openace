@@ -109,7 +109,7 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
                 auto pathParsed = CoreUtils::parsePath(RequestContext.uri);
                 // TODO: We should see if we can stop FreeRTOS and make a config change
                 // FInd some way to stop all tasks and continue where they left off
-                // Note to self: vTaskSuspendAll(); won't work here
+                // Note to self: vTaskSuspendAll(); won't work here because we use FreeRTOS on the message bus
                 // TODO: FInd a way to correctly hold locks on data
                 // printf("Sending config update to %s\n", pathParsed[2].c_str());
                 configModule->getBus().receive(
@@ -118,8 +118,8 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
                         pathParsed[2],
                     });
 
-                // When 'just' the aircraft is changed, no modules will pick up 
-                // changes so an additional config message is send
+                // When 'just' the aircraft is changed, no modules will pick up for changes on FLARM/OGN noTrack etc..
+                // changes so an additional config message is send 
                 if (pathParsed[2] == "aircraft") 
                 {
                     configModule->getBus().receive(
@@ -230,6 +230,7 @@ int fs_open_custom(fs_file *file, const char *name)
         return 0;
     }
 
+    printf("Module %s \n", path[1].c_str());
     BaseModule *module = BaseModule::moduleByName(*webserver, path[1].c_str());
     if (module == nullptr)
     {

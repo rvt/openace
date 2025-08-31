@@ -5,7 +5,6 @@ set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
         ace/src/config.cpp
-        ace/src/inmemorystore.cpp
         ace/src/flashstore.cpp
 )
 
@@ -16,6 +15,7 @@ set(MODULE_TARGET_LINK
 set(PICO_EXTRA_LIBS
     pico_flash
     hardware_flash
+    pico_rand
 )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)

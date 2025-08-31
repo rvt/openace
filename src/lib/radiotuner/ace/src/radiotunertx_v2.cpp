@@ -129,11 +129,11 @@ void RadioTunerTx::radioTuneTask(void *arg)
 
 void RadioTunerTx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    static auto lastTime = 0;
+    static auto lastTime = CoreUtils::timeUs32Raw();
     // Update ZONE every 30 seconds, or when still at ZONE0
-    if (static_cast<uint8_t>(currentZone.value()) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0) || CoreUtils::isUsReached(lastTime))
+    if (CoreUtils::isUsReachedRaw(lastTime) || static_cast<uint8_t>(currentZone.value()) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0))
     {
-        lastTime = CoreUtils::timeUs32() + UPDATE_ZONE_REGULATION_EVERY;
+        lastTime = CoreUtils::timeUs32Raw() + UPDATE_ZONE_REGULATION_EVERY;
         currentZone.set(CountryRegulations::zone(msg.position.lat, msg.position.lon));
     }
 }

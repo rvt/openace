@@ -70,7 +70,7 @@ public:
 
     FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), protocol(this), mutex(nullptr), radioNo(0), distanceIgnore(DEFAULT_IGNORE_DISTANCE), gaTasConfiguration(config.gaTasConfig())
     {
-        protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.address});
+        protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.icaoAddress});
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Fanet", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
     }

@@ -107,7 +107,7 @@ private:
                 // Add the slot to the dataSourceTimeSlots
                 if (protocolTimings.full())
                 {
-#ifndef NDEBUG
+#if GATAS_DEBUG == 1
                     printf("RadioTunerRx: Cannot add more slots for radio %d, max slots reached", radioNo);
 #endif
                     continue;
