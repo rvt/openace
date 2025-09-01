@@ -52,9 +52,10 @@ namespace GATAS
                 case 24:
                 case 29:
                     blockTime = 1000;
+                    skipMutex = false;
                     break;
                 case 20:
-                    blockTime = 1000;
+                    blockTime = 1;
                     skipMutex = true;
                     break;
                 default:

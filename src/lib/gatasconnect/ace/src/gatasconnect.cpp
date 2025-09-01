@@ -138,8 +138,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 
     const size_t ownshipSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1);
     const size_t configSize = BinaryMessages::serializeAircraftConfigurationSizeV1().items(taskCtx->allIcaoAddresses.size());
-    const size_t maxMsgSize = etl::max(ownshipSize, configSize);
-    GATAS_ASSERT((maxMsgSize + COBS_EXTRA_BYTES) < 255, "COBS max length exceeded");
+    GATAS_ASSERT((etl::max(ownshipSize, configSize) + COBS_EXTRA_BYTES) < 255, "COBS max length exceeded");
 
     cyw43_arch_lwip_begin();
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, (ownshipSize + configSize) + 2 * COBS_EXTRA_BYTES, PBUF_RAM);
