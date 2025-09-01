@@ -363,7 +363,7 @@ public:
      */
     static float __time_critical_func(bearingFromInDegShort)(float east, float north)
     {
-        float theta = std::atan2f(east, north);
+        float theta = atan2f(east, north);
         float deg = theta * 180.f / M_PI;
         if (deg < 0.f)
             deg += 360.f;
