@@ -98,7 +98,7 @@ public:
     }
     static void setModuleStatus(const etl::string_view name, GATAS::PostConstruct result)
     {
-        GATAS_ASSERT(result == GATAS::PostConstruct::OK, "setModuleStatus(const etl::string_view name, BaseModule *base) to set OK status!");
+        GATAS_ASSERT(result != GATAS::PostConstruct::OK, "setModuleStatus(const etl::string_view name, BaseModule *base) to set OK status!");
         moduleLoaderMap[name].result = result;
         moduleLoaderMap[name].module = nullptr;
     }

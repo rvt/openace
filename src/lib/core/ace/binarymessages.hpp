@@ -152,7 +152,7 @@ public:
         }
     }
 
-    constexpr static BinaryMessages::SizeType serializeAircraftConfigurationV1Size()
+    constexpr static BinaryMessages::SizeType serializeAircraftConfigurationSizeV1()
     {
         return BinaryMessages::SizeType {
             .base = 1 + 4 + 3 + 1 + 1, // By default we will use 4 bytes 10

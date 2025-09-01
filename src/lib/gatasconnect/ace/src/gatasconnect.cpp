@@ -123,63 +123,68 @@ void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
  */
 void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 {
-    // Don't send anything if there is no gpsFix
     GatasConnect *taskCtx = (GatasConnect *)pvTimerGetTimerID(xTimer);
     if (!taskCtx->wifiConnected)
     {
         return;
     }
-    constexpr size_t COBS_EXTRA_BYTES = 3; // Size Byte + 0 handling byte + 0 end byte
-    constexpr size_t maxSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1) + BinaryMessages::serializeAircraftConfigurationV1Size().items(GATAS::MAX_AIRCRAFT_CONFIGURATIONS);
-    GATAS_ASSERT(maxSize < 255, "Must be smaller than 255 due to cobs encoding");
+    constexpr size_t COBS_EXTRA_BYTES = 3;
 
-    size_t currentSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1) + BinaryMessages::serializeAircraftConfigurationV1Size().items(taskCtx->allIcaoAddresses.size());
+    constexpr size_t OWN_MAX =
+        BinaryMessages::serializeOwnshipPositionSizeV1().items(1);
+    constexpr size_t CFG_MAX =
+        BinaryMessages::serializeAircraftConfigurationSizeV1().items(GATAS::MAX_AIRCRAFT_CONFIGURATIONS);
+    constexpr size_t MAX_MSG = (OWN_MAX > CFG_MAX ? OWN_MAX : CFG_MAX);
 
-    std::array<uint8_t, maxSize> storage;
-    etl::bit_stream_writer writer(storage.data(), storage.size(), etl::endian::big);
+    const size_t ownshipSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1);
+    const size_t configSize = BinaryMessages::serializeAircraftConfigurationSizeV1().items(taskCtx->allIcaoAddresses.size());
+    const size_t maxMsgSize = etl::max(ownshipSize, configSize);
+    GATAS_ASSERT((maxMsgSize + COBS_EXTRA_BYTES) < 255, "COBS max length exceeded");
 
-    // Write the ownship
-    if (taskCtx->hasGpsFix)
-    {
-        BinaryMessages::serializeOwnshipPositionV1(writer, taskCtx->ownshipPosition.load(etl::memory_order_acquire));
-    }
-
-    // Inform current basic confiuration
-    BinaryMessages::serializeAircraftConfigurationV1(writer, taskCtx->gatasId, taskCtx->currentAddress, taskCtx->allIcaoAddresses);
-
-    // Send to the server
-    auto server = taskCtx->gatasServer;
-    ip_addr_t addr;
-    ip4_addr_set_u32(&addr, server.ip);
     cyw43_arch_lwip_begin();
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, currentSize + COBS_EXTRA_BYTES, PBUF_RAM); 
-    if (p == nullptr)
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, (ownshipSize + configSize) + 2 * COBS_EXTRA_BYTES, PBUF_RAM);
+    if (!p)
     {
-        taskCtx->statistics.bufferAllocErr += 1;
+        taskCtx->statistics.bufferAllocErr++;
         cyw43_arch_lwip_end();
         return;
     }
 
-    // For now, just use cobs on all the messages as this is easer on the controller.
-    // If we change that one day, we could simply create a new version... Then use a different port and on gatasServer
-    // we enable that on the port
-    auto size = encodeCOBS(storage.data(), currentSize, (uint8_t *)p->payload, currentSize + COBS_EXTRA_BYTES, true);
-    if (size)
+    etl::array<uint8_t, MAX_MSG + COBS_EXTRA_BYTES> storage;
+    etl::bit_stream_writer writer(storage.data(), storage.size(), etl::endian::big);
+
+    size_t position = 0;
+
+    // --- Ownship (optional)
+    if (taskCtx->hasGpsFix)
     {
-        // Trim to right size so the cobs decoder on the receiving end does not get confused
-        p->len = size;
-        p->tot_len = size;
-        auto err = udp_sendto(taskCtx->pcbSend, p, &addr, server.port);
-        if (err != ERR_OK)
-        {
-            taskCtx->statistics.msgSendFailed += 1;
-        }
-        else
-        {
-            taskCtx->statistics.bytesSend += size;
-        }
+        writer.restart();
+        BinaryMessages::serializeOwnshipPositionV1(writer, taskCtx->ownshipPosition.load(etl::memory_order_acquire));
+        auto size = encodeCOBS(storage.data(), ownshipSize, (uint8_t *)p->payload + position, p->len - position, true);
+        position += size;
     }
+
+    // --- Aircraft configuration (always send)
+    writer.restart();
+    BinaryMessages::serializeAircraftConfigurationV1(writer, taskCtx->gatasId, taskCtx->currentAddress, taskCtx->allIcaoAddresses);
+    auto size = encodeCOBS(storage.data(), configSize, (uint8_t *)p->payload + position, p->len - position, true);
+    position += size;
+
+    // --- Send
+    ip_addr_t addr;
+    ip4_addr_set_u32(&addr, taskCtx->gatasServer.ip);
+    if (position > 0)
+    {
+        p->len = p->tot_len = position; // trim
+        auto err = udp_sendto(taskCtx->pcbSend, p, &addr, taskCtx->gatasServer.port);
+        if (err != ERR_OK)
+            taskCtx->statistics.msgSendFailed++;
+        else
+            taskCtx->statistics.bytesSend += position;
+    }
+
     pbuf_free(p);
     cyw43_arch_lwip_end();
+
     xTimerChangePeriod(taskCtx->requestTimer, TASK_DELAY_MS(1000), portMAX_DELAY);
 }
