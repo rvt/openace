@@ -96,7 +96,7 @@ class AircraftConfig extends El {
     this.$refs[`transponderType${aircraft.addressType?.toUpperCase()}`].selected = true;
     this.$refs.address.value = this._addressFormat(aircraft.address).toUpperCase();
     this.$refs.noTrack.checked = aircraft.noTrack;
-    this.$refs.autoConf.checked = aircraft.autoConf;
+//    this.$refs.autoConf.checked = aircraft.autoConf;
 //    this.$refs.privacy.checked = aircraft.privacy;
     for (let i of this.protocolTypes) {
       this.$refs[`protocol${i.toUpperCase()}`].checked = aircraft.protocols.includes(i);
@@ -110,7 +110,7 @@ class AircraftConfig extends El {
     aircraft.addressType = this.$refs.transponder.value;
     aircraft.address = Number("0x" + this.$refs.address.value);
     aircraft.noTrack = this.$refs.noTrack.checked;
-    aircraft.autoConf = this.$refs.autoConf.checked;
+//    aircraft.autoConf = this.$refs.autoConf.checked;
     
 //    aircraft.privacy = this.$refs.privacy.checked;
     aircraft.protocols = [];
