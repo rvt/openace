@@ -59,6 +59,11 @@ export class GaTasStore {
     this.state.aircraftId = configData.aircraftId;
     this.state.configModified = configData._dirty;
 
+    // Fetch hardware.json
+    const hardwareData = await this.fetch("/api/_Configuration/hardware.json");
+    Object.assign(this.state.hardware, hardwareData);
+    this.state.hardwareName = this.availableHardware.find(d => d.hardware === hardwareData.type)?.name;
+
     // Fetch aircraft.json
     const aircraftData = await this.fetch("/api/_Configuration/aircraft.json");
     Object.assign(this.state.aircraftsObj, aircraftData);
@@ -72,11 +77,6 @@ export class GaTasStore {
         this.state.aircraftId = "";
       }
     }
-
-    // Fetch hardware.json
-    const hardwareData = await this.fetch("/api/_Configuration/hardware.json");
-    Object.assign(this.state.hardware, hardwareData);
-    this.state.hardwareName = this.availableHardware.find(d => d.hardware === hardwareData.type)?.name;
   }
 
   /**

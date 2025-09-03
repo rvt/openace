@@ -230,7 +230,6 @@ int fs_open_custom(fs_file *file, const char *name)
         return 0;
     }
 
-    printf("Module %s \n", path[1].c_str());
     BaseModule *module = BaseModule::moduleByName(*webserver, path[1].c_str());
     if (module == nullptr)
     {

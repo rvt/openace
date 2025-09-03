@@ -184,13 +184,13 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     return nullptr; // Unknown name
 }
 
-constexpr size_t VOL_DATA_SIZE = 512;
+constexpr size_t VOL_DATA_SIZE = 4096;
 uint8_t __uninitialized_ram( store[VOL_DATA_SIZE]);
 static InMemoryStore<VOL_DATA_SIZE> volatileStore(store);
 // Bluetooth stores bonding information at the last sector
 // Flash memory Map
 //     |--------------|---------------|----------------|-------------------|
-//     | xxBytes.     | 4096Bytes.    | 4096 Bytes.    | 4096 Bytes.       |
+//     | xxBytes.     | 4096Bytes.    | 4096 Bytes.    | 8192 Bytes.       |
 //     | Application  | Binary Store  | permanentStore | Bluetooth Bonding |
 
 // Used to store Application Configuration

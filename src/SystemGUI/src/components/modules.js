@@ -67,6 +67,7 @@ class GaTasModules extends El {
       "AirConnect",
       "GatasConnect",
       "Bluetooth",
+      "GpsDecoder"
     ];
     this.info = {
       WifiService: (html) =>

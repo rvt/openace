@@ -47,6 +47,8 @@ GATAS::PostConstruct Config::postConstruct()
         volatileStore.rewind();
         volatileStore.write(defaultConfig, strlen((const char *)defaultConfig) + 1);
         deserializeJson(doc, volatileStore.data());
+// Don't store here yet, let the user save it for himself first
+//        serializeToPersistent();
         statistics.location = DEFAULT;
     }
 
@@ -54,9 +56,7 @@ GATAS::PostConstruct Config::postConstruct()
     permanentStore.rewind();
     auto error = deserializeJson(doc, volatileStore.data());
     auto signatureMismatch = doc[SIGNATURE].as<uint32_t>() != GATAS_FLASH_SIGNATURE;
-
-
-    if (error || loadDefaultConfig)
+    if (error || signatureMismatch)
     {
         error = deserializeJson(doc, permanentStore.data());
         signatureMismatch = doc[SIGNATURE].as<uint32_t>() != GATAS_FLASH_SIGNATURE;
