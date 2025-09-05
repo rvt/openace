@@ -325,7 +325,7 @@ void AirConnect::tcp_server_close()
  */
 void AirConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
-    wifiConnected = wcs.connected;
+    wifiConnected = wcs.wifiMode != GATAS::WifiMode::NC;
 }
 
 /**

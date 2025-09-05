@@ -360,8 +360,8 @@ customElements.define("bmp280-config", Bmp280Config);
 
 class GDLoverUDPConfig extends ModuleConfig {
   created() {
-    this.ports = [0, 1, 2, 3];
-    this.ips = [0, 1, 2, 3];
+    this.ports = [0, 1];
+    this.ips = [0, 1];
     this._initForm(store.getModuleData("GDLoverUDP")).then((data) => {
       this.$update();
     });
@@ -445,12 +445,15 @@ class GDLoverUDPConfig extends ModuleConfig {
 
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="section">
-          Up to 4 different ports can be configured
+          Up to ${this.ports.length} different ports can be configured
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-              Each device connected to GA/TAS will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to four
+              Each device connected to GA/TAS will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to ${this.ports.length}
               different ports can be configured to accommodate devices that listen on other ports. Default port is <b>4000</b>
+              When GA/TAS is connrect to an Access Point, additional GDL messages will be send to the gateway address. This allows
+              you to have for example foreflight on your telephone while GA/TAS uses your telephone as the accesspoint to GA/TASConnect
+              to Receive online traffic information.
             </p>
           </label>
           <div class="grid md-columns-4 lg-columns-4">
@@ -466,11 +469,13 @@ class GDLoverUDPConfig extends ModuleConfig {
         </div>
 
         <div class="section">
-          Up to 4 different IP's can be configured
+          Up to ${this.ips.length} different IP's can be configured
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-              In addition to ports, up to 4 separate IP addresses can be configured. This is usually only useful if your system connects to an access point.
+              In addition to ports, up to ${this.ips.length} separate IP addresses can be configured. 
+              This is usually only useful if your system connects to an access point and you have a third device connected to teh same accesspoint.
+              By default GA/TAAS will send UDP traffic to the gateway in client mode using teh configured ports.<br />
               Default port is <b>4000</b>
             </p>
           </label>

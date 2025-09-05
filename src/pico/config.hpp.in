@@ -151,6 +151,9 @@
 // Hard coded so we have more control of the version number for each release
 #define GATAS_CONNECT_PORT 16256
 
+// Gatas MDNS name for service and netinf
+#define GATAS_MDNS_NAME "GATAS"
+
 #define DISALLOW_COPY_AND_MOVE(Type)       \
     Type(const Type&) = delete;            \
     Type& operator=(const Type&) = delete; \

@@ -132,10 +132,11 @@ public:
     /**
      * Inform gatasServer the configuration of this device
      */
-    static void serializeAircraftConfigurationV1(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t currentAddress, const etl::span<uint32_t> &addresses)
+    static void serializeAircraftConfigurationV1(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t currentAddress, const etl::span<uint32_t> &addresses, uint32_t gatasIp)
     {
         writer.write_unchecked(DataType(DataType::AIRCRAFT_CONFIGURATIONS_V1).get_value(), 8U);
         writer.write_unchecked(gatasId, 32U);
+        writer.write_unchecked(gatasIp, 32U);
         writer.write_unchecked(currentAddress, 24U);
 
         // options how to set the addres as a response
@@ -155,7 +156,7 @@ public:
     constexpr static BinaryMessages::SizeType serializeAircraftConfigurationSizeV1()
     {
         return BinaryMessages::SizeType {
-            .base = 1 + 4 + 3 + 1 + 1, // By default we will use 4 bytes 10
+            .base = 1 + 4 + 4 + 3 + 1 + 1, // By default we will use 4 bytes 10
             .size = 3                  // For each additional item 3 bytes
         };
     }

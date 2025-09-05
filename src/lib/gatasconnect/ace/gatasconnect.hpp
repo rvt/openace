@@ -43,7 +43,8 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     CobsStreamHandler cobsStreamHandler;
 
     uint64_t gatasId;
-    uint32_t currentAddress;
+    uint32_t icaoAddress;
+    uint32_t gatasIp;
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
     bool hasGpsFix;
 private:

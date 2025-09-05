@@ -168,7 +168,11 @@ void GDLoverUDP::transmitBuffer()
             for (auto port : udpPorts)
             {
                 sendTo(part, size, ip, port);
+                if (gateWayClient) {
+                    sendTo(part, size, gateWayClient, port);
+                }
             }
+
         }
 
         // Custom clients can have any netmask and thus need to be tested if they are on the local net
@@ -219,5 +223,10 @@ void GDLoverUDP::sendTo(const char *part, size_t size, uint32_t ip, int16_t port
 
 void GDLoverUDP::on_receive(const GATAS::WifiConnectionStateMsg &msg)
 {
-    networkAddress = msg.networkAddress;
+    networkAddress = msg.gatasIp & 0xFFFFFF;
+    if (msg.wifiMode == GATAS::WifiMode::CLIENT) {
+        gateWayClient = msg.gateWay;
+    } else {
+        gateWayClient = 0;
+    }
 }

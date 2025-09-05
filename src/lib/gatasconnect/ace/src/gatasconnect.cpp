@@ -66,7 +66,8 @@ void GatasConnect::on_receive_unknown(const etl::imessage &msg)
  */
 void GatasConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
-    wifiConnected = wcs.connected;
+    wifiConnected = wcs.wifiMode != GATAS::WifiMode::NC;
+    gatasIp = wcs.gatasIp;
 }
 
 void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
@@ -89,7 +90,7 @@ void GatasConnect::getConfig(const Configuration &config)
     gatasServer.port = GATAS_CONNECT_PORT;
 
     auto gatasConfig = config.gaTasConfig();
-    currentAddress = config.gaTasConfig().conspicuity.icaoAddress;
+    icaoAddress = config.gaTasConfig().conspicuity.icaoAddress;
     allIcaoAddresses = config.gaTasConfig().allIcaoAddresses;
     gatasId = config.internalStore()->gatasId;
 }
@@ -165,7 +166,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 
     // --- Aircraft configuration (always send)
     writer.restart();
-    BinaryMessages::serializeAircraftConfigurationV1(writer, taskCtx->gatasId, taskCtx->currentAddress, taskCtx->allIcaoAddresses);
+    BinaryMessages::serializeAircraftConfigurationV1(writer, taskCtx->gatasId, taskCtx->icaoAddress, taskCtx->allIcaoAddresses, taskCtx->gatasIp);
     auto size = encodeCOBS(storage.data(), configSize, (uint8_t *)p->payload + position, p->len - position, true);
     position += size;
 

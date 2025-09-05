@@ -329,12 +329,12 @@ void Webserver::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
     // Only start the webserver after WIFI has been connected.
     // We have seen halts from the microcontroller when the website did a request to the webserver while WIFI was not fully up yet.
     // This runs in a general stack (properly of the message bus)
-    if (wcs.connected && !once)
+    if (wcs.wifiMode != GATAS::WifiMode::NC && !once)
     {
         httpd_init();
         once = true;
     }
-    else if (wcs.connected == false)
+    else if (wcs.wifiMode == GATAS::WifiMode::NC)
     {
         // Disconnect not yet handled
     }

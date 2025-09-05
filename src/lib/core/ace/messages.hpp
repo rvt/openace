@@ -287,11 +287,12 @@ namespace GATAS
      * NOTE: Don't change message ID!
      */
     struct WifiConnectionStateMsg : public etl::message<24>
-    {
-        bool connected;
-        uint32_t networkAddress;
-        WifiConnectionStateMsg(bool connected_) : connected(connected_), networkAddress(0) {};
-        WifiConnectionStateMsg(bool connected_, uint32_t networkAddress_) : connected(connected_), networkAddress(networkAddress_) {};
+    {        
+        GATAS::WifiMode wifiMode;
+        uint32_t gatasIp;
+        uint32_t gateWay;
+        WifiConnectionStateMsg(GATAS::WifiMode wifiMode_) : wifiMode(wifiMode_), gatasIp(0), gateWay(0) {};
+        WifiConnectionStateMsg(GATAS::WifiMode wifiMode_, uint32_t gatasIp_, uint32_t gateWay_) : wifiMode(wifiMode_), gatasIp(gatasIp_), gateWay(gateWay_) {};
     };
 
     /**

@@ -325,7 +325,7 @@ static void loadModules(void *arch)
     puts("All modules loaded!\n");
 
     printf(
-        R"=(
+            R"=(
 
          ██████╗ ██████╗ ███████╗███╗   ██╗ █████╗  ██████╗███████╗
         ██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔════╝██╔════╝
@@ -337,7 +337,7 @@ static void loadModules(void *arch)
         GA/TAS Device ID: %lX
 
         )=",
-        static_cast<uint32_t>(config.internalStore()->gatasId));
+            static_cast<uint32_t>(config.internalStore()->gatasId));
     gpio_put(ledStatusIndicatorPin, 1);
 
     vTaskDelete(nullptr);

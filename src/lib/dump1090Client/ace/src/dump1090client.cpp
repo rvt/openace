@@ -84,6 +84,6 @@ void Dump1090Client::on_receive(const GATAS::Every5SecMsg &msg)
 
 void Dump1090Client::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
-    wifiConnected = wcs.connected;
-    networkAddress = wcs.networkAddress;
+    wifiConnected = wcs.wifiMode != GATAS::WifiMode::NC;
+    networkAddress = wcs.gatasIp & 0xFFFFFF;
 }

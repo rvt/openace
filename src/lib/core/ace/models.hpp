@@ -2,8 +2,8 @@
 
 #include "constants.hpp"
 
-//#include "etl/string.h"
-// #include "etl/map.h"
+// #include "etl/string.h"
+//  #include "etl/map.h"
 #include "etl/vector.h"
 #include "etl/enum_type.h"
 
@@ -70,7 +70,7 @@ namespace GATAS
             ROTORCRAFT = 7,
             // UnAssigned
             GLIDER = 9,
-            LIGHT_THAN_AIR = 10, 
+            LIGHT_THAN_AIR = 10,
             SKY_DIVER = 11,
             ULTRA_LIGHT_FIXED_WING = 12, // < 1500 lbs Fixed Wing only
             // UnAssigned
@@ -83,7 +83,7 @@ namespace GATAS
             CLUSTER_OBSTACLE = 20,
             LINE_OBSTACLE = 21,
             // .. reserved to 39
-            // From below are custom values 
+            // From below are custom values
             GYROCOPTER = 40,
             HANG_GLIDER = 41,
             PARA_GLIDER = 42,
@@ -257,14 +257,14 @@ namespace GATAS
         int32_t relNorthFromOwn;  // relNorth to ownship in meters
         int32_t relEastFromOwn;   // relEast to ownship in meters
         // TODO: Add relative vertical?
-//        int16_t bearingFromOwn;   // Bearing to ownship in degrees, currently only used in AntennaRadiationPattern?
+        //        int16_t bearingFromOwn;   // Bearing to ownship in degrees, currently only used in AntennaRadiationPattern?
 
-        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_/*, int16_t bearingFromOwn_*/)
-            : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_)// , bearingFromOwn(bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t course_, float hTurnRate_, uint32_t distanceFromOwn_, int32_t relNorth_, int32_t relEast_ /*, int16_t bearingFromOwn_*/)
+            : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), course(course_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), relNorthFromOwn(relNorth_), relEastFromOwn(relEast_) // , bearingFromOwn(bearingFromOwn_)
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::ADSL), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN)// , bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::ADSL), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN) // , bearingFromOwn(INT16_MIN)
         {
         }
 
@@ -333,9 +333,16 @@ namespace GATAS
         };
     };
 
+    enum WifiMode
+    {
+        NC,
+        AP,
+        CLIENT
+    };
+
     struct OwnshipPositionInfo
     {
-        uint32_t timestamp;              // Timestamp when the position was received
+        uint32_t timestamp; // Timestamp when the position was received
         float lat;
         float lon;
         int16_t ellipseHeight;           // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
@@ -389,13 +396,13 @@ namespace GATAS
      */
     struct BinaryStore
     {
-        static constexpr uint32_t MAGIC=0xCAFEBABE;
+        static constexpr uint32_t MAGIC = 0xCAFEBABE;
         // Magic to test if the flash needs to be reset
         uint32_t magic = MAGIC;
-        // Unique ID to track this device. 
+        // Unique ID to track this device.
         // This is used to beable to show a website to the user uniqely without
         // other hijacking it's configuration. THis is not used to track the user.
-        uint64_t gatasId;    
+        uint64_t gatasId;
     };
 
 };

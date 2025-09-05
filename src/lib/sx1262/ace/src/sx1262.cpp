@@ -68,7 +68,7 @@ GATAS::PostConstruct Sx1262::postConstruct()
 
     radioInit();
 
-    if (xTaskCreate(sx1262Task, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 64, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
+    if (xTaskCreate(sx1262Task, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
     {
         return GATAS::PostConstruct::TASK_ERROR;
     }
@@ -556,7 +556,7 @@ void Sx1262::sx1262Task(void *arg)
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
-                    auto m = Measure("Send Packet", sx1262->radioNo);
+                    auto m = Measure("Send Packet", 800, sx1262->radioNo);
                     // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(txPacket.radioParameters.config->dataSource));
                     txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     sx1262->sendPacket(txPacket);

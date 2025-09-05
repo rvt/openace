@@ -13,7 +13,6 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-
 GATAS::PostConstruct WifiService::postConstruct()
 {
     if (cyw43_arch_init())
@@ -63,6 +62,7 @@ void WifiService::wifiTask(void *arg)
             {
 
             case ConnectionState::START:
+                wifiService->wifiMode = GATAS::WifiMode::NC;
                 wifiService->connectionState = ConnectionState::ENABLESTA;
                 wifiService->totalScanAttempt = 0;
                 break;
@@ -171,7 +171,7 @@ void WifiService::wifiTask(void *arg)
 
             case ConnectionState::APSTOPPED:
                 wifiService->connectionState = ConnectionState::WIFISCAN;
-                wifiService->getBus().receive(GATAS::WifiConnectionStateMsg{false});
+                wifiService->getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
                 break;
 
             default:
@@ -202,9 +202,9 @@ void WifiService::startAccessPoint()
 {
     // puts("Starting access point");
     cyw43_arch_enable_ap_mode(wifiData.ap.ssid.c_str(), wifiData.ap.password.c_str(), CYW43_AUTH_WPA2_AES_PSK);
-    //cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
-    // https://github.com/raspberrypi/pico-sdk/issues/1661#issuecomment-3238252048
-    // TODO: Still testing, this might solve a STALL issue we have seen very rarely
+    // cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
+    //  https://github.com/raspberrypi/pico-sdk/issues/1661#issuecomment-3238252048
+    //  TODO: Still testing, this might solve a STALL issue we have seen very rarely
     cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
 
     ip4_addr_t mask;
@@ -215,7 +215,8 @@ void WifiService::startAccessPoint()
     dhcp_server_init(&dhcp_server, &gw, &mask);
     dns_server_init(&dns_server, &gw);
 
-    showSsidPwdIp(wifiData.ap.ssid, wifiData.ap.password, true);
+    wifiMode = GATAS::WifiMode::AP;
+    showSsidPwdIp(wifiData.ap.ssid, wifiData.ap.password);
 }
 
 void WifiService::stopAccessPoint()
@@ -310,7 +311,8 @@ uint8_t WifiService::connectClient()
     {
 
     case PICO_OK:
-        showSsidPwdIp(it->ssid, "<hidden>", false);
+        wifiMode = GATAS::WifiMode::CLIENT;
+        showSsidPwdIp(it->ssid, "<hidden>");
         return 0;
     //    case PICO_ERROR_TIMEOUT:      // Timeout might mean that the network is just lost
     case PICO_ERROR_BADAUTH:        // Sometimes seen that auth just did not work on my own network
@@ -333,7 +335,7 @@ bool WifiService::checkIfClientActive(int itf)
 {
     (void)itf;
     return netif_default && netif_is_up(netif_default) && netif_is_link_up(netif_default);
-//    return cyw43_tcpip_link_status(&cyw43_state, itf) == CYW43_LINK_UP;
+    //    return cyw43_tcpip_link_status(&cyw43_state, itf) == CYW43_LINK_UP;
 }
 
 void WifiService::enableSta()
@@ -349,19 +351,21 @@ void WifiService::disableSta()
     cyw43_arch_disable_sta_mode();
 }
 
-void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password, bool ap) const
+void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const
 {
     const char *mode;
-    if (ap)
+    if (wifiMode == GATAS::WifiMode::AP)
     {
         mode = "Access Point";
     }
-    else
+    else if (wifiMode == GATAS::WifiMode::CLIENT)
     {
         mode = "Client";
+    } else {
+        mode = "AP";
     }
 
-    ip4_addr_t ip=getIpAddr();
+    ip4_addr_t ip = getInterfaceInfo().ip;
     puts("###################################");
     printf("## Mode: %s\n## SSID: %s Password: %s IP: %s\n", mode, ssid.begin(), password.begin(), ip4addr_ntoa(&ip));
     puts("###################################");
@@ -391,8 +395,8 @@ void WifiService::mDnsInit()
 #if LWIP_MDNS_RESPONDER == 1
     mdns_resp_init();
 
-    mdns_resp_add_netif(netif_default, "gatas");
-    mdns_resp_add_service(netif_default, "myweb", "_http", DNSSD_PROTO_TCP, 80, srv_txt, NULL);
+    mdns_resp_add_netif(netif_default, GATAS_MDNS_NAME);
+    mdns_resp_add_service(netif_default, GATAS_MDNS_NAME, "_http", DNSSD_PROTO_TCP, 80, srv_txt, NULL);
     mdns_resp_announce(netif_default);
 #endif
 }
@@ -404,13 +408,13 @@ void WifiService::mDnsDeinit()
 #endif
 }
 
-
-ip4_addr_t WifiService::getIpAddr() {
+WifiService::IpGw WifiService::getInterfaceInfo()
+{
     struct netif *netif = netif_list;
     if (netif != NULL) {
-         return netif->ip_addr;
+         return {netif->ip_addr, netif->gw};
     }
-    return { 0 };
+    return { 0, 0 };
 }
 
 void WifiService::on_receive(const GATAS::IdleMsg &msg)
@@ -419,9 +423,21 @@ void WifiService::on_receive(const GATAS::IdleMsg &msg)
     static bool previous = false;
     bool active = checkIfClientActive(CYW43_ITF_STA) || checkIfClientActive(CYW43_ITF_AP);
 
-    if (active != previous)
-    {
-        getBus().receive(GATAS::WifiConnectionStateMsg{active, getIpAddr().addr & 0xFFFFFF});
-        previous = active;
+    if (active == previous) {
+        return;
+    }
+
+    const auto interface = getInterfaceInfo();;
+    if (!active) {
+        getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
+        previous = false;
+        return;
+    }
+
+    // active == true here
+    if (interface.ip.addr != 0) {
+        getBus().receive(GATAS::WifiConnectionStateMsg{wifiMode, /* ip & 0xFFFFFF */ interface.ip.addr, interface.gateWay.addr});
+        previous = true;
+        return;
     }
 }
