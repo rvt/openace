@@ -437,10 +437,21 @@ class GDLoverUDPConfig extends ModuleConfig {
 
   render(html) {
     return html`
-      <h4>Configuration of the GDL over UDP Decoder</h4>
+      <h4>Configuration of the GDL over UDP Module</h4>
       <p>
         Flightbags such as SkyDemon, ForeFlight, EasyFVR and others can then determine your location and receive information about other aircraft using this
-        protocol.
+        protocol.<br /><br />
+        <div style="text-decoration: underline">When in Client mode:</div>
+        <ul>
+          <li>GA/TAS will send GDL90 messages to the access using the below configured ports
+          <li>GA/TAS will send GDL90 to any of the below configured IP addresses and port.
+        </ul>
+        <div style="text-decoration: underline">When in Access Point mode:</div>
+        <ul>
+          <li>GA/TAS will send GDL90 messages to any of the connected clients using the below configured ports
+          <li>GA/TAS will send GDL90 to any of the below configured IP addresses and port.
+        </ul>
+        In all cases GA/TAS will send messages to clients in the same network.
       </p>
 
       <form ref="form" autocomplete="off" novalidate="novalidate">
