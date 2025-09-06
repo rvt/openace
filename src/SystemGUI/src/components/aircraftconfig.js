@@ -111,7 +111,7 @@ class AircraftConfig extends El {
     aircraft.address = Number("0x" + this.$refs.address.value);
     aircraft.noTrack = this.$refs.noTrack.checked;
 //    aircraft.autoConf = this.$refs.autoConf.checked;
-    
+
 //    aircraft.privacy = this.$refs.privacy.checked;
     aircraft.protocols = [];
     for (let i of this.protocolTypes) {
@@ -171,8 +171,8 @@ class AircraftConfig extends El {
 
       <div class="section row g-3">
         <div>
-            <h6>Protocols to Enable (Send and Receive)</h5>
-            
+            <h6>Protocols to Enable (Send and Receive)</h6>
+
             ${this.protocolTypes.map(
               (item) => html`
                 <label>
@@ -190,18 +190,18 @@ class AircraftConfig extends El {
             <input type="checkbox" id="privacy" ref="privacy" />Privacy
           </label>
           <small>GaTas Will use an random address and send it for the duration of the session.</small> -->
-          
+
           <!--
           <label for="autoConf">
             <input type="checkbox" id="autoConf" ref="autoConf" />Auto Configure
           </label>
           <small>When enabled, GA/TAS will automatically treat this aircraft as yours if it detects a mismatched transponder code via ADS-B or MLAT, based on matching location and movement. It will then reconfigure GA/TAS accordingly. </small>
           -->
-          
+
           <label for="noTrack">
             <input type="checkbox" id="noTrack" ref="noTrack" />No Track
           </label>
-            <small>GaTas will indicate to other receiver that you don't want to be tracked.</small>  
+            <small>GaTas will indicate to other receivers that you don't want to be tracked.</small>
         </div>
       </div>
 
@@ -230,18 +230,18 @@ class AircraftConfig extends El {
               <p>
                 <b>Your official Transponder</b><br />
                 <ul>
-                  <li>If you have an mode-s transponder, use that code, select ADSL under <i>Your official Transponder</i>
-                  <li>If you only have an FLARM transponder, use the code from that device, select FLARM under <i>Your official Transponder</i>
-                  <li>For OGN/ADSL transponders use the code from these devices, select OGN/ADSL under <i>Your official Transponder</i>
+                  <li>If you have a mode-s transponder, use that code, select ADSL under <i>Your official Transponder</i>.
+                  <li>If you only have a FLARM transponder, use the code from that device, select FLARM under <i>Your official Transponder</i>.
+                  <li>For OGN/ADSL transponders use the code from these devices, select OGN/ADSL under <i>Your official Transponder</i>.
                 </ul>
                 From the above protocols, only enable the protocols of the devices you don't own yet to
                 avoid duplicate transmissions on the same protocol.
             </p>
 
-            <p>            
+            <p>
             <b>Protocols to Enable</b><br />
-            Enable the protocols that are used to send/receive aircraft information on. To enable ADS-B use the correct module under 'modules'.
-            </P>
+            Enable the protocols that are used to send/receive aircraft information on. To enable ADS-B use the correct module under 'Modules'.
+            </p>
           </div>
           <footer class="px-2 jc-end">
               <button type="button" class="btn btn-primary sm ml-1 md-ml-3" onclick=${() => (this.state.showHelp = false)}>Close</button>

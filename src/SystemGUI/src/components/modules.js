@@ -14,7 +14,7 @@ class GaTasModules extends El {
       changeHwDlg : false,
     });
 
-    // All modules that can be monitored (Some time we should automated this by reading this from the Micocontroller)
+    // All modules that can be monitored (Sometime we should automate this by reading this from the Microcontroller)
     this.monitorable = [
       "ADSL",
       "Flarm",
@@ -98,7 +98,7 @@ class GaTasModules extends El {
       Sx1262_1: (html) => html`Radio module 2. Sends and receives ADS-L, OGN, and Flarm protocols.`,
       RadioTunerRx: (html) => html`Manages timings for receiving multiple protocols over one or more radios (Flarm, OGN, and ADS-L).`,
       RadioTunerTx: (html) => html`Manages sending regular position messages over different protocols like Flarm, OGN, and ADS-L.`,
-      RxDataFrameQueue: (html) => html`Receives the RAW dataframes from a transceiver and prepares to send them to the various protocols. This will freeup the tranceiver to do other work.`,
+      RxDataFrameQueue: (html) => html`Receives the RAW dataframes from a transceiver and prepares to send them to the various protocols. This will free up the transceiver to do other work.`,
     };
   }
 
@@ -143,7 +143,7 @@ class GaTasModules extends El {
           <div class="overflow-auto accent-primary" style="color: black">
             <!-- Quick hack to make text black on Safari Desktop -->
             <p>
-              The connection will be temporary disconnected. Any unsaved data will be available after restart.<br />
+              The connection will be temporarily disconnected. Any unsaved data will be available after restart.<br />
               Are you sure?
             </p>
           </div>
@@ -161,7 +161,7 @@ class GaTasModules extends El {
       <div class="modal-content mw-400 rounded">
         <article class="shadow accent-light">
           <header>
-            <h4>Start Firmware mode?</h4>
+            <h4>Start Firmware Mode?</h4>
           </header>
           <div class="overflow-auto accent-primary" style="color: black">
             <!-- Quick hack to make text black on Safari Desktop -->
@@ -200,11 +200,11 @@ class GaTasModules extends El {
             <!-- Quick hack to make text black on Safari Desktop -->
             <p>
               This will change the type of board that GaTas is running on. 
-              After changing the connection will be temporary disconnected. 
+              After changing, the connection will be temporarily disconnected.
               Any unsaved data will be available after restart.<br />
             </p>
 
-            <select onchange=${ e => this._selectedHwIndx = e.currentTarget.selectedIndex}>
+            <select onchange=${ e => this._selectedHwIdx = e.currentTarget.selectedIndex}>
               ${store.availableHardware.map(
                 (item) => html`<option ${item.hardware === store.state?.hardware?.type ? "selected" : ""} value="${item.hardware}">${item.name}</option>`,
               )}
@@ -224,7 +224,7 @@ class GaTasModules extends El {
     const errorMap = {
       0: "Never Loaded",
       1: "Ok",
-      2: "GATAS::PostConstruct failed",
+      2: "GATAS: PostConstruct failed",
       3: "Memory error",
       4: "A dependency was not found",
       5: "xQueue error",
@@ -308,10 +308,10 @@ class GaTasModules extends El {
 
   async _hardwareUpdatedConfirm(e)  
   {
-    if (this._selectedHwIndx > 0) {
+    if (this._selectedHwIdx > 0) {
       this.state.changeHwDlg = true;
-      await store.updateHardware(this._selectedHwIndx);
-      this._selectedHwIndx = 0;
+      await store.updateHardware(this._selectedHwIdx);
+      this._selectedHwIdx = 0;
       store.restart();
     } 
     this.state.changeHwDlg = false;

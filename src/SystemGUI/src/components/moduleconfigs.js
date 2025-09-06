@@ -61,7 +61,7 @@ class AircraftTrackerConfig extends ModuleConfig {
       <h4>Configuration of the Aircraft Tracker</h4>
       <p>
         Aircraft tracker receives all aircraft from ADSB, ADSL and other enabled protocols and keeps track of them. It will send on a 1 second heartbeat new
-        calculated positions (when enabled) and will ensure that attached EFB's get regular updates.
+        calculated positions (when enabled) and will ensure that attached EFBs get regular updates.
       </p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="section grid md-columns-2 lg-columns-2">
@@ -153,7 +153,7 @@ class WifiServiceConfig extends ModuleConfig {
         This module connects to a Wifi Network in the following order:<br>
         <ul>
           <li> Try one of the listed networks
-          <li> If non of the networks could be connected to, setup an Access Point
+          <li> If none of the networks could be connected to, set up an Access Point
           </ul>
       </p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
@@ -189,7 +189,7 @@ class WifiServiceConfig extends ModuleConfig {
               `,
     )}
           </div>
-          <hr>          
+          <hr>
         <h5>Access Point configuration</h5>
         <p>Access point configuration. This AP will be created if GA/TAS could not connect to any other Access Points.
         </p>
@@ -261,7 +261,7 @@ class ADSBDecoderConfig extends ModuleConfig {
     return html`
       <h4>Configuration of the ADSB Decoder</h4>
       <p>
-        This module processes the incoming ADS-B received over TCP, Serial or other methods. This module must be enabled next to a module that received data.
+        This module processes the incoming ADS-B received over TCP, Serial or other methods. This module must be enabled next to a module that receives data.
       </p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="section grid md-columns-2 lg-columns-2">
@@ -270,20 +270,20 @@ class ADSBDecoderConfig extends ModuleConfig {
             <select ref="filterAbove" required>
               ${this.filterAltitudes.map((item) => html` <option ref="filterAbove${item}">${item}</option>`)}
             </select>
-            <small><br />Removes all traffic more then ${this.state.data.filterAbove}ft above your own altitude</small>
+            <small><br />Removes all traffic more than ${this.state.data.filterAbove}ft above your own altitude</small>
           </label>
           <label for="filterBelow">
             filterBelow:
             <select ref="filterBelow" required>
               ${this.filterAltitudes.map((item) => html` <option ref="filterBelow${item}">${item}</option>`)}
             </select>
-            <small><br />Removes all traffic more then ${this.state.data.filterBelow}ft below your own altitude</small>
+            <small><br />Removes all traffic more than ${this.state.data.filterBelow}ft below your own altitude</small>
           </label>
         </div>
         <br />
         <div class="alert alert-warning">
-          ${html.raw(icon.warning)} Increasing the filter below and filter above settings will increase the load on the system, thus degrading the systems
-          performance. Don't set the value to high/low.
+          ${html.raw(icon.warning)} Increasing the filter below and filter above settings will increase the load on the system, thus degrading the system's
+          performance. Don't set the value too high/low.
         </div>
 
         ${this.buttonArray(html)}
@@ -339,7 +339,7 @@ class Bmp280Config extends ModuleConfig {
   render(html) {
     return html`
       <h4>Configuration of the Bmp280 pressure sensor</h4>
-      <p>This module reads the Bmp280 pressure sensor and makes the data available to other modules that requires them.</p>
+      <p>This module reads the Bmp280 pressure sensor and makes the data available to other modules that require them.</p>
 
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="section grid md-columns-2 lg-columns-2">
@@ -348,7 +348,7 @@ class Bmp280Config extends ModuleConfig {
             <input type="text" id="compensation" ref="compensation" placeholder="0" } />
           </label>
         </div>
-        <div class="alert alert-primary">Compensation allows to add an offset to the measured pressure for more accurate readings.</div>
+        <div class="alert alert-primary">Compensation allows you to add an offset to the measured pressure for more accurate readings.</div>
 
         ${this.buttonArray(html)}
       </form>
@@ -439,7 +439,7 @@ class GDLoverUDPConfig extends ModuleConfig {
     return html`
       <h4>Configuration of the GDL over UDP Module</h4>
       <p>
-        Flightbags such as SkyDemon, ForeFlight, EasyFVR and others can then determine your location and receive information about other aircraft using this
+        Flight bags such as SkyDemon, ForeFlight, EasyFVR and others can then determine your location and receive information about other aircraft using this
         protocol.<br /><br />
         <div style="text-decoration: underline">When in Client mode:</div>
         <ul>
@@ -480,11 +480,11 @@ class GDLoverUDPConfig extends ModuleConfig {
         </div>
 
         <div class="section">
-          Up to ${this.ips.length} different IP's can be configured
+          Up to ${this.ips.length} different IPs can be configured
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-              In addition to ports, up to ${this.ips.length} separate IP addresses can be configured. 
+              In addition to ports, up to ${this.ips.length} separate IP addresses can be configured.
               This is usually only useful if your system connects to an access point and you have a third device connected to teh same accesspoint.
               By default GA/TAAS will send UDP traffic to the gateway in client mode using teh configured ports.<br />
               Default port is <b>4000</b>
@@ -569,7 +569,7 @@ class Dump1090ClientConfig extends ModuleConfig {
         &lt;IP&gt;:30002), processing them as traffic targets. Ensure that the ADSBDecoder is enabled and there is traffic within the filtered ranges above or
         below so you will actually see them.
           <div class="alert alert-warning">
-          ${html.raw(icon.warning)} This modules requires restart after modification of the configuration.
+          ${html.raw(icon.warning)} This module requires a restart after modification of the configuration.
         </div>
       </p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
@@ -639,7 +639,7 @@ class SX1262 extends ModuleConfig {
 
   render(html) {
     return html`
-      <h4>Configuration of the ${this.name} LoraWan module</h4>
+      <h4>Configuration of the ${this.name} LoRaWAN module</h4>
 
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="section grid md-columns-2 lg-columns-2">
@@ -648,8 +648,8 @@ class SX1262 extends ModuleConfig {
             <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
               ${html.raw(icon.help)}
               <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-                Add's an additional offset to the frequency for the protocol in this device. To calibrate you can use an existing (correctly calibrated) OGN
-                receiver and use it's frequency offset. When shown as a negative value,use a positive value in the below input field to offset the frequency.
+                Adds an additional offset to the frequency for the protocol in this device. To calibrate you can use an existing (correctly calibrated) OGN
+                receiver and use its frequency offset. When shown as a negative value, use a positive value in the below input field to offset the frequency.
               </p> </label
             >:
             <input type="text" id="offset" ref="offset" placeholder="0" } />
@@ -658,7 +658,7 @@ class SX1262 extends ModuleConfig {
             <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
               TX Enabled ${html.raw(icon.help)}
               <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-                Allow to enable or disable complete transmission of any frames from the radio. Normally you want to have this enabled so others can see you.
+                Allows to enable or disable complete transmission of any frames from the radio. Normally you want to have this enabled so others can see you.
               </p> </label
             >:
             <br />
@@ -728,8 +728,8 @@ class BluetoothConfig extends ModuleConfig {
     return html`
       <h4>Configuration of the Bluetooth Service</h4>
       <p>
-        This module connects allows for a classic bluetooth service and BlueTooth LE:<br />
-        Data send will be Dataport, thus NMEA which is the exact same data as when connecting to Air Connect.
+        This module allows for a classic bluetooth service and Bluetooth LE:<br />
+        Data sent will be Dataport, thus NMEA which is the exact same data as when connecting to Air Connect.
       </p>
 
       <form ref="form" autocomplete="off" novalidate="novalidate">
@@ -795,7 +795,7 @@ class GatasConnectConfig extends ModuleConfig {
       <h4>Configuration of GA/TAS Connect</h4>
       <p>
         GA/TAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI to operate.
-        It fetches traffic around you up to about 50Km away. 
+        It fetches traffic around you up to about 50Km away.
         <br/>
         To setup GA/TAS COnnect:
         <ul>

@@ -94,7 +94,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
         if (notifyValue & TaskState::BLOCK)
         {
             taskBlock = true;
-            // Disable the tranceivers during reconfiguration
+            // Disable the transceivers during reconfiguration
             for (auto &ref : radioTunerRx->radioCtxList)
             {
                 radioTunerRx->getBus().receive(GATAS::RadioControlMsg{
@@ -106,7 +106,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
         if (!taskBlock)
         {
-            // When notifyValue == 0, it means the timeout happened and thus our slot happaned
+            // When notifyValue == 0, it means the timeout happened and thus our slot happened
             if (notifyValue == 0)
             {
                 // Should be under normal conditions around every 5 seconds
@@ -117,7 +117,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
                 }
 
                 // Add 50ms to the current time to ensure we are wel within the current slot,
-                // this avoids timings issues where CoreUtils::msInSecond()  might report a few ms to eurly including the -5ms
+                // this avoids timing issues where CoreUtils::msInSecond() might report a few ms too early including the -5ms
                 auto currentSlot = ((CoreUtils::msInSecond() + 50) / CountryRegulations::SLOT_MS) % 5;
                 for (auto &ref : radioTunerRx->radioCtxList)
                 {
@@ -130,7 +130,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
                     if (ref.protocolTimings.empty())
                     {
-                        // No protocol timings available skip everything
+                        // No protocol timings available, skip everything
                         continue;
                     }
 
@@ -168,7 +168,7 @@ void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
     // Set to current time else bluetooth connections will fail
     static auto lastTime = CoreUtils::timeUs32Raw();
     // Update ZONE every 30 seconds, or when still at ZONE0
-    // Does not require to often since this module requiresZONE information
+    // Does not require to be updated too often since this module requires ZONE information
 
     if (CoreUtils::isUsReachedRaw(lastTime) || static_cast<uint8_t>(currentZone.value()) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0))
     {
@@ -201,7 +201,7 @@ void RadioTunerRx::assignDataSources(const etl::ivector<GATAS::DataSource> &data
     eventSync.clear(BIT_EVENT_DONE);
     xTaskNotify(taskHandle, TaskState::BLOCK, eSetBits);
 
-    // Expetced is 200ms per tick, we wait 10 times as long, much much longer 
+    // Expected is 200ms per tick, we wait 10 times as long, much much longer
     // We 'should' never end up here??
     if (!eventSync.wait(BIT_EVENT_DONE, pdMS_TO_TICKS(CountryRegulations::SLOT_MS * 20))) 
     {

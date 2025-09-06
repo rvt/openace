@@ -79,7 +79,7 @@ class Session extends El {
             <h4>Delete '${store.state.aircraftId}' ?</h4>
           </header>
           <div class="overflow-auto">
-            <p>Removal of <b>${store.state.aircraftId}</b> cannot be un-done.<br />Are you sure you want to delete ${store.state.aircraftId} aircraft?</p>
+            <p>Removal of <b>${store.state.aircraftId}</b> cannot be undone.<br />Are you sure you want to delete ${store.state.aircraftId} aircraft?</p>
           </div>
           <footer class="px-2 jc-end">
             <button type="button" class="btn btn-warning sm ml-1 md-ml-3" onclick=${this._deleteAircraft}>Yes</button>

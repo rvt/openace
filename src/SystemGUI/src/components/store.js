@@ -79,7 +79,7 @@ export class GaTasStore {
   }
 
   /**
-   * Delete an aircraft by ID from teh aircrafts path
+   * Delete an aircraft by ID from the aircrafts path
    *
    * @param {*} aircraftId
    * @returns
@@ -164,7 +164,7 @@ export class GaTasStore {
 
   getModuleData(moduleName) {
     return store.fetch(`/api/_Configuration/${moduleName}.json`).then((data) => {
-      // null means configuration did not exists.
+      // null means configuration did not exist.
       if (data == null) {
         return {};
       } else {
