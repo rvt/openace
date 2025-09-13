@@ -7,7 +7,7 @@
 
 The GA/TAS Conspicuity device is designed for General Aviation pilots flying in areas where multiple protocols, such as OGN, Flarm, ADS-L and FANET, are used. It can transmit and receive multiple protocols simultaneously (excluding sending ADS-B) using one or more transceiver modules. All received traffic is sent to your Electronic Flight Bag (EFB), such as SkyDemon, via the GLD90 protocol via WIFI or NMEA via bluetooth or WIFI.
 
-The device is built around the Raspberry Pi Pico 2040 and can be configured with a custom PCB that supports either two transceivers or a simpler configuration with one with modules from Waveshare which makes it more of a plug-and-play. In both setups, it can send and receive all protocols using time-sharing technology. The device can store configurations for multiple aircraft, which can be selected through an easy-to-use web interface.
+The device is built around the Raspberry RP2040/RP2350 and can be configured with a custom PCB that supports either two transceivers or a simpler configuration with one with modules from Waveshare which makes it more of a plug-and-play. In both setups, it can send and receive all protocols using time-sharing technology. The device can store configurations for multiple aircraft, which can be selected through an easy-to-use web interface or via gatasServer
 
 Powered by a Li-Ion battery, the device includes a PCB with a USB-C charger. The estimated battery life is between 6 and 10 hours, though this is subject to further testing.
 
@@ -15,10 +15,13 @@ For FLARM it's current range has been tested up to 24Km (see below screenshots) 
 
 Note: Although it's primary design is based around GA traffic, there is nothing in the hardware to prevent other use cases like gliders, paragliders and hang gliders. The goal of the project is to be seen by transmitting different protocols and be able to see them.
 
-| ![KiCAD 3D Rendering](doc/img/kicadpcb.jpg)       | ![Soldered PCB](doc/img/solderedpcb.jpg)              |
+| ![OpenScad View (Open)](doc/img/gatasServer.png)<br>Additional traffic via gatasServer | ![Sky Demon)](doc/img/skydemon-1.png) <br> soaring planes directly via FLARM |
 | ------------------------------------------------- | ----------------------------------------------------- |
-| ![OpenScad View (Open)](doc/img/openscadclosed.png) | ![Sky Demon)](doc/img/skydemon-1.png) |
-| ![OpenScad View (Open)](doc/img/web-showing-range.png) Showing range of 24Km | ![Sky Demon)](doc/img/firstversion.jpeg) Version I have been flying with |
+| ![SHowing Range](doc/img/web-showing-range.png) Showing range of 24Km | ![Sky Demon)](doc/img/firstversion.jpeg)<br> Two Tranceiver Version I have been flying with |
+| ![Gatas Server](doc/img/gatasServer_sel.png) <br> GA/TAS Server selecting Aircraft | ![All modules](doc/img/gatas-all-modules.png) <br> All modules |
+| ![KiCAD 3D Rendering](doc/img/kicadpcb.jpg)       | ![Soldered PCB](doc/img/solderedpcb.jpg)              |
+
+
 
 > [!NOTE]
 > The screenshot of SkyDemon was taken from the car while driving for safety reasons. The screenshot of the web interface showing the 24Km was taken while parked and the device placed on top of the car for better air-2-air visibility.
@@ -27,26 +30,31 @@ Note: Although it's primary design is based around GA traffic, there is nothing 
 
 Radio Protocol is the method used to communicate with other conspicuity devices
 
-| Radio Protocol | Send               | Receive            | Multi Protocol   |
-| -------------- | ------------------ | ------------------ | ------------------ |
-| OGN            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| ADS-L          | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| FLARM (2024)   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| FANET          | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| ADS-B out      | :no_entry:         | :heavy_check_mark: | :heavy_minus_sign: |
-| PAW            | :construction:     | :construction:     | :construction:     |
+| Radio Protocol.        | Send               | Receive            | Multi Protocol     |
+| ---------------------  | ------------------ | ------------------ | ------------------ |
+| OGN                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ADS-L                  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| FLARM (2024)           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| FANET                  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ADS-B with Module.     | :no_entry:         | :heavy_check_mark: | :heavy_minus_sign: |
+| ADS-B via gatasConnect | :no_entry:         | :heavy_check_mark: | :heavy_minus_sign: |
+| PAW                    | :construction:     | :construction:     | :construction:     |
 
 \* Multi Protocol is a feature of GA/TAS that allows to enable multiple protocols both send and receive on a single transceiver by sharing the air time. The Transceiver will alternate between the different protocols and prioritize a specific protocol when it receives data for that protocol.
+
+- Fanet support sending and receving including forwaring of FANET messages
+- gatasConnect is a protocol and service to receive additional traffic information via mobile connection.
 
 ### Communication support
 
 Communication support is what protocols are supported to other devices like electronic flight bags or other equipment.
 
-| Protocol   | Send UDP over WIFI | Receive UDP over WIFI   | Send Bluetooth      | Send TCP over WIFI | Receiver over TCP WIFI |
-| ---------- | ------------------ | ----------------------- | ------------------- | ------------------ | ---------------------- |
-| GDL90      | :heavy_check_mark: | N/A                     | N/A                 | N/A                | N/A                    |
-| AirConnect | N/A                | N/A                     | :heavy_check_mark:  | :heavy_check_mark: | N/A                    |
-| Dump1090   | N/A                | N/A                     | N/A                 | N/A                | :heavy_check_mark:     |
+| Protocol     | Send UDP over WIFI | Receive UDP over WIFI   | Send Bluetooth      | Send TCP over WIFI | Receiver over TCP WIFI |
+| ------------ | ------------------ | ----------------------- | ------------------- | ------------------ | ---------------------- |
+| GDL90        | :heavy_check_mark: | N/A                     | N/A                 | N/A                | N/A                    |
+| AirConnect   | N/A                | N/A                     | :heavy_check_mark:  | :heavy_check_mark: | N/A                    |
+| Dump1090     | N/A                | N/A                     | N/A                 | N/A                | :heavy_check_mark:     |
+| gatasConnect | :heavy_check_mark: | :heavy_check_mark:      | N/A                 | N/A                | :heavy_check_mark:     |
 
 \* Sending GDL90 over Bluetooth is not used in the industry so this is currently not setup. If this is really required, then this can be done. Do let me know the use case
 
@@ -60,6 +68,23 @@ GA/TAS is currently tested with SkyDemon only,  If you made it work with any oth
 | XTrack            |                    | :heavy_check_mark:    |                      | Only tested for connectivity |
 | Air navigation    | :heavy_check_mark: |                       |                      | Only tested for connectivity |
 | SeeYou Navigator  |                    |  :heavy_check_mark:   |                      | GPS and traffic targets shown     |
+
+
+## gatasConnect & gatasServer
+
+**gatasConnect** and **gatasServer** provide a lightweight UDP-based protocol for receiving additional traffic information.  
+
+## Features
+
+- Online web application to select your configured aircraft  
+- Eliminates the need to manually connect to GA/TAS vi WIFI to choose an aircraft, saves time and you can focus on flying.
+- Still compatible with GA/TAS aircraft selection via **gatas build in web service**  
+- Future support for **automatic aircraft selection** based on correlated ADS-B traffic  
+
+### Network Usage
+
+- **Transmit:** ~52 bytes/second  
+- **Receive:** ~1024 bytes/second at 30 aircraft. (supports up to 30 nearby aircraft)  
 
 
 ## External Libraries and frameworks used

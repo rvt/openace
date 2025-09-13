@@ -6,6 +6,7 @@
 #include "ace/coreutils.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
+#include "ace/lwiplock.hpp"
 
 /* LwIP */
 #include "lwip/ip_addr.h"
@@ -159,7 +160,7 @@ void GDLoverUDP::transmitBuffer()
             return;
         }
 
-        cyw43_arch_lwip_begin();
+        LwipLock lock;
         // Send to the connect clients and the defined ports
         for (auto ip : connectedClients)
         {
@@ -184,7 +185,6 @@ void GDLoverUDP::transmitBuffer()
             }
         }
 
-        cyw43_arch_lwip_end();
         if (auto guard = SemaphoreGuard<1000>(mutex))
         {
             // printf("GDLoverUDP: %zu bytes sent\n", size);

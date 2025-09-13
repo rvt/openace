@@ -5,6 +5,7 @@
 #include "ace/binarymessages.hpp"
 #include "ace/cobs.hpp"
 #include "ace/assert.hpp"
+#include "ace/lwiplock.hpp"
 
 /* LwIP */
 #include "lwip/ip_addr.h"
@@ -50,9 +51,12 @@ void GatasConnect::getData(etl::string_stream &stream, const etl::string_view pa
 {
     (void)path;
     stream << "{";
-    stream << "\"bytesSend\":" << statistics.bytesSend;
-    stream << ",\"bytesReceived\":" << statistics.bytesReceived;
+    stream << "\"bytesReceived\":" << statistics.bytesReceived;
+    stream << ",\"bytesSend\":" << statistics.bytesSend;
+    stream << ",\"pkgReceived\":" << statistics.pkgReceived;
+    stream << ",\"pkgSend\":" << statistics.pkgSend;
     stream << ",\"bufferAllocErr\":" << statistics.bufferAllocErr;
+    stream << ",\"msgSendFailed\":" << statistics.msgSendFailed;
     stream << "}\n";
 }
 
@@ -103,7 +107,6 @@ void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg)
 void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
                                      struct pbuf *p, const ip_addr_t *addr, u16_t port)
 {
-    (void)arg;
     (void)pcb;
     (void)addr;
     (void)port;
@@ -113,7 +116,13 @@ void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
     }
     GatasConnect *taskCtx = (GatasConnect *)(arg);
     auto ownship = taskCtx->ownshipPosition.load(etl::memory_order_acquire);
+    // Reset the pkgCount to get a honest pkgSend vs pkg Received
+    if (!taskCtx->statistics.hasConnection) {
+        taskCtx->statistics.pkgReceived = 0;
+        taskCtx->statistics.hasConnection = true;
+    }
     taskCtx->statistics.bytesReceived += p->tot_len;
+    taskCtx->statistics.pkgReceived += 1;
     taskCtx->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(reinterpret_cast<uint8_t *>(p->payload), p->tot_len));
     taskCtx->cobsStreamHandler.clear();
     pbuf_free(p);
@@ -141,12 +150,11 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     const size_t configSize = BinaryMessages::serializeAircraftConfigurationSizeV1().items(taskCtx->allIcaoAddresses.size());
     GATAS_ASSERT((etl::max(ownshipSize, configSize) + COBS_EXTRA_BYTES) < 255, "COBS max length exceeded");
 
-    cyw43_arch_lwip_begin();
+    LwipLock lock;
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, (ownshipSize + configSize) + 2 * COBS_EXTRA_BYTES, PBUF_RAM);
     if (!p)
     {
         taskCtx->statistics.bufferAllocErr++;
-        cyw43_arch_lwip_end();
         return;
     }
 
@@ -178,13 +186,16 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
         p->len = p->tot_len = position; // trim
         auto err = udp_sendto(taskCtx->pcbSend, p, &addr, taskCtx->gatasServer.port);
         if (err != ERR_OK)
+        {
             taskCtx->statistics.msgSendFailed++;
+        }
         else
+        {
             taskCtx->statistics.bytesSend += position;
+            taskCtx->statistics.pkgSend += 1;
+        }
     }
 
     pbuf_free(p);
-    cyw43_arch_lwip_end();
-
     xTimerChangePeriod(taskCtx->requestTimer, TASK_DELAY_MS(1000), portMAX_DELAY);
 }

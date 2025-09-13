@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "../airconnect.hpp"
+#include "ace/lwiplock.hpp"
 
 GATAS::PostConstruct AirConnect::postConstruct()
 {
@@ -35,7 +36,7 @@ void AirConnect::getData(etl::string_stream &stream, const etl::string_view path
  */
 void AirConnect::on_receive(const GATAS::DataPortMsg &msg)
 {
-    cyw43_arch_lwip_begin();
+    LwipLock lock;
     for (auto &it : connectedClients)
     {
         if (it.buffer.empty())
@@ -56,7 +57,6 @@ void AirConnect::on_receive(const GATAS::DataPortMsg &msg)
             it.bufferOverrunErr += 1;
         }
     }
-    cyw43_arch_lwip_end();
 }
 
 void AirConnect::on_receive_unknown(const etl::imessage &msg)
@@ -252,13 +252,12 @@ err_t AirConnect::tcp_server_accept(void *arg, tcp_pcb *client_pcb, err_t aerr)
  */
 bool AirConnect::tcp_server_start()
 {
-    cyw43_arch_lwip_begin();
+    LwipLock lock;
 
     struct tcp_pcb *pcb = nullptr;
     pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
     if (!pcb)
     {
-        cyw43_arch_lwip_end();
         return false;
     }
 
@@ -267,14 +266,12 @@ bool AirConnect::tcp_server_start()
     {
         //        printf("Port %u is already in use\n", AIRCONNECT_PORT);
         tcp_close(pcb);
-        cyw43_arch_lwip_end();
         return false;
     }
     else if (err != ERR_OK)
     {
         //        printf("tcp_bind failed with error: %d\n", err);
         tcp_close(pcb);
-        cyw43_arch_lwip_end();
         return false;
     }
 
@@ -283,7 +280,6 @@ bool AirConnect::tcp_server_start()
     {
         //        printf("Failed to listen\n");
         tcp_close(pcb);
-        cyw43_arch_lwip_end();
         return false;
     }
 
@@ -291,7 +287,6 @@ bool AirConnect::tcp_server_start()
     tcp_arg(serverPcb, this);
     tcp_accept(serverPcb, tcp_server_accept);
 
-    cyw43_arch_lwip_end();
     return true;
 }
 
@@ -301,7 +296,7 @@ bool AirConnect::tcp_server_start()
  */
 void AirConnect::tcp_server_close()
 {
-    cyw43_arch_lwip_begin();
+    LwipLock lock;
 
     // Stop the server and this accepting any connections
     if (serverPcb)
@@ -316,8 +311,6 @@ void AirConnect::tcp_server_close()
     {
         tcp_close_client_connection(it, ERR_OK);
     }
-
-    cyw43_arch_lwip_end();
 }
 
 /**

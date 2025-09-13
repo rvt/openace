@@ -30,8 +30,11 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     {
         uint32_t bytesReceived = 0;
         uint32_t bytesSend = 0;
+        uint32_t pkgReceived = 0;
+        uint32_t pkgSend = 0;
         uint32_t bufferAllocErr = 0;
         uint32_t msgSendFailed = 0;
+        bool hasConnection = false;
     } statistics;
 
     bool wifiConnected;
