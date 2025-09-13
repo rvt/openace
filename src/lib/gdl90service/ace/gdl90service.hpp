@@ -6,7 +6,6 @@
 /* FreeRTOS. */
 #include "FreeRTOS.h"
 #include "task.h"
-#include "timers.h"
 
 /* GATAS. */
 #include "ace/constants.hpp"
@@ -24,7 +23,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * TODO: de-Couple UDP from the GDL90 so this service send GDL Message over the messagebus which can then be send over UDP or Serial or BlueToolh
  */
-class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg>
+class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GpsStatsMsg>
 {
     friend class message_router;
 
@@ -50,8 +49,6 @@ private:
     GDL90 gdl90;
 
     GDL90::ADDR_TYPE type;
-    GATAS::AircraftAddress address;
-    GATAS::AircraftCategory category;
     int16_t geoidSeparation=0;
     bool gpsStatusValid=false;
 
@@ -62,10 +59,7 @@ private:
 
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
 
-    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
-
-    
 
     void packAndSend(const GDL90::RawBytes &unpacked);
 
@@ -76,14 +70,13 @@ private:
 
     void sendHeartBeat(Gdl90Service &gdl90Service);
 
+    GDL90::EMITTER aircraftTypeToEmitter(GATAS::AircraftCategory category) const;
+
 public:
     static constexpr const etl::string_view NAME = "Gdl90Service";
     Gdl90Service(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr)
     {
-        auto gaTasConfiguration = config.gaTasConfig();
-                type = gaTasConfiguration.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
-        address = gaTasConfiguration.address;
-        category = gaTasConfiguration.category;
+        (void)config;
     }
 
     virtual ~Gdl90Service() = default;

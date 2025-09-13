@@ -338,7 +338,7 @@ void update_airborne(AircraftState *aircraft) {
         
         // Fast or no threshold configured; set isAirborne after a while.
         if (aircraft->airborne_ctr < 0) {
-            aircraft->airborne_ctr++;
+            aircraft->airborne_ctr += 1;
         } else {
             aircraft->airborne_ctr = 10;
             aircraft->is_airborne = 1;
@@ -453,7 +453,7 @@ void extrapolate_velocity_vector(AircraftState *aircraft) {
         for (int j = 0; j < 4; j++) {
             avgVelN += vel_n_i[ix] / 2; // summing 4x cm/s gives cm/4s, /2
             avgVelE += vel_e_i[ix] / 2;
-            ix++;
+            ix += 1;
         }
         
         // Scale and store averages for transmission in co-operation message.

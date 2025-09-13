@@ -251,7 +251,7 @@ sx126x_status_t sx126x_lr_fhss_write_hop_sequence_head( const void* context, con
         {
             return status;
         }
-        state->current_hop++;
+        state->current_hop += 1;
         state->digest.nb_bits = 0;
     }
     else
@@ -295,7 +295,7 @@ sx126x_status_t sx126x_lr_fhss_write_hop_sequence_head( const void* context, con
                 return status;
             }
 
-            state->current_hop++;
+            state->current_hop += 1;
             state->digest.nb_bits -= nb_symbols;
 
             state->next_freq_in_pll_steps = sx126x_lr_fhss_get_next_freq_in_pll_steps( params, state );
@@ -362,7 +362,7 @@ sx126x_status_t sx126x_lr_fhss_handle_hop( const void* context, const sx126x_lr_
             return status;
         }
 
-        state->current_hop++;
+        state->current_hop += 1;
         state->digest.nb_bits -= nb_bits;
         state->next_freq_in_pll_steps = sx126x_lr_fhss_get_next_freq_in_pll_steps( params, state );
     }

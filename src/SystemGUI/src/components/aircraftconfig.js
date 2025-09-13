@@ -5,20 +5,20 @@ import JustValidate from "just-validate";
 class AircraftConfig extends El {
   created() {
     this.types = [
-      "Glider",
-      "GliderMotorGlider",
-      "TowPlane",
+      "Light",
+      "Aerobatic",
       "Helicopter",
-      "Skydiver",
-      "DropPlane",
-      "HangGlider",
-      "Paraglider",
-      "ReciprocatingEngine",
-      "JetTurbopropEngine",
+      "Glider",
+      "Hang Glider",
+      "Para Glider",
+      "Sky Diver",
       "Balloon",
       "Airship",
-      "Uav",
-      "StaticObstacle",
+      "Ultralight",
+      "Gyrocopter",
+      "Drop Plane",
+      "Unmanned aerial vehicle",
+      "StaticObstacle"
     ];
     this.transponderTypes = ["ICAO", "FLARM", "OGN", "ADSL"];
     this.protocolTypes = ["FLARM", "OGN", "ADSL", "FANET"];
@@ -96,6 +96,7 @@ class AircraftConfig extends El {
     this.$refs[`transponderType${aircraft.addressType?.toUpperCase()}`].selected = true;
     this.$refs.address.value = this._addressFormat(aircraft.address).toUpperCase();
     this.$refs.noTrack.checked = aircraft.noTrack;
+//    this.$refs.autoConf.checked = aircraft.autoConf;
 //    this.$refs.privacy.checked = aircraft.privacy;
     for (let i of this.protocolTypes) {
       this.$refs[`protocol${i.toUpperCase()}`].checked = aircraft.protocols.includes(i);
@@ -109,6 +110,8 @@ class AircraftConfig extends El {
     aircraft.addressType = this.$refs.transponder.value;
     aircraft.address = Number("0x" + this.$refs.address.value);
     aircraft.noTrack = this.$refs.noTrack.checked;
+//    aircraft.autoConf = this.$refs.autoConf.checked;
+
 //    aircraft.privacy = this.$refs.privacy.checked;
     aircraft.protocols = [];
     for (let i of this.protocolTypes) {
@@ -126,7 +129,7 @@ class AircraftConfig extends El {
       });
     } else {
       return Promise.resolve({
-        category: "ReciprocatingEngine",
+        category: "Light",
         addressType: "ICAO",
         protocols: ["OGN", "ADSL"],
       });
@@ -169,7 +172,7 @@ class AircraftConfig extends El {
       <div class="section row g-3">
         <div>
             <h6>Protocols to Enable (Send and Receive)</h6>
-            
+
             ${this.protocolTypes.map(
               (item) => html`
                 <label>
@@ -186,7 +189,14 @@ class AircraftConfig extends El {
           <label for="privacy">
             <input type="checkbox" id="privacy" ref="privacy" />Privacy
           </label>
-          <small>GaTas will use a random address and send it for the duration of the session.</small> -->
+          <small>GaTas Will use an random address and send it for the duration of the session.</small> -->
+
+          <!--
+          <label for="autoConf">
+            <input type="checkbox" id="autoConf" ref="autoConf" />Auto Configure
+          </label>
+          <small>When enabled, GA/TAS will automatically treat this aircraft as yours if it detects a mismatched transponder code via ADS-B or MLAT, based on matching location and movement. It will then reconfigure GA/TAS accordingly. </small>
+          -->
 
           <label for="noTrack">
             <input type="checkbox" id="noTrack" ref="noTrack" />No Track
@@ -228,7 +238,7 @@ class AircraftConfig extends El {
                 avoid duplicate transmissions on the same protocol.
             </p>
 
-            <p>            
+            <p>
             <b>Protocols to Enable</b><br />
             Enable the protocols that are used to send/receive aircraft information on. To enable ADS-B use the correct module under 'Modules'.
             </p>

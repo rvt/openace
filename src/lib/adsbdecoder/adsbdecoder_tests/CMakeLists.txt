@@ -49,11 +49,11 @@ string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
 set(TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES})
 
 set(ACE_SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/utils.cpp
-    ../ace/adsbdecoder.cpp
-    ../ace/cpr.cpp)
+        ../../core/ace/src/basemodule.cpp
+        ../../core/ace/src/coreutils.cpp
+        ../../utils/ace/src/utils.cpp
+        ../ace/src/adsbdecoder.cpp
+        ../ace/src/cpr.cpp)
 
 foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
   add_executable(${name} ${ACE_SOURCE_FILES} ${name}.cpp)

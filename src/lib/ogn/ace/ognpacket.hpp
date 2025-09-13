@@ -516,7 +516,7 @@ public:
     uint8_t addInfo(const char *Value, uint8_t InfoType)  // add an info field
     {
         uint8_t Idx=Info.DataChars;                         // number of characters already in the info packet
-        if (Idx) Idx++;                                      // if at least one already, then skip over the terminator
+        if (Idx) Idx += 1;                                      // if at least one already, then skip over the terminator
         if (Idx>=15) return 0;
         uint8_t Len=0;
         for ( ; ; )
@@ -525,7 +525,7 @@ public:
             if (Char==0) break;
             if (Idx>=15) return 0;
             setInfoChar(Char, Idx++);
-            Len++;
+            Len += 1;
         }
         setInfoChar(InfoType, Idx);                         // terminating character
         Info.DataChars=Idx;                                 // update number of characters

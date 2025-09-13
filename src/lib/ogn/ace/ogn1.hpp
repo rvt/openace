@@ -36,7 +36,7 @@
 
 
 class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg,
-    GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg, GATAS::ConfigUpdatedMsg>
+    GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
 {
 public:
     static constexpr uint8_t OGN_PACKET_LENGTH = 20;
@@ -66,7 +66,6 @@ private:
     etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     GATAS::BarometricPressureMsg lastBarometricPressureMsg;
     GATAS::GpsStatsMsg gpsStats;
-    GATAS::Config::GaTasConfiguration gaTasConfiguration;
     uint16_t distanceIgnore;
     static LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH*8, 48> decoder; 
 
@@ -75,8 +74,7 @@ public:
     Ogn1(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
         lastBarometricPressureMsg(),
-        gpsStats(),
-        gaTasConfiguration(config.gaTasConfig())
+        gpsStats()
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Ogn1", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));

@@ -5,7 +5,7 @@
 #include "coreutils.hpp"
 #include <inttypes.h>
 
-#ifndef NDEBUG
+#if GATAS_DEBUG == 1
 
 /**
  * @class Measure
@@ -31,7 +31,7 @@ struct Measure
 {
     const uint32_t start_;
     const uint32_t id_ = 0xFFFFFFFF; 
-    uint32_t alertTimeout_ = 1000;
+    const uint32_t alertTimeout_ = 1000;
     const etl::string_view name_ = "Took";
     Measure() : start_(CoreUtils::timeUs32Raw()) {}
     Measure(const etl::string_view name) : start_(CoreUtils::timeUs32Raw()), name_(name) {}

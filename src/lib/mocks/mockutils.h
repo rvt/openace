@@ -4,8 +4,14 @@
 #include <stdio.h>
 
 #include "etl/vector.h"
+#include "etl/span.h"
 
 
+template <typename T, typename U>
+bool span_equal(const T& a, const U& b) {
+    return etl::equal(etl::span<const uint8_t>(a),
+                      etl::span<const uint8_t>(b));
+}
 
 inline void print_binary(unsigned int number)
 {

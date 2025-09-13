@@ -4,9 +4,8 @@ project(config VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/config.cpp
-    ace/inmemorystore.cpp
-    ace/flashstore.cpp
+        ace/src/config.cpp
+        ace/src/flashstore.cpp
 )
 
 set(MODULE_TARGET_LINK
@@ -14,9 +13,9 @@ set(MODULE_TARGET_LINK
 )
 
 set(PICO_EXTRA_LIBS
-    pico_cyw43_arch_lwip_sys_freertos
     pico_flash
     hardware_flash
+    pico_rand
 )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)

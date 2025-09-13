@@ -4,8 +4,8 @@ project(adsbdecoder VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/adsbdecoder.cpp
-    ace/cpr.cpp
+    ace/src/adsbdecoder.cpp
+    ace/src/cpr.cpp
 )
 
 set(MODULE_TARGET_LINK

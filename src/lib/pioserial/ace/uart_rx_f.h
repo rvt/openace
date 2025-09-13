@@ -65,7 +65,7 @@ static inline uint8_t uart_rx_program_test(
                     char receivedChar = bytePtr[i];
                     if (receivedChar >= rangeStart && receivedChar <= rangeEnd)
                     {
-                        validCharCounter++;
+                        validCharCounter += 1;
                         if (validCharCounter >= numcharsConsideringValid)
                         {
                             return 0;

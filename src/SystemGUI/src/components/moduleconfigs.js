@@ -50,7 +50,7 @@ class AircraftTrackerConfig extends ModuleConfig {
     });
   }
 
-  _setFormData(data) {}
+  _setFormData(data) { }
 
   _getFormData() {
     return {};
@@ -158,49 +158,57 @@ class WifiServiceConfig extends ModuleConfig {
       </p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
          <hr>
-         <h5>Client configuration</h5>
-         <p>GaTas will try to connect to each of the configured access points, if no connection is possible then an Access Point will be created</p>
-        <div class="grid md-columns-2 lg-columns-2">
+         <h5>WiFi configuration</h5>
+
+         <div class="grid">
+          <label for="apDisabled">
+            <input type="checkbox" id="" id="apDisabled" ref="apDisabled" placeholder="1" />
+            When enabled, GA/TAS will only attemt to an Access point and will not create anAccess Point by itself. This setting is recommended when using GA/TAS Connect.
+          </label>
+        </div>
+        <br />
+
+         <p>GA/TAS will try to connect to each of the configured access points, if no connection is possible the an Access Point will be created unless Access Point is disabled.<br />
+         recommended setup is to use your Mobile's Hotspot as the first item and your home network as the second configuration so you always have access to GA/TAS.</p>
+
+         <div class="grid md-columns-2 lg-columns-2">
             ${this.clientsIds.map(
-              (id) => html`
+      (id) => html`
                 <div class="row g-0">
                   <div class="col-10">
                     <label for="ssid">
                       SSID ${id}:
                       <input type="text" id="apssid_${id}" ref="apssid_${id}" placeholder="SSID" } />
                     </label>
-                    <label for="ssid">
+                    <label for="Password">
                       Password ${id}:
                       <input type="text" id="appassword_${id}" ref="appassword_${id}" placeholder="Password" } />
                     </label>
                   </div>
                 </div>
               `,
-            )}
+    )}
           </div>
           <hr>
         <h5>Access Point configuration</h5>
-        <p>Access point configuration. This AP will be created if GaTas could not connect to any other Access Points.
-          <div class="alert alert-warning">
-            This access point does not support routing to the internet.
-          </div>
+        <p>Access point configuration. This AP will be created if GA/TAS could not connect to any other Access Points.
         </p>
         <div class="row g-0">
-            <div class="col-10">
-            <label for="apDisabled">
-              <input type="checkbox" id="" id="apDisabled" ref="apDisabled" placeholder="1" />
-              When disabled, only attempts to connect to an Access Point will be made
+          <div class="col-10">
+            <label for="SSID">
+              SSID:
+              <input type="text" id="apssid" ref="apssid" placeholder="SSID" />
             </label>
-          <label for="ssid">
-            SSID:
-            <input type="text" id="apssid" ref="apssid" placeholder="SSID" />
-          </label>
-          <label for="ssid">
-            Password:
-            <input type="text" id="appassword" ref="appassword" placeholder="Password" />
-          </label>
-        </div>
-        </div>
+            <label for="Password">
+              Password:
+              <input type="text" id="appassword" ref="appassword" placeholder="Password" />
+            </label>
+          </div>
+      </div>
+      <br />
+      <div class="alert alert-warning">
+        This access point does not support routing to the internet.
+      </div>
 
         ${this.buttonArray(html)}
       </form>
@@ -352,8 +360,8 @@ customElements.define("bmp280-config", Bmp280Config);
 
 class GDLoverUDPConfig extends ModuleConfig {
   created() {
-    this.ports = [0, 1, 2, 3];
-    this.ips = [0, 1, 2, 3];
+    this.ports = [0, 1];
+    this.ips = [0, 1];
     this._initForm(store.getModuleData("GDLoverUDP")).then((data) => {
       this.$update();
     });
@@ -429,46 +437,62 @@ class GDLoverUDPConfig extends ModuleConfig {
 
   render(html) {
     return html`
-      <h4>Configuration of the GDL over UDP Decoder</h4>
+      <h4>Configuration of the GDL over UDP Module</h4>
       <p>
         Flight bags such as SkyDemon, ForeFlight, EasyFVR and others can then determine your location and receive information about other aircraft using this
-        protocol.
+        protocol.<br /><br />
+        <div style="text-decoration: underline">When in Client mode:</div>
+        <ul>
+          <li>GA/TAS will send GDL90 messages to the access using the below configured ports
+          <li>GA/TAS will send GDL90 to any of the below configured IP addresses and port.
+        </ul>
+        <div style="text-decoration: underline">When in Access Point mode:</div>
+        <ul>
+          <li>GA/TAS will send GDL90 messages to any of the connected clients using the below configured ports
+          <li>GA/TAS will send GDL90 to any of the below configured IP addresses and port.
+        </ul>
+        In all cases GA/TAS will send messages to clients in the same network.
       </p>
 
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="section">
-          Up to 4 different ports can be configured
+          Up to ${this.ports.length} different ports can be configured
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-              Each device connected to GaTas will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to four
-              different ports can be configured to accommodate devices that listen on other ports. The default port is <b>4000</b>
+              Each device connected to GA/TAS will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to ${this.ports.length}
+              different ports can be configured to accommodate devices that listen on other ports. Default port is <b>4000</b>
+              When GA/TAS is connrect to an Access Point, additional GDL messages will be send to the gateway address. This allows
+              you to have for example foreflight on your telephone while GA/TAS uses your telephone as the accesspoint to GA/TASConnect
+              to Receive online traffic information.
             </p>
           </label>
           <div class="grid md-columns-4 lg-columns-4">
             ${this.ports.map(
-              (item) => html`
+      (item) => html`
                 <label class="has-sub ${this._hasValue("port_" + item) && "active"}">
                   <sub class="active">Port ${item}</sub>
                   <input type="text" id="port_${item}" ref="port_${item}" onblur="this.parentElement.classList.toggle('active', this.value)" />
                 </label>
               `,
-            )}
+    )}
           </div>
         </div>
 
         <div class="section">
-          Up to 4 different IPs can be configured
+          Up to ${this.ips.length} different IPs can be configured
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-              In addition to ports, up to 4 separate IP addresses can be configured. This is usually only useful if your system connects to an access point.
+              In addition to ports, up to ${this.ips.length} separate IP addresses can be configured.
+              This is usually only useful if your system connects to an access point and you have a third device connected to teh same accesspoint.
+              By default GA/TAAS will send UDP traffic to the gateway in client mode using teh configured ports.<br />
               Default port is <b>4000</b>
             </p>
           </label>
           <div class="grid md-columns-2 lg-columns-2">
             ${this.ips.map(
-              (item) => html`
+      (item) => html`
                 <div class="row g-0">
                   <div class="col-10">
                     <label class="has-sub ${this._hasValue("ip_" + item) && "active"}">
@@ -484,7 +508,7 @@ class GDLoverUDPConfig extends ModuleConfig {
                   </div>
                 </div>
               `,
-            )}
+    )}
           </div>
         </div>
 
@@ -541,8 +565,8 @@ class Dump1090ClientConfig extends ModuleConfig {
     return html`
       <h4>Configuration of the Dump1090 Client</h4>
       <p>
-        This module enables reading ADS-B data in the format '*8D7C7181215D01A08208204D8BF1;' from an external system like Dump1090 into GaTas (port
-        <IP>:30002), processing them as traffic targets. Ensure that the ADSBDecoder is enabled and there is traffic within the filtered ranges above or
+        This module enables reading ADS-B data in the format '*8D7C7181215D01A08208204D8BF1;' from an external system like Dump1090 into GA/TAS (port
+        &lt;IP&gt;:30002), processing them as traffic targets. Ensure that the ADSBDecoder is enabled and there is traffic within the filtered ranges above or
         below so you will actually see them.
           <div class="alert alert-warning">
           ${html.raw(icon.warning)} This module requires a restart after modification of the configuration.
@@ -728,3 +752,71 @@ class BluetoothConfig extends ModuleConfig {
   }
 }
 customElements.define("bluetooth-config", BluetoothConfig);
+
+
+class GatasConnectConfig extends ModuleConfig {
+  created() {
+    this._initForm(store.getModuleData("GatasConnect"));
+  }
+
+  mounted() {
+    const validator = new JustValidate(this.$refs.form);
+
+    validator
+      .addField(this.$refs.ip, [
+        {
+          rule: "required",
+          errorMessage: "IPv4 address is required",
+        },
+        ...ipValidation,
+      ])
+      .onSuccess((event) => {
+        const data = this._getFormData();
+        store.updateModuleData("GatasConnect", { ...this.copyOfData, ...data }).then(() => {
+          this.close();
+        });
+      });
+  }
+
+  _setFormData(data) {
+    this.$refs.ip.value = data.gatasServer.ip;
+  }
+
+  _getFormData() {
+    return {
+      gatasServer: {
+        ip: this.$refs.ip.value,
+      }
+    };
+  }
+
+  render(html) {
+    return html`
+      <h4>Configuration of GA/TAS Connect</h4>
+      <p>
+        GA/TAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI to operate.
+        It fetches traffic around you up to about 50Km away.
+        <br/>
+        To setup GA/TAS COnnect:
+        <ul>
+          <li>Enter the the IP address of your GA/TAS Connect service you can use IP:178.79.150.232 port:16256 which is free to use:
+          <li>Then setup your WIFI to connect to your mobile hotspot and ensure to enable 'Client Only'
+        </ul>
+      </p>
+
+      <form ref="form" autocomplete="off" novalidate="novalidate">
+        <div class="row g-0">
+            <div class="col-10">
+              <label for="ip">
+                IP Address of GA/TAS Server:
+                <input type="text" id="ip" ref="ip" placeholder="178.79.150.232" } />
+              </label>
+            </div>
+        </div>
+
+        ${this.buttonArray(html)}
+      </form>
+    `;
+  }
+}
+customElements.define("gatasconnect-config", GatasConnectConfig);

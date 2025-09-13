@@ -1,5 +1,13 @@
 #include "lib_crc.hpp"
 
+#define CRC_VERSION     "1.17+"
+
+
+
+#define FALSE           0
+#define TRUE            1
+
+
 #if defined(ESP8266) || defined(ESP32) || defined(__ASR6501__)
 #include <pgmspace.h>
 #endif

@@ -19,6 +19,7 @@
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 #include "ace/circularbuffer.hpp"
+#include "ace/cobsstreamhandler.hpp"
 
 /* BT Stack*/
 #include "btstack.h"
@@ -34,7 +35,7 @@
  * The only one that requires a mutex is to see if we need a notification in on_receive(const GATAS::DataPortMsg &msg)
  * The queue is a lock free queue so no mutex needed
  */
-class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg>
+class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg, GATAS::OwnshipPositionMsg>
 {
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
@@ -52,6 +53,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
     struct
     {
         uint32_t dataPortMsgMissedErr=0;
+        uint32_t cobsErr= 0;
     } statistics;
 
     struct BtContext
@@ -99,6 +101,8 @@ private:
 
     void on_receive_unknown(const etl::imessage &msg);
 
+    void on_receive(const GATAS::OwnshipPositionMsg &msg);
+
     void createAdvData();
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
@@ -117,10 +121,6 @@ private:
     // END: methods within this block as running within the BLE task
     static void eraseBonding();
     static void heartbeat_handler(struct btstack_timer_source *ts);
-
-    static void parseCobs( uint8_t* cobsData, size_t size);
-    static void parseAircraftPosition( etl::bit_stream_reader &reader, size_t size);
-    static void processIncomingBuffer( uint8_t* data, size_t size);
 
     // Lists of bluetooth contexts
     using BluetoothConnections = etl::list<BtContext, GATAS_MAX_BLUETOOTH_CONNECTIONS>;
@@ -162,11 +162,12 @@ private:
     inline static SemaphoreHandle_t mutex = nullptr;
     GATAS::SsidOrPasswdStr localName;
     bool rfComm;
-
+    CobsStreamHandler cobsStreamHandler;
+    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
 public:
 
     static constexpr const char *NAME = "Bluetooth";
-    Bluetooth(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), rfComm(false)
+    Bluetooth(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), rfComm(false), cobsStreamHandler(CobsStreamHandler(bus, config))
     {
         instance = this;
         localName = config.strValueByPath("GaTas", NAME, "localName");

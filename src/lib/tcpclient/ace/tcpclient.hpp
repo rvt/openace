@@ -2,18 +2,13 @@
 
 #include <stdint.h>
 
+#include "ace/lwiplock.hpp"
 #include "pico/cyw43_arch.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-#include "etl/map.h"
-#include "etl/message_bus.h"
 #include "etl/function.h"
 
-#include "ace/constants.hpp"
-#include "ace/messagerouter.hpp"
-#include "ace/basemodule.hpp"
-#include "ace/messages.hpp"
 
 /**
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
@@ -45,10 +40,8 @@ private:
         // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
         // these calls are a no-op and can be omitted, but it is a good practice to use them in
         // case you switch the cyw43_arch type later.
-        cyw43_arch_lwip_begin();
+        LwipLock lock;
         err_t err = tcp_connect(tcp_pcb, &remote_addr, ipPort.port, tcp_client_connected);
-        cyw43_arch_lwip_end();
-
         return err == ERR_OK;
     }
 

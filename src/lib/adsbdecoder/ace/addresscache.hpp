@@ -103,7 +103,7 @@ public:
         {
             for (auto it = cache.begin(); it != cache.end();)
             {
-                if (-CoreUtils::usToReference(it->lastSeen, usTime) > evictTime)
+                if (-CoreUtils::usToReferenceRaw(it->lastSeen, usTime) > evictTime)
                 {
                     it = cache.erase(it);
                 }

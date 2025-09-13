@@ -95,12 +95,12 @@ private:
     virtual void receiveBinary(const uint8_t* data, uint8_t length) override;
     void processAdsbData(const uint8_t* data, uint8_t length);
 
-    bool outOfAltitudeRange(int32_t otheraltitudeHAE);
+    bool outOfAltitudeRange(int32_t otherellipseHeight);
     
     void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
     }
 
-    
+    GATAS::AircraftCategory getAircraftCategory(const etl::string_view category) const;    
 };

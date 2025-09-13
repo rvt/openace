@@ -4,7 +4,7 @@ project(gdloverudp VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/gdloverudp.cpp
+    ace/src/gdloverudp.cpp
 )
 
 set(MODULE_TARGET_LINK

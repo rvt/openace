@@ -68,18 +68,18 @@ TEST_CASE( "manchesterEncodeTest", "[single-file]" )
      int meterPerSec = 1;
      float result=0;
      // 5m/s == 984feet/min
-     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec++;
-     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec++;
-     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec++;
-     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec++;
-     printf(" %f %f %d\n", result = filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec++;
+     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec += 1;
+     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec += 1;
+     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec += 1;
+     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec += 1;
+     printf(" %f %f %d\n", result = filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec += 1;
 
      // Near the 984 min
      REQUIRE( filter.perSecond()*MS_TO_FTPMIN == Catch::Approx(960).margin(2) );
      REQUIRE( (result*MS_TO_FTPMIN) == Catch::Approx(192).margin(2) );
 
-     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec++;
-     printf(" %f %f %d\n", result = filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec++;
+     printf(" %f %f %d\n", filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec += 1;
+     printf(" %f %f %d\n", result = filter(500+meterPerSec), filter.perSecond() * MS_TO_FTPMIN, meterPerSec); meterPerSec += 1;
      // Near the 978 min
      REQUIRE( filter.perSecond()*MS_TO_FTPMIN == Catch::Approx(978).margin(2) );
      REQUIRE( (result*MS_TO_FTPMIN) == Catch::Approx(195).margin(2) );

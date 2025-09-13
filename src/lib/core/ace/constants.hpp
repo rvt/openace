@@ -33,14 +33,16 @@ namespace GATAS
     constexpr uint8_t RADIO_MAX_GFX_FRAME_WORD_LENGTH = 7;                                         // OGN:26 FLARM:24 Maximum length expected for a frame received via Radio (OGN/ Flarm, etc...) This includes address bytes + Some zero's for parity calculations
     constexpr uint8_t RADIO_MAX_GFX_FRAME_LENGTH = RADIO_MAX_GFX_FRAME_WORD_LENGTH * sizeof(uint32_t); // Maximum length expected for a frame received via Radio (OGN/ Flarm etc...) This includes address bytes + Some zero's for parity calculations
     constexpr uint8_t MAXIMUM_RAW_FRAME_LENGTH = 128;
+    constexpr uint8_t MAX_CALLSIGN_LENGTH = 12;
 
+    constexpr uint8_t MAX_AIRCRAFT_CONFIGURATIONS = 6; // See also Session JS, not really will protected in the JSON during updates via config
     constexpr uint8_t MAX_LENGTH_ADSB = 33;
     constexpr uint8_t MAX_LORA_MSG_SIZE = 128;
     constexpr float GROUNDSPEED_CONSIDERING_AIRBORN = 15.f; // groundspeed > 25ms is considered beeing airborn
     // @todo: added one extra word because 'somwhere' I think there is an issue where we corrupt the stack
     using NMEAString = etl::string<NMEA_MAX_LENGTH>; // NMEA sentence
     using IcaoAddress = etl::string<8>;              // ICAO Address as hex string
-    using CallSign    = etl::string<8>;              // ICAO Address as hex string
+    using CallSign    = etl::string<MAX_CALLSIGN_LENGTH>;              // ICAO Address as hex string
     using ADSBString = etl::string<MAX_LENGTH_ADSB>; // ADSB message, similar as from dump1090
     using ConfigString = etl::string<25>;            // Maximum length of value from the configuration
     using Modulename = etl::string<17>;

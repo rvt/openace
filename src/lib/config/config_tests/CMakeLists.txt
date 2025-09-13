@@ -9,7 +9,8 @@ add_definitions(-DUNIT_TESTING)
 add_definitions(-DGATAS_MAXIMUM_TCP_CLIENTS=4)
 add_definitions(-D__flash_binary_end=0x4000000)
 add_definitions(-DXIP_BASE=0x6000000)
-add_definitions(-DGATAS_FLASH_SIGNATURE=4321)
+add_definitions(-DGATAS_FLASH_SIGNATURE=250801)
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -42,11 +43,10 @@ string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAM
 set( TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES} )
 
 set( ACE_SOURCE_FILES
-      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/models.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
-     ../ace/config.cpp
-     ../ace/inmemorystore.cpp
+        ../../core/ace/src/basemodule.cpp
+        ../../core/ace/src/models.cpp
+        ../../core/ace/src/coreutils.cpp
+        ../ace/src/config.cpp
 )
 
 

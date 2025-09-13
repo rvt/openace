@@ -6,8 +6,11 @@ project(
   LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
-set(MODULE_SOURCE_FILES ace/wifiservice.cpp dnsserver/dnsserver.c
-                        dhcpserver/dhcpserver.c)
+set(MODULE_SOURCE_FILES
+    ace/src/wifiservice.cpp
+    dnsserver/src/dnsserver.c
+    dhcpserver/src/dhcpserver.c
+)
 
 set(PICO_EXTRA_LIBS 
   pico_cyw43_arch_lwip_sys_freertos 

@@ -814,7 +814,7 @@ sx126x_status_t sx126x_set_lora_symb_nb_timeout( const void* context, const uint
     while( mant > 31 )
     {
         mant = ( mant + 3 ) >> 2;
-        exp++;
+        exp += 1;
     }
 
     const uint8_t buf[SX126X_SIZE_SET_LORA_SYMB_NUM_TIMEOUT] =

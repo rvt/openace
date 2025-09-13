@@ -1,188 +1,193 @@
 {
-    "_comment_signature": "A signature used to decide if the JSON loaded, even when it was correct that it was an GATAS configuration. Format YYMMDD and only changes when HW config changes that is not backward compatible",
-    "signature": 250207,
-    "_comment_hardware": "Hardware configuration used.",
-    "hardware": {
-        "type": "PICO_2RADIO"
+  "_comment_signature": "A signature used to decide if the JSON loaded, even when it was correct that it was an GATAS configuration. Format YYMMDD and only changes when HW config changes that is not backward compatible",
+  "_comment_signature_II": "Don't forget ot modify GATAS_FLASH_SIGNATURE",
+  "signature": 250801,
+  "_comment_hardware": "Hardware configuration used.",
+  "hardware": {
+    "type": "PICO_2RADIO"
+  },
+  "config": {
+    "pilotname": "GATAS",
+    "aircraftId": "XX-XXX"
+  },
+  "_comment_modules": "All modules that will be loaded when GATAS starts up",
+  "modules": "Ogn1,Flarm,GDLoverUDP,Gdl90Service,ADSL,_SerialADSB,Sx1262_1,Sx1262_0,WifiClient,GpsDecoder,RadioTunerRx,RadioTunerTx,DataPort",
+  "aircraft": {
+    "_comment": "All aircrafts and their configurations settings, config::aircraftId will be used to setup the hardware and load the configuration for that aircraft",
+    "XX-XXX": {
+      "callSign": "XX-XXX",
+      "address": 16777215,
+      "addressType": "ADSL",
+      "category": "Light",
+      "privacy": 0,
+      "noTrack": 0,
+      "protocols": [
+        "OGN",
+        "ADSL",
+        "FLARM"
+      ]
+    }
+  },
+  "GatasConnect": {
+    "_comment_ip": "IP Address of the server running GA/TAS Server",
+    "gatasServer": {
+      "ip": "192.168.178.237"
     },
-    "config": {
-        "pilotname": "GATAS",
-        "aircraftId": "XX-XXX"
+    "remote": {
+      "ip": "178.79.150.232"
+    }
+  },
+  "ADSBDecoder": {
+    "filterAbove": 1500,
+    "filterBelow": 1500
+  },
+  "Bluetooth": {
+    "_comment_client": "The standard SSD and password when GATAS is in Access Point mode",
+    "localName": "GaTas"
+  },
+  "WifiService": {
+    "_comment_ap": "The standard SSD and password when GATAS is in Access Point mode",
+    "ap": {
+      "ssid": "GATAS",
+      "password": "12345678",
+      "disabled": false
     },
-    "_comment_modules": "All modules that will be loaded when GATAS starts up",
-    "modules": "Ogn1,Flarm,GDLoverUDP,Gdl90Service,ADSL,_SerialADSB,Sx1262_1,Sx1262_0,WifiClient,GpsDecoder,RadioTunerRx,RadioTunerTx,DataPort",
-    "aircraft": {
-        "_comment": "All aircrafts and their configurations settings, config::aircraftId will be used to setup the hardware and load the configuration for that aircraft",
-        "XX-XXX": {
-            "callSign": "XX-XXX",
-            "address": 0,
-            "addressType": "ADSL",
-            "category": "ReciprocatingEngine",
-            "privacy": 0,
-            "noTrack": 0,
-            "protocols": [
-                "OGN",
-                "ADSL",
-                "FLARM"
-            ]
-        }
-    },
-    "ADSBDecoder": {
-        "filterAbove": 1500,
-        "filterBelow": 1500
-    },
-    "Bluetooth": {
-        "_comment_client": "The standard SSD and password when GATAS is in Access Point mode",
-        "localName": "GaTas"
-    },
-    "WifiService": {
-        "_comment_ap": "The standard SSD and password when GATAS is in Access Point mode",
-        "ap": {
-            "ssid": "GATAS",
-            "password": "12345678",
-            "disabled": false
-        },
-        "_comment_clients": "A list of Access Points GATAS will be trying to to connect to.",
-        "clients": [
-        ]
-    },
+    "_comment_clients": "A list of Access Points GATAS will be trying to to connect to.",
+    "clients": []
+  },
+  "AceSpi": {},
+  "Bmp280": {
+    "compensation": 0
+  },
+  "Sx1262_0": {
+    "txEnabled": 1,
+    "offset": 0
+  },
+  "Sx1262_1": {
+    "txEnabled": 1,
+    "offset": 0
+  },
+  "Flarm": {
+    "distanceIgnore": 50000
+  },
+  "Fanet": {
+    "distanceIgnore": 50000
+  },
+  "Ogn1": {
+    "distanceIgnore": 50000
+  },
+  "ADSL": {
+    "distanceIgnore": 50000
+  },
+  "Dump1090Client": {
+    "ip": "192.168.178.105",
+    "port": 30002
+  },
+  "GDLoverUDP": {
+    "defaultPorts": [
+      4000
+    ],
+    "ips": [
+      {
+        "ip": "192.168.178.192",
+        "port": 4000
+      },
+      {
+        "ip": "192.168.178.191",
+        "port": 4000
+      }
+    ]
+  },
+  "UbloxM8N": {},
+  "L76B": {},
+  "SerialADSB": {},
+  "PICO_2RADIO": {
     "AceSpi": {
-    },
-    "Bmp280": {
-        "compensation": 0
-    },
-    "Sx1262_0": {
-        "txEnabled": 1,
-        "offset": 0
-    },
-    "Sx1262_1": {
-        "txEnabled": 1,
-        "offset": 0
-    },
-    "Flarm": {
-        "distanceIgnore": 50000
-    },
-    "Fanet": {
-        "distanceIgnore": 50000
-    },
-    "Ogn1": {
-        "distanceIgnore": 50000
-    },
-    "ADSL": {
-        "distanceIgnore": 50000
-    },
-    "Dump1090Client": {
-        "ip": "192.168.178.105",
-        "port": 30002
-    },
-    "GDLoverUDP": {
-        "defaultPorts": [
-            4000
-        ],
-        "ips": [
-            {
-                "ip": "192.168.178.192",
-                "port": 4000
-            },
-            {
-                "ip": "192.168.178.191",
-                "port": 4000
-            }
-        ]
+      "clk": 2,
+      "mosi": 3,
+      "miso": 4,
+      "rst": 5,
+      "spi": 0
     },
     "UbloxM8N": {
-    },
-    "L76B": {
+      "tx": 0,
+      "rx": 1,
+      "busy": 18,
+      "n": 0
     },
     "SerialADSB": {
+      "tx": 16,
+      "rx": 17,
+      "busy": 27,
+      "n": 1
     },
-    "PICO_2RADIO": {
-        "AceSpi": {
-            "clk": 2,
-            "mosi": 3,
-            "miso": 4,
-            "rst": 5,
-            "spi": 0
-        },
-        "UbloxM8N": {
-            "tx": 0,
-            "rx": 1,
-            "busy": 18,
-            "n": 0
-        },
-        "SerialADSB": {
-            "tx": 16,
-            "rx": 17,
-            "busy": 27,
-            "n": 1
-        },
-        "port4": {
-            "cs": 6
-        },
-        "port5": {
-            "O0": 26
-        },
-        "port6": {
-            "O0": 7
-        },
-        "port7": {
-            "cs": 8,
-            "busy": 9,
-            "tx": 8,
-            "rx": 9,
-            "p0": 8,
-            "p1": 9
-        },
-        "Sx1262_0": {
-            "cs": 22,
-            "busy": 11,
-            "dio1": 10,
-            "spi": 0
-        },
-        "Sx1262_1": {
-            "cs": 12,
-            "busy": 13,
-            "dio1": 19,
-            "spi": 0
-        },
-        "Bmp280": {
-            "cs": 14,
-            "busy": 15
-        },
-        "portb": {
-            "cs": 20,
-            "busy": 21,
-            "rx": 21,
-            "tx": 20
-        },
-        "portc": {
-            "ad0": 28
-        }
+    "port4": {
+      "cs": 6
     },
-    "WAVESHARE_LITE": {
-        "_comment_L76B": "Waveshare Pico-GPS-L76B https://www.waveshare.com/wiki/Pico-GPS-L76B. Requires PPS to be soldered",
-        "L76B": {
-            "tx": 0,
-            "rx": 1,
-            "busy": 16
-        },
-        "_comment_Sx1262_0": "Waveshare https://www.waveshare.com/wiki/Pico-LoRa-SX1262-868M",
-        "Sx1262_0": {
-            "cs": 3,
-            "busy": 2,
-            "dio1": 20,
-            "spi": 1
-        },
-        "_comment_AceSpi": "SPI Port",
-        "AceSpi": {
-            "clk": 10,
-            "mosi": 11,
-            "miso": 12,
-            "rst": 15,
-            "spi": 1
-        },
-        "port5": {
-            "O0": 26
-        }
+    "port5": {
+      "O0": 26
+    },
+    "port6": {
+      "O0": 7
+    },
+    "port7": {
+      "cs": 8,
+      "busy": 9,
+      "tx": 8,
+      "rx": 9,
+      "p0": 8,
+      "p1": 9
+    },
+    "Sx1262_0": {
+      "cs": 22,
+      "busy": 11,
+      "dio1": 10,
+      "spi": 0
+    },
+    "Sx1262_1": {
+      "cs": 12,
+      "busy": 13,
+      "dio1": 19,
+      "spi": 0
+    },
+    "Bmp280": {
+      "cs": 14,
+      "busy": 15
+    },
+    "portb": {
+      "cs": 20,
+      "busy": 21,
+      "rx": 21,
+      "tx": 20
+    },
+    "portc": {
+      "ad0": 28
     }
+  },
+  "WAVESHARE_LITE": {
+    "_comment_L76B": "Waveshare Pico-GPS-L76B https://www.waveshare.com/wiki/Pico-GPS-L76B. Requires PPS to be soldered",
+    "L76B": {
+      "tx": 0,
+      "rx": 1,
+      "busy": 16
+    },
+    "_comment_Sx1262_0": "Waveshare https://www.waveshare.com/wiki/Pico-LoRa-SX1262-868M",
+    "Sx1262_0": {
+      "cs": 3,
+      "busy": 2,
+      "dio1": 20,
+      "spi": 1
+    },
+    "_comment_AceSpi": "SPI Port",
+    "AceSpi": {
+      "clk": 10,
+      "mosi": 11,
+      "miso": 12,
+      "rst": 15,
+      "spi": 1
+    },
+    "port5": {
+      "O0": 26
+    }
+  }
 }

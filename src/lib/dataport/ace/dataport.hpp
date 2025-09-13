@@ -14,15 +14,13 @@
 #include "etl/map.h"
 #include "etl/message_bus.h"
 
-class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GPSSentenceMsg>
+class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg>
 {
     friend class message_router;
     etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
-    GATAS::AircraftAddress address;
-    GATAS::AircraftCategory category;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
-    
+
     struct
     {
         uint32_t messages = 0;
@@ -32,9 +30,7 @@ public:
     static constexpr const etl::string_view NAME = "DataPort";
     DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
-        auto newConfig = config.gaTasConfig();
-        address = newConfig.address;
-        category = newConfig.category;
+        (void)config;
     }
 
     virtual ~DataPort() = default;
@@ -60,8 +56,6 @@ public:
 
     void on_receive(const GATAS::GPSSentenceMsg &msg);
 
-    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
-    
     void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
@@ -159,5 +153,4 @@ public:
     void sendGPGSA();
 
     void sendLK8EX1();
-
 };

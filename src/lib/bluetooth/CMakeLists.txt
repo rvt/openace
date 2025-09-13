@@ -6,9 +6,8 @@ set(MSG_PREFIX "${PROJECT_NAME} |")
 set(BTSTACK_ROOT ${PICO_SDK_PATH}/lib/btstack)
 
 set(MODULE_SOURCE_FILES
-    ace/bluetooth.cpp
+    ace/src/bluetooth.cpp
 )
-#ace/nordic_spp_service_server.c
 
 set(MODULE_TARGET_LINK
     utils

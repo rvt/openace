@@ -4,15 +4,15 @@ project(utils VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/utils.cpp
-    ace/ldpc.cpp
-    ace/bitcount.cpp
-    ace/encryption.cpp
-    ace/EMA.cpp
-    ace/ognconv.cpp
-    ace/moreutils.cpp
-    ace/manchester.cpp
-    ace/cobs.cpp
+        ace/src/utils.cpp
+        ace/src/ldpc.cpp
+        ace/src/bitcount.cpp
+        ace/src/encryption.cpp
+        ace/src/EMA.cpp
+        ace/src/ognconv.cpp
+        ace/src/moreutils.cpp
+        ace/src/manchester.cpp
+        ace/src/cobs.cpp
 )
 
 set(PICO_EXTRA_LIBS

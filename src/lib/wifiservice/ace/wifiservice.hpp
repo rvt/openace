@@ -1,21 +1,16 @@
+#pragma once
 #include "FreeRTOS.h"
 #include "timers.h"
 
-#include "etl/map.h"
 #include "etl/message_bus.h"
 #include "etl/string.h"
 #include "etl/set.h"
 
-#include "pico/cyw43_arch.h"
-#include "pico/lwip_freertos.h"
-#include "pico/stdlib.h"
-#include "lwip/pbuf.h"
-#include "lwip/tcp.h"
-
-#include "ace/constants.hpp"
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
+
+#include "pico/cyw43_arch.h"
 
 #include "../dhcpserver/dhcpserver.h"
 #include "../dnsserver/dnsserver.h"
@@ -43,11 +38,17 @@
 class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::IdleMsg>
 {
 private:
-static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 2; // Number of times connection to the same network is attempted before trying an other network
-static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2; // Number is scans done and if no known network is found, create the AP
+    static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 2; // Number of times connection to the same network is attempted before trying an other network
+    static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2;       // Number is scans done and if no known network is found, create the AP
 
     friend class message_router;
     GATAS::Config::WifiServiceData wifiData;
+
+    struct IpGw
+    {
+        ip4_addr_t ip;
+        ip4_addr_t gateWay;
+    };
 
     enum ConnectionState
     {
@@ -75,8 +76,9 @@ static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2; // Number is scans done an
     TaskHandle_t taskHandle;
     TimerHandle_t timerHandle;
 
-    uint8_t networkConnectionAttempt; 
-    uint8_t totalScanAttempt; 
+    uint8_t networkConnectionAttempt;
+    uint8_t totalScanAttempt;
+    GATAS::WifiMode wifiMode;
 
     // set of all known networks found during scan
     etl::set<GATAS::SsidOrPasswdStr, 4> scanResult;
@@ -102,9 +104,14 @@ static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2; // Number is scans done an
 
     void mDnsInit();
     void mDnsDeinit();
-    void showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password, bool ap) const;
+    void showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const;
     void on_receive_unknown(const etl::imessage &msg);
     void on_receive(const GATAS::IdleMsg &msg);
+
+    /**
+     * Get's the current local IP address
+     */
+    static WifiService::IpGw getInterfaceInfo();
 
 public:
     static constexpr const etl::string_view NAME = "WifiService";
@@ -115,12 +122,13 @@ public:
     };
 
     WifiService(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-        wifiData(config.wifiService()),
-        connectionState(ConnectionState::START),
-        taskHandle(nullptr),
-        timerHandle(nullptr),
-        networkConnectionAttempt(0),
-        totalScanAttempt(0)
+                                                                       wifiData(config.wifiService()),
+                                                                       connectionState(ConnectionState::START),
+                                                                       taskHandle(nullptr),
+                                                                       timerHandle(nullptr),
+                                                                       networkConnectionAttempt(0),
+                                                                       totalScanAttempt(0),
+                                                                       wifiMode(GATAS::WifiMode::NC)
     {
     }
 
@@ -131,10 +139,4 @@ public:
     virtual void start() override;
 
     virtual void stop() override;
-
-   /**
-     * Get's the current local IP address
-     */
-    static ip4_addr_t getIpAddr();
-
 };

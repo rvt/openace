@@ -19,7 +19,7 @@
  * This decoder requires that both GGA and GMC sentences are received from the GPS and that each sentences us correct ms resolution
  * When both coralated sentences are sned. It will send out a ownship position message
  */
-class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GATAS::GPSSentenceMsg>
+class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GATAS::GPSSentenceMsg, GATAS::ConfigUpdatedMsg>
 {
     friend class message_router;
     struct
@@ -55,9 +55,11 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
     minmea_time lastGGATimestamp;
     const uint32_t taskStartTime;
     uint8_t fixType = 0;
+    etl::atomic<GATAS::Config::Conspicuity> conspicuity;
 
 private:
     void on_receive(const GATAS::GPSSentenceMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
     /**
      * Convert an minmea_float with altitude/height information in meters
@@ -95,7 +97,7 @@ public:
                                                                       lastGGATimestamp({0, 0, 0, 0}),
                                                                       taskStartTime(CoreUtils::timeS32())
     {
-        (void)config;
+        conspicuity.store(config.gaTasConfig().conspicuity);
     }
 
     virtual ~GpsDecoder() = default;

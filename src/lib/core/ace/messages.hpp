@@ -6,7 +6,6 @@
 
 #include "etl/message.h"
 #include "etl/message_router.h"
-#include "etl/message_broker.h"
 #include "etl/message_bus.h"
 #include "etl/string.h"
 #include "etl/set.h"
@@ -54,6 +53,14 @@ namespace GATAS
         int16_t rssidBm; // Received signal strength indicator in dB
         AircraftPositionMsg(const AircraftPositionInfo &position_, int16_t rssidBm_) : position(position_), rssidBm(rssidBm_) {}
         AircraftPositionMsg(const AircraftPositionInfo &position_) : position(position_), rssidBm(INT16_MIN) {}
+    };
+
+    struct AircraftPositionsMsg : public etl::message<33>
+    {
+        const etl::vector<AircraftPositionInfo, 8> positions;
+        int16_t rssidBm; // Received signal strength indicator in dB
+        AircraftPositionsMsg(const etl::vector<AircraftPositionInfo, 8> &positions_, int16_t rssidBm_) : positions(positions_), rssidBm(rssidBm_) {}
+        AircraftPositionsMsg(const etl::vector<AircraftPositionInfo, 8> &positions_) : positions(positions_), rssidBm(INT16_MIN) {}
     };
 
     /**
@@ -277,13 +284,15 @@ namespace GATAS
 
     /**
      * Message send when WIFI connection state changes
+     * NOTE: Don't change message ID!
      */
     struct WifiConnectionStateMsg : public etl::message<24>
-    {
-        bool connected;
-        uint32_t networkAddress;
-        WifiConnectionStateMsg(bool connected_) : connected(connected_), networkAddress(0) {};
-        WifiConnectionStateMsg(bool connected_, uint32_t networkAddress_) : connected(connected_), networkAddress(networkAddress_) {};
+    {        
+        GATAS::WifiMode wifiMode;
+        uint32_t gatasIp;
+        uint32_t gateWay;
+        WifiConnectionStateMsg(GATAS::WifiMode wifiMode_) : wifiMode(wifiMode_), gatasIp(0), gateWay(0) {};
+        WifiConnectionStateMsg(GATAS::WifiMode wifiMode_, uint32_t gatasIp_, uint32_t gateWay_) : wifiMode(wifiMode_), gatasIp(gatasIp_), gateWay(gateWay_) {};
     };
 
     /**
@@ -312,6 +321,9 @@ namespace GATAS
     {
     };
     struct Every30SecMsg : public etl::message<32>
+    {
+    };
+    struct Every300SecMsg : public etl::message<34>
     {
     };
 }

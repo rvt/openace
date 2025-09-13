@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef NDEBUG
+#if GATAS_DEBUG == 1
     #define GATAS_ASSERT(condition, message)                          \
     if (!(condition)) {                                                 \
         printf("Assertion failed: %s\nFile: %s\nLine: %d\n",            \

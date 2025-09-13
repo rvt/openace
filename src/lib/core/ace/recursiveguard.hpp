@@ -14,8 +14,8 @@ private:
     uint8_t &_count;
     const etl::string_view msg_ = "RecursiveGuard: Hit";
 public:
-    RecursiveGuard(uint8_t &ref) : _count(ref) { _count++; }
-    RecursiveGuard(uint8_t &ref, etl::string_view msg) : _count(ref), msg_(msg) { _count++; }
+    RecursiveGuard(uint8_t &ref) : _count(ref) { _count += 1; }
+    RecursiveGuard(uint8_t &ref, etl::string_view msg) : _count(ref), msg_(msg) { _count += 1; }
     ~RecursiveGuard()
     {
         _count--;

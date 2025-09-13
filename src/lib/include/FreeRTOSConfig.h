@@ -46,7 +46,7 @@
 #define configUSE_IDLE_HOOK                     0
 #define configUSE_TICK_HOOK                     0
 #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
-#define configMAX_PRIORITIES                    32
+#define configMAX_PRIORITIES                    16
 #define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 256
 #define configUSE_16_BIT_TICKS                  0
 
@@ -193,6 +193,7 @@ to exclude the API function. */
 /* Task priority and stack sizes that needed to be changed */
 #define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 6144 )
 #define CYW43_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 1024 )
-#define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 5 )
+// Aircraft tracker MUST have higher priority (6 currently)
+#define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 7 )
 #endif /* FREERTOS_CONFIG_H */
 

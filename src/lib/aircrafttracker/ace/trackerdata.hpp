@@ -18,14 +18,18 @@ template <size_t SIZE, uint8_t TIMESLICES>
 class TrackerData
 {
 private:
-    static constexpr int32_t SLICE_SIZE_MS = 1'000 / TIMESLICES;
-    static constexpr int32_t MAX_POSITION_INTERPOLATIONS_USEC = 10'000'000;
-    static constexpr int32_t TIME_SEND_HYSTERESIS = 100'000;
+    // Try to ensure that XX is minimally free to allow for burst of new aircraft
     static constexpr uint8_t ADAPTIVE_RADIUS_MIN_FREE = 4;
-    static constexpr uint8_t ADAPTIVE_RADIUS_INCREASE_PERS = 75;
+    // When less than X persentage the buffers is full, start ioncreaing the adaptive radius
+    static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_INCREASE = 75; 
+    // When buffer needs to cleanup because nearly full, keep XX percebtage of all aircraft
+    static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_KEEP = 90;
     static constexpr uint32_t HEARTBEAT_TIME = 1'000'000;
     static constexpr uint32_t ADAPTIVE_RADIUS_INCREASE = 1'000;
     static constexpr uint32_t ADAPTIVE_RADIUS_MAX = 100'000;
+    static constexpr int32_t SLICE_SIZE_MS = 1'000 / TIMESLICES;
+    static constexpr int32_t MAX_POSITION_INTERPOLATIONS_USEC = 10'000'000;
+    static constexpr int32_t TIME_SEND_HYSTERESIS = 100'000;
 
     struct TrackerEntry
     {
@@ -38,36 +42,39 @@ private:
         TrackerEntry() = default;
     };
 
-
     etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
     uint32_t adaptiveRadius;
 
     bool calculateAdaptiveRadius()
     {
-        if (trackedAircraft.size() >= (SIZE - ADAPTIVE_RADIUS_MIN_FREE))
+        auto size = trackedAircraft.size();
+        if (size >= (SIZE - ADAPTIVE_RADIUS_MIN_FREE))
         {
+            // Build a set of all distances
             etl::set<uint32_t, SIZE, etl::greater<uint32_t>> distances;
             for (const auto &pair : trackedAircraft)
             {
                 distances.insert(pair.second.position.distanceFromOwn);
             }
 
+            // Find the 90% position, that means we remove 10% of the aircraft based on radious
             int8_t pos;
             if (distances.size() > SIZE / 2)
             {
-                pos = SIZE - SIZE * 90 / 100;
+                pos = SIZE - SIZE * ADAPTIVE_RADIUS_PERCENTAGE_KEEP / 100;
             }
             else
             {
                 pos = 1;
             }
 
+            // Calculate new adaptive radious
             auto it = distances.begin();
             etl::advance(it, pos);
             adaptiveRadius = etl::round_floor_scaled<500>(*it);
             return true;
         }
-        else
+        else if (size < SIZE - ADAPTIVE_RADIUS_MIN_FREE )
         {
             increaseAdaptiveRadius();
         }
@@ -76,7 +83,7 @@ private:
 
     void increaseAdaptiveRadius()
     {
-        if (trackedAircraft.size() < (SIZE * ADAPTIVE_RADIUS_INCREASE_PERS) / 100)
+        if (trackedAircraft.size() < (SIZE * ADAPTIVE_RADIUS_PERCENTAGE_INCREASE) / 100)
         {
             adaptiveRadius = etl::min(adaptiveRadius + ADAPTIVE_RADIUS_INCREASE, ADAPTIVE_RADIUS_MAX);
         }
@@ -145,7 +152,7 @@ public:
             printf("%3d icao:%6lX sendTime:%8ld time:%8ld  dist:%ld lat:%.6f lon:%.6f\n",
                    c, it.position.address, it.sendTime, CoreUtils::timeUs32Raw(),
                    it.position.distanceFromOwn, it.position.lat, it.position.lon);
-            c++;
+            c += 1;
         }
     }
 
@@ -164,6 +171,11 @@ public:
                 calculateAdaptiveRadius();
                 removeOutsideAdaptiveRadius();
             }
+        }
+
+        if (trackedAircraft.full()) {
+            // puts("TrackerData: We should never end up here");
+            return false;
         }
 
         auto time = CoreUtils::timeUs32Raw();
@@ -198,7 +210,7 @@ public:
                 {
                     return SLICE_SIZE_MS;
                 }
-                count++;
+                count += 1;
             }
         }
         return SLICE_SIZE_MS;

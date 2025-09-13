@@ -4,7 +4,7 @@ project(dataport VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/dataport.cpp
+    ace/src/dataport.cpp
 )
 
 set(MODULE_TARGET_LINK

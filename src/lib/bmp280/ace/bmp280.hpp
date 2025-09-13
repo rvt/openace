@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 #include "pico/binary_info.h"
-#include "hardware/spi.h"
 #include "pico/stdlib.h"
 
 #include "etl/message_bus.h"

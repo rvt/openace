@@ -7,7 +7,9 @@ class Menu extends El {
   }
 
   _saveBr() {
-    store.storeInBRModuleData();
+    store.storeInBRModuleData().then( () => {
+      store.init();
+    });
   }
 
   render(html) {

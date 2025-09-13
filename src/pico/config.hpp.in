@@ -45,6 +45,10 @@
 #define PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE CYW43_COUNTRY_WORLDWIDE
 #define CYW43_HOST_NAME "GATAS"
 
+// https://github.com/georgerobotics/cyw43-driver/issues/111
+// TODO: Problem was we where getting a STALL from the CYW43 Not sure yet if this works..
+#define CYW43_SDPCM_SEND_COMMON_WAIT cyw43_await_background_or_timeout_us(1750);
+
 // https://github.com/raspberrypi/pico-sdk/issues/1443
 #define PICO_MAX_SHARED_IRQ_HANDLERS 6
 
@@ -61,6 +65,7 @@
 #define ETL_CHECK_PUSH_POP ( 1)
 #define GATAS_LWIP_DEBUG ( 1 )
 #define GATAS_FREERTOS_DEBUG ( 1 )
+#define GATAS_DEBUG ( 1 )
 #define PICO_ENTER_USB_BOOT_ON_EXIT ( 1 )
 
 // Other's that could help debugging problems
@@ -69,6 +74,7 @@
 
 #endif
 // END: ***** Debugging PICO items
+
 
 
 // Route UART messages over different pins by default
@@ -89,8 +95,6 @@
 #define ETL_STRING_TRUNCATION_IS_ERROR ( 1 ) 
 #define ETL_NO_EXCEPTIONS ( 1 ) // Disable exceptions
 #define ETL_USING_CPP11 ( 1 )
-// TODO: Re-enable so we can use etl::delegate and get rid of std
-// #define ETL_NO_STL ( 1 ) 
 
 // ***** GaTas configurations 
 
@@ -137,9 +141,18 @@
 // Maximum number of bluetooth connections
 #define GATAS_MAX_BLUETOOTH_CONNECTIONS ( 3 )
 
+// See also session.js line 58
+#define MAX_AIRCRAFT_CONFIG ( 6 )
+
 // Signature for Flash configuration. When this signature changes, a compete new and fresh configuration will be loaded
 // Make sure this value is the same as in gatas_default_config.json
-#define GATAS_FLASH_SIGNATURE ( 250207 )
+#define GATAS_FLASH_SIGNATURE ( 250801 )
+
+// Hard coded so we have more control of the version number for each release
+#define GATAS_CONNECT_PORT 16256
+
+// Gatas MDNS name for service and netinf
+#define GATAS_MDNS_NAME "GATAS"
 
 #define DISALLOW_COPY_AND_MOVE(Type)       \
     Type(const Type&) = delete;            \

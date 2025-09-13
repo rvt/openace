@@ -4,11 +4,10 @@ project(rtc VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-    ace/picortc.cpp
+        ace/src/picortc.cpp
 )
 
 set(MODULE_TARGET_LINK
-    libcrc
     utils
 )
 

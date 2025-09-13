@@ -23,7 +23,8 @@ export class GaTasStore {
       numberOfAircrafts: 0,
       configModified: false,
       hardware: {},
-      hardwareName: ""
+      hardwareName: "",
+      gatasId: ""
     });
   }
 
@@ -49,9 +50,18 @@ export class GaTasStore {
    */
   async init()  {
       // Fetch config.json
+    const config = await this.fetch("/api/Config.json");
+    this.state.gatasId = (config.gatasId).toString(16).toUpperCase();
+    
+    // Fetch current aircraft and hw config
     const configData = await this.fetch("/api/_Configuration/config.json");
     this.state.aircraftId = configData.aircraftId;
     this.state.configModified = configData._dirty;
+
+    // Fetch hardware.json
+    const hardwareData = await this.fetch("/api/_Configuration/hardware.json");
+    Object.assign(this.state.hardware, hardwareData);
+    this.state.hardwareName = this.availableHardware.find(d => d.hardware === hardwareData.type)?.name;
 
     // Fetch aircraft.json
     const aircraftData = await this.fetch("/api/_Configuration/aircraft.json");
@@ -66,11 +76,6 @@ export class GaTasStore {
         this.state.aircraftId = "";
       }
     }
-
-    // Fetch hardware.json
-    const hardwareData = await this.fetch("/api/_Configuration/hardware.json");
-    Object.assign(this.state.hardware, hardwareData);
-    this.state.hardwareName = this.availableHardware.find(d => d.hardware === hardwareData.type)?.name;
   }
 
   /**

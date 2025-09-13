@@ -112,7 +112,7 @@ constexpr uint32_t OUT_OF_ADAPTIVE_RANGE = 200000;
                                          if (callbacks == 1 ) {
                                              REQUIRE (position.address == 1);
                                          }
-                                         callbacks++; });
+                                         callbacks += 1; });
          REQUIRE(callbacks == 2);
      }
  }
@@ -201,7 +201,7 @@ TEST_CASE("Should update data", "[single-file]")
     trackedAircraft.next([&callbacks](const GATAS::AircraftPositionInfo &position)
                          {
   REQUIRE (position.distanceFromOwn == 20000);
-  callbacks++; });
+  callbacks += 1; });
 
     REQUIRE(callbacks == 1);
 }
