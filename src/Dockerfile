@@ -1,4 +1,4 @@
-FROM ubuntu:24.10
+FROM ubuntu:25.10
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PICO_SDK_PATH=/opt/pico-sdk
