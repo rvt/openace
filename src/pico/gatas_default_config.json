@@ -31,10 +31,7 @@
   "GatasConnect": {
     "_comment_ip": "IP Address of the server running GA/TAS Server",
     "gatasServer": {
-      "ip": "192.168.178.237"
-    },
-    "remote": {
-      "ip": "178.79.150.232"
+      "ip": "172.235.181.149"
     }
   },
   "ADSBDecoder": {

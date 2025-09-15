@@ -797,10 +797,10 @@ class GatasConnectConfig extends ModuleConfig {
         GA/TAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI to operate.
         It fetches traffic around you up to about 50Km away.
         <br/>
-        To setup GA/TAS COnnect:
+        To setup GA/TAS Connect:
         <ul>
-          <li>Enter the the IP address of your GA/TAS Connect service you can use IP:178.79.150.232 port:16256 which is free to use:
-          <li>Then setup your WIFI to connect to your mobile hotspot and ensure to enable 'Client Only'
+          <li>Enter the the IP address of your GA/TAS Connect service you can use <strong>172.235.181.149</strong> which is free to use:
+          <li>Then setup your WIFI to connect to your mobile hotspot and ensure to enable 'Client Only' in WifiService.
         </ul>
       </p>
 
@@ -809,7 +809,7 @@ class GatasConnectConfig extends ModuleConfig {
             <div class="col-10">
               <label for="ip">
                 IP Address of GA/TAS Server:
-                <input type="text" id="ip" ref="ip" placeholder="178.79.150.232" } />
+                <input type="text" id="ip" ref="ip" placeholder="172.235.181.149" } />
               </label>
             </div>
         </div>
