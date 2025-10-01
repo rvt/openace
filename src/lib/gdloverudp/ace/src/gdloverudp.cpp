@@ -145,6 +145,10 @@ void GDLoverUDP::transmitBuffer()
 {
     //    if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - 1) * sizeof(GATAS::GDLData))
     {
+        // When no network, don't send any UDP packages
+        if (!wifiConnected) {
+            return;
+        }
         auto m = Measure("GDLoverUDP::transmitBuffer ", 5000);
 
         const char *part = nullptr;
@@ -223,6 +227,7 @@ void GDLoverUDP::sendTo(const char *part, size_t size, uint32_t ip, int16_t port
 
 void GDLoverUDP::on_receive(const GATAS::WifiConnectionStateMsg &msg)
 {
+    wifiConnected = msg.wifiMode != GATAS::WifiMode::NC;
     networkAddress = msg.gatasIp & 0xFFFFFF;
     if (msg.wifiMode == GATAS::WifiMode::CLIENT) {
         gateWayClient = msg.gateWay;

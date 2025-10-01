@@ -49,6 +49,7 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     SemaphoreHandle_t mutex;
     etl::list<GATAS::Config::IpPort, GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
     uint32_t gateWayClient;
+    bool wifiConnected;
     etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts = {};
 
@@ -63,7 +64,8 @@ public:
     GDLoverUDP(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                       pcb(nullptr),
                                                                       networkAddress(0),
-                                                                      gateWayClient{0}
+                                                                      gateWayClient{0},
+                                                                      wifiConnected(false)
     {
         printf("Size of GATAS::GDLData: %zu\n", sizeof(GATAS::GDLData));
         getConfigurationNoMutex(config);

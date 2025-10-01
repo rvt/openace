@@ -24,6 +24,9 @@ GATAS::PostConstruct WifiService::postConstruct()
 
 void WifiService::start()
 {
+#if LWIP_MDNS_RESPONDER == 1
+    mdns_resp_init();
+#endif
     xTaskCreate(wifiTask, WifiService::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY, &taskHandle);
     getBus().subscribe(*this);
 };
@@ -105,7 +108,7 @@ void WifiService::wifiTask(void *arg)
                     auto cResult = wifiService->connectClient();
                     if (cResult == 0)
                     {
-                        wifiService->mDnsInit();
+                        wifiService->mDnsInit(CYW43_ITF_STA);
                         wifiService->connectionState = ConnectionState::CLIENTMODESTARTED;
                     }
                     else if (cResult == 1 || cResult == 2)
@@ -140,7 +143,7 @@ void WifiService::wifiTask(void *arg)
             case ConnectionState::CLIENTMODESTARTED:
                 if (!wifiService->checkIfClientActive(CYW43_ITF_STA))
                 {
-                    wifiService->mDnsDeinit();
+                    wifiService->mDnsDeinit(CYW43_ITF_STA);
                     wifiService->connectionState = ConnectionState::CLIENTMODESTOPPED;
                 }
                 break;
@@ -153,7 +156,7 @@ void WifiService::wifiTask(void *arg)
 
             case ConnectionState::APMODESTART:
                 wifiService->startAccessPoint();
-                wifiService->mDnsInit();
+                wifiService->mDnsInit(CYW43_ITF_AP);
                 wifiService->connectionState = ConnectionState::APSTARTED;
 
                 break;
@@ -170,6 +173,7 @@ void WifiService::wifiTask(void *arg)
                 break;
 
             case ConnectionState::APSTOPPED:
+                wifiService->mDnsDeinit(CYW43_ITF_AP);
                 wifiService->connectionState = ConnectionState::WIFISCAN;
                 wifiService->getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
                 break;
@@ -334,6 +338,7 @@ uint8_t WifiService::connectClient()
 bool WifiService::checkIfClientActive(int itf)
 {
     (void)itf;
+    
     return netif_default && netif_is_up(netif_default) && netif_is_link_up(netif_default);
     //    return cyw43_tcpip_link_status(&cyw43_state, itf) == CYW43_LINK_UP;
 }
@@ -354,6 +359,7 @@ void WifiService::disableSta()
 void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const
 {
     const char *mode;
+    char ipStr[IP4ADDR_STRLEN_MAX];
     if (wifiMode == GATAS::WifiMode::AP)
     {
         mode = "Access Point";
@@ -361,13 +367,17 @@ void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_
     else if (wifiMode == GATAS::WifiMode::CLIENT)
     {
         mode = "Client";
-    } else {
+    }
+    else
+    {
         mode = "AP";
     }
 
     ip4_addr_t ip = getInterfaceInfo().ip;
+
+    ip4addr_ntoa_r(&ip, ipStr, IP4ADDR_STRLEN_MAX);
     puts("###################################");
-    printf("## Mode: %s\n## SSID: %s Password: %s IP: %s\n", mode, ssid.begin(), password.begin(), ip4addr_ntoa(&ip));
+    printf("## Mode: %s\n## SSID: %s Password: %s IP: %s\n", mode, ssid.begin(), password.begin(), ipStr);
     puts("###################################");
 }
 
@@ -390,31 +400,31 @@ srv_txt(struct mdns_service *service, void *txt_userdata)
 }
 #endif
 
-void WifiService::mDnsInit()
+void WifiService::mDnsInit(int itf)
 {
 #if LWIP_MDNS_RESPONDER == 1
-    mdns_resp_init();
-
-    mdns_resp_add_netif(netif_default, GATAS_MDNS_NAME);
-    mdns_resp_add_service(netif_default, GATAS_MDNS_NAME, "_http", DNSSD_PROTO_TCP, 80, srv_txt, NULL);
-    mdns_resp_announce(netif_default);
+    mdns_resp_add_netif(&cyw43_state.netif[itf], GATAS_MDNS_NAME);
+    mdnsSlot = mdns_resp_add_service(&cyw43_state.netif[itf], GATAS_MDNS_NAME, "_http", DNSSD_PROTO_TCP, 80, srv_txt, NULL);
+    mdns_resp_announce(&cyw43_state.netif[itf]);
 #endif
 }
 
-void WifiService::mDnsDeinit()
+void WifiService::mDnsDeinit(int itf)
 {
 #if LWIP_MDNS_RESPONDER == 1
-    mdns_resp_remove_netif(&cyw43_state.netif[CYW43_ITF_STA]);
+    mdns_resp_del_service(&cyw43_state.netif[itf], mdnsSlot);
+    mdns_resp_remove_netif(&cyw43_state.netif[itf]);
 #endif
 }
 
 WifiService::IpGw WifiService::getInterfaceInfo()
 {
     struct netif *netif = netif_list;
-    if (netif != NULL) {
-         return {netif->ip_addr, netif->gw};
+    if (netif != NULL)
+    {
+        return {netif->ip_addr, netif->gw};
     }
-    return { 0, 0 };
+    return {0, 0};
 }
 
 void WifiService::on_receive(const GATAS::IdleMsg &msg)
@@ -423,19 +433,22 @@ void WifiService::on_receive(const GATAS::IdleMsg &msg)
     static bool previous = false;
     bool active = checkIfClientActive(CYW43_ITF_STA) || checkIfClientActive(CYW43_ITF_AP);
 
-    if (active == previous) {
+    if (active == previous)
+    {
         return;
     }
 
-    const auto interface = getInterfaceInfo();;
-    if (!active) {
+    const auto interface = getInterfaceInfo();
+    if (!active)
+    {
         getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
         previous = false;
         return;
     }
 
     // active == true here
-    if (interface.ip.addr != 0) {
+    if (interface.ip.addr != 0)
+    {
         getBus().receive(GATAS::WifiConnectionStateMsg{wifiMode, /* ip & 0xFFFFFF */ interface.ip.addr, interface.gateWay.addr});
         previous = true;
         return;

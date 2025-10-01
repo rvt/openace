@@ -83,6 +83,7 @@ private:
     // set of all known networks found during scan
     etl::set<GATAS::SsidOrPasswdStr, 4> scanResult;
 
+    s8_t mdnsSlot;
     static void wifiTask(void *arg);
 
     void startAccessPoint();
@@ -102,8 +103,8 @@ private:
     void stopClient();
     bool checkIfClientActive(int itf);
 
-    void mDnsInit();
-    void mDnsDeinit();
+    void mDnsInit(int itf);
+    void mDnsDeinit(int itf);
     void showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const;
     void on_receive_unknown(const etl::imessage &msg);
     void on_receive(const GATAS::IdleMsg &msg);

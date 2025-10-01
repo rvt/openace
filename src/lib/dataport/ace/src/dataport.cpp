@@ -4,6 +4,8 @@
 #include "ace/semaphoreguard.hpp"
 #include "ace/moreutils.hpp"
 
+#include "lwip/tcp.h"
+
 constexpr const bool DEBUG_DATAPORT = false;
 
 void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
@@ -32,7 +34,7 @@ void DataPort::on_receive(const GATAS::GPSSentenceMsg &msg)
 {
     GATAS::NMEAString sentence = msg.sentence;
     sentence.append("\r\n");
-    if (DEBUG_DATAPORT) 
+    if (DEBUG_DATAPORT)
     {
         puts(sentence.c_str());
     }
@@ -59,11 +61,11 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
 
     // Example: PFLAA: $PFLAA,0,10,7,21,0,B1B1B1,0,,,-0.1,1,48,0,*23
     stream << "$PFLAA,"
-              "0,"                                                        // @todo Alarm Level
-           << position.relNorthFromOwn << ","                             // Relative North Meters
-           << position.relEastFromOwn << ","                              // Relative East Meters
+              "0,"                                                    // @todo Alarm Level
+           << position.relNorthFromOwn << ","                         // Relative North Meters
+           << position.relEastFromOwn << ","                          // Relative East Meters
            << (position.ellipseHeight - ownship.ellipseHeight) << "," // Relative Vertical Meters
-           << getPFLAAAddressType(position.addressType) << ",";           // ID Type
+           << getPFLAAAddressType(position.addressType) << ",";       // ID Type
     CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
     stream << ","                                       // HEXCode example 484FB3!PH-DHA
            << position.course << ","                    // Heading
@@ -76,7 +78,7 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
            << "";                                       // RSSI
 
     CoreUtils::addChecksumToNMEA(pflaa);
-    if (DEBUG_DATAPORT) 
+    if (DEBUG_DATAPORT)
     {
         puts(pflaa.c_str());
     }
@@ -397,4 +399,23 @@ void DataPort::getData(etl::string_stream &stream, const etl::string_view path) 
     stream << "{";
     stream << "\"messages\":" << statistics.messages;
     stream << "}\n";
+}
+
+void DataPort::on_receive(const GATAS::WifiConnectionStateMsg &msg)
+{
+    gatasIp = msg.gatasIp;
+}
+
+void DataPort::on_receive(const GATAS::Every30SecMsg &msg)
+{
+    (void)msg;
+    char ipStr[16];
+    ip4_addr_t ip(gatasIp);
+    ip4addr_ntoa_r(&ip, ipStr, 16);
+
+    GATAS::NMEAString infoMsg;
+    etl::string_stream stream(infoMsg);
+    stream << "$PGATS," << ipStr;
+    CoreUtils::addChecksumToNMEA(infoMsg);
+    getBus().receive(GATAS::DataPortMsg{infoMsg});
 }

@@ -14,7 +14,7 @@
 #include "etl/map.h"
 #include "etl/message_bus.h"
 
-class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg>
+class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg>
 {
     friend class message_router;
     etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
@@ -26,9 +26,11 @@ class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::
         uint32_t messages = 0;
     } statistics;
 
+    uint32_t gatasIp;
+
 public:
     static constexpr const etl::string_view NAME = "DataPort";
-    DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
+    DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), gatasIp(0)
     {
         (void)config;
     }
@@ -55,6 +57,10 @@ public:
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
 
     void on_receive(const GATAS::GPSSentenceMsg &msg);
+
+    void on_receive(const GATAS::WifiConnectionStateMsg &msg);
+
+    void on_receive(const GATAS::Every30SecMsg &msg);
 
     void on_receive_unknown(const etl::imessage &msg)
     {

@@ -8,7 +8,7 @@
 #include "lwip/tcp.h"
 #include "lwip/apps/httpd.h"
 #include "lwip/apps/fs.h"
-#include "lwip/apps/mdns.h"
+// #include "lwip/apps/mdns.h"
 
 /* Pico. */
 #include "pico/cyw43_arch.h"
