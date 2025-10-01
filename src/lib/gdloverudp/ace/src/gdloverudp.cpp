@@ -13,7 +13,6 @@
 #include "pico/cyw43_arch.h"
 #include "lwip/pbuf.h"
 
-
 void GDLoverUDP::getConfiguration(const Configuration &config)
 {
     getConfigurationNoMutex(config);
@@ -146,7 +145,8 @@ void GDLoverUDP::transmitBuffer()
     //    if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - 1) * sizeof(GATAS::GDLData))
     {
         // When no network, don't send any UDP packages
-        if (!wifiConnected) {
+        if (!wifiConnected)
+        {
             return;
         }
         auto m = Measure("GDLoverUDP::transmitBuffer ", 5000);
@@ -173,11 +173,16 @@ void GDLoverUDP::transmitBuffer()
             for (auto port : udpPorts)
             {
                 sendTo(part, size, ip, port);
-                if (gateWayClient) {
-                    sendTo(part, size, gateWayClient, port);
-                }
             }
+        }
 
+        // Send to the gateway client, which is most lickly running a EFB
+        if (gateWayClient)
+        {
+            for (auto port : udpPorts)
+            {
+                sendTo(part, size, gateWayClient, port);
+            }
         }
 
         // Custom clients can have any netmask and thus need to be tested if they are on the local net
@@ -229,9 +234,12 @@ void GDLoverUDP::on_receive(const GATAS::WifiConnectionStateMsg &msg)
 {
     wifiConnected = msg.wifiMode != GATAS::WifiMode::NC;
     networkAddress = msg.gatasIp & 0xFFFFFF;
-    if (msg.wifiMode == GATAS::WifiMode::CLIENT) {
+    if (msg.wifiMode == GATAS::WifiMode::CLIENT)
+    {
         gateWayClient = msg.gateWay;
-    } else {
+    }
+    else
+    {
         gateWayClient = 0;
     }
 }
