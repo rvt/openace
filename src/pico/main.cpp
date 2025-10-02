@@ -283,7 +283,7 @@ static void loadModules(void *arch)
             panic("cyw43_arch_init failed");
         }
     }
-    load(Bluetooth::NAME, bus, config);
+    load(Bluetooth::NAME, bus, config, true);
     load(AircraftTracker::NAME, bus, config, true);
     load(AceSpi::NAME, bus, config, true);
 
@@ -345,14 +345,13 @@ static void loadModules(void *arch)
 
 static void gaTasIdleTask(void *arch)
 {
-    uint32_t tick = 0;
+    (void)arch;
     uint8_t msgFlags = 0;
     constexpr uint8_t DO_5S = 1 << 0;
     constexpr uint8_t DO_15S = 1 << 1;
     constexpr uint8_t DO_30S = 1 << 2;
     constexpr uint8_t DO_300S = 1 << 3;
 
-    (void)arch;
 #if GATAS_DEBUG != 1
     watchdog_enable(3000, 0);
 #endif
@@ -361,7 +360,7 @@ static void gaTasIdleTask(void *arch)
 #if GATAS_DEBUG != 1
         watchdog_update();
 #endif
-        tick++;
+        uint32_t tick = CoreUtils::secondsSinceEpoch();
 
         if (cyw43_arch_async_context())
         {

@@ -66,7 +66,6 @@ class GaTasModules extends El {
       "DataPort",
       "AirConnect",
       "GatasConnect",
-      "Bluetooth",
       "GpsDecoder"
     ];
     this.info = {

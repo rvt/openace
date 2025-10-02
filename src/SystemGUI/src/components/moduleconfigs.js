@@ -109,7 +109,7 @@ class WifiServiceConfig extends ModuleConfig {
 
   _setFormData(data) {
     // Get Access Point
-    if (data == null || data.ap == null || data.ap.password == null || data.ap.password.length < 8 || data.ap.ssid == null || data.ap.ssid.length < 4) {
+    if (data == null || data.ap == null || data.ap.password == null || data.ap.password.length < 8 || data.ap.ssid == null || data.ap.ssid.length < 3) {
       this.$refs.apssid.value = "GATAS";
       this.$refs.appassword.value = "12345678";
     } else {
