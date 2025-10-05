@@ -415,7 +415,7 @@ void DataPort::on_receive(const GATAS::Every30SecMsg &msg)
 
     GATAS::NMEAString infoMsg;
     etl::string_stream stream(infoMsg);
-    stream << "$PGATS," << ipStr;
+    stream << "$PGATS,    ," << ipStr;
     CoreUtils::addChecksumToNMEA(infoMsg);
     getBus().receive(GATAS::DataPortMsg{infoMsg});
 }

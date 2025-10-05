@@ -104,7 +104,6 @@ void Bluetooth::start()
 
     // set one-shot btstack timer
     Bluetooth::heartbeat.process = &heartbeat_handler;
-    Bluetooth::heartbeat.context = nullptr;
     btstack_run_loop_set_timer(&heartbeat, 250);
     btstack_run_loop_add_timer(&heartbeat);
 
@@ -121,6 +120,10 @@ void Bluetooth::start()
     // register for ATT events
     att_server_register_packet_handler(attPacketHandler);
 
+    // register for HCI events
+    hciEventCallback.callback = &hciPacketHandler;
+    hci_add_event_handler(&hciEventCallback);
+
     // Initialize HCI dump to log HCI packets to stdout via printf
 #if defined(ENABLE_LOG_INFO) || defined(ENABLE_LOG_DEBUG) || defined(ENABLE_LOG_ERROR)
     hci_dump_init(hci_dump_embedded_stdout_get_instance());
@@ -133,7 +136,7 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    //    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
     {
         (void)path;
         stream << "{";
@@ -144,6 +147,11 @@ void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path)
         for (auto &it : Bluetooth::connections)
         {
             stream << it.bufferOverrunErr << ",";
+        }
+        stream << "-1],\"mtu\":[";
+        for (auto &it : Bluetooth::connections)
+        {
+            stream << it.mtu << ",";
         }
         stream << "-1]}\n"; // Adding minus one to ensure the array is valid
     }
@@ -168,7 +176,13 @@ void Bluetooth::createAdvData()
     advertiseData.clear();
     advertiseData.push_back(2); // length
     advertiseData.push_back(BLUETOOTH_DATA_TYPE_FLAGS);
-    advertiseData.push_back(rfComm ? 0x02 : 0x06); // https://tinyurl.com/yvvw6avx
+    // https://tinyurl.com/yvvw6avx
+    // bit 0 LE Limited Discoverable Mode
+    // bit 1 LE General Discoverable Mode
+    // bit 2 LE BR/EDR Not Supported. Bit 37 of LMP Feature Mask Definitions (Page 0)
+    // bit 3 LE Simultaneous LE and BR/EDR to Same Device Capable (Controller). Bit 49 of LMP Feature Mask Definitions (Page 0)
+    // bit 4 Previously Used
+    advertiseData.push_back(rfComm ? 0x02 : 0x06);
 
     uint8_t maxSize = etl::min((size_t)8, localName.size());
     advertiseData.push_back(static_cast<uint8_t>(1 + maxSize)); // length = type + name length
@@ -191,7 +205,7 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
     {
         for (auto &ctx : Bluetooth::connections)
         {
-            if (!ctx.buffer.push(msg.sentence.c_str(), msg.sentence.size()))
+            if (!ctx.buffer.setString(msg.sentence))
             {
                 ctx.bufferOverrunErr += 1;
             }
@@ -205,7 +219,7 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 
 bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
 {
-    if (auto guard = SemaphoreGuard<1000, true>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<10000, true>(Bluetooth::mutex))
     {
         if (!Bluetooth::connections.full())
         {
@@ -218,7 +232,7 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t 
 
 void Bluetooth::removeConnection(uint16_t hciHandle)
 {
-    if (auto guard = SemaphoreGuard<1000, true>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<10000, true>(Bluetooth::mutex))
     {
         Bluetooth::connections.remove_if([hciHandle](const BtContext &ctx)
                                          { return ctx.hciHandle == hciHandle; });
@@ -231,118 +245,82 @@ void Bluetooth::removeConnection(uint16_t hciHandle)
 void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
 {
     (void)ts;
-
-    auto time = CoreUtils::timeUs32Raw();
-    if (auto guard = SemaphoreGuard<10, true>(Bluetooth::mutex))
-        for (auto &btContext : Bluetooth::connections)
-        {
-            // AFter att_server_request_to_send_notification is called, the bluetooth stack will send data.
-            // As long as we are sending data, we will call ourselve, but once done the time will be set to 'now' and new data will be send asap
-            if (CoreUtils::isUsReachedRaw(btContext.nextCheckNotification, time))
-            {
-                btContext.nextCheckNotification = time + 1'000'000;
-                {
-                    if (btContext.buffer.length() > MINIMUM_BLE_PACKET_SIZE)
-                    {
-
-                        // Request to send more data
-                        if (btContext.hciHandle)
-                        {
-                            //                    putchar('.');
-                            att_server_request_to_send_notification(&btContext.callBack, btContext.hciHandle);
-                        }
-                        else if (btContext.rfcommChannelId)
-                        {
-                            rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
-                        }
-                    }
-                }
-            }
-        }
-
-    btstack_run_loop_set_timer(ts, 100);
-    btstack_run_loop_add_timer(ts);
-}
-// static char intermediateBuffer[255]; // assumes MTU <= 512
-
-void Bluetooth::attContextCallback(void *context)
-{
-    static uint8_t guardCounter = 0;
-    auto btContext = static_cast<Bluetooth::BtContext *>(context);
-
-    if (auto rGuard = RecursiveGuard<8>(guardCounter, "RecursiveGuard: attContextCallback"))
+    uint32_t delay = 2000; // make delay based if there is a connection or not, to better use resources when BlueTooth is not used
+    for (auto &btContext : Bluetooth::connections)
     {
-        if (btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
+        delay = 250;
+        if (btContext.buffer.used() > MINIMUM_BLE_PACKET_SIZE)
         {
-            static char intermediateBuffer[255];
-            size_t writePos = 0;
-
-            if (auto guard = SemaphoreGuard<10, true>(Bluetooth::mutex))
+            if (btContext.hciHandle)
             {
-                // SkyDemon requires per message to be full sentence
-                while (writePos + GATAS::NMEA_MAX_LENGTH <= sizeof(intermediateBuffer))
-                {
-                    const auto [peekPart, peekLen] = btContext->buffer.peek();
-                    if (peekLen == 0)
-                        break;
-
-                    size_t sentenceEnd = 0;
-                    for (size_t i = 0; i + 1 < peekLen; ++i)
-                    {
-                        if (peekPart[i] == '\r' && peekPart[i + 1] == '\n')
-                        {
-                            sentenceEnd = i + 2;
-                            break;
-                        }
-                    }
-
-                    size_t copyLen = (sentenceEnd == 0) ? peekLen : sentenceEnd;
-
-                    // Check if it fits in remaining space
-                    if (writePos + copyLen > sizeof(intermediateBuffer))
-                        break;
-
-                    memcpy(intermediateBuffer + writePos, peekPart, copyLen);
-                    btContext->buffer.accepted(copyLen);
-                    writePos += copyLen;
-                }
+                att_server_request_to_send_notification(&btContext.callBack, btContext.hciHandle);
             }
-
-            if (writePos > 0)
+            else if (btContext.rfcommChannelId)
             {
-                uint8_t sendStatus = !ERROR_CODE_SUCCESS;
-
-                if (btContext->hciHandle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
-                {
-                    sendStatus = att_server_notify(btContext->hciHandle, btContext->attrHandle,
-                                                   reinterpret_cast<const uint8_t *>(intermediateBuffer), writePos);
-                }
-                else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-                {
-                    sendStatus = rfcomm_send(btContext->rfcommChannelId,
-                                             reinterpret_cast<uint8_t *>(intermediateBuffer), writePos);
-                }
-
-                if (sendStatus == ERROR_CODE_SUCCESS &&
-                    btContext->buffer.length() > MINIMUM_BLE_PACKET_SIZE)
-                {
-                    btContext->nextCheckNotification = CoreUtils::timeUs32Raw() + 1'000'000;
-                    if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
-                    {
-                        att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle);
-                    }
-                    else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-                    {
-                        rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
-                    }
-                    return;
-                }
+                rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
             }
         }
     }
+    btstack_run_loop_set_timer(&heartbeat, delay);
+    btstack_run_loop_add_timer(&heartbeat);
+}
 
-    // This ensures that the system wil try to push data asap
-    btContext->nextCheckNotification = CoreUtils::timeUs32Raw();
+void Bluetooth::attContextCallback(void *context)
+{
+    auto btContext = static_cast<Bluetooth::BtContext *>(context);
+
+    // When calling att_server_request_to_send_notification, it might be it will directly call back om
+    // this functions, when that happens we only allow 8 recursive calls else there will be stack overflow issues.
+    auto rGuard = RecursiveGuard<8>(btContext->guardCounter, "RecursiveGuard: attContextCallback");
+    if (!rGuard)
+    {
+        return;
+    }
+
+    etl::span<uint8_t> data;
+    if (auto guard = SemaphoreGuard<10, true>(Bluetooth::mutex))
+    {
+        btContext->buffer.read(data, btContext->mtu);
+    }
+
+    if (data.size() > 0)
+    {
+        uint8_t sendStatus = !ERROR_CODE_SUCCESS;
+        if (btContext->hciHandle && (btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+        {
+            sendStatus = att_server_notify(btContext->hciHandle, btContext->attrHandle, data.data(), data.size());
+        }
+        else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+        {
+            sendStatus = rfcomm_send(btContext->rfcommChannelId, data.data(), data.size());
+        }
+
+        size_t used=0;
+        if (auto guard = SemaphoreGuard<1000, true>(Bluetooth::mutex))
+        {
+            btContext->buffer.compact();
+            used = btContext->buffer.used();
+        }
+
+        if (sendStatus == ERROR_CODE_SUCCESS && used > MINIMUM_BLE_PACKET_SIZE)
+        {
+            if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
+            {
+                att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle);
+            }
+            else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
+            {
+                rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
+            }
+        }
+
+#if GATAS_DEBUG == 1
+        if (sendStatus != ERROR_CODE_SUCCESS)
+        {
+            puts("Bluetooth: Send Failed");
+        }
+#endif
+    }
 }
 
 /*
@@ -404,6 +382,35 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
         }
         break;
 
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+void Bluetooth::hciPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+{
+    UNUSED(channel);
+    UNUSED(size);
+
+    if (packet_type != HCI_EVENT_PACKET)
+        return;
+
+    switch (hci_event_packet_get_type(packet))
+    {
+    case HCI_EVENT_META_GAP:
+        switch (hci_event_gap_meta_get_subevent_code(packet))
+        {
+        case GAP_SUBEVENT_LE_CONNECTION_COMPLETE:
+        {
+            hci_con_handle_t con_handle = gap_subevent_le_connection_complete_get_connection_handle(packet);
+            // request min con interval 15 ms for iOS 11+
+            gap_request_connection_parameter_update(con_handle, 12, 12, 4, 0x0048);
+            break;
+        }
         default:
             break;
         }
@@ -512,7 +519,7 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     break;
     case ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE:
     {
-        // Expected to receives COBS from bluetooth 
+        // Expected to receives COBS from bluetooth
         // TODO: Create a bluetooth channel for this?
         auto ownship = Bluetooth::instance->ownshipPosition.load(etl::memory_order_acquire);
         Bluetooth::instance->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(buffer, buffer_size));

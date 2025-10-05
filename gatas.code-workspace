@@ -116,7 +116,8 @@
 			"__locale": "cpp",
 			"locale": "cpp",
 			"__assertion_handler": "cpp",
-			"print": "cpp"
+			"print": "cpp",
+			"__verbose_abort": "cpp"
 		},
 		"cmake.autoSelectActiveFolder": false
 	  }

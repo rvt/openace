@@ -197,20 +197,19 @@ public:
     {
         auto currentTime = CoreUtils::timeUs32Raw();
         uint8_t count = 0;
-        auto itemsPerSlice = static_cast<uint32_t>(trackedAircraft.size() / TIMESLICES);
-        uint8_t maxPerRound = etl::max(static_cast<uint32_t>(5), itemsPerSlice);
+        auto maxPerRound = static_cast<uint32_t>(trackedAircraft.size() / TIMESLICES) + 1;
         for (auto &pair : trackedAircraft)
         {
             auto &it = pair.second;
             if (CoreUtils::isUsReachedRaw(it.sendTime, currentTime))
             {
                 msg(it.position);
+                count += 1;
                 it.sendTime = currentTime + HEARTBEAT_TIME;
-                if (count > maxPerRound)
+                if (count >= maxPerRound)
                 {
                     return SLICE_SIZE_MS;
                 }
-                count += 1;
             }
         }
         return SLICE_SIZE_MS;

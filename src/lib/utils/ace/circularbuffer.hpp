@@ -5,7 +5,7 @@
 
 /**
  * Use the circular buffer if you need to add chunks of data on one end
- * and read the data on the other end where settign and reading data might happen at different times
+ * It tries to efficiently wrap around to the beginning if it reaches the end.
  * TODO: refactor to use etlcpp and spans
  */
 template <size_t BUFFER_SIZE>
@@ -80,27 +80,7 @@ public:
         return PeekResult{buffer.data() + tail, std::min(count, BUFFER_SIZE - tail)};
     }
 
-    // Similar to peek, but will directly accept the data
-    auto get()
-    {
-        struct PeekResult
-        {
-            const char *part;
-            size_t size;
-        };
-
-        if (count == 0)
-        {
-            return PeekResult{nullptr, 0};
-        }
-
-        auto size = std::min(count, BUFFER_SIZE - tail);
-        auto mTail = tail;
-        accepted(size);
-        return PeekResult{buffer.data() + mTail, size};
-    }
-
-    // 4️⃣ Advances the "read pointer" by `len` bytes
+    // 4Advances the "read pointer" by `len` bytes
     void accepted(size_t len)
     {
         if (len > count)
@@ -113,6 +93,7 @@ public:
 
     /**
      * Compact the buffer. At this moment it does not yet support wrapped buffer and will return false
+     * untill the remaining is read
      * It will move all remaining data to the beginning of the buffer
      */
     bool compact()
@@ -133,6 +114,9 @@ public:
         }
 
         // Buffer is wrapped — not supported without a temporary buffer
+#if GATAS_DEBUG == 1 
+        puts("CircularBuffer: Wrap not supported");
+#endif    
         return false;
     }
 

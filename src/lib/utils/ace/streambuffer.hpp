@@ -64,7 +64,7 @@ public:
         {
             if (sepPos != newPacket.end())
             {
-                packet = newPacket; // Has full COBS packet
+                packet = newPacket; // Has full packet
                 return true;
             }
             if (newPacket.size() < SIZE)
@@ -127,7 +127,7 @@ public:
     auto peekPacket() const { return packet; }
 
     /**
-     * @brief Reads the next complete packet op to separatr if available.
+     * @brief Reads the next complete packet op to separator if available.
      *
      * This checks both the internal buffer and any pending packet data.
      * On a successful read:

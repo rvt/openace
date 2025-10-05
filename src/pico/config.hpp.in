@@ -149,7 +149,7 @@
 #define GATAS_FLASH_SIGNATURE ( 250801 )
 
 // Hard coded so we have more control of the version number for each release
-#define GATAS_CONNECT_PORT 16256
+#define GATAS_CONNECT_PORT 3000
 
 // Gatas MDNS name for service and netinf
 #define GATAS_MDNS_NAME "GATAS"

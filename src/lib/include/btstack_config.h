@@ -22,6 +22,8 @@
 #define MAX_NR_CONTROLLER_ACL_BUFFERS 9
 #define MAX_NR_CONTROLLER_SCO_PACKETS 3
 
+#define ENABLE_LE_DATA_LENGTH_EXTENSION
+
 // Enable and configure HCI Controller to Host Flow Control to avoid cyw43 shared bus overrun
 #define ENABLE_HCI_CONTROLLER_TO_HOST_FLOW_CONTROL
 #define HCI_HOST_ACL_PACKET_LEN (255+4)

@@ -16,6 +16,18 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb"
+        },
+         {
+            "name": "(lldb) packetbuffer_test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/packetbuffer_test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
         }    
     ]
 }

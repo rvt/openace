@@ -43,7 +43,8 @@ set( SOURCES_IDIOMATIC_EXAMPLES
    utils_test.cpp
    circularbuffer_test.cpp
    moreutils_test.cpp
-   cobssmartbuffer_test.cpp
+   streambuffer_test.cpp
+   packetbuffer_test.cpp
 )
 
 string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAMPLES}" )

@@ -31,6 +31,12 @@ public:
                 xSemaphoreGive(sem);
             }
         }
+        else
+        {
+#if GATAS_DEBUG == 1
+            printf("SemaphoreGuard of %ldms not aquired", TIMEMS);
+#endif
+        }
     }
 
     SemaphoreGuard(const SemaphoreGuard &) = delete;
@@ -61,6 +67,14 @@ public:
         if (acquired)
         {
             xSemaphoreGive(sem);
+        }
+        else
+        {
+            {
+#if GATAS_DEBUG == 1
+                printf("SpiGuard not aquired");
+#endif
+            }
         }
     }
 

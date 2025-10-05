@@ -104,16 +104,18 @@ TEST_CASE("Wrap Test with get", "[single-file]")
     REQUIRE(buffer.available() == 0);
 
     {
-        auto [part, len] = buffer.get();
+        auto [part, len] = buffer.peek();
         strncpy(test, part, len);
         test[len] = '\0';
         REQUIRE_THAT(test, Equals("aaaaaaaa1234"));
+        buffer.accepted(len);
     }
     {
-        auto [part, len] = buffer.get();
+        auto [part, len] = buffer.peek();
         strncpy(test, part, len);
         test[len] = '\0';
         REQUIRE_THAT(test, Equals("5678"));
+        buffer.accepted(len);
     }
     REQUIRE(buffer.available() == 16);
 }
