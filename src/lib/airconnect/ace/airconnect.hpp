@@ -35,7 +35,6 @@ class AirConnect : public BaseModule, public etl::message_router<AirConnect, GAT
 {
     friend class message_router;
     static constexpr uint16_t AIRCONNECT_PORT = 2000;
-    static constexpr uint16_t BUFFER_SIZE = 1024; // TODO: Tune buffer
     struct
     {
         uint32_t toManyClients = 0;
@@ -45,7 +44,7 @@ class AirConnect : public BaseModule, public etl::message_router<AirConnect, GAT
 
     struct TcpClientState
     {
-        static constexpr uint16_t PACKET_BUFFER_SIZE = 1440;
+        static constexpr uint16_t PACKET_BUFFER_SIZE = 512;
         PacketBuffer<PACKET_BUFFER_SIZE, PACKET_BUFFER_SIZE / (GATAS::NMEA_MAX_LENGTH / 2)> buffer;
         AirConnect *airConnect;
         uint16_t bufferOverrunErr;
