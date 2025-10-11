@@ -4,9 +4,10 @@
 #include "etl/array.h"
 
 /**
- * Use the circular buffer if you need to add chunks of data on one end
+ * Use the circular buffer if you need to add chunks of data on one end, and read on the other 
+ * The data is binary and is not splitted 
  * It tries to efficiently wrap around to the beginning if it reaches the end.
- * TODO: refactor to use etlcpp and spans
+ * @deprecated: You properly want to use the PacketBuffer that ensure whole packets/sentences are send
  */
 template <size_t BUFFER_SIZE>
 class CircularBuffer
@@ -80,7 +81,7 @@ public:
         return PeekResult{buffer.data() + tail, std::min(count, BUFFER_SIZE - tail)};
     }
 
-    // 4Advances the "read pointer" by `len` bytes
+    // Advances the "read pointer" by `len` bytes
     void accepted(size_t len)
     {
         if (len > count)

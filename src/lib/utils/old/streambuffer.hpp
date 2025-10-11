@@ -1,12 +1,12 @@
 #pragma once
-#include <cstddef>
-#include <cstdint>
+#include <stdint.h>
 #include <etl/algorithm.h>
 #include <etl/span.h>
 
 /**
  * @brief StreamBuffer is a small-footprint buffer for assembling and splitting
  *        COBS (or similar) framed messages with minimal memory copying.
+ *        The input is a stream, the output will be data based on the SEPARATOR
  *
  * This implementation is designed for embedded systems:
  *  - Uses a fixed-size static buffer (SIZE) — no dynamic allocation.
@@ -27,6 +27,7 @@
  * @tparam SIZE      Fixed internal buffer capacity in bytes, must be minimal the size dataset of some maximum size 
  *        
  * @tparam SEPARATOR Byte value used to mark end of a packet (e.g., 0 for COBS).
+ * @deprecated: TO complex, better to make a super loop over the data with a small buffer like in StreamLineParser::onRawData
  */
 template <size_t SIZE, uint8_t SEPARATOR>
 class StreamBuffer

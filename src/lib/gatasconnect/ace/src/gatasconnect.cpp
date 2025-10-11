@@ -124,7 +124,6 @@ void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
     taskCtx->statistics.bytesReceived += p->tot_len;
     taskCtx->statistics.pkgReceived += 1;
     taskCtx->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(reinterpret_cast<uint8_t *>(p->payload), p->tot_len));
-    taskCtx->cobsStreamHandler.clear();
     pbuf_free(p);
 }
 

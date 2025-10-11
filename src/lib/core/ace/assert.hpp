@@ -8,5 +8,5 @@
         panic("Assertion");                                             \
     }    
 #else
-    #define GATAS_ASSERT(condition, message) do {} while (false)
+    #define GATAS_ASSERT(condition, message) 
 #endif

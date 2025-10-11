@@ -8,11 +8,3 @@
 // Returns false if this fails
 bool add_pio_program(const pio_program_t *program, PIO *pio_hw, int *sm, uint *offset);
 
-/**
- * SHow a spinner on the terminal to indicate GATAS is working on something
-*/
-void showSpinner();
-/**
- * Remove the spinner
-*/
-void clearSpinner();

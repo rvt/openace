@@ -2,6 +2,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <stdio.h>
+#include <stdio.h>
+#include <cstddef>
+#include <cstdint>
 #include "streambuffer.hpp"
 #include "ace/coreutils.hpp"
 #include "mockutils.h"

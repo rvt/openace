@@ -136,7 +136,7 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard(10, Bluetooth::mutex))
     {
         (void)path;
         stream << "{";
@@ -201,11 +201,11 @@ void Bluetooth::createAdvData()
  */
 void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 {
-    if (auto guard = SemaphoreGuard<10>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard(10, Bluetooth::mutex))
     {
         for (auto &ctx : Bluetooth::connections)
         {
-            if (!ctx.buffer.setString(msg.sentence))
+            if (!ctx.writeBuffer.setString(msg.sentence))
             {
                 ctx.bufferOverrunErr += 1;
             }
@@ -219,7 +219,7 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 
 bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
 {
-    if (auto guard = SemaphoreGuard<10000, true>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<true>(10000, Bluetooth::mutex))
     {
         if (!Bluetooth::connections.full())
         {
@@ -232,7 +232,7 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t 
 
 void Bluetooth::removeConnection(uint16_t hciHandle)
 {
-    if (auto guard = SemaphoreGuard<10000, true>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<true>(10000, Bluetooth::mutex))
     {
         Bluetooth::connections.remove_if([hciHandle](const BtContext &ctx)
                                          { return ctx.hciHandle == hciHandle; });
@@ -249,7 +249,7 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
     for (auto &btContext : Bluetooth::connections)
     {
         delay = 250;
-        if (btContext.buffer.used() > MINIMUM_BLE_PACKET_SIZE)
+        if (btContext.writeBuffer.used() > MINIMUM_BLE_PACKET_SIZE)
         {
             if (btContext.hciHandle)
             {
@@ -278,9 +278,9 @@ void Bluetooth::attContextCallback(void *context)
     }
 
     etl::span<uint8_t> data;
-    if (auto guard = SemaphoreGuard<10, true>(Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<true>(10, Bluetooth::mutex))
     {
-        btContext->buffer.read(data, btContext->mtu);
+        btContext->writeBuffer.read(data, btContext->mtu);
     }
 
     if (data.size() > 0)
@@ -292,14 +292,14 @@ void Bluetooth::attContextCallback(void *context)
         }
         else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
         {
-            sendStatus = rfcomm_send(btContext->rfcommChannelId, data.data(), data.size());
+            sendStatus = rfcomm_send(btContext->rfcommChannelId, const_cast<uint8_t*>(data.data()), data.size());
         }
 
         size_t used=0;
-        if (auto guard = SemaphoreGuard<1000, true>(Bluetooth::mutex))
+        if (auto guard = SemaphoreGuard<true>(1000, Bluetooth::mutex))
         {
-            btContext->buffer.compact();
-            used = btContext->buffer.used();
+            btContext->writeBuffer.compact();
+            used = btContext->writeBuffer.used();
         }
 
         if (sendStatus == ERROR_CODE_SUCCESS && used > MINIMUM_BLE_PACKET_SIZE)
@@ -496,7 +496,7 @@ void Bluetooth::rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8
 int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size)
 {
     UNUSED(offset);
-
+    UNUSED(buffer_size);
     if (transaction_mode != ATT_TRANSACTION_MODE_NONE || transaction_mode == ATT_TRANSACTION_MODE_CANCEL)
     {
         return 0;
@@ -521,8 +521,8 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     {
         // Expected to receives COBS from bluetooth
         // TODO: Create a bluetooth channel for this?
-        auto ownship = Bluetooth::instance->ownshipPosition.load(etl::memory_order_acquire);
-        Bluetooth::instance->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(buffer, buffer_size));
+//        auto ownship = Bluetooth::instance->ownshipPosition.load(etl::memory_order_acquire);
+//        Bluetooth::instance->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(buffer, buffer_size));
     }
     break;
     default:

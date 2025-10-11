@@ -8,7 +8,7 @@
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
-#include "ace/circularbuffer.hpp"
+#include "ace/packetbuffer.hpp"
 
 /* LwIP */
 #include "lwip/udp.h"
@@ -53,7 +53,7 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts = {};
 
-    CircularBuffer<UDP_BUFFER_SIZE> gdlDataBuffer;
+    PacketBuffer<UDP_BUFFER_SIZE, 30> gdlDataBuffer;
 
 private:
     void getConfiguration(const Configuration &config);
@@ -64,8 +64,7 @@ public:
     GDLoverUDP(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                       pcb(nullptr),
                                                                       networkAddress(0),
-                                                                      gateWayClient{0},
-                                                                      wifiConnected(false)
+                                                                      gateWayClient{0}
     {
         printf("Size of GATAS::GDLData: %zu\n", sizeof(GATAS::GDLData));
         getConfigurationNoMutex(config);
@@ -95,5 +94,5 @@ public:
 
     void transmitBuffer();
 
-    void sendTo(const char *part, size_t size, uint32_t ip, int16_t port);
+    void sendTo(etl::span<const uint8_t> part, uint32_t ip, int16_t port);
 };

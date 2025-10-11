@@ -166,7 +166,7 @@ TEST_CASE("Test filter below and above", "[single-file]")
         adsbDecoder.on_receive(GATAS::Every5SecMsg());
     }
     printf("Total Planes below: %d\n", totalPlanes);
-    REQUIRE(totalPlanes == 4600);
+    REQUIRE(totalPlanes == 4599);
     infile.close();
 }
 

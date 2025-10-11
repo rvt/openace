@@ -128,12 +128,12 @@ void GDLoverUDP::gdlOverUDPTask(void *arg)
 void GDLoverUDP::on_receive(const GATAS::GdlMsg &msg)
 {
 
-    if (auto guard = SemaphoreGuard<10>(mutex))
+    if (auto guard = SemaphoreGuard(10, mutex))
     {
-        gdlDataBuffer.push(reinterpret_cast<const char *>(msg.msg.cbegin()), msg.msg.size());
+        gdlDataBuffer.set(msg.msg);
 
-        // When the buffer is nearly full, request for immediate send
-        if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - NUM_GDL_PACKETS / 4) * sizeof(GATAS::GDLData))
+        // When the buffer is nearly full 3/4, request for immediate send
+        if (gdlDataBuffer.packets() >= (NUM_GDL_PACKETS - NUM_GDL_PACKETS / 4))
         {
             xTaskNotify(taskHandle, TaskState::TRANSMIT, eSetBits);
         }
@@ -151,18 +151,16 @@ void GDLoverUDP::transmitBuffer()
         }
         auto m = Measure("GDLoverUDP::transmitBuffer ", 5000);
 
-        const char *part = nullptr;
-        size_t size = 0;
-        if (auto guard = SemaphoreGuard<1000>(mutex))
+        etl::optional<etl::span<uint8_t>>  part;
+        if (auto guard = SemaphoreGuard(1000, mutex))
         {
-            auto buffer = gdlDataBuffer.peek();
-            part = buffer.part;
-            size = buffer.size;
+            part = gdlDataBuffer.read(1024);
         }
-        if (size == 0 || part == nullptr)
+        if (!part)
         {
             return;
         }
+        auto data = part.value();
 
         LwipLock lock;
         // Send to the connect clients and the defined ports
@@ -172,7 +170,7 @@ void GDLoverUDP::transmitBuffer()
             // thus we don't need to test for the networkAddress
             for (auto port : udpPorts)
             {
-                sendTo(part, size, ip, port);
+                sendTo(data, ip, port);
             }
         }
 
@@ -181,7 +179,7 @@ void GDLoverUDP::transmitBuffer()
         {
             for (auto port : udpPorts)
             {
-                sendTo(part, size, gateWayClient, port);
+                sendTo(data, gateWayClient, port);
             }
         }
 
@@ -190,25 +188,24 @@ void GDLoverUDP::transmitBuffer()
         {
             if ((client.ip & 0xFFFFFF) == networkAddress)
             {
-                sendTo(part, size, client.ip, client.port);
+                sendTo(data, client.ip, client.port);
             }
         }
 
-        if (auto guard = SemaphoreGuard<1000>(mutex))
+        if (auto guard = SemaphoreGuard(1000, mutex))
         {
             // printf("GDLoverUDP: %zu bytes sent\n", size);
-            gdlDataBuffer.accepted(size);
             gdlDataBuffer.compact();
         }
     }
 }
 
-void GDLoverUDP::sendTo(const char *part, size_t size, uint32_t ip, int16_t port)
+void GDLoverUDP::sendTo(etl::span<const uint8_t> part, uint32_t ip, int16_t port)
 {
     ip_addr_t addr;
     ip4_addr_set_u32(&addr, ip);
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, size, PBUF_RAM);
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, part.size(), PBUF_RAM);
     if (!p)
     {
         statistics.bufferAllocErr += 1;
@@ -216,7 +213,7 @@ void GDLoverUDP::sendTo(const char *part, size_t size, uint32_t ip, int16_t port
     }
 
     // printf("IP:%d.%d.%d.%d:%d  %02d:%02d:%02d\n",  ip4_addr1(&addr), ip4_addr2(&addr), ip4_addr3(&addr), ip4_addr4(&addr), port, time.hour, time.minute, time.second);
-    memcpy(p->payload, part, size);
+    memcpy(p->payload, part.begin(), part.size());
     err_t err = udp_sendto(pcb, p, &addr, port);
     pbuf_free(p);
 

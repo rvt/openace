@@ -141,7 +141,6 @@ target_link_libraries(
           ArduinoJson
           # /lib
           core
-          tcpclient
           pioserial
           serialadsb
           config

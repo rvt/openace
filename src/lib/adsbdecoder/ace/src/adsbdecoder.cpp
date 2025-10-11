@@ -74,7 +74,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         return;
     }
 
-    if (auto guard = SemaphoreGuard<10>(mutex))
+    if (auto guard = SemaphoreGuard(10, mutex))
     {
         // printf("Processing  a:%06lX \n", mm.aa);
         auto usTime = CoreUtils::timeUs32Raw();
@@ -221,7 +221,7 @@ bool ADSBDecoder::outOfAltitudeRange(int32_t otherellipseHeight)
 void ADSBDecoder::on_receive(const GATAS::Every5SecMsg &msg)
 {
     (void)msg;
-    if (auto guard = SemaphoreGuard<10>(mutex))
+    if (auto guard = SemaphoreGuard(10, mutex))
     {
         auto usTime = CoreUtils::timeUs32Raw();
         ignoredAirplanes.evictOldEntries(usTime);

@@ -141,7 +141,7 @@ void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
-        if (auto guard = SemaphoreGuard<10>(xMutex))
+        if (auto guard = SemaphoreGuard(10, xMutex))
         {
             newRxRadioParameters = Radio::RadioParameters(msg.radioParameters);
             xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
@@ -459,11 +459,12 @@ sx126x_irq_mask_t Sx1262::getIrqStatus()
 void Sx1262::sendPacket(const TxPacket &txPacket)
 {
     // printf("Radio %d TX %s timeMs:%d\n", sx1262->radioNo, GATAS::toString(command.txPacket.radioParameters.config->dataSource), CoreUtils::msInSecond());
+    // TODO: Sometimes configuration can take a few msmeven we don;t change protocol
     configureSx1262(txPacket.radioParameters, true);
 
     if (txPacket.radioParameters.config->mode == GATAS::Modulation::GFSK)
     {
-        auto m = Measure("Sx1262 sendGFSKPacket", 500);
+        auto m = Measure("Sx1262 sendGFSKPacket", 800);
         uint8_t frame[GATAS::RADIO_MAX_GFX_FRAME_LENGTH * 2];
         manchesterEncode(frame, txPacket.data, txPacket.length);
         sendGFSKPacket(txPacket.radioParameters, frame, txPacket.length * 2);
@@ -556,7 +557,7 @@ void Sx1262::sx1262Task(void *arg)
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
-                    auto m = Measure("Send Packet", 800, sx1262->radioNo);
+                    auto m = Measure("Send Packet", 1000, sx1262->radioNo);
                     // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(txPacket.radioParameters.config->dataSource));
                     txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     sx1262->sendPacket(txPacket);
@@ -568,7 +569,7 @@ void Sx1262::sx1262Task(void *arg)
             // Finally, if only a new configuration was set, reconfigure the tranceiver
             if (hasNewConfig)
             {
-                if (auto g = SemaphoreGuard<10>(sx1262->xMutex))
+                if (auto g = SemaphoreGuard(10, sx1262->xMutex))
                 {
                     sx1262->rxRadioParameters = sx1262->newRxRadioParameters;
                     // printf("%8ld New Config ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(sx1262->rxRadioParameters.config->dataSource));

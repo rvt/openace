@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <stdio.h>
-#include "packetbuffer.hpp"
+#include "../ace/packetbuffer.hpp"
 #include "ace/coreutils.hpp"
 #include "mockutils.h"
 
@@ -207,3 +207,4 @@ TEST_CASE("StreamBuffer set with etl::string_view")
     // Buffer should now be empty
     REQUIRE_FALSE(buf.read(out));
 }
+

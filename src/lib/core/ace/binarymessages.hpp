@@ -23,7 +23,7 @@ public:
     {
         size_t base;
         size_t size;
-        constexpr size_t items(size_t items)
+        constexpr size_t items(size_t items = 1)
         {
             return base + size * items;
         };
@@ -124,7 +124,7 @@ public:
     constexpr static BinaryMessages::SizeType serializeOwnshipPositionSizeV1()
     {
         size_t size = 1 + 4 + 3 + 1 + 1 + 4 + 4 + 2 + 1 + 1 + 2 + 2;
-        return BinaryMessages::SizeType {
+        return BinaryMessages::SizeType{
             .base = 0,
             .size = size};
     }
@@ -155,9 +155,9 @@ public:
 
     constexpr static BinaryMessages::SizeType serializeAircraftConfigurationSizeV1()
     {
-        return BinaryMessages::SizeType {
+        return BinaryMessages::SizeType{
             .base = 1 + 4 + 4 + 3 + 1 + 1, // By default we will use 4 bytes 10
-            .size = 3                  // For each additional item 3 bytes
+            .size = 3                      // For each additional item 3 bytes
         };
     }
 

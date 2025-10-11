@@ -68,7 +68,10 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         uint16_t bufferOverrunErr;
         uint8_t guardCounter;
         btstack_context_callback_registration_t callBack;
-        PacketBuffer<CONNECTIONS_BUFFER_SIZE, CONNECTIONS_BUFFER_SIZE/GATAS::NMEA_MAX_LENGTH * 2> buffer;
+        // Writebuffer is used because sometimes GATAS bursts positional data without BlueTooth beeing ready
+        PacketBuffer<CONNECTIONS_BUFFER_SIZE, CONNECTIONS_BUFFER_SIZE/GATAS::NMEA_MAX_LENGTH * 2> writeBuffer;
+        // ReadBuffer is used because over BT we get up to btu bytes, give or take 256/26 == 12ish packets (26 being positional message size)
+        PacketBuffer<256, 12> readBuffer;
         BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void *context)) : hciHandle(hciHandle_),
                                                                                                                        readyState(readyState_),
                                                                                                                        mtu(mtu_),
