@@ -97,8 +97,9 @@
 #if configGENERATE_RUN_TIME_STATS == 1
 #define configUSE_TRACE_FACILITY                1
 #define configUSE_STATS_FORMATTING_FUNCTIONS    1
-extern void configureRuntimeStatsTimer();
-extern uint32_t getRuntimeCounterValue();
+#define configRUN_TIME_COUNTER_TYPE uint32_t
+void configureRuntimeStatsTimer();
+configRUN_TIME_COUNTER_TYPE getRuntimeCounterValue();
 #define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() configureRuntimeStatsTimer()
 #define portGET_RUN_TIME_COUNTER_VALUE() getRuntimeCounterValue()
 #endif
@@ -194,6 +195,6 @@ to exclude the API function. */
 #define ASYNC_CONTEXT_DEFAULT_FREERTOS_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 6144 )
 #define CYW43_TASK_STACK_SIZE ( configMINIMAL_STACK_SIZE + 1024 )
 // Aircraft tracker MUST have higher priority (6 currently)
-#define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 7 )
+#define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 5 )
 #endif /* FREERTOS_CONFIG_H */
 

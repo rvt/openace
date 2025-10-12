@@ -11,6 +11,9 @@
 	},
 	{
 		"path": "../gatasServer/ServerGui"
+	},
+	{
+		"path": "src/lib/aircrafttracker/aircrafttracker_tests"
 	}
 ]
   	,

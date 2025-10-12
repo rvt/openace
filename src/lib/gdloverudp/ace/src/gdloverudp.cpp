@@ -154,7 +154,7 @@ void GDLoverUDP::transmitBuffer()
         etl::optional<etl::span<uint8_t>>  part;
         if (auto guard = SemaphoreGuard(1000, mutex))
         {
-            part = gdlDataBuffer.read(1024);
+            part = gdlDataBuffer.read();
         }
         if (!part)
         {

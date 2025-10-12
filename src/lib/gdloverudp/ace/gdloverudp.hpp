@@ -27,7 +27,7 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     static constexpr uint16_t GDL90OVERUDP_DEFAULT_PORT = 4000;                                   // Default port
     static constexpr uint8_t GDL90OVERUDP_MAX_PORTS = 4;                                          // Maximum number of customer UDP ports to send on
     static constexpr uint8_t GDL90OVERUDP_MAX_CUSTOM_CLIENTS = 4;                                 // Maximum custom clients
-    static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(GATAS::GDLData)); // Number of GDL packets that can be buffered
+    static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(GATAS::GDLData));   // Number of GDL packets that can be buffered
     static constexpr uint16_t UDP_BUFFER_SIZE = NUM_GDL_PACKETS * sizeof(GATAS::GDLData);
 
     enum TaskState : uint32_t
@@ -53,7 +53,7 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts = {};
 
-    PacketBuffer<UDP_BUFFER_SIZE, 30> gdlDataBuffer;
+    PacketBuffer<UDP_BUFFER_SIZE, NUM_GDL_PACKETS> gdlDataBuffer;
 
 private:
     void getConfiguration(const Configuration &config);

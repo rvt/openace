@@ -62,24 +62,26 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
     etl::string<7> climbRate;
     getPFLAAClimbRate(position, climbRate);
 
+    auto CO = etl::make_string(",");
+
     // PFLAA,<AlarmLevel>,<RelativeNorth>,<RelativeEast>,<RelativeVertical>,<IDType>,<ID>,<Track>,<TurnRate>,<GroundSpeed>,<ClimbRate>,<AcftType>[,<NoTrack>[,<Source>,<RSSI>]]
     // Example: $PFLAA,0,10,7,21,0,B1B1B1,0,,,-0.1,1,48,0,*23
-    stream << "$PFLAA,"
-              "0,"                                                    // Alarm Level
-           << position.relNorthFromOwn << ","                         // Relative North Meters
-           << position.relEastFromOwn << ","                          // Relative East Meters
-           << (position.ellipseHeight - ownship.ellipseHeight) << "," // Relative Vertical Meters
-           << getPFLAAAddressType(position.addressType) << ",";       // ID Type
+    stream << etl::make_string("$PFLAA,"
+              "0,")                                                    // Alarm Level
+           << position.relNorthFromOwn << CO                        // Relative North Meters
+           << position.relEastFromOwn << CO                          // Relative East Meters
+           << (position.ellipseHeight - ownship.ellipseHeight) << CO // Relative Vertical Meters
+           << getPFLAAAddressType(position.addressType) << CO;       // ID Type
     CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
-    stream << ","                                       // HEXCode example 484FB3!PH-DHA
-           << position.course << ","                    // Track
-           << ","                                       // TurnRate kept empty
-           << groundSpeed << ","                        // Ground Speed
-           << climbRate << ","                          // Climb Rate
-           << getPFLAAAircraftCategory(position) << "," // Aircraft Type
-           << position.noTrack << ","                   // Tracking
-           << getPFLAASourceType(position) << ","       // Source Type
-           << "";                                       // RSSI
+    stream << CO                                        // HEXCode example 484FB3!PH-DHA
+           << position.course << CO                     // Track
+           << CO                                        // TurnRate kept empty
+           << groundSpeed << CO                        // Ground Speed
+           << climbRate << CO                         // Climb Rate
+           << getPFLAAAircraftCategory(position) << CO // Aircraft Type
+           << position.noTrack << CO                   // Tracking
+           << getPFLAASourceType(position) << CO      // Source Type
+              ;                                       // RSSI
 
     CoreUtils::addChecksumToNMEA(pflaa);
     if (DEBUG_DATAPORT)
@@ -183,7 +185,7 @@ void DataPort::sendPFLAU(const GATAS::OwnshipPositionInfo &position)
 
     // PFLAU,<RX>,<TX>,<GPS>,<Power>,<AlarmLevel>,<RelativeBearing>,<AlarmType>,<RelativeVertical>,<RelativeDistance>[,<ID>]
     // $PFLAU,5,1,1,1,0,,0,,,*
-    stream << "$PFLAU,"
+    stream << etl::make_string("$PFLAU,"
               "0"  // Num RX
               ",1" // Num TX
               ",1" // GPS 1 == 3D
@@ -193,7 +195,7 @@ void DataPort::sendPFLAU(const GATAS::OwnshipPositionInfo &position)
               ",0" // AlarmType
               ","  // RelativeVertical
               ","  // RelativeDistance
-              ","; // Optional ID
+              ","); // Optional ID
 
     CoreUtils::addChecksumToNMEA(pflau);
     if (DEBUG_DATAPORT)
@@ -403,7 +405,7 @@ void DataPort::sendLK8EX1()
 {
     GATAS::NMEAString gpgsa;
     etl::string_stream stream(gpgsa);
-    stream << "$LK8EX1,999999,999999,9999,99,999";
+    stream << etl::make_string("$LK8EX1,999999,999999,9999,99,999");
     CoreUtils::addChecksumToNMEA(gpgsa);
     getBus().receive(GATAS::DataPortMsg{gpgsa});
     statistics.messages += 1;
@@ -427,11 +429,11 @@ void DataPort::on_receive(const GATAS::Every30SecMsg &msg)
     (void)msg;
     char ipStr[16];
     ip4_addr_t ip(gatasIp);
-    ip4addr_ntoa_r(&ip, ipStr, 16);
+    ip4addr_ntoa_r(&ip, ipStr, sizeof(ipStr));
 
     GATAS::NMEAString infoMsg;
     etl::string_stream stream(infoMsg);
-    stream << "$PGATS," << ipStr;
+    stream << etl::make_string("$PGATS,") << etl::string_view(ipStr);
     CoreUtils::addChecksumToNMEA(infoMsg);
     getBus().receive(GATAS::DataPortMsg{infoMsg});
 }
