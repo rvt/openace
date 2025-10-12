@@ -55,7 +55,7 @@ void FanetAce::FanetAceTask(void *arg)
                 return;
             }
         }
-        if (auto guard = SemaphoreGuard<100>(fanetAce->mutex))
+        if (auto guard = SemaphoreGuard(100, fanetAce->mutex))
         {
             waitUntil = fanetAce->protocol.handleTx();
         }
@@ -92,7 +92,7 @@ void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
                           .payload(payload)
                           .forward(true);
 
-        if (auto guard = SemaphoreGuard<10>(mutex))
+        if (auto guard = SemaphoreGuard(10, mutex))
         {
             radioParameters = msg.radioParameters;
             radioNo = msg.radioNo;
@@ -135,7 +135,7 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
     statistics.received += 1;
 
     FANET::Header::MessageType messageType;
-    if (auto guard = SemaphoreGuard<10>(mutex))
+    if (auto guard = SemaphoreGuard(10, mutex))
     {
         messageType = protocol.handleRx(msg.rssidBm, msg.frame);
     }

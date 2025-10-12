@@ -7,7 +7,7 @@
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
-#include "ace/tcpclient.hpp"
+#include "ace/tcpbufferedclient.hpp"
 
 /**
  * Dump1090 Client for development purposes transform a NMEA String into a ADSB Message
@@ -26,12 +26,11 @@ class Dump1090Client : public BaseModule,
 
     etl::imessage_bus *bus;
 
-    uint8_t stoppedCounter;
     bool wifiConnected;
     uint32_t networkAddress;
     BinaryReceiver *receiver;
-    using AdsbTcpClient = TcpClient<1024>;
-    AdsbTcpClient tcpClient;
+    using TcpClient = TcpBufferedClient<48, 10>;
+    TcpClient tcpClient;
 
 public:
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
@@ -41,17 +40,15 @@ public:
 public:
     static constexpr const char *NAME = "Dump1090Client";
 
-    //  TcpClient::CallBackFunction::create([this](const char *sentence)
-    //                                                                                                                         {
-    //             statistics.totalReceived += 1;
-    //               getBus().receive(GATAS::ADSBMessage{sentence}); })
-
     Dump1090Client(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                          stoppedCounter(0),
                                                                           wifiConnected(false),
                                                                           networkAddress(0),
                                                                           receiver(nullptr),
-                                                                          tcpClient(config.ipPortBypath(NAME), AdsbTcpClient::CallBackFunction::create<Dump1090Client, &Dump1090Client::processNewSentence>(*this))
+                                                                          tcpClient(
+                                                                              config.ipPortBypath(NAME),
+                                                                              DelimiterBitmap::CRLF(),
+                                                                              StreamLineParser<TcpClient>::CallBackFunction::create<Dump1090Client, &Dump1090Client::processNewSentence>(*this))
+
     {
     }
 
@@ -65,6 +62,5 @@ public:
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-    void processNewSentence(const char *sentence);
-
+    void processNewSentence(etl::span<uint8_t> data);
 };

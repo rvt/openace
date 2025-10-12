@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "ace/tcpclient.hpp"
+
 /* FreeRTOS */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -21,17 +23,18 @@
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
-#include "ace/circularbuffer.hpp"
+#include "ace/packetbuffer.hpp"
 
 /**
  * AirConnect protocol for EFB's that only support AirConnect.
  * THis protocol is currently not recommende if you can also use GDL90, if you need to use NMEA and have BLE, use that
+ *
+ * READ THIS: THis module needs more testing, I have tested it a long time ago... it worked... but made changes to the buffers later on without testing as I used bluetooth and GDL90
  */
-class AirConnect : public BaseModule, public etl::message_router<AirConnect, GATAS::DataPortMsg, GATAS::WifiConnectionStateMsg, GATAS::IdleMsg>
+class AirConnect : public BaseModule, public etl::message_router<AirConnect, GATAS::DataPortMsg, GATAS::WifiConnectionStateMsg, GATAS::Every5SecMsg>
 {
     friend class message_router;
     static constexpr uint16_t AIRCONNECT_PORT = 2000;
-    static constexpr uint16_t BUFFER_SIZE = 1024; // TODO: Tune buffer
     struct
     {
         uint32_t toManyClients = 0;
@@ -41,32 +44,53 @@ class AirConnect : public BaseModule, public etl::message_router<AirConnect, GAT
 
     struct TcpClientState
     {
-        tcp_pcb *pcb;
+        static constexpr uint16_t PACKET_BUFFER_SIZE = 512;
+        PacketBuffer<PACKET_BUFFER_SIZE, PACKET_BUFFER_SIZE / (GATAS::NMEA_MAX_LENGTH / 2)> buffer;
         AirConnect *airConnect;
         uint16_t bufferOverrunErr;
-        CircularBuffer<BUFFER_SIZE> buffer;
+        TcpClient tcpClient;
 
-        // Constructor
-        TcpClientState() = default;
-        TcpClientState(tcp_pcb *pcb_, AirConnect *airConnect_) : pcb(pcb_),
-                                                               airConnect(airConnect_),
-                                                               bufferOverrunErr(0)
+        bool isDisconnected() const
         {
+            return tcpClient.isDisconnected();
+        }
+        void write(const etl::string_view view, bool flush = false)
+        {
+            buffer.setString(view);
+            if (buffer.used() > 250 || flush)
+            {
+                auto oData = buffer.read();
+                if (oData)
+                {
+                    auto data = oData.value();
+                    std::string_view sv(reinterpret_cast<const char *>(data.data()), data.size());
+                    tcpClient.write(data);
+                    buffer.compact();
+                }
+            }
         }
 
-            // Delete copy constructor and copy assignment operator
-        TcpClientState(const TcpClientState &) = delete;
-        TcpClientState &operator=(const TcpClientState &) = delete;
+        void tcpReceiveHandler(etl::span<uint8_t> data)
+        {
+            (void)data;
+        }
 
-        // (Optional) Delete move constructor and move assignment operator
-        TcpClientState(TcpClientState &&) = delete;
-        TcpClientState &operator=(TcpClientState &&) = delete;
+        TcpClientState() = default;
+        TcpClientState(struct tcp_pcb *pcb_, AirConnect *airConnect_) : airConnect(airConnect_),
+                                                                        bufferOverrunErr(0),
+                                                                        tcpClient(pcb_, TcpClient::ReceiveHandler::create<TcpClientState, &TcpClientState::tcpReceiveHandler>(*this))
+        {
+            (void)pcb_;
+        }
+
+        DISALLOW_COPY_AND_MOVE(TcpClientState)
     };
 
     using ConnectedClients = etl::list<TcpClientState, GATAS_MAXIMUM_TCP_CLIENTS>;
     ConnectedClients connectedClients;
-    tcp_pcb *serverPcb;
     bool wifiConnected;
+    SemaphoreHandle_t mutex;
+    TcpListener tcpListener;
 
 private:
     virtual GATAS::PostConstruct postConstruct() override;
@@ -76,31 +100,22 @@ private:
     virtual void stop() override;
 
     void on_receive(const GATAS::DataPortMsg &msg);
-    
+
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
 
-    void on_receive(const GATAS::IdleMsg &msg);
+    void on_receive(const GATAS::Every5SecMsg &msg);
 
     void on_receive_unknown(const etl::imessage &msg);
 
-    //    static err_t tcp_write_data(TcpClientState &con_state, const char *data, uint8_t length);
-    static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len);
-    static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb);
-    static err_t tcp_close_client_connection(TcpClientState &con_state, err_t err);
-    static err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err);
-    static void tcp_server_err(void *arg, err_t err);
-    static err_t tcp_server_accept(void *arg, tcp_pcb *client_pcb, err_t aerr);
-
-    bool tcp_server_start();
-    void tcp_server_close();
-    void removeEmptyPCB();
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
+    void tcpAcceptHandler(struct tcp_pcb *pcb);
 
     // static void airConnectTask(void *arg);
 
 public:
     static constexpr const char *NAME = "AirConnect";
-    AirConnect(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), serverPcb(nullptr), wifiConnected(false)
+    AirConnect(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), wifiConnected(false), mutex(nullptr),
+                                                                      tcpListener(AIRCONNECT_PORT, TcpListener::AcceptHandler::create<AirConnect, &AirConnect::tcpAcceptHandler>(*this))
     {
         (void)config;
     }

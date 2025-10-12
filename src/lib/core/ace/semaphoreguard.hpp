@@ -4,7 +4,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-template <uint32_t TIMEMS, bool RECURSIVE = false>
+template <bool RECURSIVE = false>
 /**
  * @brief Clasic semaphore Guard based on a FreeRTOS mutex
  *
@@ -16,7 +16,7 @@ private:
     bool acquired;
 
 public:
-    SemaphoreGuard(SemaphoreHandle_t &sem_) : sem(sem_), acquired(RECURSIVE ? xSemaphoreTakeRecursive(sem, TASK_DELAY_MS(TIMEMS)) == pdTRUE : xSemaphoreTake(sem, TASK_DELAY_MS(TIMEMS)) == pdTRUE) {}
+    SemaphoreGuard(uint32_t waitMs, SemaphoreHandle_t &sem_) : sem(sem_), acquired(RECURSIVE ? xSemaphoreTakeRecursive(sem, TASK_DELAY_MS(waitMs)) == pdTRUE : xSemaphoreTake(sem, TASK_DELAY_MS(waitMs)) == pdTRUE) {}
 
     ~SemaphoreGuard()
     {
@@ -30,6 +30,12 @@ public:
             {
                 xSemaphoreGive(sem);
             }
+        }
+        else
+        {
+#if GATAS_DEBUG == 1
+            printf("SemaphoreGuard not aquired");
+#endif
         }
     }
 
@@ -61,6 +67,14 @@ public:
         if (acquired)
         {
             xSemaphoreGive(sem);
+        }
+        else
+        {
+            {
+#if GATAS_DEBUG == 1
+                printf("SpiGuard not aquired");
+#endif
+            }
         }
     }
 

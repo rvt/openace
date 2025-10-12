@@ -70,7 +70,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
 {
     // printf("Looking %s depends on %s\n", that.name(), requesting);
     // Look for it's direct name ex:AceSpi
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex))
+    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::xMutex))
     {
 
         if (BaseModule::moduleLoaderMap.contains(requesting))
@@ -125,7 +125,7 @@ void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t ev
  */
 void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t handler, uint32_t notificationValue)
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex))
+    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::xMutex))
     {
         if (pinInterruptHandlers.full())
         {
@@ -143,7 +143,7 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t
  */
 void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallback_t callback)
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex))
+    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::xMutex))
     {
         if (pinInterruptHandlers.full())
         {
@@ -179,7 +179,7 @@ void BaseModule::enablePinInterrupt(uint8_t pin, uint32_t notificationValue)
  */
 void BaseModule::unregisterPinInterrupt(uint8_t pin)
 {
-    if (auto guard = SemaphoreGuard<portMAX_DELAY>(BaseModule::xMutex))
+    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::xMutex))
     {
         gpio_set_irq_enabled(pin, 0x00, false);
         pinInterruptHandlers.erase(pin);

@@ -92,9 +92,9 @@
 // https://www.etlcpp.com/mutex.html
 // Malloc in ETL should use FreeRTOS mutexes
 #define ETL_TARGET_OS_FREERTOS ( 1 )
-#define ETL_STRING_TRUNCATION_IS_ERROR ( 1 ) 
-#define ETL_NO_EXCEPTIONS ( 1 ) // Disable exceptions
-#define ETL_USING_CPP11 ( 1 )
+#define ETL_STRING_TRUNCATION_IS_ERROR ( 1 )
+#define ETL_NO_EXCEPTIONS ( 1 )
+#define ETL_ARRAY_VIEW_IS_MUTABLE ( 1 )
 
 // ***** GaTas configurations 
 
@@ -149,7 +149,7 @@
 #define GATAS_FLASH_SIGNATURE ( 250801 )
 
 // Hard coded so we have more control of the version number for each release
-#define GATAS_CONNECT_PORT 16256
+#define GATAS_CONNECT_PORT 3000
 
 // Gatas MDNS name for service and netinf
 #define GATAS_MDNS_NAME "GATAS"

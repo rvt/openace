@@ -310,10 +310,10 @@ const GATAS::Config::WifiServiceData Config::wifiService() const
     GATAS::SsidOrPasswdStr ssid = (ccharptr)wifi["ap"]["ssid"];
     GATAS::SsidOrPasswdStr password = (ccharptr)wifi["ap"]["password"];
 
-    if (ssid.size() < 4 || password.size() < 8)
+    if (ssid.size() < 3 || password.size() < 8)
     {
         // Set default Ssid and passsword if non was found
-        wifiService.ap.ssid = "GaTas";
+        wifiService.ap.ssid = "GATAS";
         wifiService.ap.password = "12345678";
     }
     else

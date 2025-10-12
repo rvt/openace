@@ -37,9 +37,9 @@
   * Do not include Arduino.h to keep library usable for other platforms.
   * Include only standard C++ headers instead.
  */
- #include <stddef.h>  // needed for size_t data type
- #include <stdint.h>  // needed for uint8_t data type
- #include <etl/span.h>  // needed for uint8_t data type
+ #include <stddef.h>
+ #include <stdint.h> 
+ #include <etl/span.h>  
  
  size_t getCOBSBufferSize(size_t input_size,
                           bool   with_trailing_zero=true);

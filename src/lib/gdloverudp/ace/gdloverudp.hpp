@@ -8,7 +8,7 @@
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
-#include "ace/circularbuffer.hpp"
+#include "ace/packetbuffer.hpp"
 
 /* LwIP */
 #include "lwip/udp.h"
@@ -27,7 +27,7 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     static constexpr uint16_t GDL90OVERUDP_DEFAULT_PORT = 4000;                                   // Default port
     static constexpr uint8_t GDL90OVERUDP_MAX_PORTS = 4;                                          // Maximum number of customer UDP ports to send on
     static constexpr uint8_t GDL90OVERUDP_MAX_CUSTOM_CLIENTS = 4;                                 // Maximum custom clients
-    static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(GATAS::GDLData)); // Number of GDL packets that can be buffered
+    static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(GATAS::GDLData));   // Number of GDL packets that can be buffered
     static constexpr uint16_t UDP_BUFFER_SIZE = NUM_GDL_PACKETS * sizeof(GATAS::GDLData);
 
     enum TaskState : uint32_t
@@ -49,10 +49,11 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     SemaphoreHandle_t mutex;
     etl::list<GATAS::Config::IpPort, GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
     uint32_t gateWayClient;
+    bool wifiConnected;
     etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts = {};
 
-    CircularBuffer<UDP_BUFFER_SIZE> gdlDataBuffer;
+    PacketBuffer<UDP_BUFFER_SIZE, NUM_GDL_PACKETS> gdlDataBuffer;
 
 private:
     void getConfiguration(const Configuration &config);
@@ -93,5 +94,5 @@ public:
 
     void transmitBuffer();
 
-    void sendTo(const char *part, size_t size, uint32_t ip, int16_t port);
+    void sendTo(etl::span<const uint8_t> part, uint32_t ip, int16_t port);
 };

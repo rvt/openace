@@ -33,23 +33,24 @@ void Dump1090Client::start()
     getBus().subscribe(*this);
 };
 
-void Dump1090Client::processNewSentence(const char *sentence)
+void Dump1090Client::processNewSentence(etl::span<uint8_t> data)
 {
+    auto sentence = std::string_view(reinterpret_cast<const char*>(data.data()), data.size()-1);
+
     constexpr uint8_t ADSBDATALENGTH = 28;
+    constexpr uint8_t ADSBDATALENGTH_HEXSIZE = ADSBDATALENGTH / 2;
+    constexpr uint8_t ADSBDATALENGTH_SP = ADSBDATALENGTH + 2;
     GATAS_ASSERT(GATAS::ADSBMessageBin::MAX_BINARY_LENGTH * 2 == ADSBDATALENGTH, "Must be equal");
 
     // Fast detection of msgType 17 and hexStrToByteArray to reduce resources
-    if (sentence != nullptr && sentence[1] == '8' && (sentence[2] == 'D' || sentence[2] == 'A' || sentence[2] == '0'))
+    if (sentence[1] == '8' && (sentence[2] == 'D' || sentence[2] == 'A' || sentence[2] == '0'))
     {
-        uint8_t hexSize = strlen(sentence) - 2;
         // [*]8D4CADC458BF02B09CCB3E499B92[;] <- 28 chars without * and ;
-        if (hexSize == ADSBDATALENGTH)
+        if (sentence.size() == ADSBDATALENGTH_SP)
         {
-            auto halfSize = hexSize / 2;
-            // puts(sentence);
             GATAS::ADSBMessageBin msg;
-            CoreUtils::hexStrToByteArray(sentence + 1, GATAS::ADSBMessageBin::MAX_BINARY_LENGTH*2, msg.data);
-            receiver->receiveBinary(msg.data, halfSize);
+            CoreUtils::hexStrToByteArray(sentence.cbegin() + 1, GATAS::ADSBMessageBin::MAX_BINARY_LENGTH*2, msg.data);
+            receiver->receiveBinary(msg.data, ADSBDATALENGTH_HEXSIZE);
             statistics.totalReceived += 1;
         }
     }
@@ -72,14 +73,10 @@ void Dump1090Client::on_receive_unknown(const etl::imessage &msg)
 void Dump1090Client::on_receive(const GATAS::Every5SecMsg &msg)
 {
     (void)msg;
-    // printf("%d %d %d \n", wifiConnected , tcpClient.isStopped() , (stoppedCounter % 4 == 0));
-    if (wifiConnected && tcpClient.isStopped() && (stoppedCounter % 4 == 0) && ((tcpClient.ip() & 0xFFFFFF) == networkAddress))
+    if (wifiConnected && ((tcpClient.ip() & 0xFFFFFF) == networkAddress))
     {
-        stoppedCounter = 0;
-        tcpClient.start();
-        statistics.reConnects += 1;
+        tcpClient.reconnect();
     }
-    stoppedCounter += 1;
 }
 
 void Dump1090Client::on_receive(const GATAS::WifiConnectionStateMsg &wcs)

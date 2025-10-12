@@ -4,12 +4,35 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
+                {
+            "name": "(lldb) gulp_test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/gulp_test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
         {
             "name": "(lldb) cobssmartbuffer_test",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/cobssmartbuffer_test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
+         {
+            "name": "(lldb) packetbuffer_test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/packetbuffer_test",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

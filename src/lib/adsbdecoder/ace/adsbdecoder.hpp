@@ -28,9 +28,9 @@
 class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, GATAS::ADSBMessageBin, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::Every5SecMsg, GATAS::AdapativeRadiusMsg>
 {
 private:
-    static constexpr uint8_t MAX_PLANES_TRACKED = 64;
-    static constexpr uint8_t MAX_ADDRESS_CACHE_SIZE = 160;  // Address cache size for ignore planes that are to for/to high etc..
-    static constexpr uint32_t ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD = 20'000;
+    static constexpr uint8_t MAX_PLANES_TRACKED = 48;
+    static constexpr uint8_t MAX_ADDRESS_CACHE_SIZE = 100;  // Address cache size for ignore planes that are to for/to high etc..
+    static constexpr uint32_t ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD = 20'000; // Delay in us to know 'exact' timing
 
     friend class message_router;
 

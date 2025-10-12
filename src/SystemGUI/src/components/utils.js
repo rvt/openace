@@ -44,7 +44,7 @@ export const ssidValidation = [
   },
   {
     rule: "maxLength",
-    value: 16,
+    value: 20,
   },
 ];
 
@@ -55,6 +55,6 @@ export const passwordValidation = [
   },
   {
     rule: "maxLength",
-    value: 24,
+    value: 20,
   },
 ];

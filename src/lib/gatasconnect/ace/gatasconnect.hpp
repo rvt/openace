@@ -22,6 +22,8 @@
 /**
  * GatasConnect protocol for EFB's that only support GatasConnect.
  * THis protocol is currently not recommende if you can also use GDL90, if you need to use NMEA and have BLE, use that
+ * NOTE: This did not work well due to Android and possibleiOS and perhaps even telecom providers filtering to much UDP
+ * However, it did work fine using a local WIFI network...
  */
 class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg>
 {

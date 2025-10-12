@@ -185,7 +185,7 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
 }
 
 constexpr size_t VOL_DATA_SIZE = 4096;
-uint8_t __uninitialized_ram( store[VOL_DATA_SIZE]);
+uint8_t __uninitialized_ram(store[VOL_DATA_SIZE]);
 static InMemoryStore<VOL_DATA_SIZE> volatileStore(store);
 // Bluetooth stores bonding information at the last sector
 // Flash memory Map
@@ -283,7 +283,7 @@ static void loadModules(void *arch)
             panic("cyw43_arch_init failed");
         }
     }
-    load(Bluetooth::NAME, bus, config);
+    load(Bluetooth::NAME, bus, config, true);
     load(AircraftTracker::NAME, bus, config, true);
     load(AceSpi::NAME, bus, config, true);
 
@@ -325,7 +325,7 @@ static void loadModules(void *arch)
     puts("All modules loaded!\n");
 
     printf(
-            R"=(
+        R"=(
 
          ██████╗ ██████╗ ███████╗███╗   ██╗ █████╗  ██████╗███████╗
         ██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔════╝██╔════╝
@@ -337,7 +337,7 @@ static void loadModules(void *arch)
         GA/TAS Device ID: %lX
 
         )=",
-            static_cast<uint32_t>(config.internalStore()->gatasId));
+        static_cast<uint32_t>(config.internalStore()->gatasId));
     gpio_put(ledStatusIndicatorPin, 1);
 
     vTaskDelete(nullptr);
@@ -345,14 +345,13 @@ static void loadModules(void *arch)
 
 static void gaTasIdleTask(void *arch)
 {
-    uint32_t tick = 0;
+    (void)arch;
     uint8_t msgFlags = 0;
     constexpr uint8_t DO_5S = 1 << 0;
     constexpr uint8_t DO_15S = 1 << 1;
     constexpr uint8_t DO_30S = 1 << 2;
     constexpr uint8_t DO_300S = 1 << 3;
 
-    (void)arch;
 #if GATAS_DEBUG != 1
     watchdog_enable(3000, 0);
 #endif
@@ -361,7 +360,7 @@ static void gaTasIdleTask(void *arch)
 #if GATAS_DEBUG != 1
         watchdog_update();
 #endif
-        tick++;
+        uint32_t tick = CoreUtils::secondsSinceEpoch();
 
         if (cyw43_arch_async_context())
         {
@@ -443,9 +442,10 @@ void vDiagnosticsTask(void *pvParameters)
 #endif
 
         // Clear screen and print header
-        printf("\033[2J\033[H");
-        printf("Task Name        Abs Time  %% Time   State  Priority  Stack Left\n");
-        printf("---------------------------------------------------------------\n");
+        puts("\033[2J\033[H");
+        puts("Note: DiagTasks will show high due to teh wai times are measured?");
+        puts("Task Name        Abs Time  %% Time   State  Priority  Stack Left");
+        puts("-----------------------------------------------------------------");
 
         // Get number of tasks
         UBaseType_t numTasks = uxTaskGetNumberOfTasks();
@@ -488,8 +488,7 @@ void vDiagnosticsTask(void *pvParameters)
             vPortFree(taskStatusArray);
         }
 
-        // Run every 5 seconds (adjust as needed)
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(5000));
     }
 }
 #endif
@@ -527,11 +526,11 @@ void vLaunch(void)
 
     // Run a Idle Task Idletask
     // TODO: apparently needs a large stack??
-    xTaskCreate(gaTasIdleTask, "GatasTask", configMINIMAL_STACK_SIZE + 2048, NULL, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(gaTasIdleTask, "IdleTask", configMINIMAL_STACK_SIZE + 1024, NULL, tskIDLE_PRIORITY + 1, nullptr);
 
     // Dump some CPU diagnostics to terminal of all running tasks
 #if configGENERATE_RUN_TIME_STATS == 1
-    xTaskCreate(vDiagnosticsTask, "DiagTask", configMINIMAL_STACK_SIZE + 2048, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(vDiagnosticsTask, "DiagTask", configMINIMAL_STACK_SIZE + 1024, nullptr, tskIDLE_PRIORITY, nullptr);
 #endif
 
 #if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1
@@ -593,18 +592,4 @@ int main()
 #endif
 
     return 0;
-}
-
-static uint32_t start_time_us = 0;
-
-void configureRuntimeStatsTimer()
-{
-    // Capture the starting time in microseconds
-    start_time_us = time_us_32();
-}
-
-uint32_t getRuntimeCounterValue()
-{
-    // Return elapsed time in microseconds since FreeRTOS started
-    return time_us_32() - start_time_us;
 }

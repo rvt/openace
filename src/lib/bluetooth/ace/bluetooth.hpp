@@ -18,7 +18,7 @@
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
-#include "ace/circularbuffer.hpp"
+#include "ace/packetbuffer.hpp"
 #include "ace/cobsstreamhandler.hpp"
 
 /* BT Stack*/
@@ -40,20 +40,19 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
     static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
     static constexpr uint8_t CONN_READY = 0b001;
-    static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 1536; // TODO: Tune buffer, should be > MTU which is 255 bytes for BLE witj etxnded data length
-    static constexpr uint8_t MINIMUM_BLE_PACKET_SIZE = 180;   // Minimum size of a BLE packet, to optimise performance
+    static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 2048; // TODO: Tune buffer, should be > MTU which is 255 bytes for BLE witj etxnded data length
+    static constexpr uint8_t MINIMUM_BLE_PACKET_SIZE = 180;   // Minimum size of a BLE packet, to better use the BLE bandwith
 
     inline static Bluetooth *instance;
 
-    // clang-format off
-    // advertisement data, MAX 31 byte!
+    // advertisement data, MAX 31 byte
     etl::vector<uint8_t, 31> advertiseData;
 
     friend class message_router;
     struct
     {
-        uint32_t dataPortMsgMissedErr=0;
-        uint32_t cobsErr= 0;
+        uint32_t dataPortMsgMissedErr = 0;
+        uint32_t cobsErr = 0;
     } statistics;
 
     struct BtContext
@@ -67,15 +66,18 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         uint16_t mtu;
         uint16_t attrHandle; // Used for ATT connections only
         uint16_t bufferOverrunErr;
-        uint32_t nextCheckNotification;
+        uint8_t guardCounter;
         btstack_context_callback_registration_t callBack;
-        CircularBuffer<CONNECTIONS_BUFFER_SIZE> buffer; // connection private data
-        BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void * context)) : hciHandle(hciHandle_),
-                                                                                                                                     readyState(readyState_),
-                                                                                                                                     mtu(mtu_),
-                                                                                                                                     attrHandle(0),
-                                                                                                                                     bufferOverrunErr(0),
-                                                                                                                                     nextCheckNotification(0)
+        // Writebuffer is used because sometimes GATAS bursts positional data without BlueTooth beeing ready
+        PacketBuffer<CONNECTIONS_BUFFER_SIZE, CONNECTIONS_BUFFER_SIZE/GATAS::NMEA_MAX_LENGTH * 2> writeBuffer;
+        // ReadBuffer is used because over BT we get up to btu bytes, give or take 256/26 == 12ish packets (26 being positional message size)
+        PacketBuffer<256, 12> readBuffer;
+        BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void *context)) : hciHandle(hciHandle_),
+                                                                                                                       readyState(readyState_),
+                                                                                                                       mtu(mtu_),
+                                                                                                                       attrHandle(0),
+                                                                                                                       bufferOverrunErr(0),
+                                                                                                                       guardCounter(0)
         {
             callBack.context = this;
             callBack.callback = callBack_;
@@ -111,9 +113,10 @@ private:
     static void smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void attContextCallback(void *context);
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
+    static void hciPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
-    static uint16_t attReadCallback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t * buffer, uint16_t buffer_size);
+    static uint16_t attReadCallback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
     static bool createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState);
     // Remove any old connections
@@ -153,6 +156,7 @@ private:
         }
     }
 
+    inline static btstack_packet_callback_registration_t hciEventCallback;
     inline static btstack_packet_callback_registration_t smEventCallback;
     inline static btstack_timer_source_t heartbeat;
     inline static uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91

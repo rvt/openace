@@ -8,7 +8,7 @@ set(MODULE_SOURCE_FILES
 )
 
 set(MODULE_TARGET_LINK
-    tcpclient
+    utils
 )
 
 set(PICO_EXTRA_LIBS

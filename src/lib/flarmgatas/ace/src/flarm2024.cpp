@@ -97,7 +97,6 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
             return;
         }
 
-        statistics.receivedAircraftPositions += 1;
         GATAS::AircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
@@ -121,7 +120,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
                 fromOwn.relEast},
             msg.rssidBm};
 
-        statistics.transmittedAircraftPositions += 1;
+        statistics.receivedAircraftPositions += 1;
         getBus().receive(aircraftPosition);
     }
 }
@@ -159,6 +158,8 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         txPacket.length = Flarm2024Packet::TOTAL_LENGTH;
 
         packet.writeToBuffer(epochSeconds, txPacket.data32);
+
+        statistics.transmittedAircraftPositions += 1;
         getBus().receive(GATAS::RadioTxFrameMsg{
             txPacket,
             msg.radioNo});
