@@ -44,7 +44,7 @@ namespace GATAS
     using IcaoAddress = etl::string<8>;              // ICAO Address as hex string
     using CallSign    = etl::string<MAX_CALLSIGN_LENGTH>;              // ICAO Address as hex string
     using ADSBString = etl::string<MAX_LENGTH_ADSB>; // ADSB message, similar as from dump1090
-    using ConfigString = etl::string<25>;            // Maximum length of value from the configuration
+    using ConfigString = etl::string<64>;            // Maximum length of value from the configuration
     using Modulename = etl::string<17>;
     using ConfigPathString = etl::string<65>; // Maximum path length of value from the configuration including api name and module name
     using GDLData = etl::vector<uint8_t, 48>; // GDLXX Message

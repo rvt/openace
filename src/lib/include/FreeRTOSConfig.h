@@ -63,7 +63,7 @@
 #define configUSE_NEWLIB_REENTRANT              0
 // todo need this for lwip FreeRTOS sys_arch to compile
 #define configENABLE_BACKWARD_COMPATIBILITY     1
-#define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
+#define configNUM_THREAD_LOCAL_STORAGE_POINTERS 0
 
 /* System */
 #define configSTACK_DEPTH_TYPE                  uint32_t
@@ -72,12 +72,12 @@
 /* Memory allocation related definitions. */
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-/* GATAS: Changed from 128 to 115 to 112*/
-/* ArduinoJson is memory hungry, need to change that for something else, but for now just lowered memory */
 #if defined(PICO_RP2350)
 #define configTOTAL_HEAP_SIZE                   (200*1024)
 #else
-#define configTOTAL_HEAP_SIZE                   (74*1024)
+/* GATAS: Changed from 128 to 115 to 112*/
+/* ArduinoJson is memory hungry, need to change that for something else, but for now just lowered memory */
+#define configTOTAL_HEAP_SIZE                   (80*1024)
 #endif
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
@@ -169,8 +169,9 @@ to exclude the API function. */
 #define INCLUDE_vTaskPrioritySet                1
 #define INCLUDE_uxTaskPriorityGet               0
 #define INCLUDE_vTaskDelete                     1
+/* Used in pico-sdk/lib/lwip/contrib/ports/freertos/sys_arch.c */
 #define INCLUDE_vTaskSuspend                    1
-#define INCLUDE_vTaskDelayUntil                 1
+#define INCLUDE_vTaskDelayUntil                 0
 #define INCLUDE_vTaskDelay                      1
 #define INCLUDE_xTaskGetSchedulerState          1
 #define INCLUDE_xTaskGetCurrentTaskHandle       1
@@ -178,7 +179,7 @@ to exclude the API function. */
 #define INCLUDE_xTaskGetIdleTaskHandle          1
 #define INCLUDE_eTaskGetState                   1
 #define INCLUDE_xTimerPendFunctionCall          1
-#define INCLUDE_xTaskAbortDelay                 1
+#define INCLUDE_xTaskAbortDelay                 0
 #define INCLUDE_xTaskGetHandle                  1
 #define INCLUDE_xTaskResumeFromISR              1
 #define INCLUDE_xQueueGetMutexHolder            1

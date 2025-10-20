@@ -12,6 +12,7 @@
 #include "lwip/ip_addr.h"
 #include "pico/cyw43_arch.h"
 #include "lwip/pbuf.h"
+#include "lwip/stats.h"
 
 void GDLoverUDP::getConfiguration(const Configuration &config)
 {
@@ -23,21 +24,26 @@ void GDLoverUDP::getConfigurationNoMutex(const Configuration &config)
     udpPorts.clear();
     customClients.clear();
 
-    for (char i = '0'; i < GDL90OVERUDP_MAX_PORTS + '0'; i++)
+    etl::string<16> path;
+    for (uint8_t i = 0; i < GATAS_GDL90OVERUDP_MAX_PORTS; i++)
     {
-        char path[] = "defaultPorts/X";
-        path[sizeof(path) - 2] = i;
-        int32_t port = config.valueByPath(GDL90OVERUDP_DEFAULT_PORT, NAME, path);
-        //            printf("GDLoverUDP %d\n",port);
-        udpPorts.insert(port);
+        path.clear();
+        etl::string_stream stream(path);
+        stream << etl::make_string("defaultPorts/") << i;
+        int32_t p = config.valueByPath(GDL90OVERUDP_DEFAULT_PORT, NAME, path);
+        if (!udpPorts.full())
+        {
+            udpPorts.insert(p);
+        }
     }
 
-    for (char i = '0'; i < GDL90OVERUDP_MAX_CUSTOM_CLIENTS + '0'; i++)
+    for (char i = 0; i < GATAS_GDL90OVERUDP_MAX_CUSTOM_CLIENTS; i++)
     {
-        char path[] = "ips/X";
-        path[sizeof(path) - 2] = i;
+        path.clear();
+        etl::string_stream stream(path);
+        stream << etl::make_string("ips/") << i;
         auto ipPort = config.ipPortBypath(NAME, path);
-        if (ipPort.ip != IPADDR_NONE && ipPort.port > 1023)
+        if (ipPort.ip != IPADDR_NONE && ipPort.port > 1023 && !customClients.full())
         {
             //                printf("GDLoverUDP %ld:%d\n",ipPort.ip, ipPort.port);
             customClients.emplace_back(ipPort.ip, ipPort.port);
@@ -142,80 +148,92 @@ void GDLoverUDP::on_receive(const GATAS::GdlMsg &msg)
 
 void GDLoverUDP::transmitBuffer()
 {
-    //    if (gdlDataBuffer.length() >= (NUM_GDL_PACKETS - 1) * sizeof(GATAS::GDLData))
+    // When no network, don't send any UDP packages
+    if (!wifiConnected)
     {
-        // When no network, don't send any UDP packages
-        if (!wifiConnected)
-        {
-            return;
-        }
-        auto m = Measure("GDLoverUDP::transmitBuffer ", 5000);
+        return;
+    }
 
-        etl::optional<etl::span<uint8_t>>  part;
-        if (auto guard = SemaphoreGuard(1000, mutex))
-        {
-            part = gdlDataBuffer.read();
-        }
-        if (!part)
-        {
-            return;
-        }
-        auto data = part.value();
+    auto m = Measure("GDLoverUDP::transmitBuffer ", 5000);
 
-        LwipLock lock;
-        // Send to the connect clients and the defined ports
-        for (auto ip : connectedClients)
+    // Calculate how many pbufs we needna d reference them
+    uint8_t totalpBufs = connectedClients.size() * udpPorts.size() + gateWayClient ? udpPorts.size() : 0;
+    for (const auto &client : customClients)
+    {
+        if ((client.ip & 0xFFFFFF) == networkAddress)
         {
-            // Connected clients are always on the accesspoint,
-            // thus we don't need to test for the networkAddress
-            for (auto port : udpPorts)
-            {
-                sendTo(data, ip, port);
-            }
+            totalpBufs += 1;
         }
+    }
+    if (totalpBufs == 0)
+    {
+        return;
+    }
 
-        // Send to the gateway client, which is most lickly running a EFB
-        if (gateWayClient)
-        {
-            for (auto port : udpPorts)
-            {
-                sendTo(data, gateWayClient, port);
-            }
-        }
+    etl::optional<etl::span<uint8_t>> part;
+    if (auto guard = SemaphoreGuard(1000, mutex))
+    {
+        part = gdlDataBuffer.read();
+    }
+    if (!part)
+    {
+        return;
+    }
 
-        // Custom clients can have any netmask and thus need to be tested if they are on the local net
-        for (const auto &client : customClients)
+    auto data = part.value();
+    LwipLock lock;
+    // Send to the connect clients and the defined ports
+    for (auto ip : connectedClients)
+    {
+        // Connected clients are always on the accesspoint,
+        // thus we don't need to test for the networkAddress
+        for (auto port : udpPorts)
         {
-            if ((client.ip & 0xFFFFFF) == networkAddress)
-            {
-                sendTo(data, client.ip, client.port);
-            }
+            sendTo(ip, port, data);
         }
+    }
 
-        if (auto guard = SemaphoreGuard(1000, mutex))
+    // Send to the gateway client, which is most lickly running a EFB
+    if (gateWayClient)
+    {
+        for (auto port : udpPorts)
         {
-            // printf("GDLoverUDP: %zu bytes sent\n", size);
-            gdlDataBuffer.compact();
+            sendTo(gateWayClient, port, data);
         }
+    }
+
+    // Custom clients can have any netmask and thus need to be tested if they are on the local net
+    for (const auto &client : customClients)
+    {
+        if ((client.ip & 0xFFFFFF) == networkAddress)
+        {
+            sendTo(client.ip, client.port, data);
+        }
+    }
+
+    if (auto guard = SemaphoreGuard(1000, mutex))
+    {
+        // printf("GDLoverUDP: %zu bytes sent\n", size);
+        gdlDataBuffer.compact();
     }
 }
 
-void GDLoverUDP::sendTo(etl::span<const uint8_t> part, uint32_t ip, int16_t port)
+void GDLoverUDP::sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data)
 {
     ip_addr_t addr;
     ip4_addr_set_u32(&addr, ip);
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, part.size(), PBUF_RAM);
-    if (!p)
+    struct pbuf *pbuf = pbuf_alloc(PBUF_TRANSPORT, data.size(), PBUF_POOL);
+    if (!pbuf)
     {
-        statistics.bufferAllocErr += 1;
         return;
     }
-
-    // printf("IP:%d.%d.%d.%d:%d  %02d:%02d:%02d\n",  ip4_addr1(&addr), ip4_addr2(&addr), ip4_addr3(&addr), ip4_addr4(&addr), port, time.hour, time.minute, time.second);
-    memcpy(p->payload, part.begin(), part.size());
-    err_t err = udp_sendto(pcb, p, &addr, port);
-    pbuf_free(p);
+    if (pbuf_take(pbuf, data.begin(), data.size()) != ERR_OK)
+    {
+        pbuf_free(pbuf);
+    }
+    err_t err = udp_sendto(pcb, pbuf, &addr, port);
+    pbuf_free(pbuf);
 
     if (err == ERR_OK)
     {

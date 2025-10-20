@@ -27,11 +27,15 @@ public:
     };
 
 private:
+    constexpr static int8_t DEFAULT_NUM_AUTOCLOSE = 8;
     struct tcp_pcb *pcb = nullptr;
     State state = State::Disconnected;
 
     GATAS::Config::IpPort ipPort;
-
+    // When in write it's noticed that the closed is closed, it will be automatically be re-opened
+    bool autoReConnect;
+    // Counter that closes the connection when reaches zero after failed writes. When 0, the conneciton is closed
+    int8_t closeConnectionCnt;
     ReceiveHandler onReceive;
     SentHandler onSent;
     ConnectHandler onConnect; // optional (can be empty)
@@ -42,6 +46,8 @@ public:
               SentHandler onSent_,
               ConnectHandler onConnect_ = ConnectHandler())
         : ipPort(ipPort_),
+          autoReConnect(false),
+          closeConnectionCnt(DEFAULT_NUM_AUTOCLOSE),
           onReceive(onReceive_),
           onSent(onSent_),
           onConnect(onConnect_)
@@ -49,12 +55,17 @@ public:
     }
 
     TcpClient(struct tcp_pcb *pcb, ReceiveHandler onReceive_)
-        : ipPort(GATAS::Config::IpPort{pcb->remote_ip.addr, pcb->remote_port}), onReceive(onReceive_)
+        : ipPort(GATAS::Config::IpPort{pcb->remote_ip.addr, pcb->remote_port}), autoReConnect(false), onReceive(onReceive_)
     {
         adopt(pcb);
     }
 
     ~TcpClient() = default;
+
+    void autoConnect(bool v)
+    {
+        autoReConnect = v;
+    }
 
     bool start()
     {
@@ -67,11 +78,15 @@ public:
         pcb = tcp_new_ip_type(IP_GET_TYPE(&remote_addr));
         if (!pcb)
         {
+#if GATAS_DEBUG == 1
             printf("TcpClient: failed to create PCB\n");
+#endif
+
             return false;
         }
 
         state = State::Connecting;
+        closeConnectionCnt = DEFAULT_NUM_AUTOCLOSE;
 
         tcp_arg(pcb, this);
         tcp_recv(pcb, tcp_client_recv);
@@ -82,10 +97,14 @@ public:
         err_t err = tcp_connect(pcb, &remote_addr, ipPort.port, tcp_client_connected);
         if (err != ERR_OK)
         {
+#if GATAS_DEBUG == 1
             printf("TcpClient: tcp_connect failed (%d)\n", err);
+#endif
             tcp_client_close(this);
             return false;
         }
+        tcp_set_flags(pcb, TF_ACK_NOW | TF_NODELAY);
+//        tcp_set_flags(pcb, TF_ACK_NOW | TF_NODELAY);
 
         return true;
     }
@@ -110,15 +129,78 @@ public:
         start();
     }
 
-    bool write(etl::span<const uint8_t> data)
+    bool write(etl::span<const uint8_t> data, bool flush = false)
     {
-        if (state != State::Connected || pcb == nullptr) {
+        if (state != State::Connected || pcb == nullptr)
+        {
+            if (autoReConnect && state == State::Disconnected)
+            {
+                reconnect();
+            }
+
             return false;
         }
 
         LwipLock lock;
-        err_t err = tcp_write(pcb, data.data(), data.size(), TCP_WRITE_FLAG_COPY);
-        return err == ERR_OK;
+        if (tcp_sndbuf(pcb) >= data.size())
+        {
+            err_t err = tcp_write(pcb, data.data(), data.size(), TCP_WRITE_FLAG_COPY | TCP_WRITE_FLAG_MORE);
+            if (err == ERR_OK)
+            {
+                if (flush)
+                {
+                    tcp_output(pcb);
+                }
+                return true;
+            }
+            else
+            {
+                // FLush the buffer to be sure
+                if (err == -1)
+                {
+                    tcp_output(pcb);
+                }
+                else if (err == -14 || err == -13 || err == -12)
+                {
+                    if (closeConnectionCnt == 0)
+                    {
+                        tcp_client_close(this);
+                    }
+                    else
+                    {
+                        closeConnectionCnt--;
+                    }
+                }
+
+
+                    if (closeConnectionCnt == 0)
+                    {
+                        tcp_client_close(this);
+                    }
+                    else
+                    {
+                        closeConnectionCnt--;
+                    }
+
+#if GATAS_DEBUG == 1
+                printf("TcpClient: Failed to write %d c:%d\n", err, closeConnectionCnt);
+#endif
+            }
+        }
+        else
+        {
+#if GATAS_DEBUG == 1
+            printf("TcpClient: Sendbuffer to small %u needed %u\n", tcp_sndbuf(pcb), data.size());
+#endif
+        }
+
+        return false;
+    }
+
+    bool flush()
+    {
+        LwipLock lock;
+        return tcp_output(pcb) == ERR_OK;
     }
 
     uint32_t ip() const { return ipPort.ip; }
@@ -131,11 +213,12 @@ public:
         }
         pcb = existing;
 
+        LwipLock lock;
         tcp_arg(pcb, this);
         tcp_recv(pcb, tcp_client_recv);
         tcp_err(pcb, tcp_client_err);
         tcp_sent(pcb, tcp_client_sent);
-        tcp_set_flags(pcb, TF_ACK_NOW); // <-- seems to be a must for airConnect?
+        tcp_set_flags(pcb, TF_ACK_NOW | TF_NODELAY);
         state = State::Connected;
     }
 
@@ -174,19 +257,30 @@ private:
         err_t err = tcp_close(self->pcb);
         if (err != ERR_OK)
         {
+#if GATAS_DEBUG == 1
             printf("TcpClient: close failed (%d), aborting\n", err);
+#endif
             tcp_abort(self->pcb);
         }
 
         self->pcb = nullptr;
         self->state = State::Disconnected;
+        if (self->onConnect.is_valid())
+        {
+            self->onConnect(false);
+        }
     }
 
     static void tcp_client_err(void *arg, err_t err)
     {
         TcpClient *self = static_cast<TcpClient *>(arg);
 
+#if GATAS_DEBUG == 1
         printf("TcpClient: error callback (%d)\n", err);
+#else
+        (void)err;
+#endif
+
         self->pcb = nullptr;
         self->state = State::Disconnected;
         if (self->onConnect.is_valid())
@@ -201,7 +295,9 @@ private:
 
         if (err != ERR_OK)
         {
+#if GATAS_DEBUG == 1
             printf("TcpClient: connect failed (%d)\n", err);
+#endif
             tcp_client_close(arg);
             if (self->onConnect.is_valid())
             {
@@ -288,7 +384,9 @@ public:
         listenPcb = tcp_new_ip_type(IPADDR_TYPE_V4);
         if (!listenPcb)
         {
+#if GATAS_DEBUG == 1
             printf("TcpListener: failed to create PCB\n");
+#endif
             return false;
         }
 
@@ -296,7 +394,9 @@ public:
         err_t err = tcp_bind(listenPcb, IP_ANY_TYPE, port);
         if (err != ERR_OK)
         {
+#if GATAS_DEBUG == 1
             printf("TcpListener: bind failed (%d)\n", err);
+#endif
             tcp_close(listenPcb);
             listenPcb = nullptr;
             return false;
@@ -305,14 +405,18 @@ public:
         listenPcb = tcp_listen_with_backlog(listenPcb, 4);
         if (!listenPcb)
         {
+#if GATAS_DEBUG == 1
             printf("TcpListener: listen failed\n");
+#endif
             return false;
         }
 
         tcp_arg(listenPcb, this);
         tcp_accept(listenPcb, &TcpListener::on_accept_static);
 
+#if GATAS_DEBUG == 1
         printf("TcpListener: listening on port %u\n", port);
+#endif
         return true;
     }
 

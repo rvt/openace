@@ -117,7 +117,10 @@ add_executable(${PROJECT_NAME} main.cpp IdleMemory.c)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor vendorLib)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../lib globalLib)
 
-target_include_directories(GaTas PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(GaTas PRIVATE 
+  ${CMAKE_CURRENT_LIST_DIR} 
+  ${CMAKE_CURRENT_LIST_DIR}/../lib/include)
+
 
 target_link_libraries(
   ${PROJECT_NAME}

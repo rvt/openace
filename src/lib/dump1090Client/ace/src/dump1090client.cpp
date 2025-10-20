@@ -70,15 +70,6 @@ void Dump1090Client::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void Dump1090Client::on_receive(const GATAS::Every5SecMsg &msg)
-{
-    (void)msg;
-    if (wifiConnected && ((tcpClient.ip() & 0xFFFFFF) == networkAddress))
-    {
-        tcpClient.reconnect();
-    }
-}
-
 void Dump1090Client::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
     wifiConnected = wcs.wifiMode != GATAS::WifiMode::NC;

@@ -6,9 +6,6 @@
 #include "FreeRTOS.h"
 #include "timers.h"
 
-/* LwIP */
-#include "lwip/udp.h"
-
 /* ETLCPP */
 #include "etl/message_bus.h"
 
@@ -28,53 +25,50 @@
 class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg>
 {
     friend class message_router;
+    // THis values have been empirical tested on a Red Mi Note 10
+    static constexpr size_t ANDROIDHOTSPOT_FIX_HIGHMARK = 128*3;
+    static constexpr size_t ANDROIDHOTSPOT_FIX_LOWMARK = 160;
+
     struct
     {
         uint32_t bytesReceived = 0;
         uint32_t bytesSend = 0;
         uint32_t pkgReceived = 0;
         uint32_t pkgSend = 0;
-        uint32_t bufferAllocErr = 0;
         uint32_t msgSendFailed = 0;
+        uint8_t startedCounter = 0;
         bool hasConnection = false;
     } statistics;
 
     bool wifiConnected;
-    uint8_t stoppedCounter;
     TimerHandle_t requestTimer = nullptr;
-    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
     GATAS::Config::IpPort gatasServer = {IPADDR_NONE, 0};
-    CobsStreamHandler cobsStreamHandler;
-
     uint64_t gatasId;
     uint32_t icaoAddress;
     uint32_t gatasIp;
-    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
-
-    TcpClient tcpClient;
     bool hasGpsFix;
+    // Fixes an issue with the Android Hotspot that would not route any small packages
+    // When this is set to true, larger packages are send
+    bool androidHotspotFix;
+    size_t androidHotspotCurrentMark;
+    uint32_t spinlock;
+
+    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
+    GATAS::OwnshipPositionInfo ownshipPosition;
+    CobsStreamHandler cobsStreamHandler;
+    TcpClient tcpClient;
 
 private:
     virtual GATAS::PostConstruct postConstruct() override;
-
     virtual void start() override;
-
     virtual void stop() override;
-
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
-
     void on_receive(const GATAS::DataPortMsg &msg);
-
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
-
     void on_receive(const GATAS::GpsStatsMsg &msg);
-
     void on_receive_unknown(const etl::imessage &msg);
-
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
-
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
-
     static void requestTimerCallback(TimerHandle_t xTimer);
     void tcpReceiveHandler(etl::span<uint8_t> data);
     void tcpSentHandler(uint16_t len);
@@ -85,18 +79,23 @@ public:
     static constexpr const char *NAME = "GatasConnect";
     GatasConnect(etl::imessage_bus &bus, Configuration &config) : BaseModule(bus, NAME),
                                                                   wifiConnected(false),
-                                                                  stoppedCounter(0),
+                                                                  requestTimer(nullptr),
+                                                                  gatasServer{IPADDR_NONE, 0},
+                                                                  gatasId(0),
+                                                                  icaoAddress(0),
+                                                                  gatasIp(0),
+                                                                  hasGpsFix(false),
+                                                                  androidHotspotFix(true),
+                                                                  androidHotspotCurrentMark(ANDROIDHOTSPOT_FIX_HIGHMARK),
                                                                   cobsStreamHandler(CobsStreamHandler(bus, config)),
                                                                   tcpClient(
-                                                                      GATAS::Config::IpPort{config.ipPortBypath(NAME).ip, 3000},
+                                                                      GATAS::Config::IpPort{config.ipPortBypath(NAME, "gatasServer").ip,  GATAS_CONNECT_PORT},
                                                                       TcpClient::ReceiveHandler::create<GatasConnect, &GatasConnect::tcpReceiveHandler>(*this),
-                                                                      TcpClient::SentHandler::create<GatasConnect, &GatasConnect::tcpSentHandler>(*this)
-                                                                    )
-                                                                      ,
-                                                                  hasGpsFix(false)
+                                                                      TcpClient::SentHandler::create<GatasConnect, &GatasConnect::tcpSentHandler>(*this))
     {
-        (void)config;
+        spinlock = spin_lock_claim_unused(true);
         getConfig(config);
+        tcpClient.autoConnect(true);
     }
 
     virtual ~GatasConnect() = default;

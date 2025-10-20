@@ -1,19 +1,20 @@
 #include <stdio.h>
 
-#include "../gatasconnect.hpp"
+#include "../gatasconnecttcp.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/binarymessages.hpp"
 #include "ace/cobs.hpp"
 #include "ace/assert.hpp"
 #include "ace/lwiplock.hpp"
+#include "ace/spinlockguard.hpp"
 
 /* LwIP */
 #include "lwip/ip_addr.h"
 #include "pico/cyw43_arch.h"
-#include "lwip/pbuf.h"
 
 GATAS::PostConstruct GatasConnect::postConstruct()
 {
+
     requestTimer = xTimerCreate(GatasConnect::NAME,
                                 TASK_DELAY_MS(1000),
                                 pdTRUE,
@@ -36,8 +37,8 @@ void GatasConnect::start()
 
 void GatasConnect::stop()
 {
-    xTimerStop(requestTimer, portMAX_DELAY);
     getBus().unsubscribe(*this);
+    xTimerStop(requestTimer, portMAX_DELAY);
 };
 
 void GatasConnect::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -48,8 +49,8 @@ void GatasConnect::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"bytesSend\":" << statistics.bytesSend;
     stream << ",\"pkgReceived\":" << statistics.pkgReceived;
     stream << ",\"pkgSend\":" << statistics.pkgSend;
-    stream << ",\"bufferAllocErr\":" << statistics.bufferAllocErr;
     stream << ",\"msgSendFailed\":" << statistics.msgSendFailed;
+    stream << ",\"hasConnection\":" << statistics.hasConnection;
     stream << "}\n";
 }
 
@@ -69,7 +70,10 @@ void GatasConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 
 void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition.store(msg.position, etl::memory_order_release);
+    if (auto guard = SpinlockGuard(spinlock))
+    {
+        ownshipPosition = msg.position;
+    }
 }
 
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -87,9 +91,12 @@ void GatasConnect::getConfig(const Configuration &config)
     gatasServer.port = GATAS_CONNECT_PORT;
 
     auto gatasConfig = config.gaTasConfig();
-    icaoAddress = config.gaTasConfig().conspicuity.icaoAddress;
-    allIcaoAddresses = config.gaTasConfig().allIcaoAddresses;
-    gatasId = config.internalStore()->gatasId;
+    if (auto guard = SpinlockGuard(spinlock))
+    {
+        icaoAddress = gatasConfig.conspicuity.icaoAddress;
+        allIcaoAddresses = gatasConfig.allIcaoAddresses;
+        gatasId = config.internalStore()->gatasId;
+    }
 }
 
 void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg)
@@ -99,19 +106,15 @@ void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg)
 
 void GatasConnect::tcpReceiveHandler(etl::span<uint8_t> data)
 {
-
-    // Reset the pkgCount to get a honest pkgSend vs pkg Received
-    if (!statistics.hasConnection)
-    {
-        statistics.pkgReceived = 0;
-        statistics.hasConnection = true;
-    }
+    androidHotspotCurrentMark = ANDROIDHOTSPOT_FIX_LOWMARK;
     statistics.bytesReceived += data.size();
     statistics.pkgReceived += 1;
 
-    printf("COBS Size %d", data.size());
-
-    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+    GATAS::OwnshipPositionInfo ownship;
+    if (auto guard = SpinlockGuard(spinlock))
+    {
+        ownship = ownshipPosition;
+    }
     cobsStreamHandler.handle(ownship.lat, ownship.lon, data);
 }
 
@@ -120,26 +123,14 @@ void GatasConnect::tcpSentHandler(uint16_t data)
     (void)data;
 }
 
-
 /**
  * Prepare a position request to the server, the serveer will then send aircraft information back
  */
 void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 {
+    (void)xTimer;
+
     GatasConnect *taskCtx = (GatasConnect *)pvTimerGetTimerID(xTimer);
-    if (!taskCtx->wifiConnected) {
-        return;
-    }
-    if (taskCtx->tcpClient.isDisconnected())
-    {
-        taskCtx->stoppedCounter++;
-        taskCtx->tcpClient.start();
-    }
-    if (taskCtx->tcpClient.isConnected())
-    {
-        xTimerChangePeriod(taskCtx->requestTimer, TASK_DELAY_MS(1000), portMAX_DELAY);
-        return;
-    }
 
     constexpr size_t COBS_EXTRA_BYTES = 3;
     constexpr size_t OWN_MAX = BinaryMessages::serializeOwnshipPositionSizeV1().items();
@@ -149,29 +140,59 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     const size_t ownshipSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1);
     const size_t configSize = BinaryMessages::serializeAircraftConfigurationSizeV1().items(taskCtx->allIcaoAddresses.size());
     GATAS_ASSERT((etl::max(ownshipSize, configSize) + COBS_EXTRA_BYTES) < 255, "COBS max length exceeded");
+    //    printf("Max Size: %u, %u,%u, %u, %u\n", OWN_MAX, CFG_MAX, ownshipSize, configSize, etl::max(ownshipSize, configSize));
 
-    etl::array<uint8_t, MAX_MSG + COBS_EXTRA_BYTES> cobsPayload;
+    if (!taskCtx->wifiConnected)
+    {
+        return;
+    }
+
+    static_assert((MAX_MSG + COBS_EXTRA_BYTES) < ANDROIDHOTSPOT_FIX_HIGHMARK, "Data object can be bigger than ANDROIDHOTSPOT_FIX_HIGHMARK");
+    etl::array<uint8_t, ANDROIDHOTSPOT_FIX_HIGHMARK> cobsPayload;
     size_t position = 0;
     etl::array<uint8_t, OWN_MAX + MAX_MSG + COBS_EXTRA_BYTES * 2> perCobsBuffer;
     etl::bit_stream_writer writer(perCobsBuffer.data(), perCobsBuffer.size(), etl::endian::big);
 
-    // --- Ownship (optional)
-    if (taskCtx->hasGpsFix)
+    if (auto guard = SpinlockGuard(taskCtx->spinlock))
     {
+        // --- Ownship (optional)
+        if (taskCtx->hasGpsFix)
+        {
+            writer.restart();
+            // 28 Byte
+            BinaryMessages::serializeOwnshipPositionV1(writer, taskCtx->ownshipPosition);
+            auto size = encodeCOBS(perCobsBuffer.data(), ownshipSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
+            position += size;
+        }
+
+        // --- Aircraft configuration (always send)
         writer.restart();
-        BinaryMessages::serializeOwnshipPositionV1(writer, taskCtx->ownshipPosition.load(etl::memory_order_acquire));
-        auto size = encodeCOBS(perCobsBuffer.data(), ownshipSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
+        // 22 Byte
+        BinaryMessages::serializeAircraftConfigurationV1(writer, taskCtx->gatasId, taskCtx->icaoAddress, taskCtx->allIcaoAddresses, taskCtx->gatasIp);
+        auto size = encodeCOBS(perCobsBuffer.data(), configSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
         position += size;
     }
 
-    // --- Aircraft configuration (always send)
-    writer.restart();
-    BinaryMessages::serializeAircraftConfigurationV1(writer, taskCtx->gatasId, taskCtx->icaoAddress, taskCtx->allIcaoAddresses, taskCtx->gatasIp);
-    auto size = encodeCOBS(perCobsBuffer.data(), configSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
-    position += size;
+    if (taskCtx->androidHotspotFix)
+    {
+        size_t toFill = taskCtx->androidHotspotCurrentMark - position;
+        if (toFill>0) {
+            memset(cobsPayload.begin() + position, 0x00, toFill);
+            position = taskCtx->androidHotspotCurrentMark;
+        }
+    }
 
     // --- Send
-    taskCtx->tcpClient.write(etl::span<uint8_t>(cobsPayload.begin(), position));
-
-    xTimerChangePeriod(taskCtx->requestTimer, TASK_DELAY_MS(1000), portMAX_DELAY);
+    if (taskCtx->tcpClient.write(etl::span<uint8_t>(cobsPayload.begin(), position), true))
+    {
+        taskCtx->statistics.hasConnection = true;
+        taskCtx->statistics.pkgSend += 1;
+        taskCtx->statistics.bytesSend += position;
+    }
+    else
+    {
+        taskCtx->statistics.msgSendFailed += 1;
+        taskCtx->statistics.hasConnection = false;
+        taskCtx->androidHotspotCurrentMark = ANDROIDHOTSPOT_FIX_HIGHMARK;
+    }
 }

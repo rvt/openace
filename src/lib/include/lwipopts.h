@@ -7,26 +7,42 @@
 #define LWIP_SOCKET                 1
 
 #define MEM_ALIGNMENT               4
-#define MEM_SIZE                    4500
-#define MEMP_NUM_TCP_SEG            32
+#define MEM_SIZE                    4096
+#define MEMP_NUM_TCP_SEG            16
 #define MEMP_NUM_ARP_QUEUE          10
-#define PBUF_POOL_SIZE              24
+
+// This is calculated see opt.h
+// #define PBUF_POOL_BUFSIZE           LWIP_MEM_ALIGN_SIZE(TCP_MSS+40+PBUF_LINK_ENCAPSULATION_HLEN+PBUF_LINK_HLEN)
+#if defined(PICO_RP2350)
+#define PBUF_POOL_SIZE              16
+#else
+#define PBUF_POOL_SIZE              8
+#endif
+
+// Enable logging to see the actualy usage. See main.cpp / LWiP Status:
+#define MEMP_NUM_UDP_PCB            6
+// re-check with mDNS, this used to be 6
+#define MEMP_NUM_TCP_PCB            8
+#define MEM_LIBC_MALLOC             0
+
+// Keep MEMP_MEM_MALLOC off so LWiP uses the pool
+#define MEMP_MEM_MALLOC             0
+#define MEM_USE_POOLS               1
+#define MEMP_USE_CUSTOM_POOLS       1
+#define MEM_USE_POOLS_TRY_BIGGER_POOL  0
+#define TCP_MSS                     536
+#define TCP_WND                     (4 * TCP_MSS)
+#define TCP_SND_BUF                 (4 * TCP_MSS)
+
 #define LWIP_ARP                    1
 #define LWIP_ETHERNET               1
 #define LWIP_ICMP                   1
 #define LWIP_RAW                    0
-#define TCP_WND                     (8 * TCP_MSS)
-#define TCP_MSS                     1460
-#define TCP_SND_BUF                 (8 * TCP_MSS)
 #define TCP_SND_QUEUELEN            ((4 * (TCP_SND_BUF) + (TCP_MSS - 1)) / (TCP_MSS))
 #define LWIP_NETIF_STATUS_CALLBACK  1
 #define LWIP_NETIF_LINK_CALLBACK    1
 #define LWIP_NETIF_HOSTNAME         1
 #define LWIP_NETCONN                0
-#define MEM_STATS                   0
-#define SYS_STATS                   0
-#define MEMP_STATS                  0
-#define LINK_STATS                  0
 
 #define LWIP_CHKSUM_ALGORITHM       3
 #define LWIP_DHCP                   1
@@ -40,6 +56,12 @@
 #define LWIP_DHCP_DOES_ACD_CHECK    0
 
 #if !defined(NDEBUG) && GATAS_LWIP_DEBUG
+
+#define MEM_STATS                   1
+#define SYS_STATS                   1
+#define MEMP_STATS                  1
+#define LINK_STATS                  0
+
 #define LWIP_DEBUG                  1
 #define LWIP_STATS                  1
 #define LWIP_STATS_DISPLAY          1

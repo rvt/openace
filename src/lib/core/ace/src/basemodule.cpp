@@ -89,7 +89,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
                 return it->second.module;
             }
         }
-        printf("Module %s requests dependecy on %s but it is not registered\n", that.name().cbegin(), requesting.cbegin());
+        printf("Module %s requests dependecy on %s but it is not registered ", that.name().cbegin(), requesting.cbegin());
     }
 
     return nullptr;

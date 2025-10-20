@@ -111,7 +111,7 @@ private:
             etl::vector<GATAS::Modulename, 7> path;
         };
 
-        auto pathParsed = CoreUtils::parsePath(path);
+        auto pathParsed = CoreUtils::parsePath(path, "");
         if (fullPath)
         {
             pathParsed.erase(pathParsed.begin(), pathParsed.begin() + 2); // Removes /api/_Configuration path

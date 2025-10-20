@@ -17,6 +17,7 @@
 #define DEFAULT_UDP_RECVMBOX_SIZE 8
 #define DEFAULT_TCP_RECVMBOX_SIZE 8
 #define TCPIP_MBOX_SIZE 8
+
 #define LWIP_TIMEVAL_PRIVATE 0
 #define LWIP_TCPIP_CORE_LOCKING_INPUT 1
 
@@ -27,7 +28,6 @@
 #define MDNS_RESP_USENETIF_EXTCALLBACK  1
 // Increased to 8 t0 prevent sys_timeout: timeout != NULL, pool MEMP_SYS_TIMEOUT is empty
 #define MEMP_NUM_SYS_TIMEOUT (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 8)
-#define MEMP_NUM_TCP_PCB 12
 // END: The following is needed to test mDns
 
 // Create dynamic headers based on the files extension
@@ -159,3 +159,10 @@
     Type& operator=(const Type&) = delete; \
     Type(Type&&) = delete;                 \
     Type& operator=(Type&&) = delete;
+
+
+// Maximum number of customer UDP ports to send on
+#define GATAS_GDL90OVERUDP_MAX_PORTS  ( 2 )
+// Maximum custom clients
+#define GATAS_GDL90OVERUDP_MAX_CUSTOM_CLIENTS ( 2 )
+

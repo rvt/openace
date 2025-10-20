@@ -16,6 +16,7 @@
 
 void Sx1262::start()
 {
+    sx126x_reset(this);
     getBus().subscribe(*this);
 };
 

@@ -83,6 +83,10 @@ public:
     {
         client.stop();
     }
+    void autoConnect(bool v)
+    {
+        client.autoConnect(v);
+    }
     bool write(etl::span<uint8_t> data)
     {
         if (sendBuffer.packets())

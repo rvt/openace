@@ -72,12 +72,12 @@ TEST_CASE("Fully Configured", "[single-file]")
 
     SECTION("Arrays")
     {
-        // char path[] = "defaultPorts/X";
-        // path[sizeof(path) - 2] = i;
-        // int32_t port = config.valueByPath(GDL90OVERUDP_DEFAULT_PORT, NAME, path);
-
         REQUIRE(4000 == config.valueByPath(1, "GDLoverUDP/defaultPorts/0", ""));
         REQUIRE(4001 == config.valueByPath(1, "GDLoverUDP/defaultPorts/1", ""));
+
+        REQUIRE(4000 == config.valueByPath(1, "GDLoverUDP", "defaultPorts/0"));
+        REQUIRE(4001 == config.valueByPath(1, "GDLoverUDP", "defaultPorts/1"));
+
         auto value = config.strValueByPath("-", "GDLoverUDP/ips/0", "ip");
         etl::string<24> expect = "192.168.178.192";
         REQUIRE(expect == value);

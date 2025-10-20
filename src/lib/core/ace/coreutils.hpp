@@ -469,7 +469,7 @@ public:
      * Parse an path in the form of /foo/bar/bas.extension
      * returns a vector with foo, bar, bas, extension
      */
-    static const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path);
+    static const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path, const etl::string_view key="");
 
     /**
      * Devide a circle in a number of sections.

@@ -53,7 +53,7 @@
 #include "ace/gdloverudp.hpp"
 #include "ace/dataport.hpp"
 #include "ace/airconnect.hpp"
-#include "ace/gatasconnect.hpp"
+#include "ace/gatasconnecttcp.hpp"
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
 
@@ -221,21 +221,21 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
     if (registeredModules[str].hwCheck && config.pinMap(str).empty())
     {
         BaseModule::setModuleStatus(str, GATAS::PostConstruct::HARDWARE_NOT_CONFIGURED);
-        printf("\nModule %s has no hardware configuration", str.cbegin());
+        printf("\nModule %s has no hardware configuration ", str.cbegin());
         return;
     }
+
+    printf("\nLoading %s ... ", str.cbegin());
 
     if (!(config.isModuleEnabled(str) || force))
     {
-        printf("\nModule %s disabled", str.cbegin());
+        printf("disabled ");
         return;
     }
 
-    printf("\nLoading %s ...", str.cbegin());
-
     if (!registeredModules.contains(str))
     {
-        printf(" -> not Found");
+        printf("-> not Found ");
         return;
     }
 
@@ -243,22 +243,22 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
 
     if (!client)
     {
-        printf(" -> out of memory");
+        printf("-> out of memory ");
         return;
     }
 
-    printf(" -> PostConstruct() ");
+    printf("-> PostConstruct() ");
     auto result = client->postConstruct();
     if (result == GATAS::PostConstruct::OK)
     {
         BaseModule::setModuleStatus(str, client);
-        printf(" -> start() ");
+        printf("-> start() ");
         client->start();
     }
     else
     {
         BaseModule::setModuleStatus(str, result);
-        printf(" -> Unloading reason [%s]", postConstructToString(result));
+        printf("-> Unloading reason [%s] ", postConstructToString(result));
         delete client;
     }
 }
@@ -322,7 +322,7 @@ static void loadModules(void *arch)
     // load(SerialADSB::NAME, bus, config);
     // puts("\033[2J\033[H");
 
-    puts("All modules loaded!\n");
+    puts("\nAll modules loaded!\n");
 
     printf(
         R"=(
@@ -400,6 +400,24 @@ static void gaTasIdleTask(void *arch)
             }
             else if (msgFlags & DO_15S)
             {
+
+#if GATAS_DEBUG == 1
+                    puts("\033[2J\033[H\n\nLWiP Status:");
+                for (int i = 0; i < MEMP_MAX; i++)
+                {
+                    const struct memp_desc *desc = memp_pools[i];
+                    if (desc == NULL)
+                        continue;
+
+                    struct stats_mem *stats = desc->stats;
+                    printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
+                           desc->desc,
+                           (unsigned int)(stats->avail),
+                           (unsigned int)(stats->used),
+                           (unsigned int)(stats->max),
+                           (unsigned int)(stats->err));
+                }
+#endif
                 bus.receive(GATAS::Every15SecMsg());
                 msgFlags &= ~DO_15S;
             }
@@ -487,6 +505,24 @@ void vDiagnosticsTask(void *pvParameters)
             }
             vPortFree(taskStatusArray);
         }
+
+#if defined(LWIP_DEBUG) || MEMP_OVERFLOW_CHECK || LWIP_STATS_DISPLAY
+        puts("\n\nLWiP Status:");
+        for (int i = 0; i < MEMP_MAX; i++)
+        {
+            const struct memp_desc *desc = memp_pools[i];
+            if (desc == NULL)
+                continue;
+
+            struct stats_mem *stats = desc->stats;
+            printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
+                   desc->desc,
+                   (unsigned int)(stats->avail),
+                   (unsigned int)(stats->used),
+                   (unsigned int)(stats->max),
+                   (unsigned int)(stats->err));
+        }
+#endif
 
         ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(5000));
     }
@@ -587,7 +623,7 @@ int main()
     while (true)
         ;
 #else
-    printf("        Starting %s on core 0:\n\n", rtos_name);
+    printf("        Starting %s on core 0 %dMHZ:\n\n", rtos_name, at200Mhz ? 200 : 125);
     vLaunch();
 #endif
 
