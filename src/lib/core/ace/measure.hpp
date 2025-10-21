@@ -59,23 +59,18 @@ struct Measure
         return duration > alertTimeout_;
     }
 };
+
+#define MEASURE_CONCAT(a, b) MEASURE_CONCAT_INNER(a, b)
+#define MEASURE_CONCAT_INNER(a, b) a##b
+#define MEASURE_UNIQUE_NAME(base) MEASURE_CONCAT(base, __COUNTER__)
+
+#define GATAS_MEASURE(name, ...) auto MEASURE_UNIQUE_NAME(measure) = Measure{name, ##__VA_ARGS__}
+#define GATAS_MEASURE_M(name, ...) auto measure = Measure{name, ##__VA_ARGS__}
+
 #else
-struct Measure
-{
-    Measure() {}
-    Measure(const etl::string_view) {}
-    Measure(const etl::string_view, uint32_t) {}
-    Measure(const etl::string_view, uint32_t, uint32_t) {}
 
-    ~Measure() {}
 
-    Measure(const Measure &) = delete;
-    Measure &operator=(const Measure &) = delete;
+#define GATAS_MEASURE(name, ...) (void(0)) 
+#define GATAS_MEASURE_M(name, ...) auto measure = false
 
-    operator bool() const
-    {
-        return false;
-    }
-
-};
 #endif

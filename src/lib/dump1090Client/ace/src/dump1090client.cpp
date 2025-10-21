@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include "../dump1090client.hpp"
-#include "ace/assert.hpp"
 #include "ace/coreutils.hpp"
 #include "etl/error_handler.h"
 

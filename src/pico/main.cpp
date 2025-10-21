@@ -363,7 +363,7 @@ static void gaTasIdleTask(void *arch)
         uint32_t tick = CoreUtils::secondsSinceEpoch();
 
         if (cyw43_arch_async_context())
-        {
+        {            
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
             gpio_put(ledStatusIndicatorPin, 1);
             vTaskDelay(TASK_DELAY_MS(100));
@@ -401,23 +401,23 @@ static void gaTasIdleTask(void *arch)
             else if (msgFlags & DO_15S)
             {
 
-#if GATAS_DEBUG == 1
-                    puts("\033[2J\033[H\n\nLWiP Status:");
-                for (int i = 0; i < MEMP_MAX; i++)
-                {
-                    const struct memp_desc *desc = memp_pools[i];
-                    if (desc == NULL)
-                        continue;
+// #if GATAS_DEBUG == 1
+//                     puts("\033[2J\033[H\n\nLWiP Status:");
+//                 for (int i = 0; i < MEMP_MAX; i++)
+//                 {
+//                     const struct memp_desc *desc = memp_pools[i];
+//                     if (desc == NULL)
+//                         continue;
 
-                    struct stats_mem *stats = desc->stats;
-                    printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
-                           desc->desc,
-                           (unsigned int)(stats->avail),
-                           (unsigned int)(stats->used),
-                           (unsigned int)(stats->max),
-                           (unsigned int)(stats->err));
-                }
-#endif
+//                     struct stats_mem *stats = desc->stats;
+//                     printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
+//                            desc->desc,
+//                            (unsigned int)(stats->avail),
+//                            (unsigned int)(stats->used),
+//                            (unsigned int)(stats->max),
+//                            (unsigned int)(stats->err));
+//                 }
+// #endif
                 bus.receive(GATAS::Every15SecMsg());
                 msgFlags &= ~DO_15S;
             }
@@ -454,10 +454,8 @@ void vDiagnosticsTask(void *pvParameters)
         bool hasRunTimeStats = false;
 
 // Optional: Get CPU usage stats (needs run time counter)
-#ifdef configGENERATE_RUN_TIME_STATS
         vTaskGetRunTimeStats(runTimeStats);
         hasRunTimeStats = true;
-#endif
 
         // Clear screen and print header
         puts("\033[2J\033[H");

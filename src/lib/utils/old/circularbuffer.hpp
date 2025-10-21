@@ -115,9 +115,7 @@ public:
         }
 
         // Buffer is wrapped — not supported without a temporary buffer
-#if GATAS_DEBUG == 1 
-        puts("CircularBuffer: Wrap not supported");
-#endif    
+        GATAS_LOG("CircularBuffer: Wrap not supported");
         return false;
     }
 

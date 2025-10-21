@@ -21,7 +21,7 @@ private:
     // Try to ensure that XX is minimally free to allow for burst of new aircraft
     static constexpr uint8_t ADAPTIVE_RADIUS_MIN_FREE = 4;
     // When less than X persentage the buffers is full, start ioncreaing the adaptive radius
-    static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_INCREASE = 75; 
+    static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_INCREASE = 75;
     // When buffer needs to cleanup because nearly full, keep XX percebtage of all aircraft
     static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_KEEP = 90;
     static constexpr uint32_t HEARTBEAT_TIME = 1'000'000;
@@ -74,7 +74,7 @@ private:
             adaptiveRadius = etl::round_floor_scaled<500>(*it);
             return true;
         }
-        else if (size < SIZE - ADAPTIVE_RADIUS_MIN_FREE )
+        else if (size < SIZE - ADAPTIVE_RADIUS_MIN_FREE)
         {
             increaseAdaptiveRadius();
         }
@@ -158,7 +158,7 @@ public:
 
     bool insert(GATAS::AircraftPositionInfo &position)
     {
-        auto m = Measure("TrackerData::insert ", 400);
+        GATAS_MEASURE("TrackerData::insert ", 400);
         if (position.distanceFromOwn > adaptiveRadius)
         {
             return false;
@@ -173,8 +173,9 @@ public:
             }
         }
 
-        if (trackedAircraft.full()) {
-            // puts("TrackerData: We should never end up here");
+        if (trackedAircraft.full())
+        {
+            GATAS_VERIFY(false, "TrackerData: Should never be full");
             return false;
         }
 

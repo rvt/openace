@@ -154,7 +154,7 @@ void GDLoverUDP::transmitBuffer()
         return;
     }
 
-    auto m = Measure("GDLoverUDP::transmitBuffer ", 5000);
+    GATAS_MEASURE("GDLoverUDP::transmitBuffer ", 5000);
 
     // Calculate how many pbufs we needna d reference them
     uint8_t totalpBufs = connectedClients.size() * udpPorts.size() + gateWayClient ? udpPorts.size() : 0;

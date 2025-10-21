@@ -314,12 +314,7 @@ void Bluetooth::attContextCallback(void *context)
             }
         }
 
-#if GATAS_DEBUG == 1
-        if (sendStatus != ERROR_CODE_SUCCESS)
-        {
-            puts("Bluetooth: Send Failed");
-        }
-#endif
+        GATAS_ASSERT(sendStatus == ERROR_CODE_SUCCESS, "Bluetooth: Send Failed");
     }
 }
 
@@ -376,7 +371,6 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
 
         case ATT_EVENT_DISCONNECTED:
         {
-            // puts("ATT_EVENT_DISCONNECTED");
             Bluetooth::removeConnection(att_event_disconnected_get_handle(packet));
             gap_disconnect(att_event_disconnected_get_handle(packet));
         }
@@ -509,7 +503,6 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
         Bluetooth::withHandle(con_handle, 
             etl::delegate<void(BtContext &)>::create([buffer](BtContext &ctx)
             {
-                // puts("ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_CLIENT_CONFIGURATION_HANDLE");
                 ctx.readyState |= little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION ? Bluetooth::CONN_READY : 0b000;
                 ctx.attrHandle = ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE;
             }
@@ -536,7 +529,6 @@ uint16_t Bluetooth::attReadCallback(hci_con_handle_t connection_handle, uint16_t
     UNUSED(connection_handle);
     if (att_handle == ATT_CHARACTERISTIC_GAP_DEVICE_NAME_01_VALUE_HANDLE)
     {
-        puts("Read requested");
         return att_read_callback_handle_blob((const uint8_t *)Bluetooth::instance->localName.c_str(), Bluetooth::instance->localName.size(), offset, buffer, buffer_size);
     }
     return 0;

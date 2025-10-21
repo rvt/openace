@@ -4,7 +4,6 @@
 #include "ace/coreutils.hpp"
 #include "ace/binarymessages.hpp"
 #include "ace/cobs.hpp"
-#include "ace/assert.hpp"
 #include "ace/lwiplock.hpp"
 #include "ace/spinlockguard.hpp"
 

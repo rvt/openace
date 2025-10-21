@@ -71,15 +71,15 @@ void AirConnect::on_receive(const GATAS::Every5SecMsg &msg)
 
 void AirConnect::tcpAcceptHandler(struct tcp_pcb *pcb)
 {
-    auto guard = SemaphoreGuard<true>(5, mutex);
-    if (!connectedClients.full())
+    if (connectedClients.full())
     {
+        statistics.toManyClients++;
+    } else {
+        auto guard = SemaphoreGuard<true>(1000, mutex);
         auto &client = connectedClients.emplace_back(pcb, this);
         (void)client;
         client.write("AOK");
         statistics.newClientConnection++;
-    } else {
-        statistics.toManyClients++;
     }
 }
 

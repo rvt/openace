@@ -139,7 +139,7 @@ public:
             // These Routines usToReferenceRaw/usToReference/usDiff/isUsReached/isUsReachedRaw/timeUs32/timeUs32Raw are designed
             // for short durations only, eg what will happen in the next second, or perhaps a few minutes. They are not suitable for
             // very long delays. They can only be used up to 30minutes maximum before counters start to wrap over (wrap over is at ~ 1.2hour)
-            puts("WARNING: Large references far in the future are not expected from usToReference, please check code.");
+            GATAS_VERIFY(false, "WARNING: Large references far in the future are not expected from usToReference, please check code.");
         }
 #endif
         return diff;
@@ -155,7 +155,7 @@ public:
             // for short durations only, eg what will happen in the next second, or perhaps a few minutes. They are not suitable for
             // very long delays. They can only be used up to 30minutes maximum before counters start to wrap over (wrap over is at ~ 1.2hour)
             // This is for developers only
-            puts("WARNING: Large references far in the future are not expected from usToReferenceRaw, please check code.");
+            GATAS_VERIFY(false, "WARNING: Large references far in the future are not expected from usToReferenceRaw, please check code.");
         }
 #endif
         return diff;

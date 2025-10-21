@@ -1,5 +1,13 @@
 #pragma once
 
+// Bitmask for modules
+#define GATAS_LOG_TCPCLIENT      (1u << 0)
+#ifndef GATAS_LOG_ACTIVE_MODULES
+#define GATAS_LOG_ACTIVE_MODULES ( GATAS_LOG_TCPCLIENT )
+#endif
+
+
+
 // ***** Networking
 // NO_SYS should have been set by pico_cyw43_arch_lwip_sys_freertos but somehow it's not added
 #define NO_SYS 0 
@@ -71,7 +79,6 @@
 // Other's that could help debugging problems
 // #define HTTPD_DEBUG LWIP_DBG_ON
 // #define RUN_FREE_RTOS_ON_CORE ( 1 )
-
 #endif
 // END: ***** Debugging PICO items
 
