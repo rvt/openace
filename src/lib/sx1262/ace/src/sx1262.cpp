@@ -16,6 +16,7 @@
 
 void Sx1262::start()
 {
+    sx126x_reset(this);
     getBus().subscribe(*this);
 };
 
@@ -61,7 +62,7 @@ GATAS::PostConstruct Sx1262::postConstruct()
     // https://forum.lora-developers.semtech.com/t/sx126x-device-id/1508
     if (strncmp(data, "SX126", 5) != 0)
     {
-        printf("Expected SX126X, but found [%s] ", data);
+        GATAS_LOG("Expected SX126X, but found [%s] ", data);
         return GATAS::PostConstruct::HARDWARE_NOT_FOUND;
     }
     printf(" found [%s] (Sx1261 is normal for a Sx1262) ", data);
@@ -74,7 +75,7 @@ GATAS::PostConstruct Sx1262::postConstruct()
     }
     registerPinInterrupt(dio1Pin, GPIO_IRQ_EDGE_RISE, taskHandle, 0);
 
-    printf("Initialised on cs:%d busy:%d dio1:%d ", csPin, busyPin, dio1Pin);
+    GATAS_LOG("Initialised on cs:%d busy:%d dio1:%d ", csPin, busyPin, dio1Pin);
 
     // Make the SPI pins available to picotool
     bi_decl(bi_1pin_with_name(static_cast<uint32_t>(csPin), NAMES[radioNo].cbegin()));
@@ -204,7 +205,7 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
 
     if (newParameters.config->pcId != lastPcId)
     {
-        auto m = Measure("Sx1262 configureSx1262", 1000);
+        GATAS_MEASURE("Sx1262 configureSx1262", 1000);
 
         // This routines takes about 250us
         if (newParameters.config->mode == GATAS::Modulation::GFSK)
@@ -438,14 +439,14 @@ void Sx1262::standBy()
 
 void Sx1262::checkAndClearDeviceErrors()
 {
-    auto m = Measure("Sx1262 checkAndClearDeviceErrors", 200);
+    GATAS_MEASURE("Sx1262 checkAndClearDeviceErrors", 200);
     sx126x_errors_mask_t errors;
     sx126x_status_t status = sx126x_get_device_errors(this, &errors);
     if (status != SX126X_STATUS_OK && ((uint8_t)errors) != 0)
     {
         statistics.deviceErrors += 1;
         sx126x_clear_device_errors(this);
-        printf("Device Error: %d\n", errors);
+        GATAS_LOG("Device Error: %d\n", errors);
     }
 }
 
@@ -464,14 +465,14 @@ void Sx1262::sendPacket(const TxPacket &txPacket)
 
     if (txPacket.radioParameters.config->mode == GATAS::Modulation::GFSK)
     {
-        auto m = Measure("Sx1262 sendGFSKPacket", 800);
+        GATAS_MEASURE("Sx1262 sendGFSKPacket", 800);
         uint8_t frame[GATAS::RADIO_MAX_GFX_FRAME_LENGTH * 2];
         manchesterEncode(frame, txPacket.data, txPacket.length);
         sendGFSKPacket(txPacket.radioParameters, frame, txPacket.length * 2);
     }
     else if (txPacket.radioParameters.config->mode == GATAS::Modulation::LORA)
     {
-        auto m = Measure("Sx1262 sendLORAPacket", 100);
+        GATAS_MEASURE("Sx1262 sendLORAPacket", 100);
         sendLORAPacket(txPacket.radioParameters, txPacket.data, txPacket.length);
     }
 }
@@ -528,7 +529,7 @@ void Sx1262::sx1262Task(void *arg)
                 // printf("Radio %d Packet RX: %s timeMs:%d\n", sx1262->radioNo, GATAS::toString(sx1262->rxRadioParameters.config->dataSource), CoreUtils::msInSecond());
                 if (sx1262->rxRadioParameters.config->mode == GATAS::Modulation::GFSK)
                 {
-                    auto m = Measure("Receive receiveGFSKPacket (takes about 1.5ms)", 1500, sx1262->radioNo);
+                    GATAS_MEASURE("Receive receiveGFSKPacket (takes about 1.5ms)", 1500, sx1262->radioNo);
                     bool doSend;
                     if (auto guard = aceSpi->getLock(doSend))
                     {
@@ -539,7 +540,7 @@ void Sx1262::sx1262Task(void *arg)
                 }
                 else if (sx1262->rxRadioParameters.config->mode == GATAS::Modulation::LORA)
                 {
-                    auto m = Measure("Receive receiveLoraPacket", 0, sx1262->radioNo);
+                    GATAS_MEASURE("Receive receiveLoraPacket", 0, sx1262->radioNo);
                     bool doSend;
                     if (auto guard = aceSpi->getLock(doSend))
                     {
@@ -557,7 +558,7 @@ void Sx1262::sx1262Task(void *arg)
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
-                    auto m = Measure("Send Packet", 1000, sx1262->radioNo);
+                    GATAS_MEASURE("Send Packet", 1000, sx1262->radioNo);
                     // printf("%8ld TX Packet ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(txPacket.radioParameters.config->dataSource));
                     txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     sx1262->sendPacket(txPacket);

@@ -24,10 +24,10 @@
  */
 class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GATAS::GdlMsg, GATAS::AccessPointClientsMsg, GATAS::ConfigUpdatedMsg, GATAS::WifiConnectionStateMsg>
 {
-    static constexpr uint16_t GDL90OVERUDP_DEFAULT_PORT = 4000;                                   // Default port
-    static constexpr uint8_t GDL90OVERUDP_MAX_PORTS = 4;                                          // Maximum number of customer UDP ports to send on
-    static constexpr uint8_t GDL90OVERUDP_MAX_CUSTOM_CLIENTS = 4;                                 // Maximum custom clients
-    static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(GATAS::GDLData));   // Number of GDL packets that can be buffered
+    friend class message_router;
+
+    static constexpr uint16_t GDL90OVERUDP_DEFAULT_PORT = 4000;                                 // Default port
+    static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(GATAS::GDLData)); // Number of GDL packets that can be buffered
     static constexpr uint16_t UDP_BUFFER_SIZE = NUM_GDL_PACKETS * sizeof(GATAS::GDLData);
 
     enum TaskState : uint32_t
@@ -47,17 +47,25 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     uint32_t networkAddress;
     TaskHandle_t taskHandle;
     SemaphoreHandle_t mutex;
-    etl::list<GATAS::Config::IpPort, GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
+    etl::list<GATAS::Config::IpPort, GATAS_GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
     uint32_t gateWayClient;
     bool wifiConnected;
     etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
-    etl::set<uint16_t, GDL90OVERUDP_MAX_PORTS> udpPorts = {};
+    etl::set<uint16_t, GATAS_GDL90OVERUDP_MAX_PORTS> udpPorts = {};
 
     PacketBuffer<UDP_BUFFER_SIZE, NUM_GDL_PACKETS> gdlDataBuffer;
 
 private:
     void getConfiguration(const Configuration &config);
     void getConfigurationNoMutex(const Configuration &config);
+    void on_receive_unknown(const etl::imessage &msg);
+    void on_receive(const GATAS::AccessPointClientsMsg &msg);
+    void on_receive(const GATAS::WifiConnectionStateMsg &msg);
+    void on_receive(const GATAS::GdlMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
+    static void gdlOverUDPTask(void *arg);
+    void transmitBuffer();
+    void sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data);
 
 public:
     static constexpr const etl::string_view NAME = "GDLoverUDP";
@@ -79,20 +87,4 @@ public:
     virtual void start() override;
 
     virtual void stop() override;
-
-    void on_receive_unknown(const etl::imessage &msg);
-
-    void on_receive(const GATAS::AccessPointClientsMsg &msg);
-
-    void on_receive(const GATAS::WifiConnectionStateMsg &msg);
-
-    void on_receive(const GATAS::GdlMsg &msg);
-
-    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
-
-    static void gdlOverUDPTask(void *arg);
-
-    void transmitBuffer();
-
-    void sendTo(etl::span<const uint8_t> part, uint32_t ip, int16_t port);
 };

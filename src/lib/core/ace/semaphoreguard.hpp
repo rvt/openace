@@ -4,6 +4,9 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
+/* GATAS */
+#include "debug.hpp"
+
 template <bool RECURSIVE = false>
 /**
  * @brief Clasic semaphore Guard based on a FreeRTOS mutex
@@ -33,9 +36,7 @@ public:
         }
         else
         {
-#if GATAS_DEBUG == 1
-            printf("SemaphoreGuard not aquired");
-#endif
+            GATAS_LOG("SemaphoreGuard not aquired");
         }
     }
 
@@ -71,9 +72,7 @@ public:
         else
         {
             {
-#if GATAS_DEBUG == 1
-                printf("SpiGuard not aquired");
-#endif
+                GATAS_LOG("SpiGuard not aquired");
             }
         }
     }

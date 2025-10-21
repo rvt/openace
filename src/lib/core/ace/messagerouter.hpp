@@ -73,9 +73,7 @@ namespace GATAS
             }
             else
             {
-#if GATAS_DEBUG == 1
-                printf("Message not send current:%d:%d core0:%d core1:%d\n", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
-#endif
+                GATAS_LOG("Message not send current:%d:%d core0:%d core1:%d\n", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
             }
         }
 
@@ -85,13 +83,14 @@ namespace GATAS
 
 #if GATAS_DEBUG == 1
             auto previousPerCore = lastMsgPerCore;
+            (void)previousPerCore;
             auto currentMsgId = message.get_message_id();
             auto coreNum = get_core_num();
             lastMsgPerCore[coreNum] = currentMsgId;
 #endif
 
 #if GATAS_DEBUG == 1
-            auto measure = Measure("Message bus", 10'000);
+            GATAS_MEASURE_M("Message bus", 10'000);
             processMessage(message);
             if (measure)
             {

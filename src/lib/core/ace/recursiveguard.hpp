@@ -31,7 +31,7 @@ public:
         if (_count < C) {
             return true;
         } else {
-            puts(msg_.data());
+            GATAS_LOG(msg_.data());
             return false;
         };
     }

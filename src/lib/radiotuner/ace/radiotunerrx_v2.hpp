@@ -107,9 +107,7 @@ private:
                 // Add the slot to the dataSourceTimeSlots
                 if (protocolTimings.full())
                 {
-#if GATAS_DEBUG == 1
-                    printf("RadioTunerRx: Cannot add more slots for radio %d, max slots reached", radioNo);
-#endif
+                    GATAS_LOG("RadioTunerRx: Cannot add more slots for radio %d, max slots reached", radioNo);
                     continue;
                 }
                 protocolTimings.push_back(&slot);

@@ -47,8 +47,8 @@ GATAS::PostConstruct Config::postConstruct()
         volatileStore.rewind();
         volatileStore.write(defaultConfig, strlen((const char *)defaultConfig) + 1);
         deserializeJson(doc, volatileStore.data());
-// Don't store here yet, let the user save it for himself first
-//        serializeToPersistent();
+        // Don't store here yet, let the user save it for himself first
+        //        serializeToPersistent();
         statistics.location = DEFAULT;
     }
 
@@ -358,15 +358,21 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
 
     for (auto protocol : aircraftConfig["protocols"].as<JsonArrayConst>())
     {
-        protocols.push_back(GATAS::stringToDataSource(protocol.as<const char *>()));
+        if (!protocols.full())
+        {
+            protocols.push_back(GATAS::stringToDataSource(protocol.as<const char *>()));
+        }
     }
 
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
     auto aircrafts = doc["aircraft"];
     for (JsonPairConst kv : aircrafts.as<JsonObjectConst>())
     {
-        uint32_t address = kv.value()["address"];
-        allIcaoAddresses.push_back(address);
+        if (!allIcaoAddresses.full())
+        {
+            uint32_t address = kv.value()["address"];
+            allIcaoAddresses.push_back(address);
+        }
     }
 
     return {
@@ -398,12 +404,8 @@ bool Config::isModuleEnabled(const etl::string_view moduleName) const
 
 int Config::valueByPath(int defaultValue, const etl::string_view pathToValue, const etl::string_view key) const
 {
-    auto path = CoreUtils::parsePath(pathToValue);
+    auto path = CoreUtils::parsePath(pathToValue, key);
     auto src = configValueBypath<JsonVariantConst>(path);
-    if (key.size())
-    {
-        src = src[key];
-    }
 
     if (src.isNull())
     {
@@ -417,12 +419,8 @@ int Config::valueByPath(int defaultValue, const etl::string_view pathToValue, co
 
 const GATAS::ConfigString Config::strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const
 {
-    auto path = CoreUtils::parsePath(pathToValue);
+    auto path = CoreUtils::parsePath(pathToValue, key);
     auto src = configValueBypath<JsonVariantConst>(path);
-    if (key.size())
-    {
-        src = src[key];
-    }
 
     if (src.isNull())
     {
@@ -460,19 +458,8 @@ uint32_t Config::parseIpv4String(const etl::string_view ipStr, uint32_t defaultV
 
 const GATAS::Config::IpPort Config::ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const
 {
-    GATAS::ConfigPathString fullPath(pathToValue);
-    if (key.size() > 0)
-    {
-        etl::string_stream fullPath_stream(fullPath);
-        fullPath_stream << "/" << key;
-    }
-
-    auto path = CoreUtils::parsePath(fullPath);
+    auto path = CoreUtils::parsePath(pathToValue, key);
     auto src = configValueBypath<JsonVariantConst>(path);
-    // if (key.size())
-    // {
-    //     src = src[key];
-    // }
 
     if (src.isNull())
     {
@@ -505,7 +492,8 @@ GATAS::CallSign Config::getCallSignFromHex(uint32_t transponderHex) const
     for (JsonPairConst kv : aircrafts.as<JsonObjectConst>())
     {
         uint32_t address = kv.value()["address"];
-        if (transponderHex == address) {
+        if (transponderHex == address)
+        {
             return kv.value()["callSign"].as<const char *>();
         }
     }
@@ -515,14 +503,14 @@ GATAS::CallSign Config::getCallSignFromHex(uint32_t transponderHex) const
 
 void Config::setValueBypath(const etl::string_view pathToValue, etl::string_view value)
 {
-    auto path = CoreUtils::parsePath(pathToValue);
+    auto path = CoreUtils::parsePath(pathToValue, "");
     auto src = configValueBypath<JsonVariant>(path);
     src.set(value);
 }
 
 void Config::setValueBypath(const etl::string_view pathToValue, uint64_t value)
 {
-    auto path = CoreUtils::parsePath(pathToValue);
+    auto path = CoreUtils::parsePath(pathToValue, "");
     auto src = configValueBypath<JsonVariant>(path);
     src.set(value);
 }

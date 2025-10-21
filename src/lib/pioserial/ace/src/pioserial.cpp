@@ -6,7 +6,6 @@
 #include "pico/binary_info.h"
 
 #include "ace/utils.hpp"
-#include "ace/assert.hpp"
 
 GATAS::PostConstruct PioSerial::postConstruct()
 {
@@ -138,14 +137,14 @@ void __isr __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex
 {
     if (irqHandlerIndex >= interruptHandlers.size())
     {
-        puts("irqHandlerIndex >= numEntries");
+        GATAS_LOG("irqHandlerIndex >= numEntries");
         return;
     }
 
     PioSerial *pioSerial = interruptHandlers[irqHandlerIndex];
     if (pioSerial == nullptr)
     {
-        puts("pioSerial == nullptr");
+        GATAS_LOG("pioSerial == nullptr");
         return;
     }
 
@@ -197,7 +196,7 @@ bool PioSerial::enableTx(uint32_t givenBaudRate)
     {
         if (!add_pio_program(&uart_tx_program, &txPio, &txSmIndx, &txOffset))
         {
-            puts("failed to setup pio for tx");
+            GATAS_LOG("failed to setup pio for tx");
             return false;
         }
     }

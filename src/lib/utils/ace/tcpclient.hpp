@@ -3,7 +3,10 @@
 #include <stdint.h>
 #include "ace/models.hpp"
 #include "ace/lwiplock.hpp"
+#include "ace/debug.hpp"
+
 #include "pico/cyw43_arch.h"
+
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
@@ -12,7 +15,9 @@
 
 class TcpClient
 {
-    friend class TcpListener;
+#define TCP_LOG(fmt, ...) GATAS_LOG_IF(GATAS_LOG_TCPCLIENT, "TcpClient: " fmt, ##__VA_ARGS__)
+
+friend class TcpListener;
 
 public:
     using ReceiveHandler = etl::delegate<void(etl::span<uint8_t>)>;
@@ -27,11 +32,15 @@ public:
     };
 
 private:
-    struct tcp_pcb *pcb = nullptr;
-    State state = State::Disconnected;
+    constexpr static int8_t DEFAULT_NUM_AUTOCLOSE = 8;
+    struct tcp_pcb *pcb;
+    State state;
 
     GATAS::Config::IpPort ipPort;
-
+    // When in write it's noticed that the closed is closed, it will be automatically be re-opened
+    bool autoReConnect;
+    // Counter that closes the connection when reaches zero after failed writes. When 0, the conneciton is closed
+    int8_t closeConnectionCnt;
     ReceiveHandler onReceive;
     SentHandler onSent;
     ConnectHandler onConnect; // optional (can be empty)
@@ -41,20 +50,29 @@ public:
               ReceiveHandler onReceive_,
               SentHandler onSent_,
               ConnectHandler onConnect_ = ConnectHandler())
-        : ipPort(ipPort_),
+        : pcb(nullptr),
+          state(State::Disconnected),
+          ipPort(ipPort_),
+          autoReConnect(false),
+          closeConnectionCnt(DEFAULT_NUM_AUTOCLOSE),
           onReceive(onReceive_),
           onSent(onSent_),
           onConnect(onConnect_)
     {
     }
 
-    TcpClient(struct tcp_pcb *pcb, ReceiveHandler onReceive_)
-        : ipPort(GATAS::Config::IpPort{pcb->remote_ip.addr, pcb->remote_port}), onReceive(onReceive_)
+    TcpClient(struct tcp_pcb *existing, ReceiveHandler onReceive_)
+        : pcb(nullptr), state(State::Disconnected), ipPort(GATAS::Config::IpPort{existing->remote_ip.addr, existing->remote_port}), autoReConnect(false), closeConnectionCnt(DEFAULT_NUM_AUTOCLOSE), onReceive(onReceive_)
     {
-        adopt(pcb);
+        adopt(existing);
     }
 
     ~TcpClient() = default;
+
+    void autoConnect(bool v)
+    {
+        autoReConnect = v;
+    }
 
     bool start()
     {
@@ -67,11 +85,12 @@ public:
         pcb = tcp_new_ip_type(IP_GET_TYPE(&remote_addr));
         if (!pcb)
         {
-            printf("TcpClient: failed to create PCB\n");
+            TCP_LOG("failed to create PCB\n");
             return false;
         }
 
         state = State::Connecting;
+        closeConnectionCnt = DEFAULT_NUM_AUTOCLOSE;
 
         tcp_arg(pcb, this);
         tcp_recv(pcb, tcp_client_recv);
@@ -82,10 +101,11 @@ public:
         err_t err = tcp_connect(pcb, &remote_addr, ipPort.port, tcp_client_connected);
         if (err != ERR_OK)
         {
-            printf("TcpClient: tcp_connect failed (%d)\n", err);
+            TCP_LOG("connect failed (%d)", err);
             tcp_client_close(this);
             return false;
         }
+        tcp_set_flags(pcb, TF_ACK_NOW | TF_NODELAY);
 
         return true;
     }
@@ -110,15 +130,52 @@ public:
         start();
     }
 
-    bool write(etl::span<const uint8_t> data)
+    bool write(etl::span<const uint8_t> data, bool flush = false)
     {
-        if (state != State::Connected || pcb == nullptr) {
+        if (state != State::Connected || !pcb)
+        {
+            if (autoReConnect && state == State::Disconnected)
+            {
+                reconnect();
+            }
             return false;
         }
 
         LwipLock lock;
-        err_t err = tcp_write(pcb, data.data(), data.size(), TCP_WRITE_FLAG_COPY);
-        return err == ERR_OK;
+        if (tcp_sndbuf(pcb) < data.size())
+        {
+            TCP_LOG("Sendbuffer too small %u needed %u", tcp_sndbuf(pcb), data.size());
+            return false;
+        }
+
+        err_t err = tcp_write(pcb, data.data(), data.size(),
+                              TCP_WRITE_FLAG_COPY | TCP_WRITE_FLAG_MORE);
+
+        if (flush || err != ERR_OK)
+        {
+            tcp_output(pcb);
+        }
+        if (err == ERR_OK)
+        {
+            return true;
+        }
+
+        if (err == ERR_MEM || err == ERR_BUF || err == ERR_ABRT)
+        {
+            if (--closeConnectionCnt <= 0)
+            {
+                tcp_client_close(this);
+            }
+        }
+
+        TCP_LOG("Failed to write %d c:%d", err, closeConnectionCnt);
+        return false;
+    }
+
+    bool flush()
+    {
+        LwipLock lock;
+        return tcp_output(pcb) == ERR_OK;
     }
 
     uint32_t ip() const { return ipPort.ip; }
@@ -131,11 +188,12 @@ public:
         }
         pcb = existing;
 
+        LwipLock lock;
         tcp_arg(pcb, this);
         tcp_recv(pcb, tcp_client_recv);
         tcp_err(pcb, tcp_client_err);
         tcp_sent(pcb, tcp_client_sent);
-        tcp_set_flags(pcb, TF_ACK_NOW); // <-- seems to be a must for airConnect?
+        tcp_set_flags(pcb, TF_ACK_NOW | TF_NODELAY);
         state = State::Connected;
     }
 
@@ -174,19 +232,25 @@ private:
         err_t err = tcp_close(self->pcb);
         if (err != ERR_OK)
         {
-            printf("TcpClient: close failed (%d), aborting\n", err);
+            TCP_LOG("close failed (%d), aborting", err);
             tcp_abort(self->pcb);
         }
 
         self->pcb = nullptr;
         self->state = State::Disconnected;
+        if (self->onConnect.is_valid())
+        {
+            self->onConnect(false);
+        }
     }
 
     static void tcp_client_err(void *arg, err_t err)
     {
+        (void)err;
         TcpClient *self = static_cast<TcpClient *>(arg);
 
-        printf("TcpClient: error callback (%d)\n", err);
+        TCP_LOG("error callback (%d)", err);
+
         self->pcb = nullptr;
         self->state = State::Disconnected;
         if (self->onConnect.is_valid())
@@ -201,7 +265,7 @@ private:
 
         if (err != ERR_OK)
         {
-            printf("TcpClient: connect failed (%d)\n", err);
+            TCP_LOG("connect failed (%d)", err);
             tcp_client_close(arg);
             if (self->onConnect.is_valid())
             {
@@ -212,7 +276,6 @@ private:
 
         self->pcb = tpcb;
         self->state = State::Connected;
-
         if (self->onConnect.is_valid())
         {
             self->onConnect(true);
@@ -235,16 +298,10 @@ private:
     static err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *pBuf, err_t err)
     {
         TcpClient *self = static_cast<TcpClient *>(arg);
-        if (err != ERR_OK)
+        if (err != ERR_OK || !pBuf)
         {
             tcp_client_close(arg);
-            return ERR_ARG;
-        }
-
-        // pBuf == nullptr means connection closed by remote
-        if (pBuf == nullptr)
-        {
-            tcp_client_close(arg);
+            TCP_LOG("client closed during receive");
             return ERR_OK;
         }
 
@@ -275,20 +332,27 @@ public:
     using AcceptHandler = etl::delegate<void(struct tcp_pcb *pcb)>;
 
 private:
-    struct tcp_pcb *listenPcb = nullptr;
+    struct tcp_pcb *listenPcb;
     uint16_t port;
     AcceptHandler onAccept;
 
 public:
     explicit TcpListener(uint16_t port_, AcceptHandler onAccept_)
-        : port(port_), onAccept(onAccept_) {}
+        : listenPcb(nullptr), port(port_), onAccept(onAccept_) {}
+
+    ~TcpListener() { stop(); }
+
+    TcpListener(const TcpListener &) = delete;
+    TcpListener &operator=(const TcpListener &) = delete;
+    TcpListener(TcpListener &&) = delete;
+    TcpListener &operator=(TcpListener &&) = delete;
 
     bool start()
     {
         listenPcb = tcp_new_ip_type(IPADDR_TYPE_V4);
         if (!listenPcb)
         {
-            printf("TcpListener: failed to create PCB\n");
+            TCP_LOG("failed to create PCB");
             return false;
         }
 
@@ -296,33 +360,43 @@ public:
         err_t err = tcp_bind(listenPcb, IP_ANY_TYPE, port);
         if (err != ERR_OK)
         {
-            printf("TcpListener: bind failed (%d)\n", err);
-            tcp_close(listenPcb);
+            TCP_LOG("bind failed (%d)", err);
+            tcp_abort(listenPcb);
             listenPcb = nullptr;
             return false;
         }
 
-        listenPcb = tcp_listen_with_backlog(listenPcb, 4);
-        if (!listenPcb)
+        struct tcp_pcb *newpcb = tcp_listen_with_backlog(listenPcb, 4);
+        if (!newpcb)
         {
-            printf("TcpListener: listen failed\n");
+            TCP_LOG("listen failed");
+            tcp_abort(listenPcb);
+            listenPcb = nullptr;
             return false;
         }
 
+        listenPcb = newpcb;
         tcp_arg(listenPcb, this);
         tcp_accept(listenPcb, &TcpListener::on_accept_static);
 
-        printf("TcpListener: listening on port %u\n", port);
+        TCP_LOG("listening on port %u\n", port);
         return true;
     }
 
     void stop()
     {
         if (!listenPcb)
+        {
             return;
+        }
 
         LwipLock lock;
-        tcp_close(listenPcb);
+        err_t err = tcp_close(listenPcb);
+        if (err != ERR_OK)
+        {
+            tcp_abort(listenPcb);
+        }
+
         listenPcb = nullptr;
     }
 
@@ -331,14 +405,9 @@ private:
     {
         TcpListener *self = static_cast<TcpListener *>(arg);
         if (!self || err != ERR_OK || !new_pcb)
+        {
             return ERR_VAL;
-
-        // TcpClient *client = new TcpClient(
-        //     {.ip = ip_addr_get_ip4_u32(&new_pcb->remote_ip),
-        //      .port = new_pcb->remote_port},
-        //     {}, {}, {}); // callbacks to be set by caller later
-
-        // client->adopt(new_pcb); // new method to attach an existing PCB
+        }
 
         if (self->onAccept.is_valid())
         {

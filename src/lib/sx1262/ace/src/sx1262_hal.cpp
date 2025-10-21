@@ -49,16 +49,16 @@ sx126x_hal_status_t sx126x_hal_write(const void *context, const uint8_t *command
     sx126x_hal_status_t ret = SX126X_HAL_STATUS_OK;
     if (sx126x_buzy_wait(sx1262->busy()))
     {
-        puts("hal write, Wait busy timeout");
+        GATAS_LOG("hal write, Wait busy timeout");
         ret = SX126X_HAL_STATUS_ERROR;
     }
     else
     {
         spi->cs_select(sx1262->cs());
-        spi_write_blocking(spi->spiNum()?spi1:spi0, command, command_length);
+        spi_write_blocking(spi->spiNum() ? spi1 : spi0, command, command_length);
         if (data_length != 0)
         {
-            spi_write_blocking(spi->spiNum()?spi1:spi0, data, data_length);
+            spi_write_blocking(spi->spiNum() ? spi1 : spi0, data, data_length);
         }
     }
     spi->cs_deselect(sx1262->cs());
@@ -74,24 +74,24 @@ sx126x_hal_status_t sx126x_hal_read(const void *context, const uint8_t *command,
     sx126x_hal_status_t ret = SX126X_HAL_STATUS_OK;
     if (sx126x_buzy_wait(sx1262->busy()))
     {
-        puts("hal read, Wait busy timeout");
+        GATAS_LOG("hal read, Wait busy timeout");
         ret = SX126X_HAL_STATUS_ERROR;
     }
     else
     {
         spi->cs_select(sx1262->cs());
-        int length = spi_write_blocking(spi->spiNum()?spi1:spi0, command, command_length);
+        int length = spi_write_blocking(spi->spiNum() ? spi1 : spi0, command, command_length);
         if (length != command_length)
         {
-            puts("sx126x_hal_read write error");
+            GATAS_LOG("sx126x_hal_read write error");
             ret = SX126X_HAL_STATUS_ERROR;
         }
         else
         {
-            length = spi_read_blocking(spi->spiNum()?spi1:spi0, 0, data, data_length);
+            length = spi_read_blocking(spi->spiNum() ? spi1 : spi0, 0, data, data_length);
             if (length != data_length)
             {
-                puts("sx126x_hal_read read error");
+                GATAS_LOG("sx126x_hal_read read error");
                 ret = SX126X_HAL_STATUS_ERROR;
             }
         }
@@ -104,13 +104,13 @@ sx126x_hal_status_t sx126x_hal_reset(const void *context)
 {
     // Reset is already given once when the SPI starts up
     (void)context;
-    puts("SX1262 Reset called");
+    GATAS_LOG("SX1262 Reset called");
     return SX126X_HAL_STATUS_OK;
 }
 
 sx126x_hal_status_t sx126x_hal_wakeup(const void *context)
 {
     (void)context;
-    puts("SX1262 wakeup called");
+    GATAS_LOG("SX1262 wakeup called");
     return SX126X_HAL_STATUS_OK;
 }

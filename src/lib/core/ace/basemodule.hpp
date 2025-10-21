@@ -5,7 +5,6 @@
 #include "semaphoreguard.hpp"
 
 #include "pico.h"
-#include "assert.hpp"
 
 /* FreeRTOS. */
 #include "FreeRTOS.h"
@@ -303,7 +302,7 @@ public:
             // Default to writing into .data (assumed default member)
             if (dataSpan.size() > sizeof(data))
             {
-                puts("TxPacket: Frame length too large for this packet, clearing out");
+                GATAS_LOG("TxPacket: Frame length too large for this packet, clearing out");
                 memset(&data, 0, sizeof(data));
             }
             else

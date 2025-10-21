@@ -228,7 +228,7 @@ float GpsDecoder::convertToMeters(const minmea_float &f, char unit, float defaul
  */
 void GpsDecoder::sendMessageWhenGGAisRMC()
 {
-//    auto m = Measure("GpsDecoder::sendMessageWhenGGAisRMC");
+//    GATAS_MEASURE("GpsDecoder::sendMessageWhenGGAisRMC");
     // Send message over bus when both GGA and GMC sentences are received at the same time
     // It's required that both GGA and GMC sentences have the same timestamp in these cases
     // If this in practise is not happening, due to newer GPS systems position should be taken from latest RMC

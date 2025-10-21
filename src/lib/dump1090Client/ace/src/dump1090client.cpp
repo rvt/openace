@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include "../dump1090client.hpp"
-#include "ace/assert.hpp"
 #include "ace/coreutils.hpp"
 #include "etl/error_handler.h"
 
@@ -68,15 +67,6 @@ void Dump1090Client::getData(etl::string_stream &stream, const etl::string_view 
 void Dump1090Client::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
-}
-
-void Dump1090Client::on_receive(const GATAS::Every5SecMsg &msg)
-{
-    (void)msg;
-    if (wifiConnected && ((tcpClient.ip() & 0xFFFFFF) == networkAddress))
-    {
-        tcpClient.reconnect();
-    }
 }
 
 void Dump1090Client::on_receive(const GATAS::WifiConnectionStateMsg &wcs)

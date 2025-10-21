@@ -51,7 +51,6 @@ public:
                 positionMessages.push_back(aircraftPosition);
             }
 
-
             /**
              * Handle change of current selected aircraft
              */
@@ -83,6 +82,4 @@ public:
             bus.receive(GATAS::AircraftPositionsMsg(positionMessages));
         }
     }
-
-
 };

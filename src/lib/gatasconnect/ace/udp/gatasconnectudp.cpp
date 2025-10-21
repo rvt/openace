@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "../gatasconnect.hpp"
+#include "gatasconnectudp.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/binarymessages.hpp"
 #include "ace/cobs.hpp"
@@ -91,11 +91,12 @@ void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 void GatasConnect::getConfig(const Configuration &config)
 {
     gatasServer = config.ipPortBypath(NAME, "gatasServer");
-    gatasServer.port = GATAS_CONNECT_PORT;
+    gatasServer.port = 1883;
 
     auto gatasConfig = config.gaTasConfig();
-    icaoAddress = config.gaTasConfig().conspicuity.icaoAddress;
-    allIcaoAddresses = config.gaTasConfig().allIcaoAddresses;
+    icaoAddress = gatasConfig.conspicuity.icaoAddress;
+    allIcaoAddresses = gatasConfig.allIcaoAddresses;
+    printf("My Size : %d\n", allIcaoAddresses.size());
     gatasId = config.internalStore()->gatasId;
 }
 

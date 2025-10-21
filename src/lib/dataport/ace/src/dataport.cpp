@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include "../dataport.hpp"
-#include "ace/semaphoreguard.hpp"
 #include "ace/moreutils.hpp"
 
 #include "lwip/tcp.h"
@@ -233,7 +232,7 @@ void DataPort::sendPFLAV(const GATAS::AircraftPositionInfo &position)
 {
     (void)position;
     // (int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
-    GATAS::NMEAString nmeaString = "$PFLAV,A,0,0";
+    // GATAS::NMEAString nmeaString = "$PFLAV,A,0,0";
 }
 
 /**
@@ -261,7 +260,7 @@ void DataPort::sendPFLAC(const GATAS::AircraftPositionInfo &position)
 {
     (void)position;
     // (int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
-    GATAS::NMEAString nmeaString = "$PFLAC,HELLO,GLIDER_PILOTS";
+    // GATAS::NMEAString nmeaString = "$PFLAC,HELLO,GLIDER_PILOTS";
 }
 
 /**

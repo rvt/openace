@@ -14,7 +14,7 @@
  * Note: This module is experimental
  */
 class Dump1090Client : public BaseModule,
-                       public etl::message_router<Dump1090Client, GATAS::Every5SecMsg, GATAS::WifiConnectionStateMsg>
+                       public etl::message_router<Dump1090Client, GATAS::WifiConnectionStateMsg>
 {
     friend class message_router;
 
@@ -35,7 +35,6 @@ class Dump1090Client : public BaseModule,
 public:
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
     void on_receive_unknown(const etl::imessage &msg);
-    void on_receive(const GATAS::Every5SecMsg &msg);
 
 public:
     static constexpr const char *NAME = "Dump1090Client";
@@ -50,6 +49,7 @@ public:
                                                                               StreamLineParser<TcpClient>::CallBackFunction::create<Dump1090Client, &Dump1090Client::processNewSentence>(*this))
 
     {
+        tcpClient.autoConnect(true);
     }
 
     virtual ~Dump1090Client() = default;
