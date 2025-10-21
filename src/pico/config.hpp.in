@@ -3,7 +3,7 @@
 // Bitmask for modules
 #define GATAS_LOG_TCPCLIENT      (1u << 0)
 #ifndef GATAS_LOG_ACTIVE_MODULES
-#define GATAS_LOG_ACTIVE_MODULES ( GATAS_LOG_TCPCLIENT )
+#define GATAS_LOG_ACTIVE_MODULES ( 0 )
 #endif
 
 

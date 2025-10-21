@@ -38,8 +38,8 @@
 class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::IdleMsg>
 {
 private:
-    static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 2; // Number of times connection to the same network is attempted before trying an other network
-    static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 2;       // Number is scans done and if no known network is found, create the AP
+    static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 3; // Number of times connection to the same network is attempted before trying an other network
+    static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 3;       // Number is scans done and if no known network is found, create the AP
 
     friend class message_router;
     GATAS::Config::WifiServiceData wifiData;

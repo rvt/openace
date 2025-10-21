@@ -314,7 +314,7 @@ void Bluetooth::attContextCallback(void *context)
             }
         }
 
-        GATAS_ASSERT(sendStatus == ERROR_CODE_SUCCESS, "Bluetooth: Send Failed");
+        GATAS_VERIFY(sendStatus == ERROR_CODE_SUCCESS, "Bluetooth: Send Failed");
     }
 }
 
