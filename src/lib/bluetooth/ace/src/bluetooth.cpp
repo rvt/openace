@@ -7,6 +7,7 @@
 #include "ace/coreutils.hpp"
 #include "ace/cobs.hpp"
 #include "ace/binarymessages.hpp"
+#include "ace/spinlockguard.hpp"
 #include "gatas_gatt.h"
 
 #include "ble/gatt-service/battery_service_server.h"
@@ -25,38 +26,20 @@
 
 GATAS::PostConstruct Bluetooth::postConstruct()
 {
-    if (mutex != nullptr)
-    {
-        return GATAS::PostConstruct::MEMORY;
-    }
-
-    mutex = xSemaphoreCreateRecursiveMutex();
-    if (mutex == nullptr)
+    instance->mutex = xSemaphoreCreateRecursiveMutex();
+    if (instance->mutex == nullptr)
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
+//    spinLock = SpinlockGuard::claim();
 
     return GATAS::PostConstruct::OK;
 }
 
-void Bluetooth::stop()
-{
-    // TODO: proper stop BT stack
-    getBus().unsubscribe(*this);
-    gap_discoverable_control(0);
-    gap_connectable_control(0);
-    gap_advertisements_enable(0);
-    hci_disconnect_all();
-
-    hci_power_control(HCI_POWER_OFF);
-    vSemaphoreDelete(mutex);
-    mutex = nullptr;
-};
-
 void Bluetooth::eraseBonding()
 {
     gap_delete_all_link_keys();
-    printf("Bonding data erased successfully.\n");
+    puts("Bonding data erased successfully.");
 }
 
 void Bluetooth::start()
@@ -80,10 +63,10 @@ void Bluetooth::start()
 
         // init SDP, create record for SPP (Serial Port Profile) and register with SDP
         sdp_init();
-        memset(Bluetooth::spp_service_buffer, 0, sizeof(Bluetooth::spp_service_buffer));
-        spp_create_sdp_record(Bluetooth::spp_service_buffer, sdp_create_service_record_handle(), RFCOMM_SERVER_CHANNEL, localName.c_str());
-        btstack_assert(de_get_len(Bluetooth::spp_service_buffer) <= sizeof(Bluetooth::spp_service_buffer));
-        sdp_register_service(Bluetooth::spp_service_buffer);
+        memset(instance->spp_service_buffer, 0, sizeof(instance->spp_service_buffer));
+        spp_create_sdp_record(instance->spp_service_buffer, sdp_create_service_record_handle(), RFCOMM_SERVER_CHANNEL, localName.c_str());
+        btstack_assert(de_get_len(instance->spp_service_buffer) <= sizeof(instance->spp_service_buffer));
+        sdp_register_service(instance->spp_service_buffer);
         // RFCOMM
     }
 
@@ -99,13 +82,13 @@ void Bluetooth::start()
 
     gap_set_local_name(localName.c_str());
 
-    Bluetooth::smEventCallback.callback = &smPacketHandler;
-    sm_add_event_handler(&smEventCallback);
+    instance->smEventCallback.callback = &smPacketHandler;
+    sm_add_event_handler(&instance->smEventCallback);
 
     // set one-shot btstack timer
-    Bluetooth::heartbeat.process = &heartbeat_handler;
-    btstack_run_loop_set_timer(&heartbeat, 250);
-    btstack_run_loop_add_timer(&heartbeat);
+    instance->heartbeat.process = &heartbeat_handler;
+    btstack_run_loop_set_timer(&instance->heartbeat, 250);
+    btstack_run_loop_add_timer(&instance->heartbeat);
 
     // Configuration
 
@@ -121,8 +104,8 @@ void Bluetooth::start()
     att_server_register_packet_handler(attPacketHandler);
 
     // register for HCI events
-    hciEventCallback.callback = &hciPacketHandler;
-    hci_add_event_handler(&hciEventCallback);
+    instance->hciEventCallback.callback = &hciPacketHandler;
+    hci_add_event_handler(&instance->hciEventCallback);
 
     // Initialize HCI dump to log HCI packets to stdout via printf
 #if defined(ENABLE_LOG_INFO) || defined(ENABLE_LOG_DEBUG) || defined(ENABLE_LOG_ERROR)
@@ -136,7 +119,7 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    if (auto guard = SemaphoreGuard(10, Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard(10, instance->mutex))
     {
         (void)path;
         stream << "{";
@@ -144,12 +127,12 @@ void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path)
         stream << ",\"dataPortMsgMissedErr\":" << statistics.dataPortMsgMissedErr;
         stream << ",\"cobsErr\":" << statistics.cobsErr;
         stream << ",\"ctxBufferOverrunErr\":[";
-        for (auto &it : Bluetooth::connections)
+        for (auto &it : instance->connections)
         {
             stream << it.bufferOverrunErr << ",";
         }
         stream << "-1],\"mtu\":[";
-        for (auto &it : Bluetooth::connections)
+        for (auto &it : instance->connections)
         {
             stream << it.mtu << ",";
         }
@@ -164,7 +147,8 @@ void Bluetooth::on_receive_unknown(const etl::imessage &msg)
 
 void Bluetooth::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition.store(msg.position, etl::memory_order_release);
+    (void)msg;
+    // ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position.assignTo());
 }
 
 void Bluetooth::createAdvData()
@@ -201,9 +185,9 @@ void Bluetooth::createAdvData()
  */
 void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 {
-    if (auto guard = SemaphoreGuard(10, Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard(10, instance->mutex))
     {
-        for (auto &ctx : Bluetooth::connections)
+        for (auto &ctx : instance->connections)
         {
             if (!ctx.writeBuffer.setString(msg.sentence))
             {
@@ -219,11 +203,11 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 
 bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
 {
-    if (auto guard = SemaphoreGuard<true>(10000, Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<true>(10000, instance->mutex))
     {
-        if (!Bluetooth::connections.full())
+        if (!instance->connections.full())
         {
-            Bluetooth::connections.emplace_back(handle, mtu, readyState, &Bluetooth::attContextCallback);
+            instance->connections.emplace_back(handle, mtu, readyState, &Bluetooth::attContextCallback);
             return true;
         }
     }
@@ -232,9 +216,9 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t 
 
 void Bluetooth::removeConnection(uint16_t hciHandle)
 {
-    if (auto guard = SemaphoreGuard<true>(10000, Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<true>(10000, instance->mutex))
     {
-        Bluetooth::connections.remove_if([hciHandle](const BtContext &ctx)
+        instance->connections.remove_if([hciHandle](const BtContext &ctx)
                                          { return ctx.hciHandle == hciHandle; });
     }
 }
@@ -246,7 +230,7 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
 {
     (void)ts;
     uint32_t delay = 2000; // make delay based if there is a connection or not, to better use resources when BlueTooth is not used
-    for (auto &btContext : Bluetooth::connections)
+    for (auto &btContext : instance->connections)
     {
         delay = 250;
         if (btContext.writeBuffer.used() > MINIMUM_BLE_PACKET_SIZE)
@@ -261,8 +245,8 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
             }
         }
     }
-    btstack_run_loop_set_timer(&heartbeat, delay);
-    btstack_run_loop_add_timer(&heartbeat);
+    btstack_run_loop_set_timer(&instance->heartbeat, delay);
+    btstack_run_loop_add_timer(&instance->heartbeat);
 }
 
 void Bluetooth::attContextCallback(void *context)
@@ -278,7 +262,7 @@ void Bluetooth::attContextCallback(void *context)
     }
 
     etl::span<uint8_t> data;
-    if (auto guard = SemaphoreGuard<true>(10, Bluetooth::mutex))
+    if (auto guard = SemaphoreGuard<true>(10, instance->mutex))
     {
         btContext->writeBuffer.read(data, btContext->mtu);
     }
@@ -296,7 +280,7 @@ void Bluetooth::attContextCallback(void *context)
         }
 
         size_t used=0;
-        if (auto guard = SemaphoreGuard<true>(1000, Bluetooth::mutex))
+        if (auto guard = SemaphoreGuard<true>(1000, instance->mutex))
         {
             btContext->writeBuffer.compact();
             used = btContext->writeBuffer.used();
@@ -341,7 +325,7 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
             {
                 printf("ATT_EVENT_CONNECTED Handle:%d MTU:%d\n", handle, mtu);
                 // Only re-advertise when it's possible to accept new connections
-                if (!Bluetooth::connections.full())
+                if (!instance->connections.full())
                 {
                     hci_send_cmd(&hci_le_set_advertise_enable, 1);
                 }

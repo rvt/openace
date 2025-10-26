@@ -51,8 +51,7 @@ private:
 
     // We have PIO's and each PIO has 8 state machine
     // Note: We properly need to put these in a struct or something
-    // inline static etl::array<PioSerial*, 4> __scratch_y("GaTasMem") interruptHandlers;
-    inline static etl::array<PioSerial*, 4> interruptHandlers;
+    static etl::array<PioSerial*, 4> interruptHandlers;
 
     uint8_t handlerIdx=0;
 

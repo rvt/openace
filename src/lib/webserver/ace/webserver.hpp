@@ -12,6 +12,7 @@
 class Webserver : public BaseModule, public etl::message_router<Webserver, GATAS::WifiConnectionStateMsg>
 {
     friend class message_router;
+    bool httpdInitialised;
 public:
     mutable struct
     {
@@ -19,7 +20,7 @@ public:
     } statistics;
 
     static constexpr const etl::string_view NAME = "Webserver";
-    Webserver(etl::imessage_bus& bus, const Configuration &config) : BaseModule(bus, NAME)
+    Webserver(etl::imessage_bus& bus, const Configuration &config) : BaseModule(bus, NAME), httpdInitialised(false)
     {
         (void)config;
     }
@@ -31,8 +32,6 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    virtual void stop() override;
 
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
 

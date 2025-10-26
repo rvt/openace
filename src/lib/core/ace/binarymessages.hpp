@@ -42,7 +42,7 @@ public:
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V1, "Aircraft Data")
-        ETL_ENUM_TYPE(AIRCRAFT_POSITION_REQUEST_V1, "Conspcuity Data Request")
+        ETL_ENUM_TYPE(AIRCRAFT_POSITION_REQUEST_V1, "conspicuity Data Request")
         ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V1, "Current GATAS Configuration")
         ETL_ENUM_TYPE(SET_ICAO_ADDRESS_V1, "Set new aircraft from configuration")
         ETL_END_ENUM_TYPE

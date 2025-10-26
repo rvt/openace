@@ -74,7 +74,6 @@ public:
                                                                       networkAddress(0),
                                                                       gateWayClient{0}
     {
-        printf("Size of GATAS::GDLData: %zu\n", sizeof(GATAS::GDLData));
         getConfigurationNoMutex(config);
     }
 
@@ -85,6 +84,4 @@ public:
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
     virtual void start() override;
-
-    virtual void stop() override;
 };

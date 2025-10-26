@@ -27,12 +27,12 @@ void GDLoverUDP::getConfigurationNoMutex(const Configuration &config)
     etl::string<16> path;
     for (uint8_t i = 0; i < GATAS_GDL90OVERUDP_MAX_PORTS; i++)
     {
-        path.clear();
-        etl::string_stream stream(path);
-        stream << etl::make_string("defaultPorts/") << i;
-        int32_t p = config.valueByPath(GDL90OVERUDP_DEFAULT_PORT, NAME, path);
         if (!udpPorts.full())
         {
+            path.clear();
+            etl::string_stream stream(path);
+            stream << etl::make_string("defaultPorts/") << i;
+            int32_t p = config.valueByPath(GDL90OVERUDP_DEFAULT_PORT, NAME, path);
             udpPorts.insert(p);
         }
     }
@@ -43,9 +43,9 @@ void GDLoverUDP::getConfigurationNoMutex(const Configuration &config)
         etl::string_stream stream(path);
         stream << etl::make_string("ips/") << i;
         auto ipPort = config.ipPortBypath(NAME, path);
-        if (ipPort.ip != IPADDR_NONE && ipPort.port > 1023 && !customClients.full())
+        if (ipPort.ip != IPADDR_NONE && !customClients.full())
         {
-            //                printf("GDLoverUDP %ld:%d\n",ipPort.ip, ipPort.port);
+            // printf("GDLoverUDP %ld:%d\n",ipPort.ip, ipPort.port);
             customClients.emplace_back(ipPort.ip, ipPort.port);
         }
     }
@@ -81,16 +81,6 @@ void GDLoverUDP::getData(etl::string_stream &stream, const etl::string_view path
 void GDLoverUDP::start()
 {
     getBus().subscribe(*this);
-};
-
-void GDLoverUDP::stop()
-{
-    getBus().unsubscribe(*this);
-    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
-    while (eTaskGetState(taskHandle) != eDeleted)
-    {
-        vTaskDelay(TASK_DELAY_MS(50));
-    }
 };
 
 void GDLoverUDP::on_receive_unknown(const etl::imessage &msg)
@@ -154,8 +144,6 @@ void GDLoverUDP::transmitBuffer()
         return;
     }
 
-    GATAS_MEASURE("GDLoverUDP::transmitBuffer ", 5000);
-
     // Calculate how many pbufs we needna d reference them
     uint8_t totalpBufs = connectedClients.size() * udpPorts.size() + gateWayClient ? udpPorts.size() : 0;
     for (const auto &client : customClients)
@@ -173,6 +161,7 @@ void GDLoverUDP::transmitBuffer()
     etl::optional<etl::span<uint8_t>> part;
     if (auto guard = SemaphoreGuard(1000, mutex))
     {
+        gdlDataBuffer.compact();
         part = gdlDataBuffer.read();
     }
     if (!part)
@@ -207,15 +196,15 @@ void GDLoverUDP::transmitBuffer()
     {
         if ((client.ip & 0xFFFFFF) == networkAddress)
         {
-            sendTo(client.ip, client.port, data);
+            sendTo(client.ip, client.port == 0 ? GDL90OVERUDP_DEFAULT_PORT : client.port, data);
         }
     }
 
-    if (auto guard = SemaphoreGuard(1000, mutex))
-    {
-        // printf("GDLoverUDP: %zu bytes sent\n", size);
-        gdlDataBuffer.compact();
-    }
+    // if (auto guard = SemaphoreGuard(1000, mutex))
+    // {
+    //     // printf("GDLoverUDP: %zu bytes sent\n", size);
+    //     gdlDataBuffer.compact();
+    // }
 }
 
 void GDLoverUDP::sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data)
@@ -224,6 +213,7 @@ void GDLoverUDP::sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data)
     ip4_addr_set_u32(&addr, ip);
 
     struct pbuf *pbuf = pbuf_alloc(PBUF_TRANSPORT, data.size(), PBUF_POOL);
+
     if (!pbuf)
     {
         return;
@@ -231,6 +221,7 @@ void GDLoverUDP::sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data)
     if (pbuf_take(pbuf, data.begin(), data.size()) != ERR_OK)
     {
         pbuf_free(pbuf);
+        return;
     }
     err_t err = udp_sendto(pcb, pbuf, &addr, port);
     pbuf_free(pbuf);

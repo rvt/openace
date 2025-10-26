@@ -60,13 +60,15 @@ class ADSL : public BaseModule, public etl::message_router<ADSL,
     };
     etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // 2 for 2 timeslots (europe)
 
-    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
+    int spinLock;
+    GATAS::OwnshipPositionInfo ownshipPosition;
     GATAS::GpsStatsMsg gpsStats;
     uint16_t distanceIgnore;
 public:
     static constexpr const etl::string_view NAME = "ADSL";
     ADSL(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
+        spinLock(0),
         ownshipPosition()
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "ADSL", "distanceIgnore");
@@ -77,7 +79,6 @@ public:
 
     virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
-    virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
 private:

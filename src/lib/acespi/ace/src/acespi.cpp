@@ -33,11 +33,6 @@ void AceSpi::start()
     getBus().subscribe(*this);
 };
 
-void AceSpi::stop()
-{
-    getBus().unsubscribe(*this);
-};
-
 void AceSpi::read_registers(uint8_t cs, uint8_t reg, uint8_t *buf, uint16_t len, uint8_t delayMs) const
 {
     reg |= READ_BIT;
@@ -108,7 +103,3 @@ void AceSpi::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
 }
-
-uint8_t AceSpi::spiNum() const {
-    return spi;
-};

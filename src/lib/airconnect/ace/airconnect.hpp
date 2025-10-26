@@ -97,8 +97,6 @@ private:
 
     virtual void start() override;
 
-    virtual void stop() override;
-
     void on_receive(const GATAS::DataPortMsg &msg);
 
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
@@ -109,8 +107,6 @@ private:
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
     void tcpAcceptHandler(struct tcp_pcb *pcb);
-
-    // static void airConnectTask(void *arg);
 
 public:
     static constexpr const char *NAME = "AirConnect";

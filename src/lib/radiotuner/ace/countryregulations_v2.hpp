@@ -87,7 +87,8 @@ public:
         uint8_t waitAfterCatEnd;
     };
 
-    static constexpr __in_flash() auto protocolTimimgs = etl::make_array<const ProtocolTimeSlot>(
+    //               __in_flash()
+    static constexpr auto protocolTimimgs = etl::make_array<const ProtocolTimeSlot>(
         ProtocolTimeSlot{ 1, CountryRegulations::Zone::ZONE0, Europe,       PROTOCOL_NONE,  {Channel::NOOP, Channel::NOOP, Channel::NOOP, Channel::NOOP, Channel::NOOP},  000, 0000, 00, 000},
         ProtocolTimeSlot{ 2, CountryRegulations::Zone::ZONE1, Europe,       PROTOCOL_FLARM, {Channel::CH01, Channel::NOOP, Channel::CH00, Channel::CH00, Channel::CH01},  600, 1400, 15, 150},
         ProtocolTimeSlot{ 3, CountryRegulations::Zone::ZONE1, Europe,       PROTOCOL_OGN1,  {Channel::CH00, Channel::NOOP, Channel::CH01, Channel::CH01, Channel::CH00},  600, 1400, 15, 150},

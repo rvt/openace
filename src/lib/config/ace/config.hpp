@@ -162,8 +162,6 @@ public:
 
     virtual void start() override;
 
-    virtual void stop() override;
-
     /**
      * Get data from the modules itself, or from teh configuration
      */

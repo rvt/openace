@@ -14,9 +14,9 @@
 
 class CoreUtils
 {
-    // Putting these in scratch mem does work __scratch_y("GaTasMem")
-    inline static uint64_t offsetTimeToAbsolute = 0; // Offset in ms
-    inline static uint32_t timeUs32PpsOffset = 0;    // monotonic timestamp at which PPS happened
+
+inline static __scratch_y("GatasMem_offsetTimeToAbsolute") uint64_t CoreUtils_offsetTimeToAbsolute = 0;
+inline static __scratch_y("GatasMem_timeUs32PpsOffset") uint32_t CoreUtils_timeUs32PpsOffset = 0;
 
 public:
     /**
@@ -62,19 +62,6 @@ public:
         }
     }
 
-    // static void printBufferHex(etl::span<uint32_t> buffer)
-    // {
-    //     printf("Length(%d) ", static_cast<int>(buffer.size()));
-    //     for (size_t i = 0; i < buffer.size(); ++i)
-    //     {
-    //         printf("0x%08X", buffer[i]);
-    //         if (i + 1 < buffer.size())
-    //         {
-    //             printf(", ");
-    //         }
-    //     }
-    // }
-
     /**
      * Convert and timestamp to an uint32_t which is synced with GPS time such that at PPS the ms should reppresents (somewhere close) to a ms
      * eg: 45'453'010 = represents 10ms after PPS
@@ -94,7 +81,7 @@ public:
      */
     __force_inline static uint32_t timeUs32()
     {
-        return time_us_32() - timeUs32PpsOffset;
+        return time_us_32() - CoreUtils_timeUs32PpsOffset;
     }
 
     __force_inline static uint32_t timeUs32Raw()
@@ -105,7 +92,7 @@ public:
     __force_inline static uint64_t timeUs64()
     {
         // time_us_64 and time_us_32 use the same hardware time, thus offset is also the same
-        return time_us_64() - timeUs32PpsOffset;
+        return time_us_64() - CoreUtils_timeUs32PpsOffset;
     }
 
     /**
@@ -187,7 +174,7 @@ public:
      */
     static void __time_critical_func(setPPS)()
     {
-        timeUs32PpsOffset = time_us_32() % 1'000'000;
+        CoreUtils_timeUs32PpsOffset = time_us_32() % 1'000'000;
     }
 
     /**
@@ -229,7 +216,7 @@ public:
      */
     static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
     {
-        CoreUtils::offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1'000;
+        CoreUtils_offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1'000;
     }
 
     /**
@@ -237,7 +224,7 @@ public:
      */
     static uint64_t msSinceEpoch()
     {
-        return (time_us_64() / 1'000) + CoreUtils::offsetTimeToAbsolute;
+        return (time_us_64() / 1'000) + CoreUtils_offsetTimeToAbsolute;
     }
     /**
      * Seconds since EPOCH, like unix time
@@ -422,7 +409,7 @@ public:
      * Calculate the bearing and ensures it's between 0..360
      */
     template <typename T>
-    static T toBearing(T angle)
+    constexpr static T toBearing(T angle)
     {
         while (angle < static_cast<T>(0))
             angle += static_cast<T>(360);
@@ -469,7 +456,7 @@ public:
      * Parse an path in the form of /foo/bar/bas.extension
      * returns a vector with foo, bar, bas, extension
      */
-    static const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path, const etl::string_view key="");
+    static const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path, const etl::string_view key = "");
 
     /**
      * Devide a circle in a number of sections.
@@ -482,7 +469,7 @@ public:
         constexpr int16_t sectionSize = 360 / SECTIONS;
 
         // Calculate the section
-        return fmodf((degree + (sectionSize >> 1)) / sectionSize, SECTIONS);
+        return static_cast<int>(fmodf((degree + (sectionSize >> 1)) / sectionSize, SECTIONS));
     }
 
     template <int SECTIONS>
@@ -614,28 +601,3 @@ public:
         return defaultValue;
     }
 };
-
-static inline uint8_t reverseBits8(uint8_t data)
-{
-    return (data ^ (data & 0xff)) | ((data & 0xf) << 4) | ((data & 0xf0) >> 4);
-    ;
-}
-static inline uint16_t reverseBits16(uint16_t n)
-{
-    return (reverseBits8(n & 0xFF) << 8) | reverseBits8(n >> 8);
-}
-static inline uint32_t reverseBits32(uint32_t n)
-{
-    return (static_cast<uint32_t>(reverseBits16(n & 0xFFFF)) << 16) |
-           reverseBits16(n >> 16);
-}
-
-template <typename T>
-static T reverseBits(T value);
-
-template <>
-inline uint8_t reverseBits<uint8_t>(uint8_t v) { return reverseBits8(v); }
-template <>
-inline uint16_t reverseBits<uint16_t>(uint16_t v) { return reverseBits16(v); }
-template <>
-inline uint32_t reverseBits<uint32_t>(uint32_t v) { return reverseBits32(v); }

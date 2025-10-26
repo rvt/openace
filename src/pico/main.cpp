@@ -59,14 +59,6 @@
 
 const char *GaTas_buildTime = BUILD_TIMESTAMP;
 
-/* Prototypes for the standard FreeRTOS callback/hook functions implemented
-within this file. */
-// void vApplicationMallocFailedHook(void);
-// void vApplicationIdleHook(void);
-// void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName);
-// void vApplicationTickHook(void);
-// void vAssertCalled(const char *pcFile, uint32_t ulLine);
-
 void etlcpp_receive_error(const etl::exception &e)
 {
     printf("ETLCPP error was %s in file %s at line %d\n", e.what(), e.file_name(), e.line_number());
@@ -121,6 +113,14 @@ void registerModules()
     }
 }
 
+
+__scratch_y("aceSpi_Mem") static uint8_t aceSpi_Mem[sizeof(AceSpi)];
+__scratch_y("sx1262_1_Mem") static uint8_t sx1262_1_Mem[sizeof(Sx1262)];
+__scratch_y("sx1262_2_Mem") static uint8_t sx1262_2_Mem[sizeof(Sx1262)];
+__scratch_y("GpsDecoder_Mem") static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
+__scratch_y("GPS_Mem") static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B)) ];
+__scratch_y("DataPort_Mem") static uint8_t DataPort_Mem[sizeof(DataPort)];
+
 BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configuration &config)
 {
     // clang-format off
@@ -128,6 +128,10 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
         return new Ogn1(bus, config);
     if (name == FanetAce::NAME)
         return new FanetAce(bus, config);
+    if (name == ADSL::NAME)
+        return new ADSL(bus, config);
+    if (name == Flarm2024::NAME)
+        return new Flarm2024(bus, config);
     if (name == AirConnect::NAME)
         return new AirConnect(bus, config);
     if (name == GatasConnect::NAME)
@@ -135,7 +139,7 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == Bluetooth::NAME)
         return new Bluetooth(bus, config);
     if (name == DataPort::NAME)
-        return new DataPort(bus, config);
+        return new (DataPort_Mem) DataPort(bus, config);
     if (name == AircraftTracker::NAME)
         return new AircraftTracker(bus, config);
     if (name == Dump1090Client::NAME)
@@ -143,17 +147,13 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == SerialADSB::NAME)
         return new SerialADSB(bus, config);
     if (name == L76B::NAME)
-        return new L76B(bus, config);
+        return new (GPS_Mem) L76B(bus, config);
     if (name == UbloxM8N::NAME)
-        return new UbloxM8N(bus, config);
+        return new (GPS_Mem) UbloxM8N(bus, config);
     if (name == GpsDecoder::NAME)
-        return new GpsDecoder(bus, config);
+        return new (GpsDecoder_Mem) GpsDecoder(bus, config);
     if (name == GDLoverUDP::NAME)
         return new GDLoverUDP(bus, config);
-    if (name == ADSL::NAME)
-        return new ADSL(bus, config);
-    if (name == Flarm2024::NAME)
-        return new Flarm2024(bus, config);
     if (name == ADSBDecoder::NAME)
         return new ADSBDecoder(bus, config);
     if (name == RadioTunerRx::NAME)
@@ -163,9 +163,9 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == RxDataFrameQueue::NAME)
         return new RxDataFrameQueue(bus, config);
     if (name == Sx1262::NAMES[0])
-        return new Sx1262(bus, config, 0);
+        return new (sx1262_1_Mem) Sx1262(bus, config, 0);
     if (name == Sx1262::NAMES[1])
-        return new Sx1262(bus, config, 1);
+        return new (sx1262_2_Mem) Sx1262(bus, config, 1);
     if (name == PicoRtc::NAME)
         return new PicoRtc(bus, config);
     if (name == Webserver::NAME)
@@ -177,7 +177,7 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == Bmp280::NAME)
         return new Bmp280(bus, config);
     if (name == AceSpi::NAME)
-        return new AceSpi(bus, config);
+        return new (aceSpi_Mem) AceSpi(bus, config);
     // if (name == Config::NAME) return new Config(bus, FlashStore, DEFAULT_GATAS_CONFIG); // Uncomment if needed
     // clang-format on
 
@@ -197,7 +197,7 @@ static InMemoryStore<VOL_DATA_SIZE> volatileStore(store);
 static FlashStore permanentStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 2}; // FLASH_SECTOR_SIZE => 4096 on the PICO
 // Used to store runtime information not stored in permanent store, counters, id's etc...
 static FlashStore binaryStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 3}; // FLASH_SECTOR_SIZE => 4096 on the PICO
-static GATAS::ThreadSafeBus<25> bus;
+__scratch_y("GatasMem_Bus") static GATAS::ThreadSafeBus<25> bus;
 static Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
 volatile static bool loadIndicator = false;
 volatile static int8_t ledStatusIndicatorPin = -1;
@@ -218,14 +218,14 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
 
     auto registeredModules = BaseModule::registeredModules();
 
+    printf("\nLoading %s ... ", str.cbegin());
+
     if (registeredModules[str].hwCheck && config.pinMap(str).empty())
     {
         BaseModule::setModuleStatus(str, GATAS::PostConstruct::HARDWARE_NOT_CONFIGURED);
-        printf("\nModule %s has no hardware configuration ", str.cbegin());
+        printf("not configured for this device, skipping ");
         return;
     }
-
-    printf("\nLoading %s ... ", str.cbegin());
 
     if (!(config.isModuleEnabled(str) || force))
     {
@@ -322,8 +322,6 @@ static void loadModules(void *arch)
     // load(SerialADSB::NAME, bus, config);
     // puts("\033[2J\033[H");
 
-    puts("\nAll modules loaded!\n");
-
     printf(
         R"=(
 
@@ -363,7 +361,7 @@ static void gaTasIdleTask(void *arch)
         uint32_t tick = CoreUtils::secondsSinceEpoch();
 
         if (cyw43_arch_async_context())
-        {            
+        {
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
             gpio_put(ledStatusIndicatorPin, 1);
             vTaskDelay(TASK_DELAY_MS(100));
@@ -401,23 +399,23 @@ static void gaTasIdleTask(void *arch)
             else if (msgFlags & DO_15S)
             {
 
-// #if GATAS_DEBUG == 1
-//                     puts("\033[2J\033[H\n\nLWiP Status:");
-//                 for (int i = 0; i < MEMP_MAX; i++)
-//                 {
-//                     const struct memp_desc *desc = memp_pools[i];
-//                     if (desc == NULL)
-//                         continue;
+                #if GATAS_DEBUG == 1 && LWIP_STATS == 1 && MEMP_STATS == 1 && LWIP_STATS_DISPLAY
+                                    puts("\033[2J\033[H\n\nLWiP Status:");
+                                for (int i = 0; i < MEMP_MAX; i++)
+                                {
+                                    const struct memp_desc *desc = memp_pools[i];
+                                    if (desc == NULL)
+                                        continue;
 
-//                     struct stats_mem *stats = desc->stats;
-//                     printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
-//                            desc->desc,
-//                            (unsigned int)(stats->avail),
-//                            (unsigned int)(stats->used),
-//                            (unsigned int)(stats->max),
-//                            (unsigned int)(stats->err));
-//                 }
-// #endif
+                                    struct stats_mem *stats = desc->stats;
+                                    printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
+                                           desc->desc,
+                                           (unsigned int)(stats->avail),
+                                           (unsigned int)(stats->used),
+                                           (unsigned int)(stats->max),
+                                           (unsigned int)(stats->err));
+                                }
+                #endif
                 bus.receive(GATAS::Every15SecMsg());
                 msgFlags &= ~DO_15S;
             }
@@ -453,7 +451,7 @@ void vDiagnosticsTask(void *pvParameters)
         char runTimeStats[DIAG_STRING_SIZE] = {0}; // Buffer for runtime stats
         bool hasRunTimeStats = false;
 
-// Optional: Get CPU usage stats (needs run time counter)
+        // Optional: Get CPU usage stats (needs run time counter)
         vTaskGetRunTimeStats(runTimeStats);
         hasRunTimeStats = true;
 

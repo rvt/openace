@@ -15,11 +15,6 @@ void GpsDecoder::start()
     getBus().subscribe(*this);
 }
 
-void GpsDecoder::stop()
-{
-    getBus().unsubscribe(*this);
-}
-
 void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
@@ -54,7 +49,7 @@ void GpsDecoder::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)
     {
-        conspicuity.store(msg.config.gaTasConfig().conspicuity);
+        conspicuity = msg.config.gaTasConfig().conspicuity;
     }
 }
 
@@ -67,7 +62,6 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
     {
     case MINMEA_SENTENCE_RMC:
     {
-        static bool forceSendTime = true;
         statistics.receivedRMC += 1;
         struct minmea_sentence_rmc frame;
         if (minmea_parse_rmc(&frame, msg.sentence.c_str()))
@@ -238,7 +232,6 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
     {
         auto altGeoid = altitudeGeoid();
 
-        auto conspcuity = conspicuity.load(etl::memory_order_acquire);
         // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
         getBus().receive(
             GATAS::OwnshipPositionMsg{
@@ -255,7 +248,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .velocityEast = velocityEast,
                     .geoidSeparation = static_cast<int16_t>(geoidSeparation),
                     .airborne = groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
-                    .conspicuity = conspcuity,
+                    .conspicuity = conspicuity
                 }});
     }
 }

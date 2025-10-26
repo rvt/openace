@@ -10,6 +10,7 @@
 #include "ace/coreutils.hpp"
 #include "ace/messages.hpp"
 #include "ace/messages.hpp"
+#include "ace/spinlockguard.hpp"
 
 #include "etl/map.h"
 #include "etl/message_bus.h"
@@ -17,7 +18,7 @@
 class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg>
 {
     friend class message_router;
-    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
+    GATAS::OwnshipMinimalPositionInfo ownshipPosition;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
@@ -26,30 +27,23 @@ class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::
         uint32_t messages = 0;
     } statistics;
 
+//    int spinLock;
     uint32_t gatasIp;
 
 public:
     static constexpr const etl::string_view NAME = "DataPort";
-    DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), gatasIp(0)
+    DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), /*spinLock(0),*/ gatasIp(0)
     {
         (void)config;
     }
 
     virtual ~DataPort() = default;
 
-    virtual GATAS::PostConstruct postConstruct() override
-    {
-        return GATAS::PostConstruct::OK;
-    }
+    virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override
     {
         getBus().subscribe(*this);
-    };
-
-    virtual void stop() override
-    {
-        getBus().unsubscribe(*this);
     };
 
     void on_receive(const GATAS::TrackedAircraftPositionMsg &msg);

@@ -51,7 +51,7 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     // When this is set to true, larger packages are send
     bool androidHotspotFix;
     size_t androidHotspotCurrentMark;
-    uint32_t spinlock;
+    int spinLock;
 
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
     GATAS::OwnshipPositionInfo ownshipPosition;
@@ -61,7 +61,6 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
 private:
     virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
-    virtual void stop() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
     void on_receive(const GATAS::DataPortMsg &msg);
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
@@ -87,13 +86,13 @@ public:
                                                                   hasGpsFix(false),
                                                                   androidHotspotFix(true),
                                                                   androidHotspotCurrentMark(ANDROIDHOTSPOT_FIX_HIGHMARK),
+                                                                  spinLock(0),
                                                                   cobsStreamHandler(CobsStreamHandler(bus, config)),
                                                                   tcpClient(
                                                                       GATAS::Config::IpPort{config.ipPortBypath(NAME, "gatasServer").ip,  GATAS_CONNECT_PORT},
                                                                       TcpClient::ReceiveHandler::create<GatasConnect, &GatasConnect::tcpReceiveHandler>(*this),
                                                                       TcpClient::SentHandler::create<GatasConnect, &GatasConnect::tcpSentHandler>(*this))
-    {
-        spinlock = spin_lock_claim_unused(true);
+    {        
         getConfig(config);
         tcpClient.autoConnect(true);
     }

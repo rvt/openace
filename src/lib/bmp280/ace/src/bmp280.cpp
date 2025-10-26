@@ -7,11 +7,6 @@ void Bmp280::start()
     getBus().subscribe(*this);
 };
 
-void Bmp280::stop()
-{
-    getBus().unsubscribe(*this);
-};
-
 void Bmp280::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Bmp280::NAME)

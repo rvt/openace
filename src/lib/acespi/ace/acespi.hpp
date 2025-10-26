@@ -63,8 +63,6 @@ public:
 
     virtual void start() override;
 
-    virtual void stop() override;
-
     virtual void read_registers(uint8_t cs, uint8_t reg, uint8_t *buf, uint16_t len, uint8_t delayMs) const override;
 
     virtual void read_registers_select(uint8_t cs, uint8_t reg) const override;
@@ -81,7 +79,9 @@ public:
 
     virtual SpiGuard getLock(bool &locked) override;
 
-    virtual uint8_t spiNum() const;
+    virtual uint8_t spiNum() const {
+        return spi;
+    }
 
     void on_receive_unknown(const etl::imessage &msg);
 };

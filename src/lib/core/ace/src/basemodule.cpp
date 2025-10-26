@@ -47,10 +47,7 @@ const char *postConstructToString(GATAS::PostConstruct value)
 
 BaseModule::BaseModule(etl::imessage_bus &bus_, const etl::string_view name_) : bus(bus_), moduleName(name_)
 {
-    // Tech Depth: For now disabled. However, Modules are only created single core during startup
-    // This is for now because the Config module is initialised before everything else
-    // This propely requires some (smallish) refactoring of the COnfig module
-    //    if (xSemaphoreTakeRecursive(BaseModule::xMutex, portMAX_DELAY) == pdTRUE)
+    // Mutex not needed, Modules are only created single core during startup
     {
         if (BaseModule::moduleLoaderMap.full())
         {
@@ -59,10 +56,8 @@ BaseModule::BaseModule(etl::imessage_bus &bus_, const etl::string_view name_) : 
         }
         else
         {
-            // printf("Registering: %p %s ", this, name);
             BaseModule::moduleLoaderMap[name_].module = this;
         }
-        //        xSemaphoreGiveRecursive(BaseModule::xMutex);
     }
 }
 
@@ -70,7 +65,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
 {
     // printf("Looking %s depends on %s\n", that.name(), requesting);
     // Look for it's direct name ex:AceSpi
-    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::xMutex))
+    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::baseMutex))
     {
 
         if (BaseModule::moduleLoaderMap.contains(requesting))
@@ -98,10 +93,8 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
 void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
 {
     // Handle the interrupt and call back over callback or task notification
-    // printf("Pin %d event %d\n", pin, event);
-    // Cannot wrap this in a mutex since when there is an interrupt we get an assert on suspend
+    // Cannot wrap this in a baseMutex since when there is an interrupt we get an assert on suspend
     // This is in reality only an issue when modules are added/removed which is not expected during normal operation
-    // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     if (pinInterruptHandlers.contains(pin) && pinInterruptHandlers[pin].enabled)
     {
         pinInterruptHandler &iHandler = pinInterruptHandlers[pin];
@@ -117,7 +110,6 @@ void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t ev
             }
         }
     }
-    // portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 /**
@@ -125,7 +117,7 @@ void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t ev
  */
 void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t handler, uint32_t notificationValue)
 {
-    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::xMutex))
+    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::baseMutex))
     {
         if (pinInterruptHandlers.full())
         {
@@ -143,7 +135,7 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t
  */
 void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallback_t callback)
 {
-    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::xMutex))
+    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::baseMutex))
     {
         if (pinInterruptHandlers.full())
         {
@@ -168,8 +160,8 @@ void BaseModule::disablePinInterrupt(uint8_t pin)
  */
 void BaseModule::enablePinInterrupt(uint8_t pin, uint32_t notificationValue)
 {
-    pinInterruptHandlers[pin].enabled = true;
     pinInterruptHandlers[pin].notificationValue = notificationValue;
+    pinInterruptHandlers[pin].enabled = true;
 }
 
 
@@ -179,7 +171,7 @@ void BaseModule::enablePinInterrupt(uint8_t pin, uint32_t notificationValue)
  */
 void BaseModule::unregisterPinInterrupt(uint8_t pin)
 {
-    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::xMutex))
+    if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::baseMutex))
     {
         gpio_set_irq_enabled(pin, 0x00, false);
         pinInterruptHandlers.erase(pin);

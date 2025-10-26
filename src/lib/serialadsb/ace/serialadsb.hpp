@@ -60,8 +60,6 @@ public:
 
     virtual void start() override;
 
-    virtual void stop() override;
-
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
     void processNewSentence(const etl::array_view<char>& sentence);

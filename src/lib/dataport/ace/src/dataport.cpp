@@ -7,12 +7,20 @@
 
 constexpr const bool DEBUG_DATAPORT = false;
 
+GATAS::PostConstruct DataPort::postConstruct()
+{
+    // spinLock = SpinlockGuard::claim();
+    return GATAS::PostConstruct::OK;
+}
+
 void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
+    (void)msg;
     static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
-    ownshipPosition.store(msg.position, etl::memory_order_release);
-    if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
-    {
+
+    //    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position.assignTo());
+    // if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
+    // {
 
         // Initially the idea was to 'emulate' a GNS chip, but later decides
         // to pass through GPS messages. Keeping this code just in case/
@@ -20,11 +28,11 @@ void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
         // sendGPGSA(ownshipPosition);
         // sendGPGGA(ownshipPosition);
         // sendPGRMZ(msg.position);
-        
+
         // For SkyDemon we disable sendPFLAU
         // http://forums.skydemon.aero/Topic32128.aspx
         // sendPFLAU(msg.position);
-    }
+    // }
 }
 
 void DataPort::on_receive(const GATAS::TrackedAircraftPositionMsg &msg)
@@ -51,7 +59,6 @@ void DataPort::on_receive(const GATAS::GPSSentenceMsg &msg)
  */
 void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
 {
-    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
     GATAS::NMEAString pflaa;
     etl::string_stream stream(pflaa);
 
@@ -66,21 +73,21 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
     // PFLAA,<AlarmLevel>,<RelativeNorth>,<RelativeEast>,<RelativeVertical>,<IDType>,<ID>,<Track>,<TurnRate>,<GroundSpeed>,<ClimbRate>,<AcftType>[,<NoTrack>[,<Source>,<RSSI>]]
     // Example: $PFLAA,0,10,7,21,0,B1B1B1,0,,,-0.1,1,48,0,*23
     stream << etl::make_string("$PFLAA,"
-              "0,")                                                    // Alarm Level
-           << position.relNorthFromOwn << CO                        // Relative North Meters
-           << position.relEastFromOwn << CO                          // Relative East Meters
-           << (position.ellipseHeight - ownship.ellipseHeight) << CO // Relative Vertical Meters
-           << getPFLAAAddressType(position.addressType) << CO;       // ID Type
+                               "0,")                                         // Alarm Level
+           << position.relNorthFromOwn << CO                                 // Relative North Meters
+           << position.relEastFromOwn << CO                                  // Relative East Meters
+           << (position.ellipseHeight - ownshipPosition.ellipseHeight) << CO // Relative Vertical Meters
+           << getPFLAAAddressType(position.addressType) << CO;               // ID Type
     CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
-    stream << CO                                        // HEXCode example 484FB3!PH-DHA
-           << position.course << CO                     // Track
-           << CO                                        // TurnRate kept empty
+    stream << CO                                       // HEXCode example 484FB3!PH-DHA
+           << position.course << CO                    // Track
+           << CO                                       // TurnRate kept empty
            << groundSpeed << CO                        // Ground Speed
-           << climbRate << CO                         // Climb Rate
+           << climbRate << CO                          // Climb Rate
            << getPFLAAAircraftCategory(position) << CO // Aircraft Type
            << position.noTrack << CO                   // Tracking
-           << getPFLAASourceType(position) << CO      // Source Type
-              ;                                       // RSSI
+           << getPFLAASourceType(position) << CO       // Source Type
+        ;                                              // RSSI
 
     CoreUtils::addChecksumToNMEA(pflaa);
     if (DEBUG_DATAPORT)
@@ -185,16 +192,16 @@ void DataPort::sendPFLAU(const GATAS::OwnshipPositionInfo &position)
     // PFLAU,<RX>,<TX>,<GPS>,<Power>,<AlarmLevel>,<RelativeBearing>,<AlarmType>,<RelativeVertical>,<RelativeDistance>[,<ID>]
     // $PFLAU,5,1,1,1,0,,0,,,*
     stream << etl::make_string("$PFLAU,"
-              "0"  // Num RX
-              ",1" // Num TX
-              ",1" // GPS 1 == 3D
-              ",1" // Power 1 == OK
-              ",0" // 0 Alerm level
-              ","  // RelativeBearing
-              ",0" // AlarmType
-              ","  // RelativeVertical
-              ","  // RelativeDistance
-              ","); // Optional ID
+                               "0"   // Num RX
+                               ",1"  // Num TX
+                               ",1"  // GPS 1 == 3D
+                               ",1"  // Power 1 == OK
+                               ",0"  // 0 Alerm level
+                               ","   // RelativeBearing
+                               ",0"  // AlarmType
+                               ","   // RelativeVertical
+                               ","   // RelativeDistance
+                               ","); // Optional ID
 
     CoreUtils::addChecksumToNMEA(pflau);
     if (DEBUG_DATAPORT)

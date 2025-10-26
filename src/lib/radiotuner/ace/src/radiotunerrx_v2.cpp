@@ -49,13 +49,6 @@ void RadioTunerRx::start()
     }
 };
 
-void RadioTunerRx::stop()
-{
-    getBus().unsubscribe(*this);
-
-    radioCtxList.clear();
-};
-
 void RadioTunerRx::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;

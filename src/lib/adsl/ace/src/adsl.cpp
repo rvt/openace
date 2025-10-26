@@ -2,22 +2,19 @@
 
 #include "../adsl.hpp"
 #include "ace/bitcount.hpp"
+#include "ace/spinlockguard.hpp"
 
 constexpr float POSITION_DECODE = 0.0001f / 60.f;
 
 GATAS::PostConstruct ADSL::postConstruct()
 {
+    spinLock = SpinlockGuard::claim();
     return GATAS::PostConstruct::OK;
 }
 
 void ADSL::start()
 {
     getBus().subscribe(*this);
-};
-
-void ADSL::stop()
-{
-    getBus().unsubscribe(*this);
 };
 
 void ADSL::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -79,8 +76,7 @@ void ADSL::on_receive(const GATAS::RadioRxGfskMsg &msg)
         }
 
         // Ignore ownship address
-        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
-        if (packet.address == ownship.conspicuity.icaoAddress)
+        if (packet.address == ownshipPosition.conspicuity.icaoAddress)
         {
             return;
         }
@@ -92,7 +88,7 @@ void ADSL::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
 void ADSL::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition.store(msg.position, etl::memory_order_release);
+    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
 }
 
 void ADSL::on_receive(const GATAS::GpsStatsMsg &msg)
@@ -209,7 +205,7 @@ ADSL_Packet::AircraftCategory ADSL::mapAircraftCategory(GATAS::AircraftCategory 
     case GATAS::AircraftCategory::ULTRA_LIGHT_FIXED_WING:
         return ADSL_Packet::AircraftCategory::AC_Ultralight;
     case GATAS::AircraftCategory::SPACE_VEHICLE:
-        return ADSL_Packet::AircraftCategory::AC_UASOpenCategory; 
+        return ADSL_Packet::AircraftCategory::AC_UASOpenCategory;
     case GATAS::AircraftCategory::UN_MANNED:
         return ADSL_Packet::AircraftCategory::AC_EVTOL_UAM; // Closest match
     case GATAS::AircraftCategory::SURFACE_EMERGENCY_VEHICLE:
@@ -242,7 +238,7 @@ void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 
     if (msg.radioParameters.config->dataSource == GATAS::DataSource::ADSL)
     {
-        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+        auto &ownship = ownshipPosition;
 
         ADSL_Packet packet;
         packet.payloadIdent = 0x02; // ADS-L.4.SRD860.F.2.1 :: iConspicuity
@@ -285,7 +281,7 @@ void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
 {
     uint32_t positionTs = CoreUtils::timeUs32();
-    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+    auto &ownship = ownshipPosition;
 
     float fLatitude = packet.getLatitude();
     float fLongitude = packet.getLongitude();
@@ -320,8 +316,7 @@ int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
             0.0,
             fromOwn.distance,
             fromOwn.relNorth,
-            fromOwn.relEast
-        },
+            fromOwn.relEast},
         rssiDbm};
     statistics.receivedAircraftPositions += 1;
     getBus().receive(aircraftPosition);

@@ -39,7 +39,7 @@ private:
     static void receiveTask(void *arg);
 
     PioSerial pioSerial;
-    int8_t ppsPin;
+    const int8_t ppsPin;
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<GATAS::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
     static constexpr const etl::string_view NAME = "Gnss";
@@ -75,9 +75,9 @@ protected:
 
 public:
     AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins) : BaseModule(bus, name),
-                                                                                                         pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
-                                                                                                         ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
-                                                                                                         taskHandle(nullptr)
+                                                                                                       pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
+                                                                                                       ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
+                                                                                                       taskHandle(nullptr)
     {
     }
 
@@ -86,8 +86,6 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    virtual void stop() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 };

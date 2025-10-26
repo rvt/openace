@@ -21,12 +21,6 @@ GATAS::PostConstruct Dump1090Client::postConstruct()
     return GATAS::PostConstruct::OK;
 }
 
-void Dump1090Client::stop()
-{
-    tcpClient.stop();
-    getBus().unsubscribe(*this);
-};
-
 void Dump1090Client::start()
 {
     getBus().subscribe(*this);

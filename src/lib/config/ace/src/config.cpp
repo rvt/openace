@@ -89,11 +89,6 @@ void Config::start()
     getBus().subscribe(*this);
 }
 
-void Config::stop()
-{
-    getBus().unsubscribe(*this);
-}
-
 void Config::getData(etl::string_stream &stream, const etl::string_view fullPath) const
 {
     struct CustomWriter

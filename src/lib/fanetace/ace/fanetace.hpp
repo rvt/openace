@@ -53,12 +53,13 @@ private:
 
     TaskHandle_t taskHandle;
     FANET::Protocol protocol;
+    int spinLock;
     SemaphoreHandle_t mutex;
 
     uint8_t radioNo;
     uint16_t distanceIgnore;
 
-    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
+    GATAS::OwnshipPositionInfo ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
     Radio::RadioParameters radioParameters;
 
@@ -68,7 +69,7 @@ private:
 public:
     static constexpr const etl::string_view NAME = "Fanet";
 
-    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), protocol(this), mutex(nullptr), radioNo(0), distanceIgnore(DEFAULT_IGNORE_DISTANCE), gaTasConfiguration(config.gaTasConfig())
+    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), protocol(this), spinLock(0), mutex(nullptr), radioNo(0), distanceIgnore(DEFAULT_IGNORE_DISTANCE), gaTasConfiguration(config.gaTasConfig())
     {
         protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.icaoAddress});
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Fanet", "distanceIgnore");
@@ -80,8 +81,6 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    virtual void stop() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 };

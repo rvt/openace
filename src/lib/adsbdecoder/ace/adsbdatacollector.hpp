@@ -13,6 +13,8 @@
 
 struct AdsbCombinedDataStatus
 {
+    etl::hash<uint32_t> hasher;
+
     uint32_t icao; // ICAO address
     GATAS::CallSign callSign;
     uint8_t messageStatus; // How complete this message is
@@ -66,7 +68,6 @@ struct AdsbCombinedDataStatus
     }
     size_t operator()(uint32_t e) const
     {
-        static etl::hash<uint32_t> hasher;
         return hasher(e);
     }
 };

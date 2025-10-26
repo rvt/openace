@@ -29,11 +29,6 @@ void RxDataFrameQueue::start()
     getBus().subscribe(*this);
 };
 
-void RxDataFrameQueue::stop()
-{
-    getBus().unsubscribe(*this);
-};
-
 void RxDataFrameQueue::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;

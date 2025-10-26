@@ -51,7 +51,6 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     mutable struct
     {
         uint16_t deviceErrors = 0;
-        uint32_t taskTimeout = 0; // THis is more of a indication that we did not receive a packet within GATAS_SX126X_MAX_RX_TIME, not an error
         uint32_t receivedPackets = 0;
         uint32_t transmittedPackets = 0;
         uint32_t buzyWaitsTimeout = 0;
@@ -143,7 +142,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     Radio::RadioParameters rxRadioParameters{&PROTOCOL_NONE, 868'000'000, -100, 0};
     Radio::RadioParameters newRxRadioParameters{&PROTOCOL_NONE, 868'000'000, -100, 0};
     
-    SemaphoreHandle_t xMutex;
+    SemaphoreHandle_t mutex;
 public:
     static constexpr etl::array<etl::string_view, 4> NAMES{"Sx1262_0", "Sx1262_1", "Sx1262_2", "Sx1262_3"};
 
@@ -193,8 +192,6 @@ public:
     {
         return radioNo;
     }
-
-    virtual void stop() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 

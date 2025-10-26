@@ -15,16 +15,6 @@ void AircraftTracker::start()
     getBus().subscribe(*this);
 };
 
-void AircraftTracker::stop()
-{
-    getBus().unsubscribe(*this);
-    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
-    while (eTaskGetState(taskHandle) != eDeleted)
-    {
-        vTaskDelay(TASK_DELAY_MS(50));
-    }
-};
-
 void AircraftTracker::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::CONFIG)

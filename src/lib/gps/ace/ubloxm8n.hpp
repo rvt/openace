@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 #include "AbstractGnss.hpp"
-
 #include "etl/message_router.h"
 
 class UbloxM8N : public AbstractGnss, public etl::message_router<UbloxM8N>

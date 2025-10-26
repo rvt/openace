@@ -35,7 +35,7 @@
  * 5) Scan the network for any devices (ping?? openPort??) and send GDL90 to these devices found?
  * 6) When in AP mode, restart client mode with a button
  */
-class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::IdleMsg>
+class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::Every5SecMsg>
 {
 private:
     static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 3; // Number of times connection to the same network is attempted before trying an other network
@@ -79,11 +79,12 @@ private:
     uint8_t networkConnectionAttempt;
     uint8_t totalScanAttempt;
     GATAS::WifiMode wifiMode;
+    s8_t mdnsSlot;
+    bool currentWifiActiveStatus;
 
     // set of all known networks found during scan
     etl::set<GATAS::SsidOrPasswdStr, 4> scanResult;
 
-    s8_t mdnsSlot;
     static void wifiTask(void *arg);
 
     void startAccessPoint();
@@ -107,7 +108,7 @@ private:
     void mDnsDeinit(int itf);
     void showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const;
     void on_receive_unknown(const etl::imessage &msg);
-    void on_receive(const GATAS::IdleMsg &msg);
+    void on_receive(const GATAS::Every5SecMsg &msg);
 
     /**
      * Get's the current local IP address
@@ -129,7 +130,9 @@ public:
                                                                        timerHandle(nullptr),
                                                                        networkConnectionAttempt(0),
                                                                        totalScanAttempt(0),
-                                                                       wifiMode(GATAS::WifiMode::NC)
+                                                                       wifiMode(GATAS::WifiMode::NC),
+                                                                       mdnsSlot(0),
+                                                                       currentWifiActiveStatus(false)
     {
     }
 
@@ -138,6 +141,4 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    virtual void stop() override;
 };
