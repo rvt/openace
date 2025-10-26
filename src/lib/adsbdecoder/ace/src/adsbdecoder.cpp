@@ -26,7 +26,7 @@ void ADSBDecoder::start()
 
 void ADSBDecoder::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position.assignTo());
+    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position).assignTo();
 }
 
 void ADSBDecoder::getConfiguration(const Configuration &config)
