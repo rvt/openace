@@ -55,7 +55,8 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
     minmea_time lastGGATimestamp;
     const uint32_t taskStartTime;
     uint8_t fixType = 0;
-    etl::atomic<GATAS::Config::Conspicuity> conspicuity;
+    bool forceSendTime;
+    GATAS::Config::Conspicuity conspicuity;
 
 private:
     void on_receive(const GATAS::GPSSentenceMsg &msg);
@@ -95,9 +96,11 @@ public:
     GpsDecoder(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                       lastRMCTimestamp({0, 0, 0, 0}),
                                                                       lastGGATimestamp({0, 0, 0, 0}),
-                                                                      taskStartTime(CoreUtils::timeS32())
+                                                                      taskStartTime(CoreUtils::timeS32()),
+                                                                      fixType(0),
+                                                                      forceSendTime(true)
     {
-        conspicuity.store(config.gaTasConfig().conspicuity);
+        conspicuity = config.gaTasConfig().conspicuity;
     }
 
     virtual ~GpsDecoder() = default;
@@ -105,7 +108,6 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-    virtual void stop() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 };

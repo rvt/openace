@@ -79,14 +79,14 @@ template< int SIZE_BITS, int PARITY_BITS >
 class LDPC_Decoder
 {
 public:
-    static const uint8_t UserBits       = SIZE_BITS;           // 5 32-bit bits = 20 bytes
-    static const uint8_t UserWords      = UserBits/32;
-    static const uint8_t ParityBits     = PARITY_BITS;         // 6 bytes (total packet is 26 bytes)
-    static const uint8_t CodeBits       = UserBits+ParityBits; // 160+48 = 208 code bits = 26 bytes
-    static const uint8_t CodeBytes      = (CodeBits+ 7)/ 8;    //
-    static const uint8_t CodeWords      = (CodeBits+31)/32;    //
-    static const uint8_t MaxCheckWeight = 24;
-    // static const uint8_t MaxBitWeight   =  8;
+    static constexpr uint8_t UserBits       = SIZE_BITS;           // 5 32-bit bits = 20 bytes
+    static constexpr uint8_t UserWords      = UserBits/32;
+    static constexpr uint8_t ParityBits     = PARITY_BITS;         // 6 bytes (total packet is 26 bytes)
+    static constexpr uint8_t CodeBits       = UserBits+ParityBits; // 160+48 = 208 code bits = 26 bytes
+    static constexpr uint8_t CodeBytes      = (CodeBits+ 7)/ 8;    //
+    static constexpr uint8_t CodeWords      = (CodeBits+31)/32;    //
+    static constexpr uint8_t MaxCheckWeight = 24;
+    // static constexpr uint8_t MaxBitWeight   =  8;
 
 public:
 
@@ -255,9 +255,9 @@ class LDPC_FloatDecoder
 {
 public:
 
-    static const int MaxCodeBits=512;
-    static const int MaxParityBits=256;
-    static const int MaxParityWeight=32;                       //
+    static constexpr int MaxCodeBits=512;
+    static constexpr int MaxParityBits=256;
+    static constexpr int MaxParityWeight=32;                       //
     int CodeBits;                                              // number of code bits
     int ParityBits;                                            // number of parity bits
     uint16_t ParityCheckIndex[MaxParityBits][MaxParityWeight]; // list of 1's in the ParityCheck matrix
@@ -520,12 +520,12 @@ template <class Float>
 class OGN_PPM_Decoder
 {
 public:
-    static const int DataBits = 32*5;                      // 5 words = 160 data bits = OGN packet
-    static const int ParityBits = 194;                     // 194 parity bits (Gallager code)
-    static const int CodeBits = DataBits+ParityBits;       // 354 total bits per Gallager code block
-    static const int BitsPerSymbol = 6;                    // 6 bits per symbol for PPM modulation
-    static const int PulsesPerSlot = 1<<BitsPerSymbol;     // 64 (possible) pulses per time slot = 1 symbol = 6 bits
-    static const int CodeSymbols = CodeBits/BitsPerSymbol; // 59 time slots to form complete packet
+    static constexpr int DataBits = 32*5;                      // 5 words = 160 data bits = OGN packet
+    static constexpr int ParityBits = 194;                     // 194 parity bits (Gallager code)
+    static constexpr int CodeBits = DataBits+ParityBits;       // 354 total bits per Gallager code block
+    static constexpr int BitsPerSymbol = 6;                    // 6 bits per symbol for PPM modulation
+    static constexpr int PulsesPerSlot = 1<<BitsPerSymbol;     // 64 (possible) pulses per time slot = 1 symbol = 6 bits
+    static constexpr int CodeSymbols = CodeBits/BitsPerSymbol; // 59 time slots to form complete packet
 
     LDPC_FloatDecoder<Float> LDPC_Decoder;                 // inner LDPC code decoder
 

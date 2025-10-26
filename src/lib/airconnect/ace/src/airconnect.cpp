@@ -18,11 +18,6 @@ void AirConnect::start()
     getBus().subscribe(*this);
 };
 
-void AirConnect::stop()
-{
-    getBus().unsubscribe(*this);
-};
-
 void AirConnect::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;

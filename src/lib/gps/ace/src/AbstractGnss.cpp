@@ -51,13 +51,6 @@ void AbstractGnss::start()
     registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, AbstractGnss_pps_callback);
 };
 
-void AbstractGnss::stop()
-{
-    pioSerial.stop();
-    unregisterPinInterrupt(ppsPin);
-    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
-};
-
 void AbstractGnss::receiveTask(void *arg)
 {
     AbstractGnss *abstractGnss = static_cast<AbstractGnss *>(arg);
@@ -128,14 +121,14 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
 
             if (etl::string_view(type) == "SV" || // GSV
                 etl::string_view(type) == "TG" || // VTG
-                etl::string_view(type) == "LL")   // GLL 
+                etl::string_view(type) == "LL")   // GLL
             {
                 // Ignore this sentence
                 return;
             }
 
-            // Check for RMC to give it more priority
-            if (etl::string_view(type) == "MC" || etl::string_view(type) == "GA") // RMC || GGA
+            // Check for RMC/GGA to give it more priority
+            if (etl::string_view(type) == "MC" || etl::string_view(type) == "GA")
             {
                 isPriority = true;
             }
@@ -150,7 +143,7 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     }
 
     // Notify only when queue has enough items or it's an RMC
-    if (queue.size() > QUEUE_SIZE/2 || isPriority)
+    if (queue.size() > QUEUE_SIZE / 2 || isPriority)
     {
         xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
     }

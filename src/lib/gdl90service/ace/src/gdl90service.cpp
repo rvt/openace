@@ -4,7 +4,7 @@
 
 /* GATAS */
 #include "ace/coreutils.hpp"
-#include "ace/semaphoreguard.hpp"
+#include "ace/spinlockguard.hpp"
 
 GATAS::PostConstruct Gdl90Service::postConstruct()
 {
@@ -16,12 +16,6 @@ void Gdl90Service::start()
     xTaskCreate(gdl90ServiceTask, Gdl90Service::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
-
-void Gdl90Service::stop()
-{
-    getBus().unsubscribe(*this);
-    xTaskNotify(taskHandle, TaskState::SHUTDOWN, eSetBits);
-}
 
 void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view path) const
 {

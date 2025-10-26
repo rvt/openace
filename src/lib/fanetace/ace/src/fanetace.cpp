@@ -11,6 +11,7 @@
 #include "ace/coreutils.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
+#include "ace/spinlockguard.hpp"
 
 void FanetAce::start()
 {
@@ -18,14 +19,9 @@ void FanetAce::start()
     getBus().subscribe(*this);
 };
 
-void FanetAce::stop()
-{
-    getBus().unsubscribe(*this);
-    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
-};
-
 GATAS::PostConstruct FanetAce::postConstruct()
 {
+    spinLock = SpinlockGuard::claim();
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
@@ -75,7 +71,7 @@ void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     if (msg.radioParameters.config->dataSource == GATAS::DataSource::FANET)
     {
-        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
 
         FANET::TrackingPayload payload;
         payload.latitude(ownship.lat)
@@ -126,7 +122,7 @@ void FanetAce::fanet_ackReceived(uint16_t id)
 
 void FanetAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition.store(msg.position, etl::memory_order_release);
+    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
 }
 
 void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
@@ -150,7 +146,7 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
         return;
     }
     xTaskNotify(taskHandle, TaskState::HANDLETX, eSetBits);
-    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+    auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
 
     switch (messageType)
     {

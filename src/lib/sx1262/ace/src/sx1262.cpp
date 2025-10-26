@@ -20,12 +20,6 @@ void Sx1262::start()
     getBus().subscribe(*this);
 };
 
-void Sx1262::stop()
-{
-    getBus().unsubscribe(*this);
-    xTaskNotify(taskHandle, TaskState::DELETE, eSetBits);
-};
-
 GATAS::PostConstruct Sx1262::postConstruct()
 {
     spiHall = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
@@ -35,8 +29,8 @@ GATAS::PostConstruct Sx1262::postConstruct()
         return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
 
-    xMutex = xSemaphoreCreateMutex();
-    if (xMutex == nullptr)
+    mutex = xSemaphoreCreateMutex();
+    if (mutex == nullptr)
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
@@ -91,7 +85,6 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << "{";
     stream << "\"deviceErrors\":" << statistics.deviceErrors;
     stream << ",\"spiNo\":" << spiHall->spiNum();
-    stream << ",\"taskTimeout\":" << statistics.taskTimeout;
     stream << ",\"receivedPackets\":" << statistics.receivedPackets;
     stream << ",\"transmittedPackets\":" << statistics.transmittedPackets;
     stream << ",\"buzyWaitsTimeout\":" << statistics.buzyWaitsTimeout;
@@ -142,7 +135,7 @@ void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
-        if (auto guard = SemaphoreGuard(10, xMutex))
+        if (auto guard = SemaphoreGuard(10, mutex))
         {
             newRxRadioParameters = Radio::RadioParameters(msg.radioParameters);
             xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
@@ -570,7 +563,7 @@ void Sx1262::sx1262Task(void *arg)
             // Finally, if only a new configuration was set, reconfigure the tranceiver
             if (hasNewConfig)
             {
-                if (auto g = SemaphoreGuard(10, sx1262->xMutex))
+                if (auto g = SemaphoreGuard(10, sx1262->mutex))
                 {
                     sx1262->rxRadioParameters = sx1262->newRxRadioParameters;
                     // printf("%8ld New Config ds:%s\n", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(sx1262->rxRadioParameters.config->dataSource));
@@ -582,14 +575,6 @@ void Sx1262::sx1262Task(void *arg)
                     sx1262->configureSx1262(sx1262->rxRadioParameters);
                     sx1262->listen();
                 }
-            }
-        }
-        else
-        {
-            // End up here when timeout, only count in statistics so we know this is happening
-            if (sx1262->rxRadioParameters.config == &PROTOCOL_NONE)
-            {
-                sx1262->statistics.taskTimeout += 1;
             }
         }
     }

@@ -14,9 +14,6 @@ public:
     virtual void start() override
     {
     }
-    virtual void stop() override
-    {
-    }
     virtual GATAS::PostConstruct postConstruct() override
     {
         return GATAS::PostConstruct::OK;

@@ -49,16 +49,16 @@ private:
     AddressCache<MAX_ADDRESS_CACHE_SIZE, 15'000'000> ignoredAirplanes; // A quick cache to store all airplanes that we already know we should not track for up to 30 seconds
     AdsbDataCollector<MAX_PLANES_TRACKED, 5'000'000> adsbDataCollector;
 
-    int32_t filterAbove; // Filter out all aircraft above me in meters. 1000 means all aircraft 1000m or more above me will not get processed
-    int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed
-    mode_s_t state;      
     SemaphoreHandle_t mutex;
-    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
+    int spinLock;
     uint32_t filterRadius=100'000;
-    
+    GATAS::OwnshipMinimalPositionInfo ownshipPosition;
+    mode_s_t state;      
+    int32_t filterAbove; // Filter out all aircraft above me in meters. 1000 means all aircraft 1000m or more above me will not get processed
+    int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed    
 public:
     static constexpr const etl::string_view NAME = "ADSBDecoder";
-    ADSBDecoder(etl::imessage_bus &bus, const Configuration &config) : BinaryReceiver(bus, NAME)
+    ADSBDecoder(etl::imessage_bus &bus, const Configuration &config) : BinaryReceiver(bus, NAME), mutex(nullptr), spinLock(0), filterRadius(100000)
     {
         filterAbove = config.valueByPath(true, NAME, "filterAbove");
         filterBelow = config.valueByPath(true, NAME, "filterBelow");
@@ -71,8 +71,6 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    virtual void stop() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 

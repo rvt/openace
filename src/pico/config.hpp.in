@@ -5,9 +5,7 @@
 #ifndef GATAS_LOG_ACTIVE_MODULES
 #define GATAS_LOG_ACTIVE_MODULES ( 0 )
 #endif
-
-
-
+  
 // ***** Networking
 // NO_SYS should have been set by pico_cyw43_arch_lwip_sys_freertos but somehow it's not added
 #define NO_SYS 0 
@@ -71,7 +69,7 @@
 #define ETL_LOG_ERRORS ( 1 )
 #define ETL_DEBUG ( 1 )
 #define ETL_CHECK_PUSH_POP ( 1)
-#define GATAS_LWIP_DEBUG ( 1 )
+#define GATAS_LWIP_DEBUG ( 0 )
 #define GATAS_FREERTOS_DEBUG ( 1 )
 #define GATAS_DEBUG ( 1 )
 #define PICO_ENTER_USB_BOOT_ON_EXIT ( 1 )
@@ -156,7 +154,7 @@
 #define GATAS_FLASH_SIGNATURE ( 250801 )
 
 // Hard coded so we have more control of the version number for each release
-#define GATAS_CONNECT_PORT 3000
+#define GATAS_CONNECT_PORT ( 3000 )
 
 // Gatas MDNS name for service and netinf
 #define GATAS_MDNS_NAME "GATAS"

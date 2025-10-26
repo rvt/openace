@@ -28,7 +28,8 @@ namespace GATAS
         CONFIG_ERROR = 10,           // Configuration issue (not found incorrect etc...)
         TIMER_ERROR = 11,            // task creation failure
         MUTEX_ERROR = 12,            // FreeRTOS X queue error
-        HARDWARE_NOT_CONFIGURED = 13 // Indicate there was no configuration found
+        HARDWARE_NOT_CONFIGURED = 13,// Indicate there was no configuration found
+        SPINLOCK_ERROR = 14,         // No spinlock available
     };
 
     enum class PinType : uint8_t
@@ -340,6 +341,14 @@ namespace GATAS
         CLIENT
     };
 
+    struct OwnshipMinimalPositionInfo
+    {
+        AircraftAddress icaoAddress=0;
+        float lat=0;
+        float lon=0;
+        int16_t ellipseHeight=0;
+    };
+
     struct OwnshipPositionInfo
     {
         uint32_t timestamp; // Timestamp when the position was received
@@ -358,6 +367,11 @@ namespace GATAS
         int16_t heightMsl() const
         {
             return ellipseHeight - geoidSeparation;
+        }
+
+        OwnshipMinimalPositionInfo assignTo() const
+        {
+            return OwnshipMinimalPositionInfo{conspicuity.icaoAddress, lat, lon, ellipseHeight};
         }
     };
 

@@ -131,7 +131,7 @@ static int dhcp_socket_sendto(struct udp_pcb **udp, struct netif *nif, const voi
         len = 0xffff;
     }
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_POOL);
     if (p == NULL)
     {
         return -ENOMEM;

@@ -1,10 +1,12 @@
 #include <stdio.h>
 
 #include "ace/semaphoreguard.hpp"
+#include "ace/spinlockguard.hpp"
 #include "../adsbdecoder.hpp"
 
 GATAS::PostConstruct ADSBDecoder::postConstruct()
 {
+    spinLock = SpinlockGuard::claim();
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
@@ -22,14 +24,9 @@ void ADSBDecoder::start()
     getBus().subscribe(*this);
 };
 
-void ADSBDecoder::stop()
-{
-    getBus().unsubscribe(*this);
-};
-
 void ADSBDecoder::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition.store(msg.position, etl::memory_order_release);
+    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position.assignTo());
 }
 
 void ADSBDecoder::getConfiguration(const Configuration &config)
@@ -117,7 +114,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
 
             if (mm.metype >= 20 && mm.metype <= 22) // GPS Altitude so far never seen this
             {
-                adsbDataCollector.updateGnssAltitude(altitude); 
+                adsbDataCollector.updateGnssAltitude(altitude);
             }
             else if (mm.metype >= 9 && mm.metype <= 18) // Barometric Altitude
             {
@@ -160,8 +157,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             statistics.totalMsgReceived += 1;
             auto &current = adsbDataCollector.current();
 
-            auto ownship = ownshipPosition.load(etl::memory_order_acquire);
-            auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, current.lat, current.lon);
+            auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, current.lat, current.lon);
 
             // Altitude filtering + Radius filtering
             // to prevent aircraft taking up resources that are not a factor.
@@ -192,9 +188,9 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                  current.icao,
                  GATAS::AddressType::ICAO,
                  GATAS::DataSource::ADSB,
-                 GATAS::AircraftCategory::UNKNOWN,   // TODO: Add support for AircraftCategory
-                 false,                              // ADSB does not have privacy
-                 false,                              // No privacy
+                 GATAS::AircraftCategory::UNKNOWN, // TODO: Add support for AircraftCategory
+                 false,                            // ADSB does not have privacy
+                 false,                            // No privacy
                  current.airborne,
                  current.lat,
                  current.lon,
@@ -207,15 +203,16 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                  fromOwn.relNorth,
                  fromOwn.relEast}});
         }
-    } else {
+    }
+    else
+    {
         statistics.msgMissed += 1;
     }
 }
 
 bool ADSBDecoder::outOfAltitudeRange(int32_t otherellipseHeight)
 {
-    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
-    return (otherellipseHeight - ownship.ellipseHeight) > filterAbove || (ownship.ellipseHeight - otherellipseHeight) > filterBelow;
+    return (otherellipseHeight - ownshipPosition.ellipseHeight) > filterAbove || (ownshipPosition.ellipseHeight - otherellipseHeight) > filterBelow;
 }
 
 void ADSBDecoder::on_receive(const GATAS::Every5SecMsg &msg)
@@ -245,49 +242,87 @@ void ADSBDecoder::getData(etl::string_stream &stream, const etl::string_view pat
     stream << ",\"ignoredAircraftFull\":" << statistics.ignoredAircraftFull;
     stream << ",\"totalMsgReceived\":" << statistics.totalMsgReceived;
     stream << ",\"totalMsgIgnored\":" << statistics.totalMsgIgnored;
-    stream << ",\"msgMissed\":" << statistics.msgMissed;    
+    stream << ",\"msgMissed\":" << statistics.msgMissed;
     stream << ",\"filterRadius\":" << filterRadius;
     stream << "}\n";
 }
 
-GATAS::AircraftCategory ADSBDecoder::getAircraftCategory(const etl::string_view category) const {
-    if (category == "A1") {
+GATAS::AircraftCategory ADSBDecoder::getAircraftCategory(const etl::string_view category) const
+{
+    if (category == "A1")
+    {
         return GATAS::AircraftCategory::LIGHT; // < 15500lbs
-    } else if (category == "A2") {
+    }
+    else if (category == "A2")
+    {
         return GATAS::AircraftCategory::SMALL; // 15500lbs to 75000lbs
-    } else if (category == "A3") {
+    }
+    else if (category == "A3")
+    {
         return GATAS::AircraftCategory::LARGE; // 75000lbs to 300000lbs
-    } else if (category == "A4") {
+    }
+    else if (category == "A4")
+    {
         return GATAS::AircraftCategory::HIGH_VORTEX; // Such as Boing 757
-    } else if (category == "A5") {
+    }
+    else if (category == "A5")
+    {
         return GATAS::AircraftCategory::HEAVY_ICAO; // > 300000lbs
-    } else if (category == "A6") {
-        return GATAS::AircraftCategory::AEROBATIC; 
-    } else if (category == "A7") {
+    }
+    else if (category == "A6")
+    {
+        return GATAS::AircraftCategory::AEROBATIC;
+    }
+    else if (category == "A7")
+    {
         return GATAS::AircraftCategory::ROTORCRAFT;
-    } else if (category == "B1") {
+    }
+    else if (category == "B1")
+    {
         return GATAS::AircraftCategory::GLIDER;
-    } else if (category == "B2") {
+    }
+    else if (category == "B2")
+    {
         return GATAS::AircraftCategory::LIGHT_THAN_AIR;
-    } else if (category == "B3") {
-        return GATAS::AircraftCategory::SKY_DIVER; 
-    } else if (category == "B4") {
+    }
+    else if (category == "B3")
+    {
+        return GATAS::AircraftCategory::SKY_DIVER;
+    }
+    else if (category == "B4")
+    {
         return GATAS::AircraftCategory::PARA_GLIDER;
-    } else if (category == "B6") {
-        return GATAS::AircraftCategory::UN_MANNED; 
-    } else if (category == "B7") {
-        return GATAS::AircraftCategory::SPACE_VEHICLE; 
-    } else if (category == "C1") {
+    }
+    else if (category == "B6")
+    {
+        return GATAS::AircraftCategory::UN_MANNED;
+    }
+    else if (category == "B7")
+    {
+        return GATAS::AircraftCategory::SPACE_VEHICLE;
+    }
+    else if (category == "C1")
+    {
         return GATAS::AircraftCategory::SURFACE_EMERGENCY_VEHICLE;
-    } else if (category == "C2") {
-        return GATAS::AircraftCategory::SURFACE_VEHICLE; 
-    } else if (category == "C3") {
-        return GATAS::AircraftCategory::POINT_OBSTACLE; 
-    } else if (category == "C4") {
-        return GATAS::AircraftCategory::CLUSTER_OBSTACLE; 
-    } else if (category == "C5") {
-        return GATAS::AircraftCategory::LINE_OBSTACLE; 
-    } else {
+    }
+    else if (category == "C2")
+    {
+        return GATAS::AircraftCategory::SURFACE_VEHICLE;
+    }
+    else if (category == "C3")
+    {
+        return GATAS::AircraftCategory::POINT_OBSTACLE;
+    }
+    else if (category == "C4")
+    {
+        return GATAS::AircraftCategory::CLUSTER_OBSTACLE;
+    }
+    else if (category == "C5")
+    {
+        return GATAS::AircraftCategory::LINE_OBSTACLE;
+    }
+    else
+    {
         return GATAS::AircraftCategory::UNKNOWN;
     }
 }

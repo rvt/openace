@@ -3,6 +3,7 @@
 #include "../ogn1.hpp"
 #include "../ognpacket.hpp"
 #include "ace/bitcount.hpp"
+#include "ace/spinlockguard.hpp"
 #include "etl/algorithm.h"
 
 
@@ -18,6 +19,7 @@ GATAS::PostConstruct Ogn1::postConstruct()
         panic("OGN1 packet is smaller than expected");
         return GATAS::PostConstruct::FAILED;
     }
+    spinLock = SpinlockGuard::claim();
 
     return GATAS::PostConstruct::OK;
 }
@@ -25,11 +27,6 @@ GATAS::PostConstruct Ogn1::postConstruct()
 void Ogn1::start()
 {
     getBus().subscribe(*this);
-};
-
-void Ogn1::stop()
-{
-    getBus().unsubscribe(*this);
 };
 
 void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -167,12 +164,12 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
     float fLatitude = POSITION_DECODE * packet.DecodeLatitude();
     float fLongitude = POSITION_DECODE * packet.DecodeLongitude();
 
-    auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+    auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
 
     auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, fLatitude, fLongitude);
 
 //    printf("OGN: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld offset:%d, stdaltitude:%ld climbRate:%d speed:%d heading:%0.2f turnRate:%0.2f\n",
-//       packet.Header.Address, fLatitude, fLongitude, packet.DecodeAltitude() * 10 + ownshipPosition.geoidOffset, ownshipPosition.geoidOffset, packet.DecodeStdAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
+//       packet.Header.Address, fLatitude, fLongitude, packet.DecodeAltitude() * 10 + ownship.geoidOffset, ownship.geoidOffset, packet.DecodeStdAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
 
     if (fromOwn.distance > distanceIgnore)
     {
@@ -214,7 +211,7 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     if (msg.radioParameters.config->dataSource == GATAS::DataSource::OGN1)
     {
-        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
 
         OGN1_Packet packet;
         packet.Header =
@@ -302,7 +299,7 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
         }
 
         // Ignore ownship address
-        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
         if (packet.Header.Address == ownship.conspicuity.icaoAddress) {
             return;
         }
@@ -314,7 +311,7 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
 void Ogn1::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition.store(msg.position, etl::memory_order_release);
+    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
 }
 
 void Ogn1::on_receive(const GATAS::BarometricPressureMsg &msg)

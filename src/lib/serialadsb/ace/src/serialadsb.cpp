@@ -13,12 +13,6 @@ void SerialADSB::start()
     xTaskCreate(serialADSBTask, SerialADSB::NAME.cbegin(), configMINIMAL_STACK_SIZE, this, tskIDLE_PRIORITY + 2, &taskHandle);
 };
 
-void SerialADSB::stop()
-{
-    pioSerial.stop();
-    xTaskNotify(taskHandle, TaskState::EXIT, eSetBits);
-};
-
 GATAS::PostConstruct SerialADSB::postConstruct()
 {
     pioSerial.postConstruct();

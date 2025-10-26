@@ -92,7 +92,7 @@ static int dns_socket_sendto(struct udp_pcb **udp, const void *buf, size_t len, 
         len = 0xffff;
     }
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_POOL);
     if (p == NULL)
     {
         ERROR_printf("DNS: Failed to send message out of memory\n");

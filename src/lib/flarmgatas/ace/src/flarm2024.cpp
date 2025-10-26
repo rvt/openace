@@ -2,20 +2,17 @@
 
 #include "../flarm2024.hpp"
 #include "flarm/flarm2024packet.hpp"
+#include "ace/spinlockguard.hpp"
 
 GATAS::PostConstruct Flarm2024::postConstruct()
 {
+    spinLock = SpinlockGuard::claim();
     return GATAS::PostConstruct::OK;
 }
 
 void Flarm2024::start()
 {
     getBus().subscribe(*this);
-};
-
-void Flarm2024::stop()
-{
-    getBus().unsubscribe(*this);
 };
 
 void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path) const
@@ -63,7 +60,8 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
 
         Flarm2024Packet packet;
-        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
+
         auto result = packet.loadFromBuffer(epochSeconds, {msg.frame, Flarm2024Packet::TOTAL_LENGTH_WORDS});
         if (result == -1)
         {
@@ -127,7 +125,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
 void Flarm2024::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition.store(msg.position, etl::memory_order_release);
+    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
 }
 
 void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
@@ -136,7 +134,8 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
     {
         Flarm2024Packet packet;
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
-        auto ownship = ownshipPosition.load(etl::memory_order_acquire);
+
+        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
 
         packet.aircraftId(ownship.conspicuity.icaoAddress);
         packet.messageType(0x02);
@@ -192,7 +191,8 @@ uint8_t Flarm2024::addressTypeToFlarm(GATAS::AddressType addressType) const
     }
 }
 
-GATAS::AircraftCategory Flarm2024::toAircraftCategory(uint8_t flarmCode) const {
+GATAS::AircraftCategory Flarm2024::toAircraftCategory(uint8_t flarmCode) const
+{
 
     // clang-format off
     switch (flarmCode) {
@@ -214,7 +214,8 @@ GATAS::AircraftCategory Flarm2024::toAircraftCategory(uint8_t flarmCode) const {
     // clang-format on
 }
 
-uint8_t Flarm2024::fromAircraftCategory(GATAS::AircraftCategory category) const {
+uint8_t Flarm2024::fromAircraftCategory(GATAS::AircraftCategory category) const
+{
     // clang-format off
     switch ( category) {
         case GATAS::AircraftCategory::GLIDER:                  return 0x01;

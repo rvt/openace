@@ -29,11 +29,27 @@ class Configuration;
 class BaseModule
 {
     static constexpr uint8_t MAX_MODULES = 40;
+    // Mutex to be used during load/unloading and changes in interrupts
+    inline static SemaphoreHandle_t baseMutex=nullptr;
+
+public:
+    static void initBase()
+    {
+        baseMutex = xSemaphoreCreateMutex();
+        if (baseMutex == nullptr)
+        {
+            panic("Failed to create BaseModule_mutex");
+        }
+    }
+    using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
+    struct ModuleStatus
+    {
+        GATAS::PostConstruct result;
+        bool hwCheck;
+        BaseModule *module;
+    };
 
 private:
-    // Mutex to be used during load/unloading and changes in interrupts
-    inline static SemaphoreHandle_t xMutex;
-
     struct pinInterruptHandler
     {
         uint32_t event;
@@ -45,30 +61,11 @@ private:
         pinInterruptHandler(uint32_t _event, pinIntrCallback_t _callback) : event(_event), handler(nullptr), callback(_callback), notificationValue(0x00), enabled(true) {}
         pinInterruptHandler() : event(0x00), handler(nullptr), callback(nullptr), notificationValue(0x00), enabled(true) {}
     };
-    inline static etl::map<uint8_t, BaseModule::pinInterruptHandler, 8> __scratch_y("GaTasMem") pinInterruptHandlers;
+    inline static etl::map<uint8_t, BaseModule::pinInterruptHandler, 8> pinInterruptHandlers;
 
-public:
-    static void initBase()
-    {
-        xMutex = xSemaphoreCreateMutex();
-        if (xMutex == nullptr)
-        {
-            panic("Failed to create xMutex");
-        }
-    }
-    using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
-    struct ModuleStatus
-    {
-        GATAS::PostConstruct result;
-        bool hwCheck;
-        BaseModule *module;
-    };
-
-protected:
     using ModuleLoadMap = etl::map<const etl::string_view, ModuleStatus, MAX_MODULES /*, CharPtrComparator*/>;
     inline static ModuleLoadMap moduleLoaderMap;
 
-private:
     etl::imessage_bus &bus;
     const etl::string_view moduleName;
 
@@ -112,11 +109,6 @@ public:
 
     // Called when all objects are initialised and ready to run
     virtual void start() = 0;
-
-    // Called when this is going to be removed
-    virtual void stop() = 0;
-
-    // Called when this is going to be removed
 
     const etl::string_view name() const
     {

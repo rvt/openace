@@ -41,12 +41,6 @@ void GatasConnect::start()
     getBus().subscribe(*this);
 };
 
-void GatasConnect::stop()
-{
-    xTimerStop(requestTimer, portMAX_DELAY);
-    getBus().unsubscribe(*this);
-};
-
 void GatasConnect::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
@@ -76,7 +70,7 @@ void GatasConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 
 void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition.store(msg.position, etl::memory_order_release);
+    ownshipPosition = SpinlockGuard::withLock(spinlock, msg.position.assignTo());
 }
 
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -91,7 +85,7 @@ void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 void GatasConnect::getConfig(const Configuration &config)
 {
     gatasServer = config.ipPortBypath(NAME, "gatasServer");
-    gatasServer.port = 1883;
+    gatasServer.port = GATAS_CONNECT_PORT;
 
     auto gatasConfig = config.gaTasConfig();
     icaoAddress = gatasConfig.conspicuity.icaoAddress;
@@ -151,7 +145,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     GATAS_ASSERT((etl::max(ownshipSize, configSize) + COBS_EXTRA_BYTES) < 255, "COBS max length exceeded");
 
     LwipLock lock;
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, (ownshipSize + configSize) + 2 * COBS_EXTRA_BYTES, PBUF_RAM);
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, (ownshipSize + configSize) + 2 * COBS_EXTRA_BYTES, PBUF_POOL);
     if (!p)
     {
         taskCtx->statistics.bufferAllocErr++;
@@ -181,19 +175,16 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     // --- Send
     ip_addr_t addr;
     ip4_addr_set_u32(&addr, taskCtx->gatasServer.ip);
-    if (position > 0)
+    p->len = p->tot_len = position; // trim
+    auto err = udp_sendto(taskCtx->pcbSend, p, &addr, taskCtx->gatasServer.port);
+    if (err != ERR_OK)
     {
-        p->len = p->tot_len = position; // trim
-        auto err = udp_sendto(taskCtx->pcbSend, p, &addr, taskCtx->gatasServer.port);
-        if (err != ERR_OK)
-        {
-            taskCtx->statistics.msgSendFailed++;
-        }
-        else
-        {
-            taskCtx->statistics.bytesSend += position;
-            taskCtx->statistics.pkgSend += 1;
-        }
+        taskCtx->statistics.msgSendFailed++;
+    }
+    else
+    {
+        taskCtx->statistics.bytesSend += position;
+        taskCtx->statistics.pkgSend += 1;
     }
 
     pbuf_free(p);

@@ -43,7 +43,7 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
 
     udp_pcb *pcbSend;
     TimerHandle_t requestTimer = nullptr;
-    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
+    GATAS::OwnshipMinimalPositionInfo ownshipPosition;
     GATAS::Config::IpPort gatasServer = {IPADDR_NONE, 0};
     CobsStreamHandler cobsStreamHandler;
 
@@ -56,8 +56,6 @@ private:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    virtual void stop() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 

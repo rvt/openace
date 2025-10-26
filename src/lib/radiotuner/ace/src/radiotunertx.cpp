@@ -35,24 +35,6 @@ void RadioTunerTx::start()
     getBus().subscribe(*this);
 };
 
-void RadioTunerTx::stop()
-{
-    getBus().unsubscribe(*this);
-
-    // Remove all DataSources that are not required
-    for (auto const &it : txTasks)
-    {
-
-        xTimerDelete(it.timerHandle, TASK_DELAY_MS(2'000));
-        xTaskNotify(it.taskHandle, TaskState::EXIT, eSetBits);
-        while (eTaskGetState(it.taskHandle) != eDeleted)
-        {
-            vTaskDelay(TASK_DELAY_MS(50));
-        }
-    }
-    txTasks.clear();
-};
-
 void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;

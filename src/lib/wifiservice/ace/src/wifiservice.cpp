@@ -31,11 +31,6 @@ void WifiService::start()
     getBus().subscribe(*this);
 };
 
-void WifiService::stop()
-{
-    getBus().unsubscribe(*this);
-}
-
 void WifiService::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
@@ -44,7 +39,7 @@ void WifiService::on_receive_unknown(const etl::imessage &msg)
 void WifiService::wifiTask(void *arg)
 {
     uint32_t startScan = 0;
-
+    uint8_t secondCounter = 0;
     WifiService *wifiService = (WifiService *)arg;
     while (true)
     {
@@ -162,10 +157,9 @@ void WifiService::wifiTask(void *arg)
                 break;
 
             case ConnectionState::APSTARTED:
-                static uint8_t secondCounter = 0;
-
                 // every 5 seconds
-                if (secondCounter++ > 5)
+                secondCounter += 1;
+                if (secondCounter > 5)
                 {
                     secondCounter = 0;
                     wifiService->accessPointConnectionScanner();
@@ -337,10 +331,8 @@ uint8_t WifiService::connectClient()
 
 bool WifiService::checkIfClientActive(int itf)
 {
-    (void)itf;
-    
+    (void)itf;    
     return netif_default && netif_is_up(netif_default) && netif_is_link_up(netif_default);
-    //    return cyw43_tcpip_link_status(&cyw43_state, itf) == CYW43_LINK_UP;
 }
 
 void WifiService::enableSta()
@@ -427,13 +419,12 @@ WifiService::IpGw WifiService::getInterfaceInfo()
     return {0, 0};
 }
 
-void WifiService::on_receive(const GATAS::IdleMsg &msg)
+void WifiService::on_receive(const GATAS::Every5SecMsg &msg)
 {
     (void)msg;
-    static bool previous = false;
     bool active = checkIfClientActive(CYW43_ITF_STA) || checkIfClientActive(CYW43_ITF_AP);
 
-    if (active == previous)
+    if (active == currentWifiActiveStatus)
     {
         return;
     }
@@ -442,15 +433,13 @@ void WifiService::on_receive(const GATAS::IdleMsg &msg)
     if (!active)
     {
         getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
-        previous = false;
+        currentWifiActiveStatus = false;
         return;
     }
 
-    // active == true here
     if (interface.ip.addr != 0)
     {
         getBus().receive(GATAS::WifiConnectionStateMsg{wifiMode, /* ip & 0xFFFFFF */ interface.ip.addr, interface.gateWay.addr});
-        previous = true;
         return;
     }
 }

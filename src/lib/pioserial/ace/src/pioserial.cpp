@@ -7,6 +7,8 @@
 
 #include "ace/utils.hpp"
 
+etl::array<PioSerial*, 4> PioSerial::interruptHandlers;
+
 GATAS::PostConstruct PioSerial::postConstruct()
 {
     if (rxPin == -1 || txPin == -1)
@@ -78,23 +80,6 @@ void PioSerial::start()
     irq_add_shared_handler(pio_irq, handler, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);                                     // Add a shared IRQ handler
     irq_set_enabled(pio_irq, true);                                                                                               // Enable the IRQ
     pio_set_irqn_source_enabled(rxPio, irq_index, static_cast<pio_interrupt_source>(pis_sm0_rx_fifo_not_empty + rxSmIndx), true); // Set pio to tell us when the FIFO is NOT empty
-};
-
-void PioSerial::stop()
-{
-    uint8_t pio_irq = (rxPio == pio0) ? PIO0_IRQ_0 : PIO1_IRQ_0; // pio_irq will become 7,8,9,10
-    uint8_t irq_index = pio_irq - ((rxPio == pio0) ? PIO0_IRQ_0 : PIO1_IRQ_0);
-
-    // Disable interrupt
-    pio_set_irqn_source_enabled(rxPio, irq_index, static_cast<pio_interrupt_source>(pis_sm0_rx_fifo_not_empty + rxSmIndx), false);
-    irq_set_enabled(pio_irq, false);
-    irq_remove_handler(pio_irq, handler);
-
-    // Disable Rx
-    disableRx();
-
-    // Disable Tx
-    disableTx();
 };
 
 bool PioSerial::enableRx()

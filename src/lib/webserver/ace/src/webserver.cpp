@@ -23,8 +23,8 @@ extern struct tcp_pcb *tcp_input_pcb;
 inline etl::map<uint32_t, uint32_t, 4> captiveCheck;
 
 /* Other consts */
-constexpr etl::string_view X_GATAS_METHOD_DELETE = "X-Method: DELETE";    // Custom HTTP header for method intent
-constexpr etl::string_view CONFIGPATH = "/api/_Configuration"; // Endpoint path
+constexpr etl::string_view X_GATAS_METHOD_DELETE = "X-Method: DELETE"; // Custom HTTP header for method intent
+constexpr etl::string_view CONFIGPATH = "/api/_Configuration";         // Endpoint path
 
 static struct RequestContext_t
 {
@@ -36,7 +36,7 @@ static struct RequestContext_t
         DELETE
     } method;
     bool response;
-} RequestContext;
+} requestContext;
 
 // ******************************************
 //  Post handling
@@ -58,10 +58,10 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
     etl::string_view sv_http_request(http_request);
     if (sv_uri.starts_with(CONFIGPATH))
     {
-        if (RequestContext.current_connection != connection)
+        if (requestContext.current_connection != connection)
         {
             *post_auto_wnd = 1; // Must be set to 1
-            RequestContext =
+            requestContext =
                 {
                     .current_connection = connection,
                     .uri = uri,
@@ -70,7 +70,7 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
 
             if (sv_http_request.find(X_GATAS_METHOD_DELETE) != etl::string_view::npos)
             {
-                RequestContext.method = RequestContext_t::DELETE;
+                requestContext.method = RequestContext_t::DELETE;
             }
             return ERR_OK;
         }
@@ -81,32 +81,32 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
 err_t httpd_post_receive_data(void *connection, struct pbuf *p)
 {
     err_t retval = ERR_VAL;
-    if (RequestContext.current_connection == connection)
+    if (requestContext.current_connection == connection)
     {
         char buffer[256];
         char *buf = (char *)pbuf_get_contiguous(p, buffer, sizeof(buffer), p->tot_len, 0);
         Configuration *configModule = static_cast<Configuration *>(BaseModule::moduleByName(*webserver, Configuration::NAME));
         if (configModule != nullptr)
         {
-            if (RequestContext.method == RequestContext_t::POST && buf)
+            if (requestContext.method == RequestContext_t::POST && buf)
             {
                 // Handle update configuration requests
                 buf[p->tot_len] = '\0';
                 etl::string_ext requestData(buf, buf, p->tot_len + 1);
-                RequestContext.response = configModule->setData(requestData, RequestContext.uri);
+                requestContext.response = configModule->setData(requestData, requestContext.uri);
                 retval = ERR_OK;
             }
-            else if (RequestContext.method == RequestContext_t::DELETE)
+            else if (requestContext.method == RequestContext_t::DELETE)
             // Handle delete configuration requests
             {
-                RequestContext.response = configModule->deleteData(RequestContext.uri);
+                requestContext.response = configModule->deleteData(requestContext.uri);
                 retval = ERR_OK;
             }
 
             // Inform the module that the configuration has been updated
-            if (RequestContext.response)
+            if (requestContext.response)
             {
-                auto pathParsed = CoreUtils::parsePath(RequestContext.uri);
+                auto pathParsed = CoreUtils::parsePath(requestContext.uri);
                 // TODO: We should see if we can stop FreeRTOS and make a config change
                 // FInd some way to stop all tasks and continue where they left off
                 // Note to self: vTaskSuspendAll(); won't work here because we use FreeRTOS on the message bus
@@ -119,8 +119,8 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
                     });
 
                 // When 'just' the aircraft is changed, no modules will pick up for changes on FLARM/OGN noTrack etc..
-                // changes so an additional config message is send 
-                if (pathParsed[2] == "aircraft") 
+                // changes so an additional config message is send
+                if (pathParsed[2] == "aircraft")
                 {
                     configModule->getBus().receive(
                         GATAS::ConfigUpdatedMsg{
@@ -137,9 +137,9 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
 
 void httpd_post_finished(void *connection, char *response_uri, u16_t response_uri_len)
 {
-    if (RequestContext.current_connection == connection)
+    if (requestContext.current_connection == connection)
     {
-        //        if (RequestContext.response)
+        //        if (requestContext.response)
         //      {
         snprintf(response_uri, response_uri_len, "/ok.json");
         //      }
@@ -147,7 +147,7 @@ void httpd_post_finished(void *connection, char *response_uri, u16_t response_ur
         //    {
         //    snprintf(response_uri, response_uri_len, "/error.json");
         //  }
-        RequestContext.current_connection = NULL;
+        requestContext.current_connection = NULL;
     }
 }
 
@@ -312,12 +312,6 @@ void Webserver::start()
     getBus().subscribe(*this);
 };
 
-void Webserver::stop()
-{
-    // TODO: stop httpd??
-    getBus().unsubscribe(*this);
-};
-
 void Webserver::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
@@ -325,17 +319,19 @@ void Webserver::on_receive_unknown(const etl::imessage &msg)
 
 void Webserver::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
-    static bool once = false;
     // Only start the webserver after WIFI has been connected.
     // We have seen halts from the microcontroller when the website did a request to the webserver while WIFI was not fully up yet.
     // This runs in a general stack (properly of the message bus)
-    if (wcs.wifiMode != GATAS::WifiMode::NC && !once)
+    if (wcs.wifiMode != GATAS::WifiMode::NC && !httpdInitialised)
     {
         httpd_init();
-        once = true;
+        httpdInitialised = true;
     }
     else if (wcs.wifiMode == GATAS::WifiMode::NC)
     {
-        // Disconnect not yet handled
+        // httpd server in LWiP was never designed for de-init, I don't think this is possible.
+        // This might have consequences if GA/TAS
+        // Idea: May be after the first HTTP call we can capture the PCB??
+        // We don;t want to keep calling httpd_init because this would possible leak memory
     }
 }

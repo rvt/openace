@@ -69,7 +69,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         uint8_t guardCounter;
         btstack_context_callback_registration_t callBack;
         // Writebuffer is used because sometimes GATAS bursts positional data without BlueTooth beeing ready
-        PacketBuffer<CONNECTIONS_BUFFER_SIZE, CONNECTIONS_BUFFER_SIZE/GATAS::NMEA_MAX_LENGTH * 2> writeBuffer;
+        PacketBuffer<CONNECTIONS_BUFFER_SIZE, CONNECTIONS_BUFFER_SIZE / GATAS::NMEA_MAX_LENGTH * 2> writeBuffer;
         // ReadBuffer is used because over BT we get up to btu bytes, give or take 256/26 == 12ish packets (26 being positional message size)
         PacketBuffer<256, 12> readBuffer;
         BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void *context)) : hciHandle(hciHandle_),
@@ -96,8 +96,6 @@ private:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    virtual void stop() override;
 
     void on_receive(const GATAS::DataPortMsg &msg);
 
@@ -127,20 +125,21 @@ private:
 
     // Lists of bluetooth contexts
     using BluetoothConnections = etl::list<BtContext, GATAS_MAX_BLUETOOTH_CONNECTIONS>;
-    inline static BluetoothConnections connections;
+    BluetoothConnections connections;
+    
     /**
      * Get the connections context by Bluetooth handle
      */
     static BluetoothConnections::iterator ctxByHandle(hci_con_handle_t hciHandle)
     {
         // clang-format off
-        return etl::find_if(connections.begin(), connections.end(),
+        return etl::find_if(instance->connections.begin(), instance->connections.end(),
             [hciHandle](const BtContext &ctx)
             {
                 return ctx.hciHandle == hciHandle;
             });
         // clang-format on 
-        }
+    }
 
     /**
      * Call back a provided lambda with the context of the connection if found.
@@ -150,28 +149,27 @@ private:
     static void withHandle(hci_con_handle_t conn_handle, BtContextCallback callback)
     {
         auto it = ctxByHandle(conn_handle);
-        if (it != connections.end())
+        if (it != instance->connections.end())
         {
             callback(*it);
         }
     }
 
-    inline static btstack_packet_callback_registration_t hciEventCallback;
-    inline static btstack_packet_callback_registration_t smEventCallback;
-    inline static btstack_timer_source_t heartbeat;
-    inline static uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
-
-    // Semaphore to ensure checking data and is synchronized with the BT thread.
-    // TODO: Perhaps this can be optimized by using a atomic (allBufferEmpty), all we use it for is to validate if all buffers ar empty
-    inline static SemaphoreHandle_t mutex = nullptr;
+    btstack_packet_callback_registration_t hciEventCallback;
+    btstack_packet_callback_registration_t smEventCallback;
+    btstack_timer_source_t heartbeat;
+    uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
+    GATAS::OwnshipMinimalPositionInfo ownshipPosition;
     GATAS::SsidOrPasswdStr localName;
+
+    SemaphoreHandle_t mutex;
+//    int spinLock;
     bool rfComm;
     CobsStreamHandler cobsStreamHandler;
-    etl::atomic<GATAS::OwnshipPositionInfo> ownshipPosition;
 public:
 
     static constexpr const char *NAME = "Bluetooth";
-    Bluetooth(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), rfComm(false), cobsStreamHandler(CobsStreamHandler(bus, config))
+    Bluetooth(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), mutex(nullptr), /*spinLock(0),*/ rfComm(false), cobsStreamHandler(CobsStreamHandler(bus, config))
     {
         instance = this;
         localName = config.strValueByPath("GaTas", NAME, "localName");

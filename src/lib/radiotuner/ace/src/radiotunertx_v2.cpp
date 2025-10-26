@@ -29,11 +29,6 @@ void RadioTunerTx::start()
     }
 };
 
-void RadioTunerTx::stop()
-{
-    getBus().unsubscribe(*this);
-};
-
 void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;

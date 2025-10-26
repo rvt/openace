@@ -29,11 +29,6 @@ void PicoRtc::start()
     getBus().subscribe(*this);
 };
 
-void PicoRtc::stop()
-{
-    getBus().unsubscribe(*this);
-};
-
 /**
  *   GATAS::UtcTimeMsg is normally aend every 15 seconds
  */
