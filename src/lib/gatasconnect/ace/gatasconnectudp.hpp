@@ -18,6 +18,7 @@
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 #include "ace/cobsstreamhandler.hpp"
+#include "ace/spinlockguard.hpp"
 
 /**
  * GatasConnect protocol for EFB's that only support GatasConnect.
@@ -28,6 +29,12 @@
 class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg>
 {
     friend class message_router;
+    // THis is used to fix a android HotSpot issue where small packages are not routed.
+    // It sends a large and a small package size to ensure that Android sees them as important
+    static constexpr size_t ANDROIDHOTSPOT_FIX_HIGHMARK = 128*3;
+    static constexpr size_t ANDROIDHOTSPOT_FIX_LOWMARK = 160;
+    // After how many 'sends' the system sends larger packages again
+    static constexpr uint8_t ANDROIDHOTSPOT_COUNT_UNTILL_HIGH = 5;
     struct
     {
         uint32_t bytesReceived = 0;
@@ -40,18 +47,21 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     } statistics;
 
     bool wifiConnected;
-
-    udp_pcb *pcbSend;
-    TimerHandle_t requestTimer = nullptr;
-    GATAS::OwnshipMinimalPositionInfo ownshipPosition;
-    GATAS::Config::IpPort gatasServer = {IPADDR_NONE, 0};
-    CobsStreamHandler cobsStreamHandler;
-
+    int spinLock;
+    bool androidHotspotFix;
     uint64_t gatasId;
+    bool hasGpsFix;
+    uint8_t lastSendCounter;
+    TimerHandle_t requestTimer = nullptr;
+
     uint32_t icaoAddress;
     uint32_t gatasIp;
+    udp_pcb *pcbSend;
+    CobsStreamHandler cobsStreamHandler;
+
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
-    bool hasGpsFix;
+    GATAS::Config::IpPort gatasServer = {IPADDR_NONE, 0};
+    GATAS::OwnshipPositionInfo ownshipPosition;
 private:
     virtual GATAS::PostConstruct postConstruct() override;
 
@@ -78,9 +88,21 @@ private:
     void getConfig(const Configuration &config);
 public:
     static constexpr const char *NAME = "GatasConnect";
-    GatasConnect(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), wifiConnected(false), pcbSend(nullptr), cobsStreamHandler(CobsStreamHandler(bus, config)), hasGpsFix(false)
+    GatasConnect(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME),
+    wifiConnected(false),
+    spinLock(0),    
+    androidHotspotFix(true),
+    gatasId(0),
+    hasGpsFix(false),
+    lastSendCounter(0),
+    requestTimer(nullptr),
+    icaoAddress(0),
+    gatasIp(0),
+    pcbSend(nullptr),
+    cobsStreamHandler(CobsStreamHandler(bus, config))
     {
         (void)config;
+        spinLock = SpinlockGuard::claim();
         getConfig(config);
     }
     

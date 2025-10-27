@@ -121,7 +121,9 @@
 			"__assertion_handler": "cpp",
 			"print": "cpp",
 			"__verbose_abort": "cpp",
-			"*.inc": "cpp"
+			"*.inc": "cpp",
+			"dnsserver.h": "c",
+			"udp.h": "c"
 		},
 		"cmake.autoSelectActiveFolder": false
 	  }

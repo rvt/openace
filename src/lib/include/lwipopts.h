@@ -20,15 +20,15 @@
 #define MEMP_NUM_TCP_PCB            8
 #endif
 
-// Keep MEMP_MEM_MALLOC off so LWiP uses the pool
-// We are using PBUF_POOL only, sso set to 0
+// Keep MEMP_MEM_MALLOC low , since LWiP should use the POOL only
 #define MEM_SIZE                    512
 #define MEMP_MEM_MALLOC             0
 #define MEM_LIBC_MALLOC             0
 #define MEM_USE_POOLS               1
 #define MEMP_USE_CUSTOM_POOLS       1
 #define MEM_USE_POOLS_TRY_BIGGER_POOL  0
-#define TCP_MSS                     536
+// CHanging to 1460 take an additional 14784 bytes
+#define TCP_MSS                     536 
 #define TCP_WND                     (4 * TCP_MSS)
 #define TCP_SND_BUF                 (2 * TCP_MSS)
 #define TCP_SND_QUEUELEN            ((4 * (TCP_SND_BUF) + (TCP_MSS - 1)) / (TCP_MSS))

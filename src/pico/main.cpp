@@ -53,7 +53,7 @@
 #include "ace/gdloverudp.hpp"
 #include "ace/dataport.hpp"
 #include "ace/airconnect.hpp"
-#include "ace/gatasconnecttcp.hpp"
+#include "ace/gatasconnectudp.hpp"
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
 
