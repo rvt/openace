@@ -2,6 +2,8 @@
 
 [![Build GaTas](https://github.com/rvt/openace/actions/workflows/ci.yml/badge.svg)](https://github.com/rvt/openace/actions/workflows/ci.yml)
 
+[<img src="doc/img/Discord-Logo-Blurple.png" height="45px">](https://discord.gg/J6mXTcWndS)
+
 > [!TIP]
 > Please visit the [GA/TAS WIKI](https://github.com/rvt/OpenAce/wiki) for build information.
 
