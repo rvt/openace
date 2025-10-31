@@ -13,7 +13,7 @@ The device is built around the Raspberry RP2040/RP2350 and can be configured wit
 
 Powered by a Li-Ion battery, the device includes a PCB with a USB-C charger. The estimated battery life is between 6 and 10 hours, though this is subject to further testing.
 
-For FLARM it's current range has been tested up to 24Km (see below screenshots) but on average a good 15Km can be expected. This will give you plenty of time to avoid the traffic. EFBs like SkyDemon can also send out audible traffic warnings.
+For FLARM it's current range has been t ested up to 24Km (see below screenshots) but on average a good 15Km can be expected. This will give you plenty of time to avoid the traffic. EFBs like SkyDemon can also send out audible traffic warnings.
 
 Note: Although it's primary design is based around GA traffic, there is nothing in the hardware to prevent other use cases like gliders, paragliders and hang gliders. The goal of the project is to be seen by transmitting different protocols and be able to see them.
 
@@ -21,7 +21,7 @@ Note: Although it's primary design is based around GA traffic, there is nothing 
 | ------------------------------------------------- | ----------------------------------------------------- |
 | ![SHowing Range](doc/img/web-showing-range.png) Showing range of 24Km | ![Sky Demon)](doc/img/firstversion.jpeg)<br> Two Tranceiver Version I have been flying with |
 | ![Gatas Server](doc/img/gatasServer_sel.png) <br> GA/TAS Server selecting Aircraft | ![All modules](doc/img/gatas-all-modules.png) <br> All modules |
-| ![KiCAD 3D Rendering](doc/img/kicadpcb.jpg)       | ![Soldered PCB](doc/img/solderedpcb.jpg)              |
+| ![GATAS Pulse](doc/img/pulse-components.png)  <br> [GATAS Pulse Build Instructions](https://github.com/rvt/openace/wiki/gatas-Pulse)     | ![GATAS Pulse](doc/img/pulse-aquila.png) <br/> GATAS Pulse             |
 
 
 
