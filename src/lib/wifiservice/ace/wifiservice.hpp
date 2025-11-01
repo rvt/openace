@@ -5,6 +5,7 @@
 #include "etl/message_bus.h"
 #include "etl/string.h"
 #include "etl/set.h"
+#include "etl/list.h"
 
 #include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
@@ -38,7 +39,7 @@
 class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::Every5SecMsg>
 {
 private:
-    static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 3; // Number of times connection to the same network is attempted before trying an other network
+    static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 2; // Number of times connection to the same network is attempted before trying an other network
     static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 3;       // Number is scans done and if no known network is found, create the AP
 
     friend class message_router;
@@ -76,14 +77,34 @@ private:
     TaskHandle_t taskHandle;
     TimerHandle_t timerHandle;
 
-    uint8_t networkConnectionAttempt;
     uint8_t totalScanAttempt;
     GATAS::WifiMode wifiMode;
     s8_t mdnsSlot;
+    // Keep track of current status, to prevent sending messages every XX seconds
     bool currentWifiActiveStatus;
-
+    // GATAS will stay in client mode but only after it first successfully connected to an AP
+    // When successClientConnected was set to true, a client connection was successful
+    bool successClientConnected;
+    // When set to true, don't scan for networks, just try to connect to teh configured networks. 
+    // This is usefull for hidden networks or hotspots that don't send SSD regurly.
+    // The downside is that connection is a bit slow when multiple netwprks are configured
+    bool dontScanJustConnectToClient;
     // set of all known networks found during scan
-    etl::set<GATAS::SsidOrPasswdStr, 4> scanResult;
+    struct ScanResultT
+    {
+        GATAS::SsidOrPasswdStr ssid;
+        uint8_t connectNo = NUMBER_OF_CONNECTION_ATTEMPTS;
+        ScanResultT(const GATAS::SsidOrPasswdStr &_ssdPwd) : ssid(_ssdPwd) {}
+        bool operator<(const ScanResultT &other) const
+        {
+            return ssid < other.ssid;
+        }
+        bool operator==(const ScanResultT &other) const noexcept
+        {
+            return ssid == other.ssid;
+        }
+    };
+    etl::list<ScanResultT, 4> scanResult;
 
     static void wifiTask(void *arg);
 
@@ -93,14 +114,20 @@ private:
      * When Access Point is active, GaTas will keep track of all clients connecting to it
      * It will send regular AccessPointClientsMsg not notify any modules like GDL90
      */
-    void accessPointConnectionScanner();
+    void handleAccesspointClients();
 
     static int scanResultCb(void *env, const cyw43_ev_scan_result_t *result);
     bool scanRunning();
     void enableSta();
     void disableSta();
     void startWifiScan();
-    uint8_t connectClient();
+    enum ConnectClientResult
+    {
+        MORE,
+        EXHAUSTED,
+        CONNECTED
+    };
+    ConnectClientResult connectClient();
     void stopClient();
     bool checkIfClientActive(int itf);
 
@@ -128,11 +155,12 @@ public:
                                                                        connectionState(ConnectionState::START),
                                                                        taskHandle(nullptr),
                                                                        timerHandle(nullptr),
-                                                                       networkConnectionAttempt(0),
-                                                                       totalScanAttempt(0),
+                                                                       totalScanAttempt(NUMBER_OF_CONNECTION_ATTEMPTS),
                                                                        wifiMode(GATAS::WifiMode::NC),
                                                                        mdnsSlot(0),
-                                                                       currentWifiActiveStatus(false)
+                                                                       currentWifiActiveStatus(false),
+                                                                       successClientConnected(false),
+                                                                       dontScanJustConnectToClient(true)
     {
     }
 

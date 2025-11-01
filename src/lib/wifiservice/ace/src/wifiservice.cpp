@@ -55,20 +55,37 @@ void WifiService::wifiTask(void *arg)
         else
         {
             // printf("State: %d\n", wifiService->connectionState);
-            // This switch acts like a state machine:
+            // ----------------------------------------------------------
+            // ClientMode handling
             switch (wifiService->connectionState)
             {
 
             case ConnectionState::START:
                 wifiService->wifiMode = GATAS::WifiMode::NC;
                 wifiService->connectionState = ConnectionState::ENABLESTA;
-                wifiService->totalScanAttempt = 0;
+                wifiService->totalScanAttempt = NUMBER_OF_CONNECTION_ATTEMPTS;
                 break;
 
             case ConnectionState::ENABLESTA:
                 wifiService->enableSta();
-                wifiService->networkConnectionAttempt = 0;
-                wifiService->connectionState = ConnectionState::WIFISCAN;
+                if (wifiService->dontScanJustConnectToClient)
+                {
+                    // When just connect, fill the scanResult with the configured SSD's
+                    wifiService->scanResult.clear();
+                    for (auto it : wifiService->wifiData.clients)
+                    {
+                        if (!wifiService->scanResult.full())
+                        {
+                            wifiService->scanResult.emplace_back(it.ssid);
+                        }
+                    }
+
+                    wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
+                }
+                else
+                {
+                    wifiService->connectionState = ConnectionState::WIFISCAN;
+                }
                 break;
 
             case ConnectionState::WIFISCAN:
@@ -96,33 +113,34 @@ void WifiService::wifiTask(void *arg)
                 cyw43_wifi_leave(&cyw43_state, 0);
                 {
 
-                    // *  0 Connection OK
-                    // *  1 No Connection, same network needs to be retried
-                    // *  2 No Connection, next network will be attempted if any
-                    // *  3 No Connection, no more networks
+                    // *  CONNECTED Connection OK
+                    // *  MORE No Connection, more work today
+                    // *  EXHAUSTED No Connection, no more networks
                     auto cResult = wifiService->connectClient();
-                    if (cResult == 0)
+                    if (cResult == CONNECTED)
                     {
                         wifiService->mDnsInit(CYW43_ITF_STA);
                         wifiService->connectionState = ConnectionState::CLIENTMODESTARTED;
+                        wifiService->successClientConnected = true;
                     }
-                    else if (cResult == 1 || cResult == 2)
+                    else if (cResult == MORE)
                     {
-                        // noop
+                        //  *  1 No Connection, same network needs to be retried
+                        //  *  2 No Connection, next network will be attempted if any
                     }
-                    else
+                    else /* EXHAUSTED */
                     {
                         wifiService->disableSta();
 
                         // When APP mode is disable, go back to scanning for networks
-                        if (wifiService->totalScanAttempt < (NUMBER_OF_SCAN_ATTEMPTS - 1))
+                        wifiService->totalScanAttempt -= 1;
+                        if (wifiService->totalScanAttempt == 0)
                         {
                             wifiService->connectionState = ConnectionState::ENABLESTA;
-                            wifiService->totalScanAttempt += 1;
                         }
                         else
-                        {
-                            if (wifiService->wifiData.apDisabled)
+                        {                            
+                            if (wifiService->wifiData.apDisabled || wifiService->successClientConnected)
                             {
                                 wifiService->connectionState = ConnectionState::START;
                             }
@@ -149,6 +167,8 @@ void WifiService::wifiTask(void *arg)
                 wifiService->connectionState = ConnectionState::WIFISCAN; // STA already enabled, so just scan for clients
                 break;
 
+            // ----------------------------------------------------------
+            // AccessPoint handling
             case ConnectionState::APMODESTART:
                 wifiService->startAccessPoint();
                 wifiService->mDnsInit(CYW43_ITF_AP);
@@ -162,7 +182,7 @@ void WifiService::wifiTask(void *arg)
                 if (secondCounter > 5)
                 {
                     secondCounter = 0;
-                    wifiService->accessPointConnectionScanner();
+                    wifiService->handleAccesspointClients();
                 }
                 break;
 
@@ -180,7 +200,7 @@ void WifiService::wifiTask(void *arg)
     }
 }
 
-void WifiService::accessPointConnectionScanner()
+void WifiService::handleAccesspointClients()
 {
     auto cyw43TickMs = cyw43_hal_ticks_ms();
     // Generate a lit of connected clients and send it
@@ -241,7 +261,7 @@ int WifiService::scanResultCb(void *env, const cyw43_ev_scan_result_t *result)
         if (it != service->wifiData.clients.end() && !service->scanResult.full())
         {
             // printf("Added: %s\n", name.c_str());
-            service->scanResult.insert(name);
+            service->scanResult.emplace_back(name);
         }
 
         // printf("ssid: %-32s rssi: %4d chan: %3d mac: %02x:%02x:%02x:%02x:%02x:%02x sec: %u\n",
@@ -270,68 +290,67 @@ void WifiService::startWifiScan()
  * Try to connect to a client
  * returns
  *  0 Connection OK
- *  1 No Connection, same network needs to be retried
- *  2 No Connection, next network will be attempted if any
+ *  1 No Connection, more work today here
  *  3 No Connection, no more networks
  */
-uint8_t WifiService::connectClient()
+WifiService::ConnectClientResult WifiService::connectClient()
 {
     // Keeps track of the number of connections to the same network
     if (scanResult.empty())
     {
-        return 3;
+        return EXHAUSTED;
     }
 
     auto nameIt = scanResult.begin();
     auto it = etl::find_if(wifiData.clients.begin(), wifiData.clients.end(),
                            [&nameIt](const GATAS::Config::WifiNamePassword &client)
                            {
-                               return client.ssid == *nameIt;
+                               return client.ssid == nameIt->ssid;
                            });
 
     // When the client's data not found, remove it from the scan result list, this should normally not happen
-    if (it == wifiData.clients.end())
-    {
-        scanResult.erase(nameIt);
-        return 2;
-    }
-
-    // for (auto it : wifiData.clients) {
-    //     printf("Configured: %s\n", it.ssid.c_str());
-    // }
-    // for (auto it : scanResult) {
-    //     printf("found: %s\n", it.c_str());
-    // }
-    printf("WifiService: Client Connecting %s %s\n", it->ssid.c_str(), "<hidden>");
-    auto result = cyw43_arch_wifi_connect_timeout_ms(it->ssid.c_str(), it->password.c_str(), CYW43_AUTH_WPA2_AES_PSK, 10000);
-    //    printf("WifiService: Result: %d\n", result);
-    switch (result)
+    if (it != wifiData.clients.end())
     {
 
-    case PICO_OK:
-        wifiMode = GATAS::WifiMode::CLIENT;
-        showSsidPwdIp(it->ssid, "<hidden>");
-        return 0;
-    //    case PICO_ERROR_TIMEOUT:      // Timeout might mean that the network is just lost
-    case PICO_ERROR_BADAUTH:        // Sometimes seen that auth just did not work on my own network
-    case PICO_ERROR_TIMEOUT:        // TImeout if the network was not responding somehow
-    case PICO_ERROR_CONNECT_FAILED: // Seems to indicate that the network is available, but somehow could not connect
-        if (networkConnectionAttempt < (NUMBER_OF_CONNECTION_ATTEMPTS - 1))
+        // for (auto it : wifiData.clients) {
+        //     printf("Configured: %s\n", it.ssid.c_str());
+        // }
+        // for (auto it : scanResult) {
+        //     printf("found: %s\n", it.c_str());
+        // }
+        printf("WifiService: Client Connecting %s %s\n", it->ssid.c_str(), "<hidden>");
+        auto result = cyw43_arch_wifi_connect_timeout_ms(it->ssid.c_str(), it->password.c_str(), CYW43_AUTH_WPA2_AES_PSK, 10000);
+        //    printf("WifiService: Result: %d\n", result);
+
+        if (result == PICO_OK)
         {
-            networkConnectionAttempt += 1;
-            return 1;
+            // After connection, reset to NUMBER_OF_CONNECTION_ATTEMPTS so if the connections get's lost
+            // a possible fast reconnect will happen.
+            nameIt->connectNo = NUMBER_OF_CONNECTION_ATTEMPTS;
+            wifiMode = GATAS::WifiMode::CLIENT;
+            showSsidPwdIp(it->ssid, "<hidden>");
+            return CONNECTED;
+        }
+        else
+        {
+            // case PICO_ERROR_BADAUTH:        // Sometimes seen that auth just did not work on my own network
+            // case PICO_ERROR_TIMEOUT:        // TImeout if the network was not responding somehow
+            // case PICO_ERROR_CONNECT_FAILED: // Seems to indicate that the network is available, but somehow could not connect
+            // Test if it can be re-scanned
+            nameIt->connectNo--;
+            if (nameIt->connectNo)
+            {
+                return MORE;
+            }
         }
         scanResult.erase(nameIt);
-        return 2;
-    default:
-        scanResult.erase(nameIt);
-        return 2;
     }
+    return scanResult.empty() ? EXHAUSTED : MORE;
 }
 
 bool WifiService::checkIfClientActive(int itf)
 {
-    (void)itf;    
+    (void)itf;
     return netif_default && netif_is_up(netif_default) && netif_is_link_up(netif_default);
 }
 

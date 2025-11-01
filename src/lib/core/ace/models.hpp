@@ -319,6 +319,7 @@ namespace GATAS
         struct WifiServiceData
         {
             WifiNamePassword ap;
+            // When true, the accesspoint is disable and only Client module is enabled
             bool apDisabled;
             etl::vector<WifiNamePassword, 4> clients;
         };
