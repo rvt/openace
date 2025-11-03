@@ -27,7 +27,7 @@ void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"trackingFailureErr\":" << statistics.trackingFailureErr;
     stream << ",\"ownEncodingFailureErr\":" << statistics.ownEncodingFailureErr;
     stream << ",\"heartBeatEncodingFailureErr\":" << statistics.heartBeatEncodingFailureErr;
-    stream << "}\n";
+    stream << "}";
 }
 
 void Gdl90Service::gdl90ServiceTask(void *arg)

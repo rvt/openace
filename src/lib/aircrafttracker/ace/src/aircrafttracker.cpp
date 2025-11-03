@@ -48,7 +48,7 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     stream << ",\"numberOfObjectsTracking\":" << trackedAircraft.size();
     stream << ",\"positionsProcessed\":" << statistics.positionsProcessed;
     stream << ",\"adaptiveRadius\":" << trackedAircraft.radius();
-    stream << "}\n";
+    stream << "}";
 }
 
 void AircraftTracker::on_receive(const GATAS::AircraftPositionsMsg &msg)

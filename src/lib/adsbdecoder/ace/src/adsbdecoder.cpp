@@ -244,7 +244,7 @@ void ADSBDecoder::getData(etl::string_stream &stream, const etl::string_view pat
     stream << ",\"totalMsgIgnored\":" << statistics.totalMsgIgnored;
     stream << ",\"msgMissed\":" << statistics.msgMissed;
     stream << ",\"filterRadius\":" << filterRadius;
-    stream << "}\n";
+    stream << "}";
 }
 
 GATAS::AircraftCategory ADSBDecoder::getAircraftCategory(const etl::string_view category) const

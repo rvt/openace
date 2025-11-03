@@ -51,7 +51,7 @@ void GatasConnect::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"bufferAllocErr\":" << statistics.bufferAllocErr;
     stream << ",\"msgSendFailed\":" << statistics.msgSendFailed;
     stream << ",\"hasConnection\":" << statistics.hasConnection;
-    stream << "}\n";
+    stream << "}";
 }
 
 void GatasConnect::on_receive_unknown(const etl::imessage &msg)

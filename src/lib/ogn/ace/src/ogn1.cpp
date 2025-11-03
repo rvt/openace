@@ -55,7 +55,7 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"encrypted\":" << statistics.encrypted;
     stream << ",\"nonPositional\":" << statistics.nonPositional;
-    stream << "}\n";
+    stream << "}";
 }
 
 void Ogn1::addReceiveStat(uint32_t frequency)

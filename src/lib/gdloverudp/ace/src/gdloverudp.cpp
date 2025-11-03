@@ -75,7 +75,7 @@ void GDLoverUDP::getData(etl::string_stream &stream, const etl::string_view path
     stream << "\"heartbeatTx\":" << statistics.heartbeatTx;
     stream << ",\"bufferAllocErr\":" << statistics.bufferAllocErr;
     stream << ",\"sendFailureErr\":" << statistics.sendFailureErr;
-    stream << "}\n";
+    stream << "}";
 }
 
 void GDLoverUDP::start()

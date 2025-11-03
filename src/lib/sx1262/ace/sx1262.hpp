@@ -19,7 +19,6 @@
 
 /* Vendor. */
 #include "etl/message_bus.h"
-#include "etl/pseudo_moving_average.h"
 #include "etl/queue_spsc_atomic.h"
 
 /* GaTas Libraries */

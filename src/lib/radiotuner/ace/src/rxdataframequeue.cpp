@@ -36,7 +36,7 @@ void RxDataFrameQueue::getData(etl::string_stream &stream, const etl::string_vie
     stream << "\"missedErr\":\"" << statistics.missedErr << "\"";
     stream << ",\"totalIncoming\":\"" << statistics.totalIncoming << "\"";
     stream << ",\"totalOutgoing\":\"" << statistics.totalOutgoing << "\"";
-    stream << "}\n";
+    stream << "}";
 }
 
 void RxDataFrameQueue::on_receive(const GATAS::DataFrameMsg &msg)

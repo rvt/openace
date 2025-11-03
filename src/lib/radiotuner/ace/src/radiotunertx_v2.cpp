@@ -35,7 +35,7 @@ void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "{";
     stream << "\"_dummy\": 0";
     stream << ",\"zone\":\"" << CountryRegulations::zoneToString(currentZone.value()) << "\"";
-    stream << "}\n";
+    stream << "}";
 }
 
 //*********************** Tuner tasks ***********************

@@ -5,7 +5,6 @@
 #include "../countryregulations_v2.hpp"
 
 #include "etl/algorithm.h"
-#include "etl/pseudo_moving_average.h"
 
 #include "pico/rand.h"
 
@@ -59,7 +58,7 @@ void RadioTunerRx::getData(etl::string_stream &stream, const etl::string_view pa
         it->getData(stream);
     }
     stream << ",\"zone\":\"" << CountryRegulations::zoneToString(currentZone.value()) << "\"";
-    stream << "}\n";
+    stream << "}";
 }
 
 //*********************** Tuner tasks ***********************

@@ -55,7 +55,7 @@ void Dump1090Client::getData(etl::string_stream &stream, const etl::string_view 
     stream << "{";
     stream << "\"totalReceived\":" << statistics.totalReceived;
     stream << ",\"reConnects\":" << statistics.reConnects;
-    stream << "}\n";
+    stream << "}";
 }
 
 void Dump1090Client::on_receive_unknown(const etl::imessage &msg)

@@ -21,7 +21,7 @@ void Bmp280::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << "{";
     stream << "\"lastPressurehPa\":" << etl::format_spec{}.precision(1) << statistics.lastPressurehPa << GATAS::RESET_FORMAT;
     stream << ",\"compensation\":" << compensation;
-    stream << "}\n";
+    stream << "}";
 }
 
 /* The following compensation functions are required to convert from the raw ADC

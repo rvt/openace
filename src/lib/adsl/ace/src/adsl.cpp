@@ -31,7 +31,7 @@ void ADSL::getData(etl::string_stream &stream, const etl::string_view path) cons
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"encrypted\":" << statistics.encrypted;
     stream << ",\"relay\":" << statistics.relay;
-    stream << "}\n";
+    stream << "}";
 }
 
 void ADSL::addReceiveStat(uint32_t frequency)

@@ -15,7 +15,6 @@
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "pico/btstack_cyw43.h"
-#include "hardware/watchdog.h"
 
 /* Vendor. */
 #include "etl/list.h"
@@ -56,6 +55,7 @@
 #include "ace/gatasconnectudp.hpp"
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
+#include "ace/idle.hpp"
 
 const char *GaTas_buildTime = BUILD_TIMESTAMP;
 
@@ -106,6 +106,7 @@ void registerModules()
     BaseModule::registerModule(GatasConnect::NAME, false);
     BaseModule::registerModule(Bluetooth::NAME, false);
     BaseModule::registerModule(FanetAce::NAME, false);
+    BaseModule::registerModule(Idle::NAME, false);
 
     for (auto a : BaseModule::registeredModules())
     {
@@ -178,6 +179,8 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
         return new Bmp280(bus, config);
     if (name == AceSpi::NAME)
         return new (aceSpi_Mem) AceSpi(bus, config);
+    if (name == Idle::NAME)
+        return new Idle(bus, config);
     // if (name == Config::NAME) return new Config(bus, FlashStore, DEFAULT_GATAS_CONFIG); // Uncomment if needed
     // clang-format on
 
@@ -187,11 +190,12 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
 constexpr size_t VOL_DATA_SIZE = 4096;
 uint8_t __uninitialized_ram(store[VOL_DATA_SIZE]);
 static InMemoryStore<VOL_DATA_SIZE> volatileStore(store);
+
 // Bluetooth stores bonding information at the last sector
 // Flash memory Map
-//     |--------------|---------------|----------------|-------------------|
-//     | xxBytes.     | 4096Bytes.    | 4096 Bytes.    | 8192 Bytes.       |
-//     | Application  | Binary Store  | permanentStore | Bluetooth Bonding |
+// |--------------|---------------|----------------|-------------------|
+// | xxBytes.     | 4096Bytes.    | 4096 Bytes.    | 8192 Bytes.       |
+// | Application  | Binary Store  | permanentStore | Bluetooth Bonding |
 
 // Used to store Application Configuration
 static FlashStore permanentStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 2}; // FLASH_SECTOR_SIZE => 4096 on the PICO
@@ -263,10 +267,11 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
     }
 }
 
-static void loadModules(void *arch)
+static void loadModules(void *arg)
 {
-    (void)arch;
+    (void)arg;
     BaseModule::setModuleStatus(Configuration::CONFIG, &config);
+    load(Idle::NAME, bus, config, true);
 
     load(WifiService::NAME, bus, config, true);
 
@@ -339,106 +344,6 @@ static void loadModules(void *arch)
     gpio_put(ledStatusIndicatorPin, 1);
 
     vTaskDelete(nullptr);
-}
-
-static void gaTasIdleTask(void *arch)
-{
-    (void)arch;
-    uint8_t msgFlags = 0;
-    constexpr uint8_t DO_5S = 1 << 0;
-    constexpr uint8_t DO_15S = 1 << 1;
-    constexpr uint8_t DO_30S = 1 << 2;
-    constexpr uint8_t DO_300S = 1 << 3;
-
-#if GATAS_DEBUG != 1
-    watchdog_enable(3000, 0);
-#endif
-    while (true)
-    {
-#if GATAS_DEBUG != 1
-        watchdog_update();
-#endif
-        uint32_t tick = CoreUtils::secondsSinceEpoch();
-
-        if (cyw43_arch_async_context())
-        {
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-            gpio_put(ledStatusIndicatorPin, 1);
-            vTaskDelay(TASK_DELAY_MS(100));
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-
-            bus.receive(GATAS::Every1SecMsg());
-
-            if (tick % 5 == 0)
-            {
-                msgFlags |= DO_5S;
-            }
-            if (tick % 15 == 0)
-            {
-                msgFlags |= DO_15S;
-            }
-            if (tick % 30 == 0)
-            {
-                msgFlags |= DO_30S;
-            }
-            if (tick % 300 == 0)
-            {
-                msgFlags |= DO_300S;
-            }
-
-            if (msgFlags & DO_300S)
-            {
-                bus.receive(GATAS::Every300SecMsg());
-                msgFlags &= ~DO_300S;
-            }
-            else if (msgFlags & DO_30S)
-            {
-                bus.receive(GATAS::Every30SecMsg());
-                msgFlags &= ~DO_30S;
-            }
-            else if (msgFlags & DO_15S)
-            {
-
-                #if GATAS_DEBUG == 1 && LWIP_STATS == 1 && MEMP_STATS == 1 && LWIP_STATS_DISPLAY
-                                    puts("\033[2J\033[H\n\nLWiP Status:");
-                                for (int i = 0; i < MEMP_MAX; i++)
-                                {
-                                    const struct memp_desc *desc = memp_pools[i];
-                                    if (desc == NULL)
-                                        continue;
-
-                                    struct stats_mem *stats = desc->stats;
-                                    printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
-                                           desc->desc,
-                                           (unsigned int)(stats->avail),
-                                           (unsigned int)(stats->used),
-                                           (unsigned int)(stats->max),
-                                           (unsigned int)(stats->err));
-                                }
-                #endif
-                bus.receive(GATAS::Every15SecMsg());
-                msgFlags &= ~DO_15S;
-            }
-            else if (msgFlags & DO_5S)
-            {
-                bus.receive(GATAS::Every5SecMsg());
-                msgFlags &= ~DO_5S;
-            }
-            else
-            {
-                bus.receive(GATAS::IdleMsg());
-            }
-
-            gpio_put(ledStatusIndicatorPin, 0);
-            // Sync blink the LED with GPS
-            vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
-        }
-        else
-        {
-            vTaskDelay(2000);
-            puts("Wifi module not yet enabled");
-        }
-    }
 }
 
 #if configGENERATE_RUN_TIME_STATS == 1
@@ -555,10 +460,6 @@ void vLaunch(void)
     TaskHandle_t task;
     xTaskCreate(loadModules, "LoadModulesTask", configMINIMAL_STACK_SIZE + 768, NULL, tskIDLE_PRIORITY, &task);
     vTaskCoreAffinitySet(task, 1);
-
-    // Run a Idle Task Idletask
-    // TODO: apparently needs a large stack??
-    xTaskCreate(gaTasIdleTask, "IdleTask", configMINIMAL_STACK_SIZE + 1024, NULL, tskIDLE_PRIORITY + 1, nullptr);
 
     // Dump some CPU diagnostics to terminal of all running tasks
 #if configGENERATE_RUN_TIME_STATS == 1

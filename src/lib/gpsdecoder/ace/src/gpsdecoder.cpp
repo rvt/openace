@@ -42,7 +42,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
                << width2fill0 << lastGGATimestamp.hours << GATAS::RESET_FORMAT << ":"
                << width2fill0 << lastGGATimestamp.minutes << GATAS::RESET_FORMAT << ":"
                << width2fill0 << lastGGATimestamp.seconds << GATAS::RESET_FORMAT << "\"";
-    stream << "}\n";
+    stream << "}";
 }
 
 void GpsDecoder::on_receive(const GATAS::ConfigUpdatedMsg &msg)

@@ -25,7 +25,7 @@ void AirConnect::getData(etl::string_stream &stream, const etl::string_view path
     stream << "\"connectedClients\":" << connectedClients.size();
     stream << ",\"toManyClients\":" << statistics.toManyClients;
     stream << ",\"newClientConnection\":" << statistics.newClientConnection;
-    stream << "}\n";
+    stream << "}";
 }
 
 /**

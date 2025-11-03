@@ -119,7 +119,7 @@ void Config::getData(etl::string_stream &stream, const etl::string_view fullPath
         stream << "\"configuration\":\"" << loadLocationToString(statistics.location) << "\"";
         stream << ",\"pStoreSize\":" << statistics.persistentStoreSize;
         stream << ",\"gatasId\":" << static_cast<uint32_t>(internalStore()->gatasId);
-        stream << "}\n";
+        stream << "}";
     }
     else
     {

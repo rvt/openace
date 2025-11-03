@@ -27,6 +27,7 @@ add_subdirectory(dataport)
 add_subdirectory(airconnect)
 add_subdirectory(gatasconnect)
 add_subdirectory(bluetooth)
+add_subdirectory(idle)
 
 if (PICO_SDK_VERSION_STRING)
 #    add_subdirectory(pico)

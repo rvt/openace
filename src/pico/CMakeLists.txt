@@ -171,6 +171,7 @@ target_link_libraries(
           airconnect
           gatasconnect
           bluetooth
+          idle
           )
 
 target_compile_definitions(

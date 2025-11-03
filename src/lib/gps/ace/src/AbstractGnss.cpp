@@ -97,7 +97,7 @@ void AbstractGnss::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"status\":\"" << statistics.status << "\"";
     stream << ",\"baudrate\":" << statistics.baudrate;
-    stream << "}\n";
+    stream << "}";
 }
 
 void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char> &sentence)

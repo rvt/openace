@@ -53,7 +53,7 @@ void SerialADSB::getData(etl::string_stream &stream, const etl::string_view path
     stream << "{";
     stream << "\"totalReceived\":" << statistics.totalReceived;
     stream << ",\"queueFullErr\":" << statistics.queueFullErr;
-    stream << "}\n";
+    stream << "}";
 }
 
 void __time_critical_func(SerialADSB::processNewSentence)(const etl::array_view<char>& sentence)

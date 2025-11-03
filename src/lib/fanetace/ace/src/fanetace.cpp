@@ -244,7 +244,7 @@ void FanetAce::getData(etl::string_stream &stream, const etl::string_view path) 
     stream << ",\"neighbors\":" << protocol.neighborTable().size();
     stream << ",\"Pool Size\":" << protocol.pool().getAllocatedBlocks().size();
     stream << ",\"Airtime\":" << protocol.airTime();
-    stream << "}\n";
+    stream << "}";
 }
 
 GATAS::AircraftCategory FanetAce::mapAircraftCategory(FANET::TrackingPayload::AircraftType category) const

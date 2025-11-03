@@ -98,7 +98,7 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << ",\"radio\":" << radioNo;
     stream << ",\"hasGpsFix\":" << hasGpsFix;
     stream << ",\"isTransmitting\":" << (hasGpsFix && txEnabled);
-    stream << "}\n";
+    stream << "}";
 }
 
 void Sx1262::on_receive(const GATAS::RadioTxFrameMsg &msg)

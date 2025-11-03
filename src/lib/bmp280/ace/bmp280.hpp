@@ -6,7 +6,6 @@
 #include "pico/stdlib.h"
 
 #include "etl/message_bus.h"
-#include "etl/pseudo_moving_average.h"
 
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"

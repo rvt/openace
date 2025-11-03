@@ -28,7 +28,7 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
     stream << ",\"crcErr\":" << statistics.crcErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"messageTypeNot0x02\":" << statistics.messageTypeNot0x02;
-    stream << "}\n";
+    stream << "}";
 }
 
 void Flarm2024::addReceiveStat(uint32_t frequency)

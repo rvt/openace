@@ -55,7 +55,7 @@ void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view pa
         it->getData(stream);
     }
     stream << ",\"zone\":\"" << CountryRegulations::zoneToString(currentZone) << "\"";
-    stream << "}\n";
+    stream << "}";
 }
 
 void RadioTunerTx::timerTxCallback(TimerHandle_t xTimer)
