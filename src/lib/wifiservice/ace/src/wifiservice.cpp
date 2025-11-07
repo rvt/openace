@@ -139,7 +139,7 @@ void WifiService::wifiTask(void *arg)
                             wifiService->connectionState = ConnectionState::ENABLESTA;
                         }
                         else
-                        {                            
+                        {
                             if (wifiService->wifiData.apDisabled || wifiService->successClientConnected)
                             {
                                 wifiService->connectionState = ConnectionState::START;
@@ -156,6 +156,10 @@ void WifiService::wifiTask(void *arg)
             case ConnectionState::CLIENTMODESTARTED:
                 if (!wifiService->checkIfClientActive(CYW43_ITF_STA))
                 {
+                    // NOTE: We must call these two, otherwise DHCP will 'keep' the IP of the previous and we
+                    // won;t notify other services that the IP address has changed, like GDLoverUDP
+                    dhcp_release_and_stop(&cyw43_state.netif[0]);
+                    dhcp_start(&cyw43_state.netif[0]);
                     wifiService->mDnsDeinit(CYW43_ITF_STA);
                     wifiService->connectionState = ConnectionState::CLIENTMODESTOPPED;
                 }
@@ -222,7 +226,6 @@ void WifiService::startAccessPoint()
     cyw43_arch_enable_ap_mode(wifiData.ap.ssid.c_str(), wifiData.ap.password.c_str(), CYW43_AUTH_WPA2_AES_PSK);
     // cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
     //  https://github.com/raspberrypi/pico-sdk/issues/1661#issuecomment-3238252048
-    //  TODO: Still testing, this might solve a STALL issue we have seen very rarely
     cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
 
     ip4_addr_t mask;
@@ -260,7 +263,7 @@ int WifiService::scanResultCb(void *env, const cyw43_ev_scan_result_t *result)
 
         if (it != service->wifiData.clients.end() && !service->scanResult.full())
         {
-            // printf("Added: %s\n", name.c_str());
+            // GATAS_LOG("Added: %s\n", name.c_str());
             service->scanResult.emplace_back(name);
         }
 
@@ -430,10 +433,16 @@ void WifiService::mDnsDeinit(int itf)
 
 WifiService::IpGw WifiService::getInterfaceInfo()
 {
-    struct netif *netif = netif_list;
-    if (netif != NULL)
+
+    struct netif *n = cyw43_state.netif;
+    while (n != NULL)
     {
-        return {netif->ip_addr, netif->gw};
+        if (netif_is_up(n) && netif_is_link_up(n))
+        {
+            // This one is active
+            return {n->ip_addr, n->gw};
+        }
+        n = n->next;
     }
     return {0, 0};
 }

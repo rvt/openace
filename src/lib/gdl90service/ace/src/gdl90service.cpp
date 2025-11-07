@@ -52,8 +52,10 @@ GDL90::EMITTER Gdl90Service::aircraftTypeToEmitter(GATAS::AircraftCategory categ
 {
     switch (category)
     {
+    // Set UNKNOWN to Airplane because we see a lot of MLAT aircraft without a time
+    // Changing this to an aircraft at least does not make it look odd in an EFB
     case GATAS::AircraftCategory::UNKNOWN:
-        return GDL90::EMITTER::UNKNOWN;
+        return GDL90::EMITTER::SMALL;
     case GATAS::AircraftCategory::LIGHT:
         return GDL90::EMITTER::LIGHT;
     case GATAS::AircraftCategory::SMALL:

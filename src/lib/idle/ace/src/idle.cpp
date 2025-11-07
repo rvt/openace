@@ -98,84 +98,79 @@ void Idle::idleTask(void *arg)
 #endif
         uint32_t tick = CoreUtils::secondsSinceEpoch();
 
-        if (cyw43_arch_async_context())
-        {
-            at->getBus().receive(GATAS::Every1SecMsg());
+        at->getBus().receive(GATAS::Every1SecMsg());
 
 #if GATAS_DEBUG == 1
-            // Only flash via cy43 in DEBUG (I don't have  a led on my debug device)
-            // to reduce resources for a release version
-            // Real status with the led because that is light weight
+        // Only flash via cy43 in DEBUG (I don't have  a led on my debug device)
+        // to reduce resources for a release version
+        // Real status with the led because that is light weight
+        if (cyw43_arch_async_context() != nullptr)
+        {
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
             vTaskDelay(TASK_DELAY_MS(100));
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+        }
 #endif
-            if (tick % 5 == 0)
-            {
-                msgFlags |= DO_5S;
-            }
-            if (tick % 15 == 0)
-            {
-                msgFlags |= DO_15S;
-            }
-            if (tick % 30 == 0)
-            {
-                msgFlags |= DO_30S;
-            }
-            if (tick % 300 == 0)
-            {
-                msgFlags |= DO_300S;
-            }
+        if (tick % 5 == 0)
+        {
+            msgFlags |= DO_5S;
+        }
+        if (tick % 15 == 0)
+        {
+            msgFlags |= DO_15S;
+        }
+        if (tick % 30 == 0)
+        {
+            msgFlags |= DO_30S;
+        }
+        if (tick % 300 == 0)
+        {
+            msgFlags |= DO_300S;
+        }
 
-            if (msgFlags & DO_300S)
-            {
-                at->getBus().receive(GATAS::Every300SecMsg());
-                msgFlags &= ~DO_300S;
-            }
-            else if (msgFlags & DO_30S)
-            {
-                at->getBus().receive(GATAS::Every30SecMsg());
-                msgFlags &= ~DO_30S;
-            }
-            else if (msgFlags & DO_15S)
-            {
+        if (msgFlags & DO_300S)
+        {
+            at->getBus().receive(GATAS::Every300SecMsg());
+            msgFlags &= ~DO_300S;
+        }
+        else if (msgFlags & DO_30S)
+        {
+            at->getBus().receive(GATAS::Every30SecMsg());
+            msgFlags &= ~DO_30S;
+        }
+        else if (msgFlags & DO_15S)
+        {
 
 #if GATAS_DEBUG == 1 && LWIP_STATS == 1 && MEMP_STATS == 1 && LWIP_STATS_DISPLAY
-                puts("\033[2J\033[H\n\nLWiP Status:");
-                for (int i = 0; i < MEMP_MAX; i++)
-                {
-                    const struct memp_desc *desc = memp_pools[i];
-                    if (desc == NULL)
-                        continue;
+            puts("\033[2J\033[H\n\nLWiP Status:");
+            for (int i = 0; i < MEMP_MAX; i++)
+            {
+                const struct memp_desc *desc = memp_pools[i];
+                if (desc == NULL)
+                    continue;
 
-                    struct stats_mem *stats = desc->stats;
-                    printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
-                           desc->desc,
-                           (unsigned int)(stats->avail),
-                           (unsigned int)(stats->used),
-                           (unsigned int)(stats->max),
-                           (unsigned int)(stats->err));
-                }
+                struct stats_mem *stats = desc->stats;
+                printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
+                       desc->desc,
+                       (unsigned int)(stats->avail),
+                       (unsigned int)(stats->used),
+                       (unsigned int)(stats->max),
+                       (unsigned int)(stats->err));
+            }
 #endif
-                at->getBus().receive(GATAS::Every15SecMsg());
-                msgFlags &= ~DO_15S;
-            }
-            else if (msgFlags & DO_5S)
-            {
-                at->getBus().receive(GATAS::Every5SecMsg());
-                msgFlags &= ~DO_5S;
-            }
-            else
-            {
-                at->getBus().receive(GATAS::IdleMsg());
-            }
-
-            vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
+            at->getBus().receive(GATAS::Every15SecMsg());
+            msgFlags &= ~DO_15S;
+        }
+        else if (msgFlags & DO_5S)
+        {
+            at->getBus().receive(GATAS::Every5SecMsg());
+            msgFlags &= ~DO_5S;
         }
         else
         {
-            vTaskDelay(1000);
-            puts("Wifi module not yet enabled");
+            at->getBus().receive(GATAS::IdleMsg());
         }
+
+        vTaskDelay(TASK_DELAY_MS(CoreUtils::msDelayToReference(0)));
     }
 }

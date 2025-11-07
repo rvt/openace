@@ -163,7 +163,9 @@ etl::string_view DataPort::getPFLAAAircraftCategory(const GATAS::AircraftPositio
         case GATAS::AircraftCategory::LARGE:
         case GATAS::AircraftCategory::HIGH_VORTEX:
         case GATAS::AircraftCategory::HEAVY_ICAO: return "9"; // turbo/jet
-        case GATAS::AircraftCategory::UNKNOWN: return "A";
+        // Set UNKNOWN to Airplane because we see a lot of MLAT aircraft without a time
+        // Changing this to an aircraft at least does not make it look odd in an EFB
+        case GATAS::AircraftCategory::UNKNOWN: return "8";
         case GATAS::AircraftCategory::LIGHT_THAN_AIR: return "B";
         case GATAS::AircraftCategory::UN_MANNED: return "D";
         case GATAS::AircraftCategory::POINT_OBSTACLE:

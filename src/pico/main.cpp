@@ -271,24 +271,16 @@ static void loadModules(void *arg)
 {
     (void)arg;
     BaseModule::setModuleStatus(Configuration::CONFIG, &config);
-    load(Idle::NAME, bus, config, true);
 
     load(WifiService::NAME, bus, config, true);
+    load(Idle::NAME, bus, config, true);
 
     WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME));
     if (client != nullptr)
     {
         load(Webserver::NAME, bus, config, true);
+        load(Bluetooth::NAME, bus, config, true);
     }
-    else
-    {
-        // call cyw43_arch_init because Bluetooth assumes it's loaded
-        if (cyw43_arch_init())
-        {
-            panic("cyw43_arch_init failed");
-        }
-    }
-    load(Bluetooth::NAME, bus, config, true);
     load(AircraftTracker::NAME, bus, config, true);
     load(AceSpi::NAME, bus, config, true);
 
