@@ -39,7 +39,8 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"receivedGGA\":" << statistics.receivedGGA;
     stream << ",\"receivedRMC\":" << statistics.receivedRMC;
     stream << ",\"receivedGSA\":" << statistics.receivedGSA;
-    stream << ",\"receivedOther\":" << statistics.receivedOther;
+    stream << ",\"receivedGSV\":" << statistics.receivedGSV;
+    stream << ",\"receivedOther\":" << statistics.receivedOther;   
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude;
     stream << ",\"longitude\":" << longitude << etl::format_spec{}.precision(1);
     stream << ",\"altitudeGeoid\":" << altitudeGeoid();
