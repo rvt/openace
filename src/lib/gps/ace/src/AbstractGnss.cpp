@@ -104,10 +104,8 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
 {
     // Note: if in case this get's removed because the messages are needed,
     // then this filter needs to be added in DataPort that passes through GPS messages
-    // Otherwise it create indeed traffic over TCP/IP or Bluetooth
+    // Otherwise it create perhaps to much traffic over TCP/IP or Bluetooth
     // "SkyDemon processes RMC, GGA, GSA and GSV, however GSV is not really used any more internally."
-    // GSA : GPS DOP and active satellites
-    // GSV : GPS Satellites in view
 
     bool isPriority = false;
 
@@ -119,9 +117,9 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
             // Check the message type at position 3–5
             char type[4] = {sentence[4], sentence[5], '\0'};
 
-            if (etl::string_view(type) == "SV" || // GSV
-                etl::string_view(type) == "TG" || // VTG
-                etl::string_view(type) == "LL")   // GLL
+            if (//etl::string_view(type) == "SV" || // GSV GPS Satellites in view (Blocked in DataPort)
+                etl::string_view(type) == "TG" ||   // VTG Track made good and speed over ground
+                etl::string_view(type) == "LL")     // GLL Position data: position fix, time of position fix, and status
             {
                 // Ignore this sentence
                 return;

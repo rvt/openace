@@ -399,24 +399,6 @@ void vDiagnosticsTask(void *pvParameters)
             vPortFree(taskStatusArray);
         }
 
-#if defined(LWIP_DEBUG) || MEMP_OVERFLOW_CHECK || LWIP_STATS_DISPLAY
-        puts("\n\nLWiP Status:");
-        for (int i = 0; i < MEMP_MAX; i++)
-        {
-            const struct memp_desc *desc = memp_pools[i];
-            if (desc == NULL)
-                continue;
-
-            struct stats_mem *stats = desc->stats;
-            printf("Pool %-20s | avail: %3u | used: %3u | max: %3u | err: %3u\n",
-                   desc->desc,
-                   (unsigned int)(stats->avail),
-                   (unsigned int)(stats->used),
-                   (unsigned int)(stats->max),
-                   (unsigned int)(stats->err));
-        }
-#endif
-
         ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(5000));
     }
 }

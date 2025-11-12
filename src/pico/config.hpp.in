@@ -109,23 +109,6 @@
 // Default BUS frequency of SPI in MHZ
 #define GATAS_SPI_DEFAULT_BUS_FREQUENCY ( 15 )
 
-// Address field
-// The address field starts with “$” followed by the talker ID and a sentence identifier. The used talker IDs are:
-// * $P for GPS only solutions
-// * $GL for GLONASS only solutions
-// * $GA for GALILEO only solutions
-// * $GN for multi GNSS solutions
-// The used sentence identifiers are:
-// * GGA – Global Positioning System Fix Data
-// * VTG – Course over Ground and Ground Speed
-// * GSA – GNSS DOP and Active Satellites
-// * GSV – GNSS Satellites in View
-// * RMC – Recommended Minimum Specific GNSS Data
-// * ZDA – Time and Date
-// Sentencs we never want to send over AirConnect
-// #define GATAS_AIRCONNECT_DO_NOT_SEND  ""
-#define GATAS_AIRCONNECT_DO_NOT_SEND  "$GPGLL,$GNRMC,$GNGGA,$GNGLL,$GNGSV,$GPGSV,$GLGSV,$GPGSA,$GNGSA,$GNVTG"
-
 // Stat's collector antenna radial pattern divisions
 #define GATAS_STATSCOLLECTOR_NUM_RADIALS ( 8 )
 

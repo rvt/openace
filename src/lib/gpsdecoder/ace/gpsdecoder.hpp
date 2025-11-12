@@ -27,6 +27,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
         uint32_t receivedGGA = 0;
         uint32_t receivedRMC = 0;
         uint32_t receivedGSA = 0;
+        uint32_t receivedGSV = 0;
         uint32_t receivedOther = 0;
         uint32_t startTime = CoreUtils::timeS32();
     } statistics;
@@ -34,7 +35,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
     float velocityNorth = 0;
     float velocityEast = 0;
     RatePerSecond altitudeGeoid{GATAS_EMAFLOAT_K_FACTOR_2PS, 2}; // Field 9
-    float geoidSeparation = 0;                                     // Field 11
+    float geoidSeparation = 0;                                   // Field 11
     float groundSpeed = 0;
     RatePerSecond course{GATAS_EMAFLOAT_K_FACTOR_2PS, 2};
     float latitude = 0;
@@ -48,7 +49,14 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
     // 5: RTK Float, OmniSTAR XP/HP, Location RTK, RTX
     // 6: INS Dead reckoning
     uint8_t fixQuality = 0;
-    uint8_t satellitesTracked = 0;
+    uint8_t satsUsedForFix = 0;
+    struct SatViewStats
+    {
+        uint8_t gps;
+        uint8_t glo;
+        uint8_t gal;
+        uint8_t bds;
+    } satViewStats;
     float pDop = 255;
 
     minmea_time lastRMCTimestamp;

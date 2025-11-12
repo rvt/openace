@@ -324,7 +324,7 @@ module top_text(h=1) {
   color("darkgray") {
       back(10)
       linear_extrude(h) zrot(0) 
-        text("GA-TAS PULSE", font = "Arial Black", size = 8, anchor=CENTER);
+        text("GA/TAS PULSE", font = "Arial Black", size = 8, anchor=CENTER);
 
       left(case_inner.x/2-2) fwd(15) linear_extrude(h) zrot(0) 
         text("GPS", halign="left", valign="center", font = "Arial Black", size = 5);

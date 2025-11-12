@@ -5,6 +5,20 @@
 
 extern const char *GaTas_buildTime;
 
+// Address field
+// The address field starts with “$” followed by the talker ID and a sentence identifier. The used talker IDs are:
+// * $P for GPS only solutions
+// * $GL for GLONASS only solutions
+// * $GA for GALILEO only solutions
+// * $GN for multi GNSS solutions
+// The used sentence identifiers are:
+// * GGA – Global Positioning System Fix Data
+// * VTG – Course over Ground and Ground Speed
+// * GSA – GNSS DOP and Active Satellites
+// * GSV – GNSS Satellites in View
+// * RMC – Recommended Minimum Specific GNSS Data
+// * ZDA – Time and Date
+
 GATAS::PostConstruct GpsDecoder::postConstruct()
 {
     return GATAS::PostConstruct::OK;
@@ -36,7 +50,8 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"dopValue\":\"" << dopValue << "\"";
     stream << ",\"gpsRatePerSec\":" << getGpsRate();
     stream << ",\"fixQuality\":" << fixQuality;
-    stream << ",\"satellitesTracked\":" << satellitesTracked;
+    stream << ",\"satsUsedForFix\":" << satsUsedForFix;
+    stream << ",\"satsInView\":" << satViewStats.bds + satViewStats.gal + satViewStats.glo + satViewStats.gps;
     stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
         stream << ",\"UtcTimeMsg\":" << "\""
                << width2fill0 << lastGGATimestamp.hours << GATAS::RESET_FORMAT << ":"
@@ -60,6 +75,31 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
 
     switch (minmea_sentence_id(msg.sentence.c_str(), false))
     {
+    case MINMEA_SENTENCE_GSV:
+    {
+        struct minmea_sentence_gsv frame;
+        statistics.receivedGSV += 1;
+        if (minmea_parse_gsv(&frame, msg.sentence.c_str()))
+        {
+            char type = msg.sentence[2];
+            switch (type)
+            {
+            case 'P':
+                satViewStats.gps = frame.total_sats;
+                break;
+            case 'L':
+                satViewStats.glo = frame.total_sats;
+                break;
+            case 'A':
+                satViewStats.gal = frame.total_sats;
+                break;
+            case 'B':
+                satViewStats.bds = frame.total_sats;
+                break;
+            }
+        }
+    }
+    break;
     case MINMEA_SENTENCE_RMC:
     {
         statistics.receivedRMC += 1;
@@ -92,7 +132,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
 #endif
 
             // Send only 2 times per minute
-            if ((frame.time.seconds == 0 || frame.time.seconds == 30 || forceSendTime) && millis == 0 )
+            if ((frame.time.seconds == 0 || frame.time.seconds == 30 || forceSendTime) && millis == 0)
             {
                 forceSendTime = fixType == 0;
 
@@ -151,10 +191,10 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
 
             // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
             auto geoidAltitude = convertToMeters(frame.altitude, frame.altitude_units, altitudeGeoid()); // Field 9 (MSL)
-            geoidSeparation = convertToMeters(frame.height, frame.height_units, geoidSeparation); // Field 11 (Undulation)
+            geoidSeparation = convertToMeters(frame.height, frame.height_units, geoidSeparation);        // Field 11 (Undulation)
             altitudeGeoid(geoidAltitude);
 
-            satellitesTracked = frame.satellites_tracked;
+            satsUsedForFix = frame.satellites_tracked;
             fixQuality = frame.fix_quality;
             lastGGATimestamp = frame.time;
 
@@ -179,7 +219,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
                     GATAS::GpsStatsMsg{
                         fixQuality,              // 0:Fix Not Valid 1:GPS fix 2:DGPS SBAS etc.. 3..6:NA
                         (uint8_t)frame.fix_type, // 1:NA 2:2D 3:3D
-                        satellitesTracked,
+                        satsUsedForFix,
                         pDop,
                         hDop});
             }
@@ -222,7 +262,7 @@ float GpsDecoder::convertToMeters(const minmea_float &f, char unit, float defaul
  */
 void GpsDecoder::sendMessageWhenGGAisRMC()
 {
-//    GATAS_MEASURE("GpsDecoder::sendMessageWhenGGAisRMC");
+    //    GATAS_MEASURE("GpsDecoder::sendMessageWhenGGAisRMC");
     // Send message over bus when both GGA and GMC sentences are received at the same time
     // It's required that both GGA and GMC sentences have the same timestamp in these cases
     // If this in practise is not happening, due to newer GPS systems position should be taken from latest RMC
@@ -243,12 +283,11 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .verticalSpeed = altitudeGeoid.perSecond(), // vertical speed
                     .groundSpeed = groundSpeed,                 // Ground Speed
                     .course = course(),
-                    .hTurnRate = course.perSecond(),            // hTurnRate   // degrees per second
+                    .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
                     .velocityNorth = velocityNorth,
                     .velocityEast = velocityEast,
                     .geoidSeparation = static_cast<int16_t>(geoidSeparation),
                     .airborne = groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
-                    .conspicuity = conspicuity
-                }});
+                    .conspicuity = conspicuity}});
     }
 }
