@@ -68,7 +68,7 @@ size_t __not_in_flash_func(FlashStore::write)(const uint8_t *buffer, size_t leng
     else
     {
         puts(" Doing Flash operations seems to be buggy outside of FreeRTOS task, please call these only from within a FreeRTOS Task");
-        puts("This is NOOP, nothing stored in flash!")
+        puts("This is NOOP, nothing stored in flash!");
         // Direct call when FreeRTOS is not active (early boot or baremetal) and we ar enot using pico_multicore
         // uint32_t irqStatus = save_and_disable_interrupts();
         // irq_set_enabled(USBCTRL_IRQ, false);
