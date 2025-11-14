@@ -27,9 +27,9 @@ TEST_CASE("Fully Configured", "[single-file]")
     uint8_t pstore[4096] = {};
     uint8_t btore[4096] = {};
 
-    InMemoryStore<4096> volatileStore{vstore};
-    InMemoryStore<4096> binaryStore{btore};
-    InMemoryStore<4096> permanentStore{pstore};
+    InMemoryStore volatileStore{4096, vstore};
+    InMemoryStore binaryStore{4096, btore};
+    InMemoryStore permanentStore{4096, pstore};
     // std::filesystem::path currentDir = std::filesystem::current_path();
     // std::cout << "Current execution directory: " << currentDir << std::endl;
 
@@ -124,9 +124,9 @@ TEST_CASE("Config GATAS::PostConstruct", "[single-file]")
     uint8_t pstore[4096] = {};
     uint8_t btore[4096] = {};
 
-    InMemoryStore<4096> volatileStore{vstore};
-    InMemoryStore<4096> binaryStore{btore};
-    InMemoryStore<4096> permanentStore{pstore};
+    InMemoryStore volatileStore{4096, vstore};
+    InMemoryStore binaryStore{4096, btore};
+    InMemoryStore permanentStore{4096, pstore};
 
     const uint8_t WRONG[] = "INIT WRONG";
     permanentStore.write(WRONG, sizeof(WRONG));
