@@ -6,14 +6,13 @@
 /**
  * In memory store that allows to keep it's configuration even between reboots as long as power is on the PICO
  */
-template <std::size_t DATA_SIZE>
 class InMemoryStore : public ConfigStore
 {
-    uint16_t position;
-    uint8_t *store;
-
+    const uint16_t totalSize;
+    uint8_t * const store;
+    size_t position;
 public:
-    InMemoryStore(uint8_t *store_) : position(0), store(store_) {};
+    InMemoryStore(uint16_t totalSize_, uint8_t *store_) : totalSize(totalSize_),  store(store_) , position(0){};
 
     void rewind()
     {
@@ -22,7 +21,7 @@ public:
 
     size_t write(uint8_t c)
     {
-        if (position >= DATA_SIZE)
+        if (position >= totalSize)
         {
             return 0;
         }
@@ -34,7 +33,7 @@ public:
 
     size_t write(const uint8_t *data, size_t size)
     {
-        if ((size + position) >= DATA_SIZE)
+        if ((size + position) >= totalSize)
         {
             return 0;
         }

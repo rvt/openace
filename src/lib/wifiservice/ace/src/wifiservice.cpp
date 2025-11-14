@@ -434,7 +434,8 @@ void WifiService::mDnsDeinit(int itf)
 WifiService::IpGw WifiService::getInterfaceInfo()
 {
 
-    struct netif *n = cyw43_state.netif;
+    // Using cyw43_state.netif won't work for AP mode
+    struct netif *n = netif_list;
     while (n != NULL)
     {
         if (netif_is_up(n) && netif_is_link_up(n))

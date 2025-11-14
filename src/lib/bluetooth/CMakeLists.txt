@@ -22,9 +22,9 @@ set(PICO_EXTRA_LIBS
 
 
 # Include the directory where the header was generated
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated/GaTas_gatt_header)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated/${OUTPUT_NAME}_gatt_header)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)
 
-pico_btstack_make_gatt_header(GaTas PRIVATE "${CMAKE_CURRENT_LIST_DIR}/ace/gatas_gatt.gatt")
-add_dependencies(${PROJECT_NAME} GaTas_gatt_header)
+pico_btstack_make_gatt_header(${OUTPUT_NAME} PRIVATE "${CMAKE_CURRENT_LIST_DIR}/ace/gatas_gatt.gatt")
+add_dependencies(${PROJECT_NAME} ${OUTPUT_NAME}_gatt_header)

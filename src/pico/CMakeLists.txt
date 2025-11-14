@@ -52,7 +52,8 @@ if(PICO_SDK_VERSION_STRING VERSION_LESS "2.1.0")
   )
 endif()
 
-project(GaTas C CXX ASM)
+set(OUTPUT_NAME "GATAS_${PICO_PLATFORM}")
+project(${OUTPUT_NAME} C CXX ASM)
 
 # Allow user to override this option from command line: -DGATAS_UART_OVER_USB=1
 option(GATAS_UART_OVER_USB "Enable UART over USB (1) or physical UART (0)" "")
@@ -68,12 +69,13 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   add_compile_options(
+    -O2
     -Wall
     -fsingle-precision-constant
     -ffast-math
     -ffunction-sections
     -fdata-sections
-    -O2)
+    )
 else()
   add_compile_options(
     -g 
@@ -117,7 +119,7 @@ add_executable(${PROJECT_NAME} main.cpp IdleMemory.c)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor vendorLib)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../lib globalLib)
 
-target_include_directories(GaTas PRIVATE 
+target_include_directories(${PROJECT_NAME} PRIVATE
   ${CMAKE_CURRENT_LIST_DIR} 
   ${CMAKE_CURRENT_LIST_DIR}/../lib/include)
 
@@ -175,7 +177,7 @@ target_link_libraries(
           )
 
 target_compile_definitions(
-  GaTas
+  ${PROJECT_NAME}
   PRIVATE FREE_RTOS_KERNEL_SMP=1
           portSUPPORT_SMP=1
           GATAS_UART_OVER_USB=${GATAS_UART_OVER_USB}
@@ -183,12 +185,12 @@ target_compile_definitions(
 
 # Enable debugging over PICO Debugger
 if(GATAS_UART_OVER_USB)
-  pico_enable_stdio_usb(GaTas 1)
-  pico_enable_stdio_uart(GaTas 0)
+  pico_enable_stdio_usb(${PROJECT_NAME} 1)
+  pico_enable_stdio_uart(${PROJECT_NAME} 0)
 else()
-  pico_enable_stdio_usb(GaTas 0)
-  pico_enable_stdio_uart(GaTas 1)
+  pico_enable_stdio_usb(${PROJECT_NAME} 0)
+  pico_enable_stdio_uart(${PROJECT_NAME} 1)
 endif()
 
 # create map/bin/hex/uf2 file in addition to ELF. -> rp2_common.cmake
-pico_add_extra_outputs(GaTas)
+pico_add_extra_outputs(${PROJECT_NAME})

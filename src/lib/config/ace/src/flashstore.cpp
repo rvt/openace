@@ -9,23 +9,23 @@ extern char __flash_binary_end;
 
 typedef struct
 {
-    size_t size;
+    const size_t size;
     uint32_t address;
     const uint8_t *p1;
-} mutation_operation_t;
+} FlashMutation;
 
-FlashStore::FlashStore(uint16_t size_, uint32_t offsetFromEnd_) : ConfigStore(),
-                                                                           size(((size_          + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE) * FLASH_SECTOR_SIZE),
-                                                                  offsetFromEnd(((offsetFromEnd_ + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE) * FLASH_SECTOR_SIZE)
+FlashStore::FlashStore(size_t size_, size_t startsOffsetFromEnd_) : ConfigStore(),
+                                                                    size(((size_ + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE) * FLASH_SECTOR_SIZE),
+                                                                    startsOffsetFromEnd(((startsOffsetFromEnd_ + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE) * FLASH_SECTOR_SIZE)
 {
-#if defined(RUN_FREERTOS_ON_CORE)
-    flash_safe_execute_core_init();
-#endif
+    // #if defined(RUN_FREERTOS_ON_CORE)
+    //     flash_safe_execute_core_init();
+    // #endif
 }
 
-uint32_t FlashStore::address() const
+uint32_t FlashStore::flashAddress() const
 {
-    return (PICO_FLASH_SIZE_BYTES - size - offsetFromEnd);
+    return (PICO_FLASH_SIZE_BYTES - startsOffsetFromEnd);
 }
 
 void FlashStore::rewind()
@@ -41,34 +41,46 @@ size_t FlashStore::write(uint8_t c)
 
 void __not_in_flash_func(pico_flash_bank_perform_flash_mutation_operation)(void *param)
 {
-    const mutation_operation_t *mop = (const mutation_operation_t *)param;
-    uint32_t length = (mop->size + FLASH_PAGE_SIZE - 1) & ~(FLASH_PAGE_SIZE - 1); // round up to page
+    const FlashMutation *mop = (const FlashMutation *)param;
 
-    // Erase all required sectors
-    uint32_t erase_size = (length + FLASH_SECTOR_SIZE - 1) & ~(FLASH_SECTOR_SIZE - 1);
-    flash_range_erase(mop->address, erase_size);
+    auto flashEraseBytes = ((mop->size + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE) * FLASH_SECTOR_SIZE;
+    flash_range_erase(mop->address, flashEraseBytes);
 
-    // Program in page-sized chunks
-    for (uint32_t offset = 0; offset < length; offset += FLASH_PAGE_SIZE)
-    {
-        flash_range_program(mop->address + offset, mop->p1 + offset, FLASH_PAGE_SIZE);
-    }
+    auto flashProgramBytes = ((mop->size + FLASH_PAGE_SIZE - 1) / FLASH_PAGE_SIZE) * FLASH_PAGE_SIZE;
+    flash_range_program(mop->address, mop->p1, flashProgramBytes);
 }
 
-size_t FlashStore::write(const uint8_t *buffer, size_t length)
+size_t __not_in_flash_func(FlashStore::write)(const uint8_t *buffer, size_t length)
 {
-    mutation_operation_t mop =
+
+    FlashMutation mop =
         {
             .size = length,
-            .address = address(),
-            .p1 = buffer
-        };
+            .address = flashAddress(),
+            .p1 = buffer};
 
-    flash_safe_execute(pico_flash_bank_perform_flash_mutation_operation, &mop, UINT32_MAX);
+    // Check if FreeRTOS scheduler is running
+    if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
+    {
+        // Safe version when multitasking
+        flash_safe_execute(pico_flash_bank_perform_flash_mutation_operation, &mop, UINT32_MAX);
+    }
+    else
+    {
+        puts(" Doing Flash operations seems to be buggy outside of FreeRTOS task, please call these only from within a FreeRTOS Task");
+        puts("This is NOOP, nothing stored in flash!")
+        // Direct call when FreeRTOS is not active (early boot or baremetal) and we ar enot using pico_multicore
+        // uint32_t irqStatus = save_and_disable_interrupts();
+        // irq_set_enabled(USBCTRL_IRQ, false);
+        // pico_flash_bank_perform_flash_mutation_operation(&mop);
+        // flash_safe_execute(pico_flash_bank_perform_flash_mutation_operation, &mop, UINT32_MAX);
+        // irq_set_enabled(USBCTRL_IRQ, true);
+        // restore_interrupts(irqStatus);
+    }
     return length;
 }
 
 const uint8_t *FlashStore::data() const
 {
-    return (const uint8_t *)(XIP_BASE + address());
+    return (const uint8_t *)(XIP_BASE + flashAddress());
 }

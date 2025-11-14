@@ -99,8 +99,9 @@ void Idle::idleTask(void *arg)
         uint32_t tick = CoreUtils::secondsSinceEpoch();
 
         at->getBus().receive(GATAS::Every1SecMsg());
-
-#if GATAS_DEBUG == 1
+// Perhaps it's better for now to leave this flashing to indicate that FLASH worked
+// And that the PICO is actually doing something
+// #if GATAS_DEBUG == 1
         // Only flash via cy43 in DEBUG (I don't have  a led on my debug device)
         // to reduce resources for a release version
         // Real status with the led because that is light weight
@@ -110,7 +111,7 @@ void Idle::idleTask(void *arg)
             vTaskDelay(TASK_DELAY_MS(100));
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
         }
-#endif
+// #endif
         if (tick % 5 == 0)
         {
             msgFlags |= DO_5S;

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if which ninja >/dev/null; then
-    cmake -B release_build_2040 -G Ninja -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=rp2040 -DPICO_BOARD=pico_w && \
+    cmake -B release_build_2040 -G Ninja -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=rp2040 -DPICO_BOARD=pico_w -DGATAS_UART_OVER_USB=1 && \
     ninja -C release_build_2040  $1
 else
     cmake -B release_build_2040 -DCMAKE_BUILD_TYPE=Release -DPICO_PLATFORM=rp2040 -DPICO_BOARD=pico_w && \

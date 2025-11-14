@@ -11,7 +11,7 @@ fi
 
 if test -d /volumes/RP2350; then
     echo "###############################"
-    echo "## Copied to /volumes/RPI-RP2 #"
+    echo "## Copied to /volumes/RP2350  #"
     echo "###############################"
     cp release_build_2350/GaTas.uf2 /volumes/RP2350
 

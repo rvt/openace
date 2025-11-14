@@ -114,12 +114,11 @@ void registerModules()
     }
 }
 
-
 __scratch_y("aceSpi_Mem") static uint8_t aceSpi_Mem[sizeof(AceSpi)];
 __scratch_y("sx1262_1_Mem") static uint8_t sx1262_1_Mem[sizeof(Sx1262)];
 __scratch_y("sx1262_2_Mem") static uint8_t sx1262_2_Mem[sizeof(Sx1262)];
 __scratch_y("GpsDecoder_Mem") static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
-__scratch_y("GPS_Mem") static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B)) ];
+__scratch_y("GPS_Mem") static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B))];
 __scratch_y("DataPort_Mem") static uint8_t DataPort_Mem[sizeof(DataPort)];
 
 BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configuration &config)
@@ -189,18 +188,22 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
 
 constexpr size_t VOL_DATA_SIZE = 4096;
 uint8_t __uninitialized_ram(store[VOL_DATA_SIZE]);
-static InMemoryStore<VOL_DATA_SIZE> volatileStore(store);
+static InMemoryStore volatileStore{VOL_DATA_SIZE, store};
 
 // Bluetooth stores bonding information at the last sector
 // Flash memory Map
-// |--------------|---------------|----------------|-------------------|
-// | xxBytes.     | 4096Bytes.    | 4096 Bytes.    | 8192 Bytes.       |
-// | Application  | Binary Store  | permanentStore | Bluetooth Bonding |
+// FLASH_SECTOR_SIZE => 4096 on the PICO
+// |--------------|---------------|---------------|----------------|-------------------|
+// | xxBytes.     | ....          | 4096Bytes.    | 4096 Bytes.    | 8192 Bytes.       |
+// | Application  | ....          | Binary Store  | permanentStore | Bluetooth Bonding |
+
+constexpr size_t PERMSTORE_NUM_SECTORS = (VOL_DATA_SIZE + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
+constexpr size_t BINSTORE_NUM_SECTORS = (sizeof(GATAS::BinaryStore) + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
 
 // Used to store Application Configuration
-static FlashStore permanentStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 2}; // FLASH_SECTOR_SIZE => 4096 on the PICO
+static FlashStore permanentStore{PERMSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 3}; // FLASH_SECTOR_SIZE => 4096 on the PICO
 // Used to store runtime information not stored in permanent store, counters, id's etc...
-static FlashStore binaryStore{FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 3}; // FLASH_SECTOR_SIZE => 4096 on the PICO
+static FlashStore binaryStore{BINSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 4};
 __scratch_y("GatasMem_Bus") static GATAS::ThreadSafeBus<25> bus;
 static Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
 volatile static bool loadIndicator = false;
@@ -243,33 +246,38 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
         return;
     }
 
-    auto *client = loadModule(str, bus, config);
+    auto *module = loadModule(str, bus, config);
 
-    if (!client)
+    if (!module)
     {
         printf("-> out of memory ");
         return;
     }
 
     printf("-> PostConstruct() ");
-    auto result = client->postConstruct();
+    auto result = module->postConstruct();
     if (result == GATAS::PostConstruct::OK)
     {
-        BaseModule::setModuleStatus(str, client);
+        BaseModule::setModuleStatus(str, module);
         printf("-> start() ");
-        client->start();
+        module->start();
     }
     else
     {
         BaseModule::setModuleStatus(str, result);
         printf("-> Unloading reason [%s] ", postConstructToString(result));
-        delete client;
+        // TODO: Find out why deleting a module
+        // For some strange reason when deleting a module, I get a hard crash
+        // delete module;
     }
 }
 
 static void loadModules(void *arg)
 {
     (void)arg;
+    config.postConstruct();
+    config.start();
+
     BaseModule::setModuleStatus(Configuration::CONFIG, &config);
 
     load(WifiService::NAME, bus, config, true);
@@ -414,10 +422,6 @@ void vDiagnosticsTask(void *pvParameters)
 
 void vLaunch(void)
 {
-    // Bootstrap
-    BaseModule::initBase();
-    puts("--");
-
     /*** Turn on LED ASAP to indicate that the device is on */
     ledStatusIndicatorPin = config.valueByPath(26, "port5", "O0");
     gpio_init(ledStatusIndicatorPin);
@@ -425,10 +429,11 @@ void vLaunch(void)
     gpio_put(ledStatusIndicatorPin, 1); // Turn on LED to indicate booting
     /*** Turn on LED ASAP to indicate that the device is on */
 
+    // Bootstrap
+    BaseModule::initBase();
     registerModules();
     BaseModule::setModuleStatus(Configuration::NAME, &config);
     BaseModule::setModuleStatus(Config::NAME, &config);
-    config.start();
 
     // Load all the modules
     TaskHandle_t task;
@@ -470,9 +475,6 @@ int main()
     }
     stdio_init_all();
     overflowTest();
-
-    // Load config very eurly in the process so it might be easer to recover
-    config.postConstruct();
 
 #if GATAS_DEBUG == 1
     etl::error_handler::set_callback<etlcpp_receive_error>();

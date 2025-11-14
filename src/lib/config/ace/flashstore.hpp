@@ -17,10 +17,10 @@
  */
 class FlashStore : public ConfigStore
 {
-    uint32_t address() const;
+    uint32_t flashAddress() const;
 
-    const uint16_t size;
-    const uint32_t offsetFromEnd;
+    const size_t size;
+    const size_t startsOffsetFromEnd;
 
 public:
     /**
@@ -31,9 +31,9 @@ public:
      * The size and offset will be aligned on a FLASH_SECTOR_SIZE boundary. Multiple FlashStores should not overlap
      *
      * @param size_ The size of the memory area to use for storage, in bytes and rounded to FLASH_SECTOR_SIZE
-     * @param offsetFromEnd_ The offset from the end of the flash memory, in bytes, where the storage begins and rounded to FLASH_SECTOR_SIZE
+     * @param startsOffsetFromEnd_ The offset from the end of the flash memory, in bytes, where the storage begins and rounded to FLASH_SECTOR_SIZE
      */
-    FlashStore(uint16_t size_, uint32_t offsetFromEnd_);
+    FlashStore(size_t size_, size_t startsOffsetFromEnd_);
 
     virtual void rewind() override;
 

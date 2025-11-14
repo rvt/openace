@@ -29,12 +29,6 @@ GATAS::PostConstruct Sx1262::postConstruct()
         return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
 
-    mutex = xSemaphoreCreateMutex();
-    if (mutex == nullptr)
-    {
-        return GATAS::PostConstruct::MUTEX_ERROR;
-    }
-
     // Chip select is active-low, so we'll initialise it to a driven-high state
     gpio_init(csPin);
     gpio_set_dir(csPin, GPIO_OUT);
@@ -60,6 +54,12 @@ GATAS::PostConstruct Sx1262::postConstruct()
         return GATAS::PostConstruct::HARDWARE_NOT_FOUND;
     }
     printf(" found [%s] (Sx1261 is normal for a Sx1262) ", data);
+
+    mutex = xSemaphoreCreateMutex();
+    if (mutex == nullptr)
+    {
+        return GATAS::PostConstruct::MUTEX_ERROR;
+    }
 
     radioInit();
 

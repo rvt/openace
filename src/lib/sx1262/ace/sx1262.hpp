@@ -207,7 +207,7 @@ public:
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive(const GATAS::RadioTxFrameMsg &msg);
     void on_receive(const GATAS::RadioControlMsg &msg);
-    void on_receive(const  GATAS::GpsStatsMsg &msg);
+    void on_receive(const GATAS::GpsStatsMsg &msg);
 
     void radioInit();
     void checkAndClearDeviceErrors();
