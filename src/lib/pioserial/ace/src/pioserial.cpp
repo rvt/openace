@@ -152,7 +152,7 @@ void __isr __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex
             }
             else
             {
-                if (pioSerial->charIndex < pioSerial->buffer.size() - 1)
+                if (pioSerial->charIndex < pioSerial->buffer.size() - 1) // && c >= 32 && c <= 126
                 {
                     pioSerial->buffer[pioSerial->charIndex++] = c;
                 }

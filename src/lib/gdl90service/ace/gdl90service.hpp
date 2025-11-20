@@ -49,8 +49,10 @@ private:
     GDL90 gdl90;
 
     GDL90::ADDR_TYPE type;
-    int16_t geoidSeparation=0;
-    bool gpsStatusValid=false;
+    int16_t geoidSeparation = 0;
+    float hDop = 0.0f;
+    float pDop = 0.0f;
+    bool gpsStatusValid = false;
 
 private:
     static void gdl90ServiceTask(void *arg);
@@ -65,10 +67,13 @@ private:
 
     void on_receive_unknown(const etl::imessage &msg)
     {
-      (void)msg;   
+        (void)msg;
     }
 
     void sendHeartBeat(Gdl90Service &gdl90Service);
+
+    GDL90::NIC calcNIC(float hplMeters);
+    GDL90::NACP calcNACp(float hfomMeters);
 
     GDL90::EMITTER aircraftTypeToEmitter(GATAS::AircraftCategory category) const;
 

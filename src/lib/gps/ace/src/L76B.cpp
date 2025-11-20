@@ -4,35 +4,67 @@
 
 // *INDENT-OFF*
 // clang-format off
+// https://files.waveshare.com/upload/5/56/Quectel_L76_Series_GNSS_Protocol_Specification_V3.3.pdf
+// Wavesgare seems to have the L76B 3333 platform
+// This is important for PPS/NMEA sync THis is what I get: $PMTK705,AXN_5.1.6_3333_18060500,0001,Quectel-L76B,1.0*53  -> FOUND
 static auto BAUDRATE_115200 = CoreUtils::createNmeaChecksum("$PMTK251,115200");
 static auto WARMSTART = CoreUtils::createNmeaChecksum("$PMTK102");
 static auto HOTRESTART = CoreUtils::createNmeaChecksum("$PMTK101");
-static auto HZ2 = CoreUtils::createNmeaChecksum("$PMTK220,500");
-static auto CONSTELLATIONS = CoreUtils::createNmeaChecksum("$PMTK353,1,1,1,0,0");
-static auto SBAS = CoreUtils::createNmeaChecksum("$PMTK313,1");
-static auto SBASDGPS = CoreUtils::createNmeaChecksum("$PMTK301,2");
+static auto HZ2_500 = CoreUtils::createNmeaChecksum("$PMTK220,500");
+static auto HZ2_1000 = CoreUtils::createNmeaChecksum("$PMTK220,1000");
+static auto CONSTELLATIONS = CoreUtils::createNmeaChecksum("$PMTK353,1,1,1,0,0"); // Must be GPS, Glonas and GAlileo only 
+static auto SBAS = CoreUtils::createNmeaChecksum("$PMTK313,1");     // Enable SBAS
+static auto SBASDGPS = CoreUtils::createNmeaChecksum("$PMTK301,2"); // Enable SBAS DGPS corrections
 static auto SENTENCES = CoreUtils::createNmeaChecksum("$PMTK314,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
-static auto PPS3DFIX = CoreUtils::createNmeaChecksum("$PMTK285,3,50");
-static auto NOPOWERSAVE = CoreUtils::createNmeaChecksum("$PMTK225,0");
+static auto NOSENTENCES = CoreUtils::createNmeaChecksum("$PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
+static auto PPS3DFIX = CoreUtils::createNmeaChecksum("$PMTK285,4,50"); // Use 1 to always output PPS, even without a fix
+static auto NOPOWERSAVE = CoreUtils::createNmeaChecksum("$PMTK225,0"); // Normal mode
+static auto VERSION = CoreUtils::createNmeaChecksum("$PMTK605");
+static auto ENABLEAIC = CoreUtils::createNmeaChecksum("$PMTK286,1");
 static auto STATICNAVTHD= CoreUtils::createNmeaChecksum("$PMTK386,1"); // 3.6Km/h
 
-
-// 255 – Sync 1PPS and NMEA Messages
-// This command enables or disables synchronization between the 1PPS pulse and the NMEA messages. 
-// When enabled, the beginning of the NMEA message on the UART is fixed to between 170 and 180ms after the rising edge of the 1PPS pulse. 
-// The NMEA message describes the position and time as of the rising edge of the 1PPS pulse.
-// https://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocNm=RXM-GPS-RM-T&DocType=Data+Sheet&DocLang=English&DocFormat=pdf&PartCntxt=RXM-GPS-RM-T
+// 255 – Sync 1PPS and NMEA Messages must be turned off because we run the GPS at a higher frequency
+// Note to other developers: It looks like that the L76B in SOftware PPS mode is accurate only once 
+// it has a proper 3D fix with more than 5 sats Where I see a delay of 240ish ms from PPS to RMC
 static auto PPSNMEA = CoreUtils::createNmeaChecksum("$PMTK255,1");
 
 // clang-format on
 // *INDENT-ON*
 
+void L76B::popGPSMessages(etl::string_view waitFor)
+{
+    constexpr uint16_t LONG_WAIT = 1500;
+    constexpr uint16_t SHORT_WAIT = 500;
+
+    GATAS::NMEAString sentence;
+    int c = waitFor.length() > 0 ? LONG_WAIT : SHORT_WAIT;
+    while (c--)
+    {
+        while (popQueue(sentence))
+        {
+            if (sentence.starts_with("$PMTK"))
+            {
+                GATAS_LOG("%s ", sentence.c_str());
+                if (waitFor.length() > 0 && sentence.starts_with(waitFor))
+                {
+                    GATAS_LOG(" -> FOUND\n");
+                    c = 0;
+                }
+                else
+                {
+                    GATAS_LOG("\n");
+                }
+            }
+        }
+        vTaskDelay(TASK_DELAY_MS(10));
+    }
+}
+
 // Note on PPS:
-// L76B uses rising pulse to trigger PPS 
+// L76B uses rising pulse to trigger PPS
 // https://www.researchgate.net/figure/PPS-and-NMEA-timing-for-L76-M33_fig11_318528181
 bool L76B::configureGnss()
 {
-    constexpr auto DELAY_BETWEEN_SENTENCES = 100;
     // Initialise the GPS hardware
     setStatus("Search");
     uint32_t baudrate = getSerial().findBaudRate(1'000);
@@ -54,12 +86,12 @@ bool L76B::configureGnss()
         }
 
         getSerial().sendBlocking(BAUDRATE_115200);
-        vTaskDelay(DELAY_BETWEEN_SENTENCES);
+        vTaskDelay(TASK_DELAY_MS(5000));
         getSerial().sendBlocking(HOTRESTART);
-        vTaskDelay(DELAY_BETWEEN_SENTENCES);
+        popGPSMessages("$PMTK011,MTKGPS");
         return false;
     }
-    
+
     if (!getSerial().enableTx(baudrate))
     {
         setStatus("Cfg err m8nCfg");
@@ -67,25 +99,52 @@ bool L76B::configureGnss()
         return false;
     }
 
-    // Save to BBR so we don't have slow startup delays finding the uart
-    getSerial().sendBlocking(HZ2);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
+    GATAS_LOG("Starting L76B configuration");
+
+    // Ensure queue is empty
+    popGPSMessages();
+
+    getSerial().sendBlocking(VERSION);
+    popGPSMessages("$PMTK705");
+
+    // According documentation NMEA Sync only works with 1HZ NMEA?
+    // It also looks like switching PPS to a different value takes more time than expected
+    if (isSoftwarePPS())
+    {
+        getSerial().sendBlocking(PPSNMEA);
+        popGPSMessages("$PMTK001,255");
+        getSerial().sendBlocking(HZ2_1000);
+        popGPSMessages("$PMTK001,220");
+    }
+    else
+    {
+        getSerial().sendBlocking(HZ2_500);
+        popGPSMessages("$PMTK001,220");
+    }
+
     getSerial().sendBlocking(CONSTELLATIONS);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
+    popGPSMessages("$PMTK001,353");
+
     getSerial().sendBlocking(SBAS);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
+    popGPSMessages("$PMTK001,313");
+
     getSerial().sendBlocking(SBASDGPS);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
+    popGPSMessages("$PMTK001,301");
+
     getSerial().sendBlocking(PPS3DFIX);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
-    getSerial().sendBlocking(PPSNMEA);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
-    getSerial().sendBlocking(HOTRESTART);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
+    popGPSMessages("$PMTK001,285");
+
+    getSerial().sendBlocking(ENABLEAIC);
+    popGPSMessages("$PMTK001,286");
+
     getSerial().sendBlocking(STATICNAVTHD);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
+    popGPSMessages("$PMTK001,386");
+
+    // getSerial().sendBlocking(HOTRESTART);
+    // popGPSMessages();
+
     getSerial().sendBlocking(NOPOWERSAVE);
-    vTaskDelay(DELAY_BETWEEN_SENTENCES);
+    popGPSMessages("$PMTK001,225");
 
     setStatus("Configured");
     return true;

@@ -213,7 +213,7 @@ public:
     RtcModule(etl::imessage_bus &bus) : BaseModule(bus, NAME)
     {
     }
-    virtual void ppsEvent() = 0;
+    virtual void ppsEvent(int32_t offsetUs) = 0;
 };
 
 class SpiModule : public BaseModule

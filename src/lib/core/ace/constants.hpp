@@ -52,7 +52,7 @@ namespace GATAS
     using TxPacketType = uint8_t[GATAS::RADIO_MAX_GFX_FRAME_LENGTH];
     using TxPacketType32 = uint32_t[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
     using TxFrameType = etl::array<uint8_t, GATAS::RADIO_MAX_GFX_FRAME_LENGTH * MANCHESTER>;
-    using SsidOrPasswdStr = etl::string<20>;
+    using SsidOrPasswdStr = etl::string<32>;
 
     enum class PinType : uint8_t;
     using PinTypeMap = etl::flat_map<PinType, int8_t, 8>;

@@ -47,7 +47,8 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"geoidSeparation\":" << geoidSeparation;
     stream << ",\"groundspeed\":" << groundSpeed;
     stream << ",\"track\":" << course();
-    stream << ",\"pDop\":" << pDop << GATAS::RESET_FORMAT;
+    stream << ",\"pDop\":" << pDop;
+    stream << ",\"hDop\":" << hDop << GATAS::RESET_FORMAT;
     stream << ",\"dopValue\":\"" << dopValue << "\"";
     stream << ",\"gpsRatePerSec\":" << getGpsRate();
     stream << ",\"fixQuality\":" << fixQuality;
@@ -123,7 +124,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             if ((timeinfo->tm_hour != frame.time.hours ||
                  timeinfo->tm_min != frame.time.minutes ||
                  timeinfo->tm_sec != frame.time.seconds) &&
-                CoreUtils::secondsSinceEpoch() > 1000000000)
+                CoreUtils::secondsSinceEpoch() > 1000'000'000)
             {
 
                 printf("CoreUtils::secondsSinceEpoch(): %02d:%02d:%02d.%03ld RMC:%02d:%02d:%02d.%03d\n",
@@ -136,6 +137,8 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             if ((frame.time.seconds == 0 || frame.time.seconds == 30 || forceSendTime) && millis == 0)
             {
                 forceSendTime = fixType == 0;
+
+                // DO we send here the PPS event for software?
 
                 // The time in a RMC sentence is the UTC time, not GPS time
                 getBus().receive(
@@ -215,7 +218,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             {
                 fixType = (uint8_t)frame.fix_type;
                 pDop = getFloat(frame.pdop, 100);
-                auto hDop = getFloat(frame.hdop, 100);
+                hDop = getFloat(frame.hdop, 100);
                 getBus().receive(
                     GATAS::GpsStatsMsg{
                         fixQuality,              // 0:Fix Not Valid 1:GPS fix 2:DGPS SBAS etc.. 3..6:NA

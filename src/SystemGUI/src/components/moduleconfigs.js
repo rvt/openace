@@ -714,13 +714,13 @@ class BluetoothConfig extends ModuleConfig {
     } else {
       this.$refs.localName.value = data.localName;
     }
-    this.$refs.rfComm.checked = data.rfComm;
+//    this.$refs.rfComm.checked = data.rfComm;
   }
 
   _getFormData() {
     return {
       localName: this.$refs.localName.value,
-      rfComm: this.$refs.rfComm.checked,
+      //rfComm: this.$refs.rfComm.checked,
     };
   }
 
@@ -739,12 +739,12 @@ class BluetoothConfig extends ModuleConfig {
             <input type="text" id="localName" ref="localName" placeholder="GaTas" />
           </label>
         </div>
-        <div class="row g-0">
+        <!--div class="row g-0">
           <label for="rfComm">
             <input type="checkbox" id="rfComm" id="rfComm" ref="rfComm" placeholder="0" />
             Enable SPP (Serial Port Profile) on Bluetooth. Normally just BLE is enough for systems like SkyDemon.
           </label>
-        </div>
+        </div-->
 
         ${this.buttonArray(html)}
       </form>
@@ -820,3 +820,67 @@ class GatasConnectConfig extends ModuleConfig {
   }
 }
 customElements.define("gatasconnect-config", GatasConnectConfig);
+
+
+class AbstractGnss extends ModuleConfig {
+  created() {
+    this._initForm(store.getModuleData(this.name));
+  }
+
+  mounted() {
+    const validator = new JustValidate(this.$refs.form);
+
+    validator
+      .onSuccess((event) => {
+        const data = this._getFormData();
+        store.updateModuleData(this.name, { ...this.copyOfData, ...data }).then(() => {
+          this.close();
+        });
+      });
+  }
+
+  _setFormData(data) {
+    this.$refs.softPPS.checked = data.softPPS;
+  }
+
+  _getFormData() {
+    return {
+      softPPS: this.$refs.softPPS.checked,
+    };
+  }
+
+  render(html) {
+    return html`
+      <h4>Configuration of the GNSS module</h4>
+
+      <form ref="form" autocomplete="off" novalidate="novalidate">
+        <div class="section grid md-columns-2 lg-columns-2">
+          <label for="softPPS">
+            <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
+              Software based PPS ${html.raw(icon.help)}
+              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
+                When Enable a softwareBased but less accurate approach to get a PPS signal from the GNSS data.
+                This is useful when your GNSS module does not have a dedicated PPS output pin. If you have PPS, leave this disabled for best accuracy.
+              </p> </label>:
+            <br />
+            <input type="checkbox" id="softPPS" ref="softPPS" placeholder="1" />
+          </label>
+        </div>
+        <br />
+
+        ${this.buttonArray(html)}
+      </form>
+    `;
+  }
+}
+
+class L76B extends AbstractGnss {
+  name = "L76B";
+}
+
+class UbloxM8N extends AbstractGnss {
+  name = "UbloxM8N";
+}
+
+customElements.define("l76b-config", L76B);
+customElements.define("ubloxm8n-config", UbloxM8N);

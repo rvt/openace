@@ -373,7 +373,6 @@ void WifiService::disableSta()
 void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const
 {
     const char *mode;
-    char ipStr[IP4ADDR_STRLEN_MAX];
     if (wifiMode == GATAS::WifiMode::AP)
     {
         mode = "Access Point";
@@ -388,6 +387,7 @@ void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_
     }
 
     ip4_addr_t ip = getInterfaceInfo().ip;
+    char ipStr[IP4ADDR_STRLEN_MAX];
 
     ip4addr_ntoa_r(&ip, ipStr, IP4ADDR_STRLEN_MAX);
     puts("###################################");

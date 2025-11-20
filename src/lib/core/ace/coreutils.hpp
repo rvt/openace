@@ -171,10 +171,11 @@ public:
     /**
      * Must be called at high priority to set the PPS offset.
      * When offset is known, the correct time in us in reference to PPS can be calculated
+     * @param offsetUs Offset in us to add to the current time_us_32 to align with PPS This can be used for software PPS adjustments
      */
-    static void __time_critical_func(setPPS)()
+    static void __time_critical_func(setPPS)(int32_t offsetUs)
     {
-        CoreUtils_timeUs32PpsOffset = time_us_32() % 1'000'000;
+        CoreUtils_timeUs32PpsOffset = time_us_32() % 1'000'000 - offsetUs;
     }
 
     /**
@@ -184,6 +185,11 @@ public:
     static uint16_t msInSecond()
     {
         return (timeUs32() / 1'000) % 1'000;
+    }
+
+        static uint16_t usInSecond()
+    {
+        return (timeUs64()) % 1'000'000;
     }
 
     /**

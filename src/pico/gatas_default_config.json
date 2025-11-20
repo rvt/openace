@@ -95,9 +95,16 @@
       }
     ]
   },
-  "UbloxM8N": {},
-  "L76B": {},
+  "_comment": "I forgot why I needed these here, but the plan is to rewrite this to something more simple",
+  "UbloxM8N": {
+    "softPPS": 0
+  },
+  "L76B": {
+    "softPPS": 1
+  },
   "SerialADSB": {},
+
+  "_commentPinMaps": "Hardware specific items are only handled by pinmapping",
   "PICO_2RADIO": {
     "AceSpi": {
       "clk": 2,
@@ -109,14 +116,12 @@
     "UbloxM8N": {
       "tx": 0,
       "rx": 1,
-      "busy": 18,
-      "n": 0
+      "busy": 18
     },
     "SerialADSB": {
       "tx": 16,
       "rx": 17,
-      "busy": 27,
-      "n": 1
+      "busy": 27
     },
     "port4": {
       "cs": 6

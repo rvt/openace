@@ -44,7 +44,7 @@ class GaTasModules extends El {
       "GatasConnect"
     ];
 
-    this.configurable = ["WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "Bluetooth", "GatasConnect"];
+    this.configurable = ["L76B", "UbloxM8N", "WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "Bluetooth", "GatasConnect"];
 
     this.enablers = [
       "ADSBDecoder",

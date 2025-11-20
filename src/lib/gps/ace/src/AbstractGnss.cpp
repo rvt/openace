@@ -14,11 +14,18 @@
 // Global pointert to PicoRTC so the PPS event can be called from the iterrupt
 RtcModule *AbstractGnss_rtc = nullptr;
 
+#if ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG == 1
+static volatile uint32_t softPpsMeasureStart = 0;
+#endif
+
 // Call RTC in interrupt to native of when last second pulse happened
 void __time_critical_func(AbstractGnss_pps_callback)(uint32_t events)
 {
     (void)events;
-    AbstractGnss_rtc->ppsEvent();
+    AbstractGnss_rtc->ppsEvent(0);
+#if ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG == 1
+    softPpsMeasureStart = CoreUtils::timeUs32Raw();
+#endif
 }
 
 GATAS::PostConstruct AbstractGnss::postConstruct()
@@ -34,9 +41,18 @@ GATAS::PostConstruct AbstractGnss::postConstruct()
         return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
 
-    gpio_init(ppsPin);
-    gpio_set_dir(ppsPin, GPIO_IN);
-    gpio_pull_up(ppsPin);
+    // Disable PPS to ensure no false detection is made when the user decides to use Software PPS
+    if (!softwarebasedPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG)
+    {
+        gpio_init(ppsPin);
+        gpio_set_dir(ppsPin, GPIO_IN);
+        gpio_pull_up(ppsPin);
+    }
+
+    if (softwarebasedPPS)
+    {
+        puts(" Software based PPS enabled");
+    }
 
     return GATAS::PostConstruct::OK;
 }
@@ -48,7 +64,10 @@ void AbstractGnss::start()
                 configMINIMAL_STACK_SIZE + 768, this, tskIDLE_PRIORITY + 3, &taskHandle);
 
     pioSerial.start();
-    registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, AbstractGnss_pps_callback);
+    if (!softwarebasedPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG)
+    {
+        registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, AbstractGnss_pps_callback);
+    }
 };
 
 void AbstractGnss::receiveTask(void *arg)
@@ -79,9 +98,14 @@ void AbstractGnss::receiveTask(void *arg)
                 {
                     if (abstractGnss->preProcessSentence(sentence))
                     {
-                        // puts(sentence.c_str());
                         abstractGnss->getBus().receive(GATAS::GPSSentenceMsg{sentence});
                         abstractGnss->statistics.totalReceived += 1;
+
+                        if (ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG && abstractGnss->statistics.totalReceived % 10 == 0)
+                        {
+                            // Note: Using printf so it will show up in a release build as well
+                            printf("Software PPS lags %" PRIu32 "us behind\n", abstractGnss->softPPSlagUs);
+                        }
                     }
                 }
             }
@@ -97,51 +121,61 @@ void AbstractGnss::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"queueFullErr\":" << statistics.queueFullErr;
     stream << ",\"status\":\"" << statistics.status << "\"";
     stream << ",\"baudrate\":" << statistics.baudrate;
+#if ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG == 1
+    stream << ",\"softPPSlagUs\":" << softPPSlagUs;
+#endif    
     stream << "}";
 }
 
 void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char> &sentence)
 {
-    // Note: if in case this get's removed because the messages are needed,
-    // then this filter needs to be added in DataPort that passes through GPS messages
-    // Otherwise it create perhaps to much traffic over TCP/IP or Bluetooth
-    // "SkyDemon processes RMC, GGA, GSA and GSV, however GSV is not really used any more internally."
-
-    bool isPriority = false;
-
-    // Only check if the queue has room
-    if (!queue.full())
+    // Not even enough characters for a valid sentence type ("$GPxxx...")
+    if (sentence.size() < 17)
     {
-        if (sentence.size() >= 6)
-        {
-            // Check the message type at position 3–5
-            char type[4] = {sentence[4], sentence[5], '\0'};
-
-            if (//etl::string_view(type) == "SV" || // GSV GPS Satellites in view (Blocked in DataPort)
-                etl::string_view(type) == "TG" ||   // VTG Track made good and speed over ground
-                etl::string_view(type) == "LL")     // GLL Position data: position fix, time of position fix, and status
-            {
-                // Ignore this sentence
-                return;
-            }
-
-            // Check for RMC/GGA to give it more priority
-            if (etl::string_view(type) == "MC" || etl::string_view(type) == "GA")
-            {
-                isPriority = true;
-            }
-
-            // Push the sentence
-            queue.push(sentence.data());
-        }
+        return;
     }
-    else
+
+    // Bail early if queue can't take anything
+    if (queue.full())
     {
         statistics.queueFullErr += 1;
+        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+        return;
     }
 
-    // Notify only when queue has enough items or it's an RMC
-    if (queue.size() > QUEUE_SIZE / 2 || isPriority)
+    // Extract the NMEA sentence type letters at positions 4 and 5
+    const char t0 = sentence[4];
+    const char t1 = sentence[5];
+
+    // PRIORITY CHECK
+    //
+    // RMC = "MC"
+    // GGA = "GA"
+    bool isRMC = (t0 == 'M' && t1 == 'C');
+    bool isGGA = (t0 == 'G' && t1 == 'A');
+    bool isPriority = (isRMC || isGGA);
+
+    // SOFTWARE PPS
+    if (softwarebasedPPS && isRMC && sentence.size() > 16)
+    {
+
+        // Detect ".00" at sentence[13..15] because RMC messages can happenmultiple times per second
+        // Note: As far as I know, RMC is send always at .00 for L78B and Ublox M8N
+        // Example message we want to detect: $GNRMC,183744.000,A,5000.5459,N,00400.1711,E,0.00,146.53,151125,,,D*70
+        if (sentence[13] == '.' &&
+            sentence[14] == '0' &&
+            sentence[15] == '0')
+        {
+#if ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG == 1
+            softPPSlagUs = CoreUtils::timeUs32Raw() - softPpsMeasureStart;
+#else
+            AbstractGnss_rtc->ppsEvent(softPPSlagUs);
+#endif
+        }
+    }
+
+    queue.push(sentence.data());
+    if (isPriority || queue.size() > (QUEUE_SIZE / 2))
     {
         xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
     }

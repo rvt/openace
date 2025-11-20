@@ -18,8 +18,8 @@ class Menu extends El {
         <h5 class="flex-center">
           <a href="#session" onclick=${() => this._setPage("session")}>GA/TAS :: ${store.state.aircraftId}</a>
         </h5>
-        ${store.state.connected ? html`<div class="alert-success">GA/TAS Connected</div>` : html`<div class="alert-error">GA/TAS Disconnected</div>`}
-        <button class="btn xs ${store.state.configModified ? "btn-warning" : ""}" onclick=${() => this._saveBr()}>Save</button>
+        ${store.state.connected ? html`<div class="alert-success">Connected</div>` : html`<div class="alert-error">Disconnected</div>`}
+        <button class="btn xs ${store.state.configModified ? "btn-warning" : ""}" onclick=${() => this._saveBr()}>Flash Settings</button>
         <div>
           <label class="toggle btn btn-link p-0 btn-menu md-none">
             <input type="checkbox" />

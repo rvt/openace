@@ -58,6 +58,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
         uint8_t bds;
     } satViewStats;
     float pDop = 255;
+    float hDop = 255;
 
     minmea_time lastRMCTimestamp;
     minmea_time lastGGATimestamp;

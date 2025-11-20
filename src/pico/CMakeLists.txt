@@ -111,7 +111,8 @@ endforeach()
 
 # Set for these files specific compile options
 set_source_files_properties(${C_SOURCE_FILES}
-                            PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Werror")
+                            PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Werror -Wvexing-parse
+")
 
 pico_sdk_init()
 

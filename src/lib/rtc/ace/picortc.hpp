@@ -45,7 +45,7 @@ public:
 
     virtual ~PicoRtc() = default;
 
-    virtual void ppsEvent() override;
+    virtual void ppsEvent(int32_t offsetUs) override;
 
     virtual GATAS::PostConstruct postConstruct() override;
 

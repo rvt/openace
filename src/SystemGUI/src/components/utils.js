@@ -55,6 +55,6 @@ export const passwordValidation = [
   },
   {
     rule: "maxLength",
-    value: 20,
+    value: 32,
   },
 ];

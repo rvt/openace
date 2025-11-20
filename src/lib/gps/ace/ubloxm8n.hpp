@@ -9,34 +9,26 @@ class UbloxM8N : public AbstractGnss, public etl::message_router<UbloxM8N>
 {
 private:
     static constexpr uint32_t REQUIRED_GPS_BAUDRATE = 115200; // If you change this, you need to change the baudrate in the ublox config as well
+    static constexpr uint32_t softPPSlagUs = 27'000;          // When SoftPPS is used, use this as a lag compensation in microseconds
 
     friend class message_router;
 
-    void on_receive_unknown(const etl::imessage& msg)
+    void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
     }
 
     virtual bool configureGnss() override;
 
-    /**
-     * Future: When PPS is not receive, this value can be used as an average delay to at least get some time right
-     */
-    // virtual uint32_t delayUs() override {
-    //     return 35000;
-    // }
-
 public:
     static constexpr const etl::string_view NAME = "UbloxM8N";
-    UbloxM8N(etl::imessage_bus& bus, const GATAS::PinTypeMap& pins) : 
-        AbstractGnss(bus, NAME, pins)
+    UbloxM8N(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, bool softPPS) : AbstractGnss(bus, NAME, pins, softPPS, softPPSlagUs)
     {
     }
 
-    UbloxM8N(etl::imessage_bus& bus, const Configuration &config)  : UbloxM8N(bus, config.pinMap(NAME))
+    UbloxM8N(etl::imessage_bus &bus, const Configuration &config) : UbloxM8N(bus, config.pinMap(NAME), config.valueByPath(1, NAME, "softPPS"))
     {
     }
 
     virtual ~UbloxM8N() = default;
-
 };

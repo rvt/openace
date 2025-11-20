@@ -13,9 +13,9 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
 }
 
 // This method is not protected with a mutex since it's called from hardware interrupt well before GATAS::UtcTimeMsg& event is end
-__force_inline void PicoRtc::ppsEvent()
+__force_inline void PicoRtc::ppsEvent(int32_t offsetUs)
 {
-    CoreUtils::setPPS();
+    CoreUtils::setPPS(offsetUs);
     lastPpstime = CoreUtils::timeUs32();
 }
 

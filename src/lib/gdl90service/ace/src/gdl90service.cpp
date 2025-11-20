@@ -130,6 +130,16 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
     GDL90::RawBytes unpacked;
+
+    // TODO: set UERE based on GPS status, for example when we have SBAS set a lower uere to like 2??
+    // Note: These are just estimates!
+    constexpr float uere = 2.7f; // Assume a basic UERE of 3 meters
+    float hfom = hDop > 0 ? hDop * uere : -1;
+    float hpl = pDop > 0 ? pDop * uere * 2.0f : -1;
+
+    auto nacp = calcNACp(hfom);
+    auto nic = calcNIC(hpl);
+
     if (gdl90.ownership_or_traffic_report_encode(
             unpacked,
             true,
@@ -140,13 +150,13 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
             longitude,
             altitude,
             GDL90::MISC_TT_HEADING_TRUE_MASK | (pos.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
-            GDL90::NIC::HPL_LT_25_VPL_LT_37_5,
-            GDL90::NACP::HFOM_LT_30_VFOM_LT_45, /* Integrity | Accuracy We do not really have this information from the GPS */
+            nic,
+            nacp,
             horiz_velocity,
             vert_velocity,
             track_hdg,
             aircraftTypeToEmitter(pos.conspicuity.category),
-            "", // [0-9A-Z ]
+            "GaTas", // [0-9A-Z ]
             GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
@@ -180,6 +190,71 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 void Gdl90Service::on_receive(const GATAS::GpsStatsMsg &msg)
 {
     gpsStatusValid = msg.fixType == 3;
+    pDop = msg.pDop;
+    hDop = msg.hDop;
+}
+
+GDL90::NACP Gdl90Service::calcNACp(float hfomMeters)
+{
+    if (hfomMeters <= 0.0f)
+    {
+        return GDL90::NACP::UNKNOWN;
+    }
+
+    // First check meter thresholds (NACp 9–11)
+    // clang-format off
+    if (hfomMeters < 3.0f)   return GDL90::NACP::HFOM_LT_3_VFOM_LT_4;     // NACp 11
+    if (hfomMeters < 10.0f)  return GDL90::NACP::HFOM_LT_10_VFOM_LT_15;   // NACp 10
+    if (hfomMeters < 30.0f)  return GDL90::NACP::HFOM_LT_30_VFOM_LT_45;   // NACp 9
+    // clang-format on
+
+    // Now convert to NM and check NACp 1–8 thresholds
+    const float hfomNm = hfomMeters / 1852.0f;
+
+    // clang-format off
+    if (hfomNm < 0.05f) return GDL90::NACP::LT_0_01_NM;
+    if (hfomNm < 0.1f)  return GDL90::NACP::LT_0_1_NM;
+    if (hfomNm < 0.3f)  return GDL90::NACP::LT_0_3_NM;
+    if (hfomNm < 0.5f)  return GDL90::NACP::LT_0_5_NM;
+    if (hfomNm < 1.0f)  return GDL90::NACP::LT_1_0_NM;
+    if (hfomNm < 2.0f)  return GDL90::NACP::LT_2_0_NM;
+    if (hfomNm < 4.0f)  return GDL90::NACP::LT_4_0_NM;
+    if (hfomNm < 10.0f) return GDL90::NACP::LT_10_0_NM;
+    // clang-format on
+
+    return GDL90::NACP::UNKNOWN;
+}
+
+GDL90::NIC Gdl90Service::calcNIC(float hplMeters)
+{
+    if (hplMeters <= 0.0f)
+    {
+        return GDL90::NIC::UNKNOWN;
+    }
+
+    // First check the meter-based NIC 9..11 thresholds
+    // clang-format off
+    if (hplMeters < 7.5f)  return GDL90::NIC::HPL_LT_7_5_VPL_LT_11;
+    if (hplMeters < 25.0f) return GDL90::NIC::HPL_LT_25_VPL_LT_37_5;
+    if (hplMeters < 75.0f) return GDL90::NIC::HPL_LT_75_VPL_LT_112;
+    // clang-format on
+
+    // Now convert to nautical miles and check NIC 1..8 thresholds
+    const float hplNm = hplMeters / 1852.0f;
+
+    // NM thresholds for NIC 1–8 (increasing)
+    // clang-format off
+    if (hplNm < 0.1f) return GDL90::NIC::LT_0_1_NM;
+    if (hplNm < 0.2f) return GDL90::NIC::LT_0_2_NM;
+    if (hplNm < 0.6f) return GDL90::NIC::LT_0_6_NM;
+    if (hplNm < 1.0f) return GDL90::NIC::LT_1_0_NM;
+    if (hplNm < 2.0f) return GDL90::NIC::LT_2_0_NM;
+    if (hplNm < 4.0f) return GDL90::NIC::LT_4_0_NM;
+    if (hplNm < 8.0f) return GDL90::NIC::LT_8_0_NM;
+    if (hplNm < 20.0f) return GDL90::NIC::LT_20_0_NM;
+    // clang-format on
+
+    return GDL90::NIC::UNKNOWN;
 }
 
 void Gdl90Service::on_receive(const GATAS::TrackedAircraftPositionMsg &msg)

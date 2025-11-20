@@ -19,8 +19,14 @@ class AbstractGnss : public BaseModule
 {
 private:
     static constexpr uint8_t QUEUE_SIZE = 6;
-    static constexpr uint32_t DEFAULT_GPS_BAUDRATE = 115200; // If you change this, you need to change the baudrate in the ublox config as well
-
+     // If you change this, you need to change the baudrate in attached GPS configurations
+    static constexpr uint32_t DEFAULT_GPS_BAUDRATE = 115200;
+    // When set to true, it dumps once a while the lag between hardware PPS and software PPS
+    // Obviously this requires that softPPS is disabled for this device and the PPS pin is connected
+    // The usecase is to test the delay when a hardware device has or has not PPS connected 
+    // Only for developers Look at teh output for Software PPS lags XXXXXXus behind .
+    // Round down the value, and use that for the init value of the GPS device
+    #define ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG ( 0 )
     friend class message_router;
 
     enum TaskState : uint32_t
@@ -40,10 +46,13 @@ private:
 
     PioSerial pioSerial;
     const int8_t ppsPin;
+    bool softwarebasedPPS;
+    int32_t softPPSlagUs;
+    uint32_t measureSoftPPSlag;
     TaskHandle_t taskHandle;
     etl::queue_spsc_atomic<GATAS::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
-    static constexpr const etl::string_view NAME = "Gnss";
 
+    static constexpr const etl::string_view NAME = "Gnss";
 protected:
     PioSerial &getSerial()
     {
@@ -62,6 +71,11 @@ protected:
         statistics.baudrate = baud;
     }
 
+    bool isSoftwarePPS() const
+    {
+        return softwarebasedPPS;
+    }
+
     /*
     This method can be overwritten to cleanup teh sebtence if needed
     */
@@ -73,10 +87,23 @@ protected:
 
     virtual bool configureGnss() = 0;
 
+    bool popQueue(GATAS::NMEAString &sentence)
+    {
+        if (queue.empty())
+        {
+            return false;
+        }
+        queue.pop(sentence);
+        return true;
+    }
+
 public:
-    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins) : BaseModule(bus, name),
+    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins, bool softPPS, int32_t softPPSlagUs_) : BaseModule(bus, name),
                                                                                                        pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
                                                                                                        ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
+                                                                                                       softwarebasedPPS(softPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG),
+                                                                                                       softPPSlagUs(softPPSlagUs_),
+                                                                                                       measureSoftPPSlag(0),
                                                                                                        taskHandle(nullptr)
     {
     }
@@ -88,4 +115,6 @@ public:
     virtual void start() override;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
+
+    bool isPpsDetected();
 };
