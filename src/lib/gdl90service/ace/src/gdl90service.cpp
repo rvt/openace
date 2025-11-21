@@ -290,7 +290,7 @@ void Gdl90Service::on_receive(const GATAS::TrackedAircraftPositionMsg &msg)
             altitude,
             GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_REPORT_UPDATED_MASK | (pos.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
             GDL90::NIC::UNKNOWN,
-            GDL90::NACP::UNKNOWN, /* Integrity | Accuracy We do not really have this information from the GPS */
+            GDL90::NACP::UNKNOWN,
             horiz_velocity,
             vert_velocity,
             track_hdg,

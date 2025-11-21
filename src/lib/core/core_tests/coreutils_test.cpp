@@ -25,7 +25,7 @@ TEST_CASE( "msSinceEpoch", "[single-file]" )
 TEST_CASE( "msInSecond", "[single-file]" )
 {
     time_us_Value = 23456623;
-    CoreUtils::setPPS();
+    CoreUtils::setPPS(00);
     REQUIRE( CoreUtils::msInSecond() == 0 );
 
     time_us_Value = time_us_Value + 1758'000;
@@ -35,7 +35,7 @@ TEST_CASE( "msInSecond", "[single-file]" )
 TEST_CASE( "timeUs32 must be alliged with PPS", "[single-file]" )
 {
     time_us_Value = 23'456'623;
-    CoreUtils::setPPS();
+    CoreUtils::setPPS(0);
     time_us_Value = time_us_Value+216500;
     REQUIRE( CoreUtils::timeUs32() == 23216500 );
 }
@@ -67,7 +67,7 @@ TEST_CASE( "usDiff must handle wraparounds", "[single-file]" )
 TEST_CASE( "isUsReached", "[single-file]" )
 {
     time_us_Value = 0;
-    CoreUtils::setPPS();
+    CoreUtils::setPPS(0);
     REQUIRE( CoreUtils::isUsReached(10000) == false );
 
     time_us_Value = 10001;
@@ -81,7 +81,7 @@ TEST_CASE( "msDelayToReference", "[single-file]" )
 {
     time_us_Value = 0;
     time_us_Value = 23456623;
-    CoreUtils::setPPS();
+    CoreUtils::setPPS(0);
     time_us_Value = time_us_Value + 313'000;
     REQUIRE( CoreUtils::msDelayToReference(411, 123) == 288 ); // 123ms into whole second
 
