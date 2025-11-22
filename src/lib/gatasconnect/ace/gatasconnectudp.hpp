@@ -91,7 +91,6 @@ public:
     GatasConnect(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME),
     wifiConnected(false),
     spinLock(0),
-    ownshipPosition{},
     androidHotspotFix(true),
     gatasId(0),
     hasGpsFix(false),
@@ -100,7 +99,8 @@ public:
     icaoAddress(0),
     gatasIp(0),
     pcbSend(nullptr),
-    cobsStreamHandler(CobsStreamHandler(bus, config))
+    cobsStreamHandler(CobsStreamHandler(bus, config)),
+    ownshipPosition{}
     {
         (void)config;
         spinLock = SpinlockGuard::claim();
