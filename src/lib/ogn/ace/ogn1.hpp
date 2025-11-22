@@ -74,9 +74,10 @@ public:
     static constexpr const etl::string_view NAME = "Ogn1";
     Ogn1(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
+        ownshipPosition{},
         spinLock(0),
-        lastBarometricPressureMsg(),
-        gpsStats()
+        lastBarometricPressureMsg{},
+        gpsStats{}
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Ogn1", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));

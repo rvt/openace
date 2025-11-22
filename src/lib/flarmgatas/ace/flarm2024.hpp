@@ -57,7 +57,7 @@ public:
     Flarm2024(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
         spinLock(0),
-        ownshipPosition(),
+        ownshipPosition{},
         deltaCourse(0.f)
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Flarm", "distanceIgnore");
