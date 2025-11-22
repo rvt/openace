@@ -184,7 +184,7 @@ public:
 
 public:
     ADSL_Packet() :
-        /*SYNC(0x4B72),*/ length(24), version(0), signature(0), key(0), reserved(0) //  Length is from Version
+        /*SYNC(0x4B72),*/ length{24}, version{0}, signature{0}, key{0}, reserved{0} //  Length is from Version
     {
         Word[0] = 0;
         Word[1] = 0;

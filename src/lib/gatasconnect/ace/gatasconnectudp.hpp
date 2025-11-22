@@ -90,7 +90,8 @@ public:
     static constexpr const char *NAME = "GatasConnect";
     GatasConnect(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME),
     wifiConnected(false),
-    spinLock(0),    
+    spinLock(0),
+    ownshipPosition{},
     androidHotspotFix(true),
     gatasId(0),
     hasGpsFix(false),

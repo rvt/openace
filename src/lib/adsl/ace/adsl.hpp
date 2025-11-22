@@ -69,7 +69,7 @@ public:
     ADSL(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
         spinLock(0),
-        ownshipPosition()
+        ownshipPosition{}
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "ADSL", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));

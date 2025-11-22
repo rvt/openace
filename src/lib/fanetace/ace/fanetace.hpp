@@ -69,7 +69,7 @@ private:
 public:
     static constexpr const etl::string_view NAME = "Fanet";
 
-    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), protocol(this), spinLock(0), mutex(nullptr), radioNo(0), distanceIgnore(DEFAULT_IGNORE_DISTANCE), gaTasConfiguration(config.gaTasConfig())
+    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), protocol(this), spinLock(0), mutex(nullptr), radioNo(0), distanceIgnore(DEFAULT_IGNORE_DISTANCE), ownshipPosition{}, gaTasConfiguration(config.gaTasConfig())
     {
         protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.icaoAddress});
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Fanet", "distanceIgnore");
