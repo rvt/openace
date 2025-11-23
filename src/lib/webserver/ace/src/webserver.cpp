@@ -19,6 +19,7 @@
 Webserver *webserver;
 
 /** Needed for captive portal */
+//** Captive portal currently not used until a real usecase arrives*/
 extern struct tcp_pcb *tcp_input_pcb;
 inline etl::map<uint32_t, uint32_t, 4> captiveCheck;
 
@@ -28,127 +29,131 @@ constexpr etl::string_view CONFIGPATH = "/api/_Configuration";         // Endpoi
 
 static struct RequestContext_t
 {
-    void *current_connection;
+    void *connection;
     GATAS::ConfigPathString uri;
     enum
     {
         POST,
         DELETE
     } method;
-    bool response;
+    char buffer[256]; // If Json deserialisation fails, check if the JSON send is not bigger than this value
+    size_t bufferPosition;
 } requestContext;
 
-// ******************************************
-//  Post handling
-// ******************************************
-
-#define ARR(...) {__VA_ARGS__}
-
+/**
+ * At this moment only one post request is supported at a time
+ * Returns ERR_USE when another post is ongoing
+ */
 err_t httpd_post_begin(void *connection, const char *uri, const char *http_request,
                        u16_t http_request_len, int content_len, char *response_uri,
                        u16_t response_uri_len, u8_t *post_auto_wnd)
 {
-    LWIP_UNUSED_ARG(connection);
     LWIP_UNUSED_ARG(http_request_len);
     LWIP_UNUSED_ARG(content_len);
-    LWIP_UNUSED_ARG(post_auto_wnd);
     LWIP_UNUSED_ARG(response_uri);
     LWIP_UNUSED_ARG(response_uri_len);
     etl::string_view sv_uri(uri);
     etl::string_view sv_http_request(http_request);
     if (sv_uri.starts_with(CONFIGPATH))
     {
-        if (requestContext.current_connection != connection)
+        if (requestContext.connection == nullptr)
         {
             *post_auto_wnd = 1; // Must be set to 1
             requestContext =
                 {
-                    .current_connection = connection,
+                    .connection = connection,
                     .uri = uri,
                     .method = RequestContext_t::POST,
-                    .response = false};
+                    .buffer = {},
+                    .bufferPosition = 0};
 
+            // LWiP doesn't handle DELETE requests, so the Frontend must add this as a header to indicate a DELETE request within a POST
             if (sv_http_request.find(X_GATAS_METHOD_DELETE) != etl::string_view::npos)
             {
                 requestContext.method = RequestContext_t::DELETE;
             }
-            return ERR_OK;
+        }
+        else
+        {
+            return ERR_USE; // Only one POST at a time
         }
     }
     return ERR_OK;
 }
 
+/**
+ * Copy received data into the requestContext buffer
+ * Note: httpd_post_receive_data can be called multiple times for one requets
+ *
+ * Returns ERR_MEM when not enough space in the buffer
+ */
 err_t httpd_post_receive_data(void *connection, struct pbuf *p)
 {
-    err_t retval = ERR_VAL;
-    if (requestContext.current_connection == connection)
+    if (requestContext.connection == connection)
     {
-        char buffer[256];
-        char *buf = (char *)pbuf_get_contiguous(p, buffer, sizeof(buffer), p->tot_len, 0);
-        Configuration *configModule = static_cast<Configuration *>(BaseModule::moduleByName(*webserver, Configuration::NAME));
-        if (configModule != nullptr)
+        if ((requestContext.bufferPosition + p->len + 1) > sizeof(requestContext.buffer))
         {
-            if (requestContext.method == RequestContext_t::POST && buf)
-            {
-                // Handle update configuration requests
-                buf[p->tot_len] = '\0';
-                etl::string_ext requestData(buf, buf, p->tot_len + 1);
-                requestContext.response = configModule->setData(requestData, requestContext.uri);
-                retval = ERR_OK;
-            }
-            else if (requestContext.method == RequestContext_t::DELETE)
-            // Handle delete configuration requests
-            {
-                requestContext.response = configModule->deleteData(requestContext.uri);
-                retval = ERR_OK;
-            }
+            return ERR_MEM; // Not enough space
+        }
+        auto copied = pbuf_copy_partial(p, requestContext.buffer + requestContext.bufferPosition, p->len, 0);
+        if (copied != p->len)
+        {
+            requestContext.bufferPosition = 0;
+            requestContext.buffer[0] = '\0';
+            return ERR_BUF;
+        }
 
-            // Inform the module that the configuration has been updated
-            if (requestContext.response)
-            {
-                auto pathParsed = CoreUtils::parsePath(requestContext.uri);
-                // TODO: We should see if we can stop FreeRTOS and make a config change
-                // FInd some way to stop all tasks and continue where they left off
-                // Note to self: vTaskSuspendAll(); won't work here because we use FreeRTOS on the message bus
-                // TODO: FInd a way to correctly hold locks on data
-                // printf("Sending config update to %s\n", pathParsed[2].c_str());
-                configModule->getBus().receive(
-                    GATAS::ConfigUpdatedMsg{
-                        *configModule,
-                        pathParsed[2],
-                    });
+        requestContext.bufferPosition += p->len;
+    }
+    pbuf_free(p);
+    return ERR_OK;
+}
 
-                // When 'just' the aircraft is changed, no modules will pick up for changes on FLARM/OGN noTrack etc..
-                // changes so an additional config message is send
-                if (pathParsed[2] == "aircraft")
-                {
-                    configModule->getBus().receive(
-                        GATAS::ConfigUpdatedMsg{
-                            *configModule,
-                            Configuration::CONFIG,
-                        });
-                }
+/**
+ * Handle the post finished request by calling the correct routines and doing the 'work'
+ */
+void httpd_post_finished(void *connection, char *response_uri, u16_t response_uri_len)
+{
+    if (requestContext.connection != connection)
+    {
+        requestContext.connection = nullptr;
+        return;
+    }
+
+    // Lookup can be cached externally if stable.
+    auto *configModule = static_cast<Configuration *>(BaseModule::moduleByName(*webserver, Configuration::NAME));
+
+    if (configModule)
+    {
+        bool updated = false;
+
+        if (requestContext.method == RequestContext_t::POST && requestContext.bufferPosition > 0)
+        {
+            // Null terminate the buffer, httpd_post_receive_data ensures there is room
+            requestContext.buffer[requestContext.bufferPosition] = '\0';
+            updated = configModule->setData(requestContext.buffer, requestContext.uri);
+        }
+        else if (requestContext.method == RequestContext_t::DELETE)
+        {
+            updated = configModule->deleteData(requestContext.uri);
+        }
+
+        if (updated)
+        {
+            auto path = CoreUtils::parsePath(requestContext.uri);
+            const auto &key = path[2];
+            configModule->getBus().receive(GATAS::ConfigUpdatedMsg{*configModule, key});
+
+            // Special-case: If aircraft was modified, inform all modules that would listen to Configuration::CONFIG
+            if (key == "aircraft")
+            {
+                configModule->getBus().receive(  GATAS::ConfigUpdatedMsg{*configModule, Configuration::CONFIG});
             }
         }
     }
-    pbuf_free(p);
-    return retval;
-}
 
-void httpd_post_finished(void *connection, char *response_uri, u16_t response_uri_len)
-{
-    if (requestContext.current_connection == connection)
-    {
-        //        if (requestContext.response)
-        //      {
-        snprintf(response_uri, response_uri_len, "/ok.json");
-        //      }
-        //      else
-        //    {
-        //    snprintf(response_uri, response_uri_len, "/error.json");
-        //  }
-        requestContext.current_connection = NULL;
-    }
+    snprintf(response_uri, response_uri_len, "/ok.json");
+    requestContext.connection = nullptr;
 }
 
 // ******************************************

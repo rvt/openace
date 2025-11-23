@@ -200,6 +200,9 @@ public:
     virtual const GATAS::BinaryStore *internalStore() const override;
     virtual void internalStore(const GATAS::BinaryStore &store) override;
 
+    /**
+     * Based on the HEX code, find the CallSign from any of the configured aircraft
+     */
     virtual GATAS::CallSign getCallSignFromHex(uint32_t) const override;
 
     virtual void setValueBypath(const etl::string_view pathToValue, etl::string_view value) override;

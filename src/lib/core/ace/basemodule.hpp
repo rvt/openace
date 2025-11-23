@@ -151,7 +151,7 @@ public:
     {
         (void)data;
         (void)path;
-        return false;
+        return true;
     }
 
     /**

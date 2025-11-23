@@ -16,7 +16,7 @@
     "_comment": "All aircrafts and their configurations settings, config::aircraftId will be used to setup the hardware and load the configuration for that aircraft",
     "XX-XXX": {
       "callSign": "XX-XXX",
-      "address": 16777215,
+      "address": 11329536,
       "addressType": "ADSL",
       "category": "Light",
       "privacy": 0,
