@@ -88,6 +88,7 @@ public:
                                                                   androidHotspotFix(true),
                                                                   androidHotspotCurrentMark(ANDROIDHOTSPOT_FIX_HIGHMARK),
                                                                   spinLock(0),
+                                                                   ownshipPosition{},
                                                                   cobsStreamHandler(CobsStreamHandler(bus, config)),
                                                                   tcpClient(
                                                                       GATAS::Config::IpPort{config.ipPortBypath(NAME, "gatasServer").ip,  GATAS_CONNECT_PORT},
