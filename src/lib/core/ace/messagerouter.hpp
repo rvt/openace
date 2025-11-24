@@ -90,7 +90,7 @@ namespace GATAS
 #endif
 
 #if GATAS_DEBUG == 1
-            GATAS_MEASURE_M("Message bus", 10'000);
+            GATAS_MEASURE_M("", 10'000);
             processMessage(message);
             if (measure)
             {

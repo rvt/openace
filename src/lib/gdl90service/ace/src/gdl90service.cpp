@@ -156,7 +156,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
             vert_velocity,
             track_hdg,
             aircraftTypeToEmitter(pos.conspicuity.category),
-            "GaTas", // [0-9A-Z ]
+            "", // [0-9A-Z ]
             GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);

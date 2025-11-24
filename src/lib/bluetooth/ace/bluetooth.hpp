@@ -163,7 +163,6 @@ private:
     GATAS::SsidOrPasswdStr localName;
 
     SemaphoreHandle_t mutex;
-//    int spinLock;
     bool rfComm;
     CobsStreamHandler cobsStreamHandler;
 public:

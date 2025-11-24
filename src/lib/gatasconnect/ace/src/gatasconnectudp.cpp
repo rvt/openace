@@ -88,7 +88,7 @@ void GatasConnect::getConfig(const Configuration &config)
     gatasServer.port = GATAS_CONNECT_PORT;
 
     auto gatasConfig = config.gaTasConfig();
-    if (auto guard = SpinlockGuard(spinLock))
+    if (SPINLOCK_GUARD(spinLock))
     {
         icaoAddress = gatasConfig.conspicuity.icaoAddress;
         allIcaoAddresses = gatasConfig.allIcaoAddresses;
@@ -162,7 +162,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     etl::array<uint8_t, OWN_MAX + MAX_MSG + COBS_EXTRA_BYTES * 2> perCobsBuffer;
     etl::bit_stream_writer writer(perCobsBuffer.data(), perCobsBuffer.size(), etl::endian::big);
 
-    if (auto guard = SpinlockGuard(taskCtx->spinLock))
+    if (SPINLOCK_GUARD(taskCtx->spinLock))
     {
         // --- Ownship (optional)
         if (taskCtx->hasGpsFix)

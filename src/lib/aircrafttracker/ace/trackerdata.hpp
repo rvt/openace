@@ -158,7 +158,7 @@ public:
 
     bool insert(GATAS::AircraftPositionInfo &position)
     {
-        GATAS_MEASURE("TrackerData::insert ", 400);
+        GATAS_MEASURE("insert", 400);
         if (position.distanceFromOwn > adaptiveRadius)
         {
             return false;

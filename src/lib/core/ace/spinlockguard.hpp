@@ -49,3 +49,13 @@ public:
         return true;
     }
 };
+
+#define SPINLOCK_CONCAT(a, b) SPINLOCK_CONCAT_INNER(a, b)
+#define SPINLOCK_CONCAT_INNER(a, b) a##b
+#define SPINLOCK_UNIQUE_NAME(base) SPINLOCK_CONCAT(base, __COUNTER__)
+
+/**
+ * @brief Macro to create a SpinlockGuard instance with a unique name.
+ */
+#define SPINLOCK_GUARD(id) \
+    auto SPINLOCK_UNIQUE_NAME(spinlock) = SpinlockGuard{id}

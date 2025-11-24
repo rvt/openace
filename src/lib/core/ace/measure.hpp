@@ -30,24 +30,53 @@
 struct Measure
 {
     const uint32_t start_;
-    const uint32_t id_ = 0xFFFFFFFF; 
-    const uint32_t alertTimeout_ = 1000;
-    const etl::string_view name_ = "Took";
-    Measure() : start_(CoreUtils::timeUs32Raw()) {}
-    Measure(const etl::string_view name) : start_(CoreUtils::timeUs32Raw()), name_(name) {}
-    Measure(const etl::string_view name, uint32_t alertTimeoutUs) : start_(CoreUtils::timeUs32Raw()), alertTimeout_(alertTimeoutUs), name_(name) {}
-    Measure(const etl::string_view name, uint32_t alertTimeoutUs, uint32_t id) : start_(CoreUtils::timeUs32Raw()), id_(id), alertTimeout_(alertTimeoutUs), name_(name) {}
+    const etl::string_view name_;
+    const uint32_t alertTimeout_;
+    const uint32_t id_;
+    const char *file_;
+    const uint32_t line_;
+
+    Measure(const etl::string_view name,
+            const char *file = __FILE__,
+            uint32_t line = __LINE__,
+            uint32_t alertTimeoutUs = 1000,
+            uint32_t id = 0xFFFFFFFF)
+        : start_(CoreUtils::timeUs32Raw()),
+          name_(name),
+          alertTimeout_(alertTimeoutUs),
+          id_(id),
+          file_(basename(file)),
+          line_(line)
+    {
+    }
+
     ~Measure()
     {
-        uint32_t duration = static_cast<uint32_t>(CoreUtils::timeUs32Raw() - start_);
+        uint32_t duration = CoreUtils::timeUs32Raw() - start_;
         if (duration > alertTimeout_)
         {
-            if (id_ == 0xFFFFFFFF) {
-                printf("%s %" PRIu32 "us\n", name_.begin(), duration);
-            } else {
-                printf("%s %" PRIu32 "us id:%08" PRIX32 "\n", name_.begin(), duration, id_);
+            if (id_ == 0xFFFFFFFF)
+            {
+                printf("(%s:%" PRIu32 ") %s %" PRIu32 "us\n",
+                       file_, line_, name_.begin(), duration);
+            }
+            else
+            {
+                printf("(%s:%" PRIu32 ") %s%" PRIu32 " %" PRIu32 "us\n",
+                       file_, line_, name_.begin(), id_, duration);
             }
         }
+    }
+
+    static constexpr const char *basename(const char *path)
+    {
+        const char *last = path;
+        for (const char *p = path; *p; ++p)
+        {
+            if (*p == '/' || *p == '\\')
+                last = p + 1;
+        }
+        return last;
     }
 
     Measure(const Measure &) = delete;
@@ -55,8 +84,7 @@ struct Measure
 
     operator bool() const
     {
-        uint32_t duration = static_cast<uint32_t>(CoreUtils::timeUs32Raw() - start_);
-        return duration > alertTimeout_;
+        return (CoreUtils::timeUs32Raw() - start_) > alertTimeout_;
     }
 };
 
@@ -64,13 +92,21 @@ struct Measure
 #define MEASURE_CONCAT_INNER(a, b) a##b
 #define MEASURE_UNIQUE_NAME(base) MEASURE_CONCAT(base, __COUNTER__)
 
-#define GATAS_MEASURE(name, ...) auto MEASURE_UNIQUE_NAME(measure) = Measure{name, ##__VA_ARGS__}
-#define GATAS_MEASURE_M(name, ...) auto measure = Measure{name, ##__VA_ARGS__}
+/**
+ * Macro to create a Measure instance with a unique name.
+ */
+#define GATAS_MEASURE(name, ...) \
+    auto MEASURE_UNIQUE_NAME(measure) = Measure { name, __FILE__, __LINE__, ##__VA_ARGS__ }
+
+/**
+ * Macro to create a Measure instance with a variable 'measure' name.
+ */
+#define GATAS_MEASURE_M(name, ...) \
+    auto measure = Measure { name, __FILE__, __LINE__, ##__VA_ARGS__ }
 
 #else
 
-
-#define GATAS_MEASURE(name, ...) (void(0)) 
+#define GATAS_MEASURE(name, ...) (void(0))
 #define GATAS_MEASURE_M(name, ...) auto measure = false
 
 #endif

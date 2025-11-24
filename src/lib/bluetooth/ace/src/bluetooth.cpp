@@ -31,7 +31,6 @@ GATAS::PostConstruct Bluetooth::postConstruct()
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
-//    spinLock = SpinlockGuard::claim();
 
     return GATAS::PostConstruct::OK;
 }
@@ -148,7 +147,6 @@ void Bluetooth::on_receive_unknown(const etl::imessage &msg)
 void Bluetooth::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     (void)msg;
-    // ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position).assignTo();
 }
 
 void Bluetooth::createAdvData()

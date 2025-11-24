@@ -7,13 +7,10 @@
 		"path": "."
 	},
 	{
-		"path": "src/lib/utils/utils_tests"
-	},
-	{
 		"path": "../gatasServer/ServerGui"
 	},
 	{
-		"path": "src/lib/aircrafttracker/aircrafttracker_tests"
+		"path": "src/vendor"
 	}
 ]
   	,

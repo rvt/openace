@@ -29,7 +29,7 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     static constexpr uint16_t GDL90OVERUDP_DEFAULT_PORT = 4000;                                 // Default port
     static constexpr uint16_t NUM_GDL_PACKETS = static_cast<int>(512 / sizeof(GATAS::GDLData)); // Number of GDL packets that can be buffered
     static constexpr uint16_t UDP_BUFFER_SIZE = NUM_GDL_PACKETS * sizeof(GATAS::GDLData);
-
+    static constexpr uint32_t FOREFLIGHT_UDP_PORT = 63093;
     enum TaskState : uint32_t
     {
         EXIT = 1 << 0,
@@ -41,18 +41,21 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
         uint32_t heartbeatTx = 0;
         uint32_t bufferAllocErr = 0;
         uint32_t sendFailureErr = 0;
+        uint32_t foreFlightBroadcasts = 0;
     } statistics;
 
-    udp_pcb *pcb;
+    udp_pcb *sendPcb;
+    udp_pcb *foreFlightPCB;
     uint32_t networkAddress;
     TaskHandle_t taskHandle;
     SemaphoreHandle_t mutex;
-    etl::list<GATAS::Config::IpPort, GATAS_GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
     uint32_t gateWayClient;
     bool wifiConnected;
+    int spinLock;
+
+    etl::list<GATAS::Config::IpPort, GATAS_GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
     etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
     etl::set<uint16_t, GATAS_GDL90OVERUDP_MAX_PORTS> udpPorts = {};
-
     PacketBuffer<UDP_BUFFER_SIZE, NUM_GDL_PACKETS> gdlDataBuffer;
 
 private:
@@ -64,24 +67,30 @@ private:
     void on_receive(const GATAS::GdlMsg &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     static void gdlOverUDPTask(void *arg);
+    static void foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_addr_t *addr, u16_t port);
     void transmitBuffer();
     void sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data);
 
 public:
     static constexpr const etl::string_view NAME = "GDLoverUDP";
     GDLoverUDP(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                      pcb(nullptr),
+                                                                      sendPcb(nullptr),
+                                                                      foreFlightPCB(nullptr),
                                                                       networkAddress(0),
-                                                                      gateWayClient{0}
-    {
+                                                                      taskHandle(nullptr),
+                                                                      mutex(nullptr),
+                                                                      gateWayClient{0},
+                                                                      wifiConnected(false),
+                                                                      spinLock(0) {
         getConfigurationNoMutex(config);
-    }
+}
 
-    virtual ~GDLoverUDP() = default;
+virtual ~GDLoverUDP() = default;
 
-    virtual GATAS::PostConstruct postConstruct() override;
+virtual GATAS::PostConstruct postConstruct() override;
 
-    virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
+virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-    virtual void start() override;
-};
+virtual void start() override;
+}
+;

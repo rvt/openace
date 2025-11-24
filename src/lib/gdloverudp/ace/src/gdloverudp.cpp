@@ -7,12 +7,19 @@
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
 #include "ace/lwiplock.hpp"
+#include "ace/pbufguard.hpp"
+#include "ace/spinlockguard.hpp"
 
 /* LwIP */
 #include "lwip/ip_addr.h"
 #include "pico/cyw43_arch.h"
 #include "lwip/pbuf.h"
 #include "lwip/stats.h"
+
+/* Vendor */
+#include "tiny-json.h"
+
+// NOTE: I think this can be cleaned up a bit in it's usage of SpinlockGuard and mutex
 
 void GDLoverUDP::getConfiguration(const Configuration &config)
 {
@@ -21,6 +28,7 @@ void GDLoverUDP::getConfiguration(const Configuration &config)
 
 void GDLoverUDP::getConfigurationNoMutex(const Configuration &config)
 {
+    SPINLOCK_GUARD(spinLock);
     udpPorts.clear();
     customClients.clear();
 
@@ -53,11 +61,22 @@ void GDLoverUDP::getConfigurationNoMutex(const Configuration &config)
 
 GATAS::PostConstruct GDLoverUDP::postConstruct()
 {
-    pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
-    if (pcb == nullptr)
+    sendPcb = udp_new_ip_type(IPADDR_TYPE_ANY);
+    if (sendPcb == nullptr)
     {
         return GATAS::PostConstruct::NETWORK_ERROR;
     }
+    foreFlightPCB = udp_new_ip_type(IPADDR_TYPE_ANY);
+    if (foreFlightPCB == nullptr)
+    {
+        return GATAS::PostConstruct::NETWORK_ERROR;
+    }
+    spinLock = SpinlockGuard::claim();
+
+    // https://www.foreflight.com/connect/spec/
+    udp_bind(foreFlightPCB, IP_ADDR_ANY, FOREFLIGHT_UDP_PORT);
+    udp_recv(foreFlightPCB, foreFlightListener, this);
+
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
@@ -68,6 +87,77 @@ GATAS::PostConstruct GDLoverUDP::postConstruct()
     return GATAS::PostConstruct::OK;
 }
 
+void GDLoverUDP::foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_addr_t *remoteAddr, u16_t port)
+{
+    (void)arg;
+    (void)pcb;
+    (void)port;
+    if (!p)
+    {
+        return;
+    }
+    PbufGuard str(p);
+
+    GATAS_MEASURE("foreFlightListener", 90);
+    GDLoverUDP *that = static_cast<GDLoverUDP *>(arg);
+    that->statistics.foreFlightBroadcasts += 1;
+    if (SPINLOCK_GUARD(that->spinLock))
+    {
+        if (that->connectedClients.contains(ip4_addr_get_u32(ip_2_ip4(remoteAddr))) || that->connectedClients.full())
+        {
+            return;
+        }
+    }
+
+    auto buffer = static_cast<char *>(p->payload);
+    buffer[p->len] = 0;
+    json_t pool[4];
+    puts(buffer);
+    json_t const *root = json_create(buffer, pool, 4);
+    if (!root)
+    {
+        return;
+    }
+
+    json_t const *gdl = json_getProperty(root, "GDL90");
+    if (!gdl)
+    {
+        return;
+    }
+
+    // Extract port
+    json_t const *portProp = json_getProperty(gdl, "port");
+    if (!portProp)
+    {
+        return;
+    }
+
+    if (json_getType(portProp) != JSON_INTEGER)
+    {
+        return;
+    }
+
+    auto outPort = static_cast<int32_t>(json_getInteger(portProp));
+    if (outPort < 1 || outPort > 65535)
+    {
+        return;
+    }
+
+    SPINLOCK_GUARD(that->spinLock);
+
+    auto portExists = that->udpPorts.contains(static_cast<uint16_t>(outPort));
+    // Only add this new client if we have space for a new port
+    // or the existing ports exists and there is room for the address
+    if (portExists || !that->udpPorts.full())
+    {
+        // Add the CLient's IP
+        that->connectedClients.insert(ip4_addr_get_u32(ip_2_ip4(remoteAddr)));
+
+        // Add the Clients Port
+        that->udpPorts.insert(static_cast<uint16_t>(outPort));
+    }
+}
+
 void GDLoverUDP::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
@@ -75,6 +165,11 @@ void GDLoverUDP::getData(etl::string_stream &stream, const etl::string_view path
     stream << "\"heartbeatTx\":" << statistics.heartbeatTx;
     stream << ",\"bufferAllocErr\":" << statistics.bufferAllocErr;
     stream << ",\"sendFailureErr\":" << statistics.sendFailureErr;
+    stream << ",\"foreFlightBroadcasts\":" << statistics.foreFlightBroadcasts;
+    stream << ",\"maxAddresses\":" << connectedClients.max_size();
+    stream << ",\"currentAddressesInUse\":" << connectedClients.size();
+    stream << ",\"maxPorts\":" << udpPorts.max_size();
+    stream << ",\"currentPortsInUse\":" << udpPorts.size();
     stream << "}";
 }
 
@@ -90,7 +185,7 @@ void GDLoverUDP::on_receive_unknown(const etl::imessage &msg)
 
 void GDLoverUDP::on_receive(const GATAS::AccessPointClientsMsg &msg)
 {
-    connectedClients = msg.msg;
+    connectedClients = SpinlockGuard::withLock(spinLock, msg.msg);
 }
 
 void GDLoverUDP::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -123,7 +218,6 @@ void GDLoverUDP::gdlOverUDPTask(void *arg)
 
 void GDLoverUDP::on_receive(const GATAS::GdlMsg &msg)
 {
-
     if (auto guard = SemaphoreGuard(10, mutex))
     {
         gdlDataBuffer.set(msg.msg);
@@ -145,7 +239,10 @@ void GDLoverUDP::transmitBuffer()
     }
 
     // Calculate how many pbufs we needna d reference them
-    uint8_t totalpBufs = connectedClients.size() * udpPorts.size() + gateWayClient ? udpPorts.size() : 0;
+    auto lconnectedClients = SpinlockGuard::withLock(spinLock, connectedClients);
+    auto ludpPorts = SpinlockGuard::withLock(spinLock, udpPorts);
+
+    uint8_t totalpBufs = lconnectedClients.size() * ludpPorts.size() + gateWayClient ? ludpPorts.size() : 0;
     for (const auto &client : customClients)
     {
         if ((client.ip & 0xFFFFFF) == networkAddress)
@@ -171,12 +268,13 @@ void GDLoverUDP::transmitBuffer()
 
     auto data = part.value();
     LwipLock lock;
+
     // Send to the connect clients and the defined ports
-    for (auto ip : connectedClients)
+    for (auto ip : lconnectedClients)
     {
         // Connected clients are always on the accesspoint,
         // thus we don't need to test for the networkAddress
-        for (auto port : udpPorts)
+        for (auto port : ludpPorts)
         {
             sendTo(ip, port, data);
         }
@@ -185,7 +283,7 @@ void GDLoverUDP::transmitBuffer()
     // Send to the gateway client, which is most lickly running a EFB
     if (gateWayClient)
     {
-        for (auto port : udpPorts)
+        for (auto port : ludpPorts)
         {
             sendTo(gateWayClient, port, data);
         }
@@ -223,7 +321,7 @@ void GDLoverUDP::sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data)
         pbuf_free(pbuf);
         return;
     }
-    err_t err = udp_sendto(pcb, pbuf, &addr, port);
+    err_t err = udp_sendto(sendPcb, pbuf, &addr, port);
     pbuf_free(pbuf);
 
     if (err == ERR_OK)
