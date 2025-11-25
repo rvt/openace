@@ -169,11 +169,14 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
     if (gpsStatusValid)
     {
-        // Send Geo Altitude
-        uint32_t geo_altitude;
-        bool vertical_warning = true;
-        constexpr float vertical_figure_of_merit_f = 0;
+        // TODO: Low priority, to validate: 
+        // Set warning if vertical position accuracy, a bit of a estimate right now, based on not SBAS/WAAS
+        // Note to Self, pDOP ==3 is around 20m..30m
+        // Note to Self, pDOP ==4 is around 30m..40m
+        bool vertical_warning = pDop > 3.0f; 
+        constexpr float vertical_figure_of_merit_f = 10.f * M_TO_FT;
         uint32_t vertical_figure_of_merit;
+        uint32_t geo_altitude;
         gdl90.geo_altitude_encode(geo_altitude, pos.ellipseHeight * M_TO_FT);
         gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
         if (gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
@@ -322,7 +325,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
                       (gpsStatusValid ? GDL90::HEARTBEAT_STATUS_GPS_POS_VALID_MASK : 0) |
                       /* GDL90::HEARTBEAT_STATUS_UAT_OK_MASK | */
                       /* GDL90::HEARTBEAT_STATUS_CSA_NOT_AVAIL_MASK | */
-                      /*GDL90::HEARTBEAT_STATUS_CSA_REQUESTED_MASK*/
+                      /* GDL90::HEARTBEAT_STATUS_CSA_REQUESTED_MASK*/
                       0;
 
     GDL90::RawBytes unpacked;
@@ -339,7 +342,8 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
     }
 
     // Send ForeFLight heartbeat
-    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 12345, "GaTas", "GaTas Device", 0)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 0 0 set to 1, MSL
+    // https://www.foreflight.com/connect/spec/
+    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GA/TAS", "GA/TAS Conspcty", 0b00)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 1/2 to 0 for unlimited internet
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx += 1;

@@ -112,7 +112,7 @@ void GDLoverUDP::foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_a
     auto buffer = static_cast<char *>(p->payload);
     buffer[p->len] = 0;
     json_t pool[4];
-    puts(buffer);
+    GATAS_LOG(buffer);
     json_t const *root = json_create(buffer, pool, 4);
     if (!root)
     {
