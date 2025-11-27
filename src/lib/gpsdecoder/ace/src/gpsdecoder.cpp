@@ -52,7 +52,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"dopValue\":\"" << dopValue << "\"";
     stream << ",\"gpsRatePerSec\":" << getGpsRate();
     stream << ",\"fixQuality\":" << fixQuality;
-    stream << ",\"gpsFixType\":\"" << gpsFixType.c_str() << "\"";
+    stream << ",\"gpsFixType\":\"" << fixType.c_str() << "\"";
     stream << ",\"satsUsedForFix\":" << satsUsedForFix;
     stream << ",\"satsInView\":" << satViewStats.bds + satViewStats.gal + satViewStats.glo + satViewStats.gps;
     stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
