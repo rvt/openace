@@ -710,17 +710,19 @@ bool GDL90::track_hdg_decode( uint32_t  track_hdg_encoded, float& track_hdg )
 bool GDL90::is_valid_call_sign( const etl::string_view call_sign )
 {
     if ( call_sign.length() > 8 ) return error();
-    bool have_space = false;
+    // bool have_space = false;
     for( uint32_t i = 0; i < call_sign.length(); i++ ) 
     {
         char ch = call_sign[i];
-        if ( have_space ) {
-            if ( ch != ' ' ) return error();
-        } else if ( ch == ' ' ) {
-            have_space = true;
-        } else {
-            if ( (ch < '0' || ch > '9') && (ch < 'A' || ch > 'Z') ) return error();
-        }
+        // SW Mod D allows for space character
+        // if ( have_space ) {
+        //     if ( ch != ' ' ) return error();
+        // } else if ( ch == ' ' ) {
+        //     have_space = true;
+        // } else {
+        //     if ( (ch < '0' || ch > '9') && (ch < 'A' || ch > 'Z') ) return error();
+        // }
+        if ( (ch < '0' || ch > '9') && (ch < 'A' || ch > 'Z') && ch != '-' && ch != ' ') return error();
     }
     return true;
 }

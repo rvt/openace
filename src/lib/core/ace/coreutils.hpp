@@ -187,7 +187,7 @@ public:
         return (timeUs32() / 1'000) % 1'000;
     }
 
-        static uint16_t usInSecond()
+    static uint16_t usInSecond()
     {
         return (timeUs64()) % 1'000'000;
     }
@@ -605,5 +605,33 @@ public:
             return it->second;
         }
         return defaultValue;
+    }
+
+    /**
+     * Decide if an aircraft is airborn based on category and speed
+     * Own our ownship is a Helicopter or baloon, it's best to indicate we are airborn, even if we don't have an airspeed
+     * This is the same for obstacle or slow moving objects. Some EFB's don't show traffic on 'ground', so to ensure
+     * they are indicated, airborn will be set to true
+     */
+    static bool isAirborn(GATAS::AircraftCategory cat, float speedMs)
+    {
+        switch (cat)
+        {
+        case GATAS::AircraftCategory::LIGHT_THAN_AIR:
+        case GATAS::AircraftCategory::SKY_DIVER:
+        case GATAS::AircraftCategory::ROTORCRAFT:
+        case GATAS::AircraftCategory::UNKNOWN:
+        case GATAS::AircraftCategory::UN_MANNED:
+        case GATAS::AircraftCategory::SURFACE_EMERGENCY_VEHICLE:
+        case GATAS::AircraftCategory::SURFACE_VEHICLE:
+        case GATAS::AircraftCategory::POINT_OBSTACLE:
+        case GATAS::AircraftCategory::CLUSTER_OBSTACLE:
+        case GATAS::AircraftCategory::LINE_OBSTACLE:
+        case GATAS::AircraftCategory::HANG_GLIDER:
+        case GATAS::AircraftCategory::PARA_GLIDER:
+            return true;
+        default:
+            return speedMs > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN; // 10 m/s threshold for others
+        }
     }
 };

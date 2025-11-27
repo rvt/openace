@@ -17,7 +17,7 @@ void Idle::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 
 void Idle::on_receive(const GATAS::GpsStatsMsg &msg)
 {
-    hasGpsFix = msg.fixType == 3;
+    hasGpsFix = msg.gpsFix.hasFix;
     calculatePattern();
 }
 

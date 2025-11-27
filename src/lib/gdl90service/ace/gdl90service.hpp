@@ -23,7 +23,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * TODO: de-Couple UDP from the GDL90 so this service send GDL Message over the messagebus which can then be send over UDP or Serial or BlueToolh
  */
-class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GpsStatsMsg>
+class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GpsStatsMsg, GATAS::ConfigUpdatedMsg>
 {
     friend class message_router;
 
@@ -53,6 +53,9 @@ private:
     float hDop = 0.0f;
     float pDop = 0.0f;
     bool gpsStatusValid = false;
+    int spinLock = 0;
+    GATAS::GpsFix gpsFix;
+    GATAS::CallSign ownshipCallsign;
 
 private:
     static void gdl90ServiceTask(void *arg);
@@ -60,28 +63,32 @@ private:
     void on_receive(const GATAS::TrackedAircraftPositionMsg &msg);
 
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
-
     void on_receive(const GATAS::GpsStatsMsg &msg);
-
-    void packAndSend(const GDL90::RawBytes &unpacked);
-
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
     }
 
+    void packAndSend(const GDL90::RawBytes &unpacked);
     void sendHeartBeat(Gdl90Service &gdl90Service);
 
     GDL90::NIC calcNIC(float hplMeters);
     GDL90::NACP calcNACp(float hfomMeters);
 
     GDL90::EMITTER aircraftTypeToEmitter(GATAS::AircraftCategory category) const;
+    /**
+     * Make a CALLSIGN suitable for GDL90 from the provided callsign
+     * We only allow for - according to SW Mod D, and change all other character to a space
+     */
+    GATAS::CallSign makeGdlCallsign(const GATAS::CallSign &callSign) const;
 
 public:
     static constexpr const etl::string_view NAME = "Gdl90Service";
     Gdl90Service(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr)
     {
         (void)config;
+        on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::CONFIG});
     }
 
     virtual ~Gdl90Service() = default;

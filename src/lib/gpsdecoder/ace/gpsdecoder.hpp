@@ -48,8 +48,6 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
     // 4: RTK Fixed, xFill
     // 5: RTK Float, OmniSTAR XP/HP, Location RTK, RTX
     // 6: INS Dead reckoning
-    uint8_t fixQuality = 0;
-    uint8_t satsUsedForFix = 0;
     struct SatViewStats
     {
         uint8_t gps;
@@ -57,14 +55,15 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
         uint8_t gal;
         uint8_t bds;
     } satViewStats;
-    float pDop = 255;
-    float hDop = 255;
 
+    uint8_t satsUsedForFix;
+    float pDop;
+    float hDop;
     minmea_time lastRMCTimestamp;
     minmea_time lastGGATimestamp;
     const uint32_t taskStartTime;
-    uint8_t fixType = 0;
-    bool forceSendTime;
+    uint8_t fixQuality;
+    GATAS::GpsFixType fixType;
     GATAS::Config::Conspicuity conspicuity;
 
 private:
@@ -103,11 +102,14 @@ private:
 public:
     static constexpr const etl::string_view NAME = "GpsDecoder";
     GpsDecoder(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
+                                                                      satsUsedForFix(0),
+                                                                      pDop(255),
+                                                                      hDop(255),
                                                                       lastRMCTimestamp({0, 0, 0, 0}),
                                                                       lastGGATimestamp({0, 0, 0, 0}),
                                                                       taskStartTime(CoreUtils::timeS32()),
-                                                                      fixType(0),
-                                                                      forceSendTime(true)
+                                                                      fixQuality(0),
+                                                                      fixType(GATAS::GpsFixType::NO_FIX)
     {
         conspicuity = config.gaTasConfig().conspicuity;
     }

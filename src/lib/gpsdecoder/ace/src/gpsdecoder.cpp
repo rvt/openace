@@ -40,7 +40,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"receivedRMC\":" << statistics.receivedRMC;
     stream << ",\"receivedGSA\":" << statistics.receivedGSA;
     stream << ",\"receivedGSV\":" << statistics.receivedGSV;
-    stream << ",\"receivedOther\":" << statistics.receivedOther;   
+    stream << ",\"receivedOther\":" << statistics.receivedOther;
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude;
     stream << ",\"longitude\":" << longitude << etl::format_spec{}.precision(1);
     stream << ",\"altitudeGeoid\":" << altitudeGeoid();
@@ -52,6 +52,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"dopValue\":\"" << dopValue << "\"";
     stream << ",\"gpsRatePerSec\":" << getGpsRate();
     stream << ",\"fixQuality\":" << fixQuality;
+    stream << ",\"gpsFixType\":\"" << gpsFixType.c_str() << "\"";
     stream << ",\"satsUsedForFix\":" << satsUsedForFix;
     stream << ",\"satsInView\":" << satViewStats.bds + satViewStats.gal + satViewStats.glo + satViewStats.gps;
     stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
@@ -134,10 +135,8 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
 #endif
 
             // Send only 2 times per minute
-            if ((frame.time.seconds == 0 || frame.time.seconds == 30 || forceSendTime) && millis == 0)
+            if ((frame.time.seconds == 0 || frame.time.seconds == 30 || fixType == GATAS::GpsFixType::NO_FIX) && millis == 0)
             {
-                forceSendTime = fixType == 0;
-
                 // DO we send here the PPS event for software?
 
                 // The time in a RMC sentence is the UTC time, not GPS time
@@ -216,16 +215,35 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             struct minmea_sentence_gsa frame;
             if (minmea_parse_gsa(&frame, msg.sentence.c_str()))
             {
-                fixType = (uint8_t)frame.fix_type;
                 pDop = getFloat(frame.pdop, 100);
                 hDop = getFloat(frame.hdop, 100);
+
+                switch (frame.fix_type)
+                {
+                case 2:
+                    fixType = GATAS::GpsFixType::D2;
+                    break;
+                case 3:
+                    if (fixQuality == 3)
+                    {
+                        fixType = GATAS::GpsFixType::DGPS;
+                    }
+                    else
+                    {
+                        fixType = GATAS::GpsFixType::D3;
+                    }
+                    break;
+                default:
+                    fixType = GATAS::GpsFixType::NO_FIX;
+                }
+
                 getBus().receive(
                     GATAS::GpsStatsMsg{
-                        fixQuality,              // 0:Fix Not Valid 1:GPS fix 2:DGPS SBAS etc.. 3..6:NA
-                        (uint8_t)frame.fix_type, // 1:NA 2:2D 3:3D
+                        GATAS::GpsFix{fixType},
                         satsUsedForFix,
                         pDop,
-                        hDop});
+                        hDop,
+                        GATAS::floatToDOPInterpretation(pDop)});
             }
         }
     }
@@ -291,7 +309,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .velocityNorth = velocityNorth,
                     .velocityEast = velocityEast,
                     .geoidSeparation = static_cast<int16_t>(geoidSeparation),
-                    .airborne = groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? true : false, // airborne
+                    .airborne = CoreUtils::isAirborn(conspicuity.category, groundSpeed),
                     .conspicuity = conspicuity}});
     }
 }

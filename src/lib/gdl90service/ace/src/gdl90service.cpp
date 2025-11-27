@@ -8,6 +8,7 @@
 
 GATAS::PostConstruct Gdl90Service::postConstruct()
 {
+    spinLock = SpinlockGuard::claim();
     return GATAS::PostConstruct::OK;
 }
 
@@ -109,6 +110,53 @@ GDL90::EMITTER Gdl90Service::aircraftTypeToEmitter(GATAS::AircraftCategory categ
     }
 }
 
+void Gdl90Service::on_receive(const GATAS::ConfigUpdatedMsg &msg)
+{
+    if (msg.moduleName == Configuration::CONFIG)
+    {
+        const Configuration &config = msg.config;
+        auto current = config.gaTasConfig();
+        auto ownCallSign = config.getCallSignFromHex(current.conspicuity.icaoAddress);
+        SPINLOCK_GUARD(spinLock);
+        ownshipCallsign = makeGdlCallsign(ownCallSign);
+    }
+}
+
+GATAS::CallSign Gdl90Service::makeGdlCallsign(const GATAS::CallSign &callSign) const
+{
+    auto ownshipCallsign = callSign;
+    bool hasExclamation = false;
+    if (ownshipCallsign.size() > 8)
+    {
+        ownshipCallsign.resize(8);
+    }
+    for (char &c : ownshipCallsign)
+    {
+        if (c == '!' || hasExclamation) {
+            hasExclamation = true;
+            c = ' ';
+            continue;
+        }
+
+        // Lowercase → uppercase
+        if (c >= 'a' && c <= 'z')
+        {
+            c = c - 'a' + 'A';
+            continue;
+        }
+
+        // Now allowed chars are 0–9 or A–Z
+        bool isDigit = (c >= '0' && c <= '9');
+        bool isUpper = (c >= 'A' && c <= 'Z');
+
+        if (!isDigit && !isUpper)
+        {
+            c = '-';
+        }
+    }
+    return ownshipCallsign;
+}
+
 void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     const GATAS::OwnshipPositionInfo &pos = msg.position;
@@ -120,6 +168,8 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
     uint32_t horiz_velocity;
     uint32_t vert_velocity;
     uint32_t track_hdg;
+
+    auto ownCallSign = SpinlockGuard::withLock(spinLock, ownshipCallsign);
 
     auto type = pos.conspicuity.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
 
@@ -133,7 +183,10 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
     // TODO: set UERE based on GPS status, for example when we have SBAS set a lower uere to like 2??
     // Note: These are just estimates!
-    constexpr float uere = 2.7f; // Assume a basic UERE of 3 meters
+    // 0:Fix Not Valid 1:GPS fix 2:DGPS SBAS etc.. 3..6:NA
+    constexpr float uereDGPS = 2.7f; // Assume a basic UERE of 3 meters
+    constexpr float uereGPS = 7.f;   // Assume a basic UERE of 7 meters without DGPS
+    auto uere = gpsFix.fixType == GATAS::GpsFixType::DGPS ? uereDGPS : uereGPS;
     float hfom = hDop > 0 ? hDop * uere : -1;
     float hpl = pDop > 0 ? pDop * uere * 2.0f : -1;
 
@@ -149,14 +202,16 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
             latitude,
             longitude,
             altitude,
-            GDL90::MISC_TT_HEADING_TRUE_MASK | (pos.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
+            // Same as for tracked aircraft, force to AIRBORN unless we can understand how forflight handles this bit
+            GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_AIRBORNE_MASK,
+            // GDL90::MISC_TT_HEADING_TRUE_MASK | (msg.position.airborne ? GDL90::MISC_AIRBORNE_MASK : GDL90::MISC_ON_GROUND_MASK),
             nic,
             nacp,
             horiz_velocity,
             vert_velocity,
             track_hdg,
             aircraftTypeToEmitter(pos.conspicuity.category),
-            "", // [0-9A-Z ]
+            ownCallSign,
             GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
@@ -169,11 +224,11 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
     if (gpsStatusValid)
     {
-        // TODO: Low priority, to validate: 
+        // TODO: Low priority, to validate:
         // Set warning if vertical position accuracy, a bit of a estimate right now, based on not SBAS/WAAS
         // Note to Self, pDOP ==3 is around 20m..30m
         // Note to Self, pDOP ==4 is around 30m..40m
-        bool vertical_warning = pDop > 3.0f; 
+        bool vertical_warning = pDop > 3.0f;
         constexpr float vertical_figure_of_merit_f = 10.f * M_TO_FT;
         uint32_t vertical_figure_of_merit;
         uint32_t geo_altitude;
@@ -192,7 +247,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
 void Gdl90Service::on_receive(const GATAS::GpsStatsMsg &msg)
 {
-    gpsStatusValid = msg.fixType == 3;
+    gpsFix = msg.gpsFix;
     pDop = msg.pDop;
     hDop = msg.hDop;
 }
@@ -291,14 +346,18 @@ void Gdl90Service::on_receive(const GATAS::TrackedAircraftPositionMsg &msg)
             latitude,
             longitude,
             altitude,
-            GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_REPORT_UPDATED_MASK | (pos.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? GDL90::MISC_AIRBORNE_MASK : 0),
+            // We force this to AIRBORN because foreflight was not shoing GROUND traffic at all.
+            // When this is changed back to pos.airborne, we have to know for sure that ForeFLight will show that traffic, even when on the ground
+            // Perhaps this was just a setting mistake on my end, not sure. But for now, to have better usability, we force it to AIRBORN
+            GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_AIRBORNE_MASK,
+            // GDL90::MISC_TT_HEADING_TRUE_MASK | (pos.airborne ? GDL90::MISC_AIRBORNE_MASK : GDL90::MISC_ON_GROUND_MASK),
             GDL90::NIC::UNKNOWN,
             GDL90::NACP::UNKNOWN,
             horiz_velocity,
             vert_velocity,
             track_hdg,
             aircraftTypeToEmitter(pos.aircraftType),
-            "", // pos.callSign, /* // [0-9A-Z] TODO: Can we use DDB ?? */
+            makeGdlCallsign(msg.position.callSign),
             GDL90::EMERGENCY_PRIO::NO_EMERGENCY))
     {
         packAndSend(unpacked);
@@ -331,7 +390,8 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
     GDL90::RawBytes unpacked;
 
     // Send heartBeat
-    if (gdl90Service.gdl90.heartbeat_encode(unpacked, status, CoreUtils::secondsSinceEpoch() % (24 * 3600), 0, 0))
+    // For the counters, I guess I could take them from tarffic received, is this used at all?
+    if (gdl90Service.gdl90.heartbeat_encode(unpacked, status, CoreUtils::secondsSinceEpoch() % (24 * 60 * 60), 0, 0))
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx += 1;

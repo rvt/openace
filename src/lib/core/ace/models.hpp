@@ -15,21 +15,21 @@ namespace GATAS
      */
     enum class PostConstruct : uint8_t
     {
-        NA = 0,                      // No data yet avaiulable, use in the web modules
-        OK = 1,                      // Module is ready to be started
-        FAILED = 2,                  // Generale failure
-        MEMORY = 3,                  // Memory allocation issues
-        DEP_NOT_FOUND = 4,           // A dependency was needed but not loaded
-        XQUEUE_ERROR = 5,            // FreeRTOS X queue error
-        TASK_ERROR = 6,              // task creation failure
-        HARDWARE_NOT_FOUND = 7,      // Hardware  not found
-        HARDWARE_ERROR = 8,          // Hardware  found but not working correctly
-        NETWORK_ERROR = 9,           // Netowrk issue
-        CONFIG_ERROR = 10,           // Configuration issue (not found incorrect etc...)
-        TIMER_ERROR = 11,            // task creation failure
-        MUTEX_ERROR = 12,            // FreeRTOS X queue error
-        HARDWARE_NOT_CONFIGURED = 13,// Indicate there was no configuration found
-        SPINLOCK_ERROR = 14,         // No spinlock available
+        NA = 0,                       // No data yet avaiulable, use in the web modules
+        OK = 1,                       // Module is ready to be started
+        FAILED = 2,                   // Generale failure
+        MEMORY = 3,                   // Memory allocation issues
+        DEP_NOT_FOUND = 4,            // A dependency was needed but not loaded
+        XQUEUE_ERROR = 5,             // FreeRTOS X queue error
+        TASK_ERROR = 6,               // task creation failure
+        HARDWARE_NOT_FOUND = 7,       // Hardware  not found
+        HARDWARE_ERROR = 8,           // Hardware  found but not working correctly
+        NETWORK_ERROR = 9,            // Netowrk issue
+        CONFIG_ERROR = 10,            // Configuration issue (not found incorrect etc...)
+        TIMER_ERROR = 11,             // task creation failure
+        MUTEX_ERROR = 12,             // FreeRTOS X queue error
+        HARDWARE_NOT_CONFIGURED = 13, // Indicate there was no configuration found
+        SPINLOCK_ERROR = 14,          // No spinlock available
     };
 
     enum class PinType : uint8_t
@@ -229,6 +229,32 @@ namespace GATAS
 
     pDopInterpretation floatToDOPInterpretation(float dop);
 
+    struct GpsFixType
+    {
+        enum enum_type : uint8_t
+        {
+            NO_FIX = 1,
+            D2 = 2,
+            D3 = 3,
+            DGPS = 4,
+        };
+
+        ETL_DECLARE_ENUM_TYPE(GpsFixType, uint8_t)
+        ETL_ENUM_TYPE(NO_FIX, "No Fix")
+        ETL_ENUM_TYPE(D2, "2D")
+        ETL_ENUM_TYPE(D3, "3D")
+        ETL_ENUM_TYPE(DGPS, "DGPS")
+        ETL_END_ENUM_TYPE
+    };
+
+    struct GpsFix
+    {
+        GpsFixType fixType;
+        bool hasFix;
+        GpsFix() : fixType(GpsFixType::NO_FIX), hasFix(false) {}
+        GpsFix(GpsFixType fix_) : fixType(fix_), hasFix(fix_ == GpsFixType::D3 || fix_ == GpsFixType::DGPS) {}
+    };
+
     /**
      * Aircraft location message and time of reception
      * Note: GPS use a theoretical sea level estimated by a World Geodetic System (WGS84)
@@ -344,10 +370,10 @@ namespace GATAS
 
     struct OwnshipMinimalPositionInfo
     {
-        AircraftAddress icaoAddress=0;
-        float lat=0;
-        float lon=0;
-        int16_t ellipseHeight=0;
+        AircraftAddress icaoAddress = 0;
+        float lat = 0;
+        float lon = 0;
+        int16_t ellipseHeight = 0;
     };
 
     struct OwnshipPositionInfo

@@ -95,6 +95,8 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
             return;
         }
 
+        auto aircraftCat = toAircraftCategory(packet.aircraftType());
+
         GATAS::AircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
@@ -102,10 +104,10 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
                 packet.aircraftId(),
                 addressTypeFromFlarm(packet.addressType()),
                 GATAS::DataSource::FLARM,
-                toAircraftCategory(packet.aircraftType()),
+                aircraftCat,
                 packet.stealth(),
                 packet.noTrack(),
-                packet.groundSpeed() > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN,
+                CoreUtils::isAirborn(aircraftCat, packet.groundSpeed()),
                 otherPos.latitude,
                 otherPos.longitude,
                 packet.altitude(),
@@ -150,6 +152,7 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         packet.groundSpeed(ownship.groundSpeed);
         packet.verticalSpeed(ownship.verticalSpeed);
         packet.groundTrack(ownship.course);
+        // Abuse GROUNDSPEED_CONSIDERING_AIRBORN for movement status, which is not AirBorn status, but more what the aircraft is doing
         packet.movementStatus(ownship.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1);
 
         Radio::TxPacket txPacket;

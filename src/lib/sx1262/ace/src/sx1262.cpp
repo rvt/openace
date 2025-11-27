@@ -128,7 +128,7 @@ void Sx1262::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 
 void Sx1262::on_receive(const GATAS::GpsStatsMsg &msg)
 {
-    hasGpsFix = msg.fixType == 3;
+    hasGpsFix = msg.gpsFix.hasFix;
 }
 
 void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)

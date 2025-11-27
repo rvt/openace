@@ -161,6 +161,9 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
             return;
         }
 
+        auto aircraftCat = mapAircraftCategory(tp.aircraftType());
+        auto groundSpeed = tp.speed() * KPH_TO_MS;
+
         GATAS::AircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
@@ -171,12 +174,12 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
                 mapAircraftCategory(tp.aircraftType()),
                 false,
                 !tp.tracking(), // FANET uses 'tracking' to indicate it want's to be tracked
-                tp.speed() > (GATAS::GROUNDSPEED_CONSIDERING_AIRBORN * MS_TO_KPH),
+                CoreUtils::isAirborn(aircraftCat, groundSpeed),
                 tp.latitude(),
                 tp.longitude(),
                 tp.altitude() + CoreUtils::egmGeoidOffset(tp.latitude(), tp.longitude()),
                 tp.climbRate(),
-                tp.speed() * KPH_TO_MS,
+                groundSpeed,
                 static_cast<int16_t>(tp.groundTrack()),
                 tp.turnRate(),
                 fromOwn.distance,
@@ -207,7 +210,9 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
                 GATAS::AircraftCategory::POINT_OBSTACLE,
                 false,
                 !tp.tracking(), // FANET uses 'tracking' to indicate it want's to be tracked
-                false,
+                // Controversial! Even though this is a ground tracking, somw EFB's (ForeFLight) may not show this traffic due to the ground glag. 
+                // By setting this to true we ensure that also this traffic is seen on the EFB
+                true, 
                 tp.latitude(),
                 tp.longitude(),
                 ownship.heightMsl(),

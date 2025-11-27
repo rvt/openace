@@ -34,17 +34,59 @@
 
 #include "ognpacket.hpp"
 
-
-class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg,
-    GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
+class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
 {
 public:
     static constexpr uint8_t OGN_PACKET_LENGTH = 20;
     static constexpr uint8_t OGN_PACKET_LENGTH_FEC = 26;
+
 private:
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int MAX_IGNORE_DISTANCE = 50000;
     friend class message_router;
+
+    struct OGNAircraftType
+    {
+        enum enum_type : uint8_t
+        {
+            RESERVED_0 = 0,
+            GLIDER = 1,
+            TOW_PLANE = 2,
+            ROTORCRAFT = 3,
+            SKYDIVER = 4,
+            DROP_PLANE = 5,
+            HANG_GLIDER = 6,
+            PARAGLIDER = 7,
+            RECIP_ENGINE = 8,
+            JET_TURBOPROP = 9,
+            UNKNOWN = 10, // A
+            BALLOON = 11, // B
+            AIRSHIP = 12, // C
+            UAV = 13,     // D
+            RESERVED_E = 14,
+            OBSTACLE = 15 // F
+        };
+
+        ETL_DECLARE_ENUM_TYPE(OGNAircraftType, uint8_t)
+        ETL_ENUM_TYPE(RESERVED_0, "Reserved")
+        ETL_ENUM_TYPE(GLIDER, "Glider")
+        ETL_ENUM_TYPE(TOW_PLANE, "Tow Plane")
+        ETL_ENUM_TYPE(ROTORCRAFT, "Helicopter")
+        ETL_ENUM_TYPE(SKYDIVER, "Sky Diver")
+        ETL_ENUM_TYPE(DROP_PLANE, "Drop Plane")
+        ETL_ENUM_TYPE(HANG_GLIDER, "Hang Glider")
+        ETL_ENUM_TYPE(PARAGLIDER, "Paraglider")
+        ETL_ENUM_TYPE(RECIP_ENGINE, "Recip Engine Aircraft")
+        ETL_ENUM_TYPE(JET_TURBOPROP, "Jet/Turboprop Aircraft")
+        ETL_ENUM_TYPE(UNKNOWN, "Unknown")
+        ETL_ENUM_TYPE(BALLOON, "Balloon")
+        ETL_ENUM_TYPE(AIRSHIP, "Airship/Blimp")
+        ETL_ENUM_TYPE(UAV, "Unmanned Aerial Vehicle")
+        ETL_ENUM_TYPE(RESERVED_E, "Reserved")
+        ETL_ENUM_TYPE(OBSTACLE, "Static Obstacle")
+        ETL_END_ENUM_TYPE
+    };
+
     struct
     {
         uint32_t receivedAircraftPositions = 0;
@@ -68,16 +110,15 @@ private:
     GATAS::BarometricPressureMsg lastBarometricPressureMsg;
     GATAS::GpsStatsMsg gpsStats;
     uint16_t distanceIgnore;
-    static LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH*8, 48> decoder; 
+    static LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH * 8, 48> decoder;
 
 public:
     static constexpr const etl::string_view NAME = "Ogn1";
-    Ogn1(etl::imessage_bus& bus, const Configuration &config) :
-        BaseModule(bus, NAME),
-        ownshipPosition{},
-        spinLock(0),
-        lastBarometricPressureMsg{},
-        gpsStats{}
+    Ogn1(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
+                                                                ownshipPosition{},
+                                                                spinLock(0),
+                                                                lastBarometricPressureMsg{},
+                                                                gpsStats{}
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Ogn1", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
@@ -95,24 +136,23 @@ private:
     void on_receive(const GATAS::BarometricPressureMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
-    void on_receive_unknown(const etl::imessage& msg);
+    void on_receive_unknown(const etl::imessage &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
     // Transform a Ogn addressType to an gaTas address type
     GATAS::AddressType addressTypeFromOgn(uint8_t addressType) const;
     uint8_t addressTypeToOgn(GATAS::AddressType addressType) const;
+    GATAS::AircraftCategory ognToGatas(Ogn1::OGNAircraftType o) const;
+    Ogn1::OGNAircraftType gatasToOgn(GATAS::AircraftCategory c) const;
 
     /**
      * Keep track of what timestamp (roughly) we receive Ogn frames
-    */
+     */
     void addReceiveStat(uint32_t frequency);
 
     int8_t parseFrame(OGN1_Packet &packet, int16_t rssiDbm);
 
     static uint8_t ErrCount(const uint8_t *err, uint8_t length);
-    static uint8_t ErrCount(const uint8_t *output,const uint8_t *data, const uint8_t *err, uint8_t length);
-    static uint8_t errorCorrect(uint8_t *output, uint8_t *data, uint8_t *err, uint8_t iter=32);
-
-
+    static uint8_t ErrCount(const uint8_t *output, const uint8_t *data, const uint8_t *err, uint8_t length);
+    static uint8_t errorCorrect(uint8_t *output, uint8_t *data, uint8_t *err, uint8_t iter = 32);
 };
-

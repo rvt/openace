@@ -38,7 +38,7 @@ namespace GATAS
     constexpr uint8_t MAX_AIRCRAFT_CONFIGURATIONS = 6; // See also Session JS, not really will protected in the JSON during updates via config
     constexpr uint8_t MAX_LENGTH_ADSB = 33;
     constexpr uint8_t MAX_LORA_MSG_SIZE = 128;
-    constexpr float GROUNDSPEED_CONSIDERING_AIRBORN = 15.f; // groundspeed > 25ms is considered beeing airborn
+    constexpr float GROUNDSPEED_CONSIDERING_AIRBORN = 3.f; // groundspeed 3m/s == 5.8kt is considered beeing airborn
     // @todo: added one extra word because 'somwhere' I think there is an issue where we corrupt the stack
     using NMEAString = etl::string<NMEA_MAX_LENGTH>; // NMEA sentence
     using IcaoAddress = etl::string<8>;              // ICAO Address as hex string

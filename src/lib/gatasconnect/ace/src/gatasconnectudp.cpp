@@ -98,7 +98,7 @@ void GatasConnect::getConfig(const Configuration &config)
 
 void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg)
 {
-    hasGpsFix = msg.fixType == 3;
+    hasGpsFix = msg.gpsFix.hasFix;
 }
 
 void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,

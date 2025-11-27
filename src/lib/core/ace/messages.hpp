@@ -160,17 +160,14 @@ namespace GATAS
 
     struct GpsStatsMsg : public etl::message<14>
     {
-        // Fix Quality
-        // 0: Fix not valid, 1: GPS fix, 2: Differential GPS fix (DGNSS), SBAS, OmniSTAR VBS, Beacon, RTX in GVBS mode  3: Not applicable, 4: RTK Fixed, xFill, 5: RTK Float, OmniSTAR XP/HP, Location RTK, RTX, 6: INS Dead reckoning
-        uint8_t fixQuality;         // From GGA Sentence
-        uint8_t fixType;            // 1=None 2=2D or 3=3D
+        GATAS::GpsFix gpsFix;       // gpsFix, calculated from GPS
         uint8_t satsUsedForFix;     // From GGA Sentence
         float pDop;                 // From GSA Sentence
         float hDop;                 // From GSA Sentence
         pDopInterpretation pDopInt; // Interpretation from pDop
-        // COnstructor
-        GpsStatsMsg(uint8_t fixQuality_, uint8_t fixType_, uint8_t satellites_tracked_, float pDop_, float hDop_) : fixQuality(fixQuality_), fixType(fixType_), satsUsedForFix(satellites_tracked_), pDop(pDop_), hDop(hDop_), pDopInt(floatToDOPInterpretation(pDop_)) {};
-        GpsStatsMsg() : fixQuality(0), satsUsedForFix(0), pDop(255), hDop(255), pDopInt(floatToDOPInterpretation(255)) {};
+        GpsStatsMsg() : gpsFix(), satsUsedForFix(0), pDop(0.0f), hDop(0.0f), pDopInt(pDopInterpretation::POOR) {};
+        GpsStatsMsg(GATAS::GpsFix gpsFix_, uint8_t satsUsedForFix_, float pDop_, float hDop_, pDopInterpretation pDopInt_) : 
+            gpsFix(gpsFix_), satsUsedForFix(satsUsedForFix_), pDop(pDop_), hDop(hDop_), pDopInt(pDopInt_) {};        
     };
 
     struct BarometricPressureMsg : public etl::message<15>

@@ -6,11 +6,10 @@
 #include "ace/spinlockguard.hpp"
 #include "etl/algorithm.h"
 
-
 constexpr float POSITION_DECODE = 0.0001f / 60.f;
 constexpr float POSITION_ENDECODE = 1.f / POSITION_DECODE;
 
-LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH*8, 48> Ogn1::decoder; // 1248 bytes, should be 
+LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH * 8, 48> Ogn1::decoder; // 1248 bytes, should be
 
 GATAS::PostConstruct Ogn1::postConstruct()
 {
@@ -90,7 +89,7 @@ uint8_t Ogn1::ErrCount(const uint8_t *err, uint8_t length) // count detected man
     return count;
 }
 
-uint8_t Ogn1::ErrCount(const uint8_t *output, const uint8_t *data, const uint8_t *err, uint8_t length)  // count errors compared to data corrected by FEC
+uint8_t Ogn1::ErrCount(const uint8_t *output, const uint8_t *data, const uint8_t *err, uint8_t length) // count errors compared to data corrected by FEC
 {
     uint8_t count = 0;
     for (uint8_t idx = 0; idx < length; idx++)
@@ -105,7 +104,7 @@ uint8_t Ogn1::errorCorrect(uint8_t *output, uint8_t *data, uint8_t *err, uint8_t
 
     uint8_t check = 0;
     uint8_t errCount = ErrCount(err, OGN_PACKET_LENGTH); // conunt Manchester decoding errors
-    Ogn1::decoder.Input(data, err);                            // put data into the FEC decoder
+    Ogn1::decoder.Input(data, err);                      // put data into the FEC decoder
     do                                                   // more loops is more chance to recover the packet
     {
         check = decoder.ProcessChecks(); // do an iteration
@@ -168,8 +167,8 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
 
     auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, fLatitude, fLongitude);
 
-//    printf("OGN: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld offset:%d, stdaltitude:%ld climbRate:%d speed:%d heading:%0.2f turnRate:%0.2f\n",
-//       packet.Header.Address, fLatitude, fLongitude, packet.DecodeAltitude() * 10 + ownship.geoidOffset, ownship.geoidOffset, packet.DecodeStdAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
+    //    printf("OGN: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld offset:%d, stdaltitude:%ld climbRate:%d speed:%d heading:%0.2f turnRate:%0.2f\n",
+    //    packet.Header.Address, fLatitude, fLongitude, packet.DecodeAltitude() * 10 + ownship.geoidOffset, ownship.geoidOffset, packet.DecodeStdAltitude(), packet.DecodeClimbRate(), packet.DecodeSpeed(), packet.DecodeHeading() * 0.1f, packet.DecodeTurnRate()*0.1f);
 
     if (fromOwn.distance > distanceIgnore)
     {
@@ -180,7 +179,8 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
 
     statistics.receivedAircraftPositions += 1;
     int16_t speed0d1ms = packet.DecodeSpeed();
-
+    auto aircrftCat = ognToGatas(static_cast<Ogn1::OGNAircraftType>(packet.Position.AcftType));
+    auto groundSpeed = speed0d1ms * .1f;
     GATAS::AircraftPositionMsg aircraftPosition{
         GATAS::AircraftPositionInfo{
             timeUs32,
@@ -188,15 +188,15 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
             packet.Header.Address,
             addressTypeFromOgn(packet.Header.AddrType),
             GATAS::DataSource::OGN1,
-            static_cast<GATAS::AircraftCategory>(packet.Position.AcftType),
+            aircrftCat,
             packet.Position.Stealth ? true : false, // Privacy
             false,                                  // noTrack
-            1,                                      // airBorn
+            CoreUtils::isAirborn(aircrftCat, groundSpeed),
             fLatitude,
             fLongitude,
-            packet.DecodeAltitude() + CoreUtils::egmGeoidOffset(fLatitude, fLongitude),   // OGN Sends MSL
-            packet.DecodeClimbRate() * .1f,         // Climb Rate is send s 0.1m/s (10 means 1/ms)
-            speed0d1ms * .1f,
+            packet.DecodeAltitude() + CoreUtils::egmGeoidOffset(fLatitude, fLongitude), // OGN Sends MSL
+            packet.DecodeClimbRate() * .1f,                                             // Climb Rate is send s 0.1m/s (10 means 1/ms)
+            groundSpeed,
             static_cast<int16_t>(packet.DecodeHeading() * .1f),
             packet.DecodeTurnRate() * .1f,
             fromOwn.distance,
@@ -233,7 +233,7 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         packet.EncodeHeading(ownship.course * 10.f);
         packet.EncodeClimbRate(ownship.verticalSpeed * 10.f);
         packet.EncodeTurnRate(ownship.hTurnRate * 10.f);
-        packet.EncodeAltitude(ownship.heightMsl());              
+        packet.EncodeAltitude(ownship.heightMsl());
         packet.EncodeDOP(gpsStats.pDop + 0.5f);
 
         // TODO: Understand how baro Altitude really works in OGN
@@ -247,9 +247,6 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         //     packet.EncodeStdAltitude(lastBarometricPressureMsg.pressurehPa);
         // }
 
-        packet.Position.FixQuality = gpsStats.fixQuality < 3 ? gpsStats.fixQuality : 0;
-        packet.Position.FixMode = packet.Position.FixQuality > 0 ? gpsStats.fixType : 0;
-
         auto msSinceEpoch = CoreUtils::msSinceEpoch();
         tm time = CoreUtils::localTime(msSinceEpoch);
         uint8_t secondTime = time.tm_sec;
@@ -262,7 +259,31 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
                 secondTime -= 60;
             }
         }
+
+        uint8_t fixMode;
+        uint8_t fixQuality;
+        switch (gpsStats.gpsFix.fixType)
+        {
+        case GATAS::GpsFixType::D3:
+            fixMode = 1;
+            fixQuality = 1;
+            break;
+
+        case GATAS::GpsFixType::DGPS:
+            fixMode = 1;
+            fixQuality = 2;
+            break;
+
+        default:
+            fixMode = 0;
+            fixQuality = 0;
+            break;
+        }
+
         packet.Position.Time = secondTime;
+        packet.Position.FixQuality = fixQuality;
+        packet.Position.FixMode = fixMode;
+        packet.Position.AcftType = gatasToOgn(ownship.conspicuity.category);
 
         packet.Whiten();
         LDPC_Encode(packet.Word());
@@ -300,7 +321,8 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
         // Ignore ownship address
         auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
-        if (packet.Header.Address == ownship.conspicuity.icaoAddress) {
+        if (packet.Header.Address == ownship.conspicuity.icaoAddress)
+        {
             return;
         }
 
@@ -327,4 +349,109 @@ void Ogn1::on_receive(const GATAS::GpsStatsMsg &msg)
 void Ogn1::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
+}
+
+Ogn1::OGNAircraftType Ogn1::gatasToOgn(GATAS::AircraftCategory c) const
+{
+    using AC = GATAS::AircraftCategory;
+    using OGN = Ogn1::OGNAircraftType;
+
+    switch (c)
+    {
+    case AC::GLIDER:
+        return OGN::GLIDER;
+
+    case AC::ROTORCRAFT:
+    case AC::GYROCOPTER:
+        return OGN::ROTORCRAFT;
+
+    case AC::SKY_DIVER:
+        return OGN::SKYDIVER;
+
+    case AC::DROP_PLANE:
+        return OGN::DROP_PLANE;
+
+    case AC::HANG_GLIDER:
+        return OGN::HANG_GLIDER;
+
+    case AC::PARA_GLIDER:
+        return OGN::PARAGLIDER;
+
+    case AC::LIGHT_THAN_AIR:
+        return OGN::BALLOON;
+
+    case AC::LIGHT:
+    case AC::SMALL:
+    case AC::ULTRA_LIGHT_FIXED_WING:
+    case AC::AEROBATIC:
+        return OGN::RECIP_ENGINE;
+
+    case AC::LARGE:
+    case AC::HIGH_VORTEX:
+    case AC::HEAVY_ICAO:
+    case AC::MILITARY:
+        return OGN::JET_TURBOPROP;
+
+    case AC::UN_MANNED:
+        return OGN::UAV;
+
+    case AC::POINT_OBSTACLE:
+    case AC::CLUSTER_OBSTACLE:
+    case AC::LINE_OBSTACLE:
+        return OGN::OBSTACLE;
+
+    default:
+        return OGN::UNKNOWN;
+    }
+}
+
+GATAS::AircraftCategory Ogn1::ognToGatas(Ogn1::OGNAircraftType o) const
+{
+    using AC = GATAS::AircraftCategory;
+    using OGN = Ogn1::OGNAircraftType;
+
+    switch (o)
+    {
+    case OGN::GLIDER:
+        return AC::GLIDER;
+
+    case OGN::TOW_PLANE:
+        return AC::LIGHT;
+
+    case OGN::ROTORCRAFT:
+        return AC::ROTORCRAFT;
+
+    case OGN::SKYDIVER:
+        return AC::SKY_DIVER;
+
+    case OGN::DROP_PLANE:
+        return AC::DROP_PLANE;
+
+    case OGN::HANG_GLIDER:
+        return AC::HANG_GLIDER;
+
+    case OGN::PARAGLIDER:
+        return AC::PARA_GLIDER;
+
+    case OGN::RECIP_ENGINE:
+        return AC::LIGHT;
+
+    case OGN::JET_TURBOPROP:
+        return AC::LARGE;
+
+    case OGN::BALLOON:
+        return AC::LIGHT_THAN_AIR;
+
+    case OGN::AIRSHIP:
+        return AC::LIGHT_THAN_AIR;
+
+    case OGN::UAV:
+        return AC::UN_MANNED;
+
+    case OGN::OBSTACLE:
+        return AC::POINT_OBSTACLE;
+
+    default:
+        return AC::UNKNOWN;
+    }
 }
