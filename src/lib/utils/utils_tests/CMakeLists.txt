@@ -43,6 +43,7 @@ set( SOURCES_IDIOMATIC_EXAMPLES
       moreutils_test.cpp
       packetbuffer_test.cpp
       gulp_test.cpp
+      ddb_test.cpp
 )
 
 string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAMPLES}" )

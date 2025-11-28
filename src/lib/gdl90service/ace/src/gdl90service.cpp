@@ -132,6 +132,10 @@ GATAS::CallSign Gdl90Service::makeGdlCallsign(const GATAS::CallSign &callSign) c
     }
     for (char &c : ownshipCallsign)
     {
+        // Handle the exclamation mark mark as special for now.
+        // THis is a NMEA PFLAA indicator send my gatasConnect
+        // THis will change in future (gatasConnect) so for now we remove everything
+        // after the space
         if (c == '!' || hasExclamation) {
             hasExclamation = true;
             c = ' ';

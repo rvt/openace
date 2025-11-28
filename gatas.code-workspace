@@ -121,7 +121,8 @@
 			"*.inc": "cpp",
 			"dnsserver.h": "c",
 			"udp.h": "c",
-			"stdint.h": "c"
+			"stdint.h": "c",
+			"*.hpp_withtype": "cpp"
 		},
 		"cmake.autoSelectActiveFolder": false
 	  }

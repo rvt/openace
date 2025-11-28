@@ -218,19 +218,25 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
                 pDop = getFloat(frame.pdop, 100);
                 hDop = getFloat(frame.hdop, 100);
 
+                // 2=2D 3=3D
                 switch (frame.fix_type)
                 {
                 case 2:
                     fixType = GATAS::GpsFixType::D2;
                     break;
                 case 3:
-                    if (fixQuality == 3)
+                    // 0=Fix Not Valid / 1=GPS Fix / 2=DGPS
+                    if (fixQuality == 2)
                     {
                         fixType = GATAS::GpsFixType::DGPS;
                     }
-                    else
+                    else if (fixQuality == 1)
                     {
                         fixType = GATAS::GpsFixType::D3;
+                    }
+                    else
+                    {
+                        fixType = GATAS::GpsFixType::NO_FIX;
                     }
                     break;
                 default:

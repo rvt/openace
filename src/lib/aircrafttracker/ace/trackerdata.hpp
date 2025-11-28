@@ -4,6 +4,7 @@
 #include "ace/constants.hpp"
 #include "ace/measure.hpp"
 #include "ace/models.hpp"
+#include "ace/ddb.hpp"
 
 #include "etl/unordered_map.h"
 #include "etl/set.h"
@@ -44,6 +45,7 @@ private:
 
     etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
     uint32_t adaptiveRadius;
+    DDB<10> ddb;
 
     bool calculateAdaptiveRadius()
     {
@@ -181,6 +183,7 @@ public:
 
         auto time = CoreUtils::timeUs32Raw();
         auto it = trackedAircraft.find(position.address);
+        assignCallsignFromDDB(position);
         if (it != trackedAircraft.end())
         {
             it->second.sendTime = time;
@@ -192,6 +195,23 @@ public:
         }
 
         return true;
+    }
+
+    /**
+     * Assign a callsign from DDB if the callsign field is empty
+     * @param position
+     */
+    void assignCallsignFromDDB(GATAS::AircraftPositionInfo &position)
+    {
+        GATAS_MEASURE("DDB", 90);
+        if (position.callSign.empty())
+        {
+            auto ddbEntry = ddb.lookup(position.address);
+            if (ddbEntry)
+            {
+                position.callSign = (*ddbEntry)->reg;
+            }
+        }
     }
 
     uint16_t next(const etl::delegate<void(const GATAS::AircraftPositionInfo &)> &msg)
