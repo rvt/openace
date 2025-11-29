@@ -23,6 +23,7 @@ FetchContent_MakeAvailable(Catch2)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../ace")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 
 # Add vendor modules
 if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})

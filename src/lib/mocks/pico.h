@@ -34,3 +34,7 @@ inline uint8_t get_core_num() {
 #define __in_flash() 
 
 #define __uninitialized_ram
+
+// Not sure whee to put it, this is the MEASURE Macro from core
+#define GATAS_MEASURE(name, ...) (void(0))
+#define GATAS_MEASURE_M(name, ...) auto measure = false

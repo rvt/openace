@@ -11,62 +11,81 @@
 #define __in_flash()
 // #include "ddb_db.hpp"
 #include "ddb.hpp"
-
 #include "mockutils.h"
 
-TEST_CASE("Lookup Exact Icao", "[single-file]")
+TEST_CASE("Lookup Icao above and below mid", "[single-file]")
 {
-    DDB<10> ddb;
-    auto lo = ddb.lookup(0x485024);
-    REQUIRE(etl::string_view((*lo)->reg) == "PH-1523");
-    REQUIRE(ddb.cacheSize() == 1);
+    DDB ddb;
+    auto lo = ddb.lookup(0xDF1634);
+
+    REQUIRE(lo != nullptr);
+    REQUIRE(etl::string_view(lo->reg()) == "D-9866");
+    //    REQUIRE(ddb.cacheSize() == 1);
 
     lo = ddb.lookup(0x48515D);
-    REQUIRE(etl::string_view((*lo)->reg) == "PH-1552");
-    REQUIRE(ddb.cacheSize() == 2);
+    REQUIRE(lo != nullptr);
+    REQUIRE(etl::string_view(lo->reg()) == "PH-1552");
+    //    REQUIRE(ddb.cacheSize() == 2);
 }
 
-TEST_CASE("Lookup Full Cache", "[single-file]")
+TEST_CASE("Lookup First and Last", "[single-file]")
 {
-    DDB<1> ddb;
-    auto lo = ddb.lookup(0x485024);
-    REQUIRE(etl::string_view((*lo)->reg) == "PH-1523");
-    REQUIRE(ddb.cacheSize() == 1);
+    DDB ddb;
+    auto lo = ddb.lookup(0x000000);
 
-    lo = ddb.lookup(0x48515D);
-    REQUIRE(etl::string_view((*lo)->reg) == "PH-1552");
-    REQUIRE(ddb.cacheSize() == 1);
+    REQUIRE(lo != nullptr);
+    REQUIRE(etl::string_view(lo->reg()) == "HA-4403");
+    //    REQUIRE(ddb.cacheSize() == 1);
+
+    lo = ddb.lookup(0xffffff);
+    REQUIRE(lo != nullptr);
+    REQUIRE(etl::string_view(lo->reg()) == "D-KEBW");
+    //    REQUIRE(ddb.cacheSize() == 2);
 }
+
+// TEST_CASE("Lookup Full Cache", "[single-file]")
+// {
+//     DDB ddb;
+//     auto lo = ddb.lookup(0x485024);
+//     REQUIRE(lo != nullptr);
+//     REQUIRE(etl::string_view(lo->reg()) == "PH-1523");
+//     REQUIRE(ddb.cacheSize() == 1);
+
+//     lo = ddb.lookup(0x48515D);
+//     REQUIRE(lo != nullptr);
+//     REQUIRE(etl::string_view(lo->reg()) == "PH-1552");
+//     REQUIRE(ddb.cacheSize() == 1);
+// }
 
 TEST_CASE("Lookup Not Found", "[single-file]")
 {
-    DDB<10> ddb;
-    REQUIRE(ddb.cacheSize() == 0);
+    DDB ddb;
+    //    REQUIRE(ddb.cacheSize() == 0);
 
     auto lo = ddb.lookup(0x000800);
-    REQUIRE_FALSE(lo.has_value()); // optional is present
-    REQUIRE(ddb.cacheSize() == 1); // one negative-cache entry added
+    REQUIRE(lo == nullptr);
+    //    REQUIRE(ddb.cacheSize() == 1);
 
     lo = ddb.lookup(0x000800);
-    REQUIRE_FALSE(lo.has_value()); // optional is present
-    REQUIRE(ddb.cacheSize() == 1); // one negative-cache entry added
+    REQUIRE(lo == nullptr);
+    //    REQUIRE(ddb.cacheSize() == 1);
 
     lo = ddb.lookup(0x000801);
-    REQUIRE_FALSE(lo.has_value()); // optional is present
-    REQUIRE(ddb.cacheSize() == 2); // one negative-cache entry added
+    REQUIRE(lo == nullptr);
+    //    REQUIRE(ddb.cacheSize() == 2);
 }
 
-TEST_CASE("Show Duplicates", "[single-file]")
+TEST_CASE("No Duplicates", "[single-file]")
 {
-
     for (size_t i = 1; i < DDB_COUNT; ++i)
     {
-        if (DDB_DB[i].hex == DDB_DB[i - 1].hex)
+        if (DDB_DB[i].hex() == DDB_DB[i - 1].hex())
         {
             std::cout << "Duplicate found: HEX=0x"
-                      << std::hex << DDB_DB[i].hex
-                      << " Callsign=" << DDB_DB[i].reg
+                      << std::hex << DDB_DB[i].hex()
+                      << " Callsign=" << DDB_DB[i].reg()
                       << "\n";
+            REQUIRE_FALSE(true);
         }
     }
 }

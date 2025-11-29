@@ -25,8 +25,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * Part of this code taken from the example from Raspbery
  */
-class AircraftTracker : public BaseModule, public etl::message_router<AircraftTracker, GATAS::ConfigUpdatedMsg, 
-GATAS::AircraftPositionMsg, GATAS::AircraftPositionsMsg, GATAS::Every5SecMsg>
+class AircraftTracker : public BaseModule, public etl::message_router<AircraftTracker, GATAS::ConfigUpdatedMsg, GATAS::AircraftPositionMsg, GATAS::AircraftPositionsMsg, GATAS::Every5SecMsg>
 {
 private:
     friend class message_router;
@@ -91,7 +90,7 @@ public:
     AircraftTracker(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                            taskHandle(nullptr)
     {
-        ownshipAddress = config.gaTasConfig().conspicuity.icaoAddress;
+        on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::CONFIG});
     }
 
     virtual ~AircraftTracker() = default;

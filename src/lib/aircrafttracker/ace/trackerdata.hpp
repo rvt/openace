@@ -44,8 +44,9 @@ private:
     };
 
     etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
+    DDB ddb;
     uint32_t adaptiveRadius;
-    DDB<10> ddb;
+    bool ddbLookupsEnabled;
 
     bool calculateAdaptiveRadius()
     {
@@ -128,7 +129,12 @@ private:
     }
 
 public:
-    TrackerData() : adaptiveRadius(75000) {}
+    TrackerData() : adaptiveRadius(75000), ddbLookupsEnabled(false) {}
+
+    void ddbEnabled(bool enabled)
+    {
+        ddbLookupsEnabled = enabled;
+    }
 
     bool full() const
     {
@@ -183,7 +189,10 @@ public:
 
         auto time = CoreUtils::timeUs32Raw();
         auto it = trackedAircraft.find(position.address);
-        assignCallsignFromDDB(position);
+        if (ddbLookupsEnabled)
+        {
+            assignCallsignFromDDB(position);
+        }
         if (it != trackedAircraft.end())
         {
             it->second.sendTime = time;
@@ -203,13 +212,12 @@ public:
      */
     void assignCallsignFromDDB(GATAS::AircraftPositionInfo &position)
     {
-        GATAS_MEASURE("DDB", 90);
         if (position.callSign.empty())
         {
             auto ddbEntry = ddb.lookup(position.address);
             if (ddbEntry)
             {
-                position.callSign = (*ddbEntry)->reg;
+                position.callSign = ddbEntry->reg();
             }
         }
     }

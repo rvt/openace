@@ -50,10 +50,14 @@ class AircraftTrackerConfig extends ModuleConfig {
     });
   }
 
-  _setFormData(data) { }
+  _setFormData(data) {
+    this.$refs.ddbEnabled.checked = data.ddbEnabled;
+  }
 
   _getFormData() {
-    return {};
+    return {
+      ddbEnabled: this.$refs.ddbEnabled.checked,
+    };
   }
 
   render(html) {
@@ -65,8 +69,24 @@ class AircraftTrackerConfig extends ModuleConfig {
       </p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="section grid md-columns-2 lg-columns-2">
-          <strong>Update possibility follows soon</strong>
+          <label for="ddbEnabled">
+            <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
+              DDB Enabled ${html.raw(icon.help)}
+              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
+                Enable to lookup the Aircrafts callsign from based on hex code from <a href="https://ddb.glidernet.org" target="_blank" rel="noopener noreferrer">DDB<a> connected clients that use GDL90 or NMEA
+              </p> 
+            </label>:
+            <br />
+            <input type="checkbox" id="ddbEnabled" ref="ddbEnabled" placeholder="1" />
+          </label>
+          <div class="alert alert-warning">
+            <svg class="mr-2" style="width: 24px; height: 24px;" viewBox="0 0 24 24"><path fill="currentColor" d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21z"></path></svg>
+            Please note that the DDB is created and maintained by aviation enthusiasts and is in no way an official registry.
+            Because of this, you may encounter aircraft whose callsign differs from what ATC uses.
+          </div>
         </div>
+        <br />
+        ${this.buttonArray(html)}
       </form>
     `;
   }
@@ -714,7 +734,7 @@ class BluetoothConfig extends ModuleConfig {
     } else {
       this.$refs.localName.value = data.localName;
     }
-//    this.$refs.rfComm.checked = data.rfComm;
+    //    this.$refs.rfComm.checked = data.rfComm;
   }
 
   _getFormData() {
@@ -884,3 +904,5 @@ class UbloxM8N extends AbstractGnss {
 
 customElements.define("l76b-config", L76B);
 customElements.define("ubloxm8n-config", UbloxM8N);
+
+
