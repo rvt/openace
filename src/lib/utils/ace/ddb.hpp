@@ -5,6 +5,13 @@
 #include <etl/unordered_map.h>
 #include "ace/coreutils.hpp"
 
+/**
+ * Device Database to lookup CallSign from a HEX code.
+ * The DB file must be generated with ddb.py.
+ * The DB should for now only contain FLARM and OGN
+ * entries where FLARM entries have priority during merging and generation
+ * of the database
+ */
 class DDB
 {
     const DDBEntry *lookupDb(uint32_t hex)
@@ -45,7 +52,12 @@ class DDB
     }
 
 public:
-    // Full lookup: cache first, then DB, then cache result
+    /**
+     * Lookyo a hexcode in the DB. the result is nullptr for not found or
+     * the entry in the DDB
+     * @param hex
+     * @return
+     */
     const DDBEntry *lookup(uint32_t hex)
     {
         GATAS_MEASURE("lookup", 0);

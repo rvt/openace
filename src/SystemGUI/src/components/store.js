@@ -3,13 +3,21 @@ import { El } from "@frameable/el";
 let instance;
 
 export class GaTasStore {
-  availableHardware = [{name: "-", hardware:"-"}, {name: "GA/TAS Custom", hardware:"PICO_2RADIO"}, {name: "GA/TAS Pulse", hardware:"WAVESHARE_LITE"}];
+  availableHardware = [{ name: "-", hardware: "-" }, { name: "GA/TAS Custom", hardware: "PICO_2RADIO" }, { name: "GA/TAS Pulse", hardware: "WAVESHARE_LITE" }];
 
   constructor() {
     if (instance) {
       throw new Error("New instance cannot be created!!");
     }
 
+    // Polyfill for older iphones where AbortSignal.timeout is not available
+    if (!AbortSignal.timeout) {
+      AbortSignal.timeout = function (ms) {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), ms);
+        return controller.signal;
+      };
+    }
 
     instance = this;
 
@@ -48,11 +56,11 @@ export class GaTasStore {
    *
    * @returns
    */
-  async init()  {
-      // Fetch config.json
+  async init() {
+    // Fetch config.json
     const config = await this.fetch("/api/Config.json");
     this.state.gatasId = (config.gatasId).toString(16).toUpperCase();
-    
+
     // Fetch current aircraft and hw config
     const configData = await this.fetch("/api/_Configuration/config.json");
     this.state.aircraftId = configData.aircraftId;
@@ -126,13 +134,13 @@ export class GaTasStore {
    */
   updateHardware(typeIdx) {
     const type = this.availableHardware[typeIdx].hardware;
-    this.state.hardwareName =  this.availableHardware[typeIdx].name;
+    this.state.hardwareName = this.availableHardware[typeIdx].name;
     return this.fetch(`/api/_Configuration/hardware.json`, {
       method: "POST",
       headers: {
         "X-Method": "POST",
       },
-      body: JSON.stringify({type}),
+      body: JSON.stringify({ type }),
     }).then((data) => {
       this.state.hardware.type = type;
       return data;

@@ -13,7 +13,7 @@
 #include "ddb.hpp"
 #include "mockutils.h"
 
-TEST_CASE("Lookup Icao above and below mid", "[single-file]")
+TEST_CASE("Lookup hex above and below mid", "[single-file]")
 {
     DDB ddb;
     auto lo = ddb.lookup(0xDF1634);
@@ -22,10 +22,46 @@ TEST_CASE("Lookup Icao above and below mid", "[single-file]")
     REQUIRE(etl::string_view(lo->reg()) == "D-9866");
     //    REQUIRE(ddb.cacheSize() == 1);
 
-    lo = ddb.lookup(0x48515D);
+    lo = ddb.lookup(0x404E39);
     REQUIRE(lo != nullptr);
-    REQUIRE(etl::string_view(lo->reg()) == "PH-1552");
+    REQUIRE(etl::string_view(lo->reg()) == "G-CDNA");
     //    REQUIRE(ddb.cacheSize() == 2);
+}
+
+TEST_CASE("Unique OGN DB Entry", "[single-file]")
+{
+    DDB ddb;
+    auto lo = ddb.lookup(0x066F73);
+
+    REQUIRE(lo != nullptr);
+    REQUIRE(etl::string_view(lo->reg()) == "OK-0566");
+}
+
+TEST_CASE("Unique FLARM DB Entry", "[single-file]")
+{
+    DDB ddb;
+    auto lo = ddb.lookup(0xDD4EBE);
+
+    REQUIRE(lo != nullptr);
+    REQUIRE(etl::string_view(lo->reg()) == "G-CKOL");
+}
+
+TEST_CASE("ICAO Should not be in DB", "[single-file]")
+{
+    DDB ddb;
+    // 0x48515D is an entry that was ICAO only, that should not appear in GA/TAS
+    auto lo = ddb.lookup(0x48515D);
+    REQUIRE(lo == nullptr);
+}
+
+TEST_CASE("Removes invalid callsigns", "[single-file]")
+{
+    DDB ddb;
+    REQUIRE(ddb.lookup(0x200508) == nullptr); // Starts with a number
+    REQUIRE(ddb.lookup(0x254342) == nullptr); // TEST
+    REQUIRE(ddb.lookup(0x88E240) == nullptr); // TST    
+    REQUIRE(ddb.lookup(0x88C1D0) == nullptr); // Two Chars only    
+    REQUIRE(ddb.lookup(0x111913) == nullptr); // GLIDER    
 }
 
 TEST_CASE("Lookup First and Last", "[single-file]")
@@ -35,12 +71,10 @@ TEST_CASE("Lookup First and Last", "[single-file]")
 
     REQUIRE(lo != nullptr);
     REQUIRE(etl::string_view(lo->reg()) == "HA-4403");
-    //    REQUIRE(ddb.cacheSize() == 1);
 
-    lo = ddb.lookup(0xffffff);
+    lo = ddb.lookup(0xffffff); // Note: Found in FLARM DDB, so expect this one, not the one from OGN
     REQUIRE(lo != nullptr);
-    REQUIRE(etl::string_view(lo->reg()) == "D-KEBW");
-    //    REQUIRE(ddb.cacheSize() == 2);
+    REQUIRE(etl::string_view(lo->reg()) == "D-ETIG");
 }
 
 // TEST_CASE("Lookup Full Cache", "[single-file]")
