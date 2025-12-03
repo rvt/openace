@@ -54,7 +54,10 @@ jobs:
       - name: Configure CMake
         shell: bash
         run: |
-          cmake -B build_${{ matrix.platform.name }} \
+              export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk/
+              export FREERTOS_KERNEL_PATH=$GITHUB_WORKSPACE/FreeRTOS-Kernel
+              cd src/pico
+              cmake -B build_${{ matrix.platform.name }} \
                 -G Ninja \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DPICO_PLATFORM=${{ matrix.platform.cmake_platform }} \

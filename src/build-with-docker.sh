@@ -8,5 +8,4 @@ docker build -t gatas-build-image-2.1.1-up .
 
 #DIR=$(pwd)
 
-
-docker run --rm -e -DPICO_PLATFORM=rp2350 -e -DPICO_BOARD=pico2_w -e -DBUILDER_DIR_NAME=docker_release_rp2350 -v $(pwd):/opt/src --entrypoint /build-entrypoint.sh gatas-build-image-2.1.1-up
+docker run --rm -e PICO_PLATFORM=rp2350 -e PICO_BOARD=pico2_w -e BUILDER_DIR_NAME=docker_release_rp2350 -v $(pwd):/opt/src --entrypoint /build-entrypoint.sh gatas-build-image-2.1.1-up
