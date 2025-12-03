@@ -1,5 +1,5 @@
 #!/bin/bash
-export BUILD_DIR_NAME=${BUILD_DIR_NAME:-release_build_docker}
+export BUILD_DIR_NAME=${BUILD_DIR_NAME:-release_rp2040}
 export PICO_PLATFORM=${PICO_PLATFORM:-rp2040}
 export PICO_BOARD=${PICO_BOARD:-pico_w}
 

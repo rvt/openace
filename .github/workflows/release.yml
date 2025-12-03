@@ -8,6 +8,7 @@ on:
       - 'prerelease'
 
 jobs:
+
   Test:
     name: Run the unit tests
     runs-on: ubuntu-latest
@@ -22,16 +23,24 @@ jobs:
         shell: bash
         run: |
           sudo apt-get remove --purge gcc-11 gcc-12 gcc-13
-          sudo apt-get install tree git ninja-build cmake gcc-14
+          sudo apt-get install -y tree git ninja-build cmake gcc-14
 
       - name: Build and Test
         uses: ./.github/actions/build_project
         with:
           test: 'true'
 
+
   Firmware:
-    name: Create Firmware
+    name: Build Firmware (RP2040 + RP2350)
     runs-on: ubuntu-latest
+    needs: Test
+    strategy:
+      fail-fast: true
+      matrix:
+        platform:
+          - { name: "rp2040", cmake_platform: "rp2040", board: "pico_w", outfile: "GATAS_rp2040.uf2" }
+          - { name: "rp2350", cmake_platform: "rp2350", board: "pico2_w", outfile: "GATAS_rp2350-arm-s.uf2" }
 
     steps:
       - name: Checkout GA/TAS
@@ -42,29 +51,37 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup_env
 
-      - name: Build and Test
-        uses: ./.github/actions/build_project
-        with:
-          build: 'true'
+      - name: Configure CMake
+        shell: bash
+        run: |
+          cmake -B build_${{ matrix.platform.name }} \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DPICO_PLATFORM=${{ matrix.platform.cmake_platform }} \
+                -DPICO_BOARD=${{ matrix.platform.board }} \
+                -DGATAS_UART_OVER_USB=1
+
+      - name: Build Firmware
+        shell: bash
+        run: ninja -C build_${{ matrix.platform.name }}
+
+      - name: Rename UF2
+        shell: bash
+        run: |
+          # find the uf2 file
+          UF2=$(find build_${{ matrix.platform.name }} -name "*.uf2" | head -n 1)
+          cp "$UF2" "${{ matrix.platform.outfile }}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: firmware
           path: |
-            src/pico/build/*.uf2
+            ${{ matrix.platform.outfile }}
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: documentation
-          path: |
-            ./.github/develop.md
-            ./.github/release.md
-            LICENSE
-          if-no-files-found: error
 
   PreRelease:
-    needs: ["Test", "Firmware"]
+    needs: ["Firmware"]
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -74,9 +91,7 @@ jobs:
       - uses: actions/download-artifact@v4
 
       - name: Show artifacts
-        shell: bash
-        run: |
-          find .
+        run: find .
 
       - name: Push to Pre-Release
         if: startsWith(github.ref, 'refs/tags/prerelease')
@@ -90,10 +105,11 @@ jobs:
           files: |
             ./documentation/.github/develop.md
             ./documentation/LICENSE
-            ./firmware/GaTas.uf2
+            ./firmware/GATAS_rp2040.uf2
+            ./firmware/GATAS_rp2350-arm-s.uf2
 
       - name: Push to Release
-        if: startsWith(github.ref, 'refs/tags/v*')
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -104,4 +120,5 @@ jobs:
           files: |
             ./documentation/.github/release.md
             ./documentation/LICENSE
-            ./firmware/GaTas.uf2
+            ./firmware/GATAS_rp2040.uf2
+            ./firmware/GATAS_rp2350-arm-s.uf2
