@@ -66,7 +66,11 @@ jobs:
 
       - name: Build Firmware
         shell: bash
-        run: ninja -C build_${{ matrix.platform.name }}
+        run: |
+              export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk/
+              export FREERTOS_KERNEL_PATH=$GITHUB_WORKSPACE/FreeRTOS-Kernel
+              cd src/pico
+              ninja -C build_${{ matrix.platform.name }}
 
       - name: Rename UF2
         shell: bash
