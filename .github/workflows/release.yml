@@ -76,6 +76,7 @@ jobs:
         shell: bash
         run: |
           # find the uf2 file
+          cd src/pico
           UF2=$(find build_${{ matrix.platform.name }} -name "*.uf2" | head -n 1)
           cp "$UF2" "${{ matrix.platform.outfile }}"
 
