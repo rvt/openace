@@ -3,6 +3,7 @@ import store from "./store";
 import "./aircraftsession";
 import "./aircraftconfig";
 
+const MAX_AIRCRAFT = 10;
 class Session extends El {
   created() {
     this.state = this.$observable({
@@ -55,9 +56,9 @@ class Session extends El {
         <input
           type="submit"
           class="btn"
-          value="Add ${store.state.numberOfAircrafts > 5 ? "(Max 6)" : ""}"
+          value="Add ${store.state.numberOfAircrafts >= MAX_AIRCRAFT ? `(Max ${MAX_AIRCRAFT})` : ""}"
           onclick=${this._add}
-          ${store.state.numberOfAircrafts > 3 ? "disabled" : ""}
+          ${store.state.numberOfAircrafts >= MAX_AIRCRAFT ? "disabled" : ""}
         />
         <input
           type="submit"

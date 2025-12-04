@@ -35,7 +35,7 @@ namespace GATAS
     constexpr uint8_t MAXIMUM_RAW_FRAME_LENGTH = 128;
     constexpr uint8_t MAX_CALLSIGN_LENGTH = 12;
 
-    constexpr uint8_t MAX_AIRCRAFT_CONFIGURATIONS = 6; // See also Session JS, not really will protected in the JSON during updates via config
+    constexpr uint8_t MAX_AIRCRAFT_CONFIG = 10; // See also session.js line 58
     constexpr uint8_t MAX_LENGTH_ADSB = 33;
     constexpr uint8_t MAX_LORA_MSG_SIZE = 128;
     constexpr float GROUNDSPEED_CONSIDERING_AIRBORN = 3.f; // groundspeed 3m/s == 5.8kt is considered beeing airborn

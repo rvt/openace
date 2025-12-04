@@ -7,7 +7,7 @@ index 6984b90..7dcef2b 100644
              {
                  configASSERT( ucRecursionCountByLock[ ulLockNum ] != 255u );
 -                ucRecursionCountByLock[ ulLockNum ]++;
-+                ucRecursionCountByLock[ ulLockNum ]+=1;
++                ucRecursionCountByLock[ulLockNum] = ucRecursionCountByLock[ulLockNum] - 1;
                  return;
              }
              spin_lock_unsafe_blocking(pxSpinLock);
@@ -16,8 +16,8 @@ index 6984b90..7dcef2b 100644
          configASSERT( ucRecursionCountByLock[ ulLockNum ] != 0 );
  
 -        if( !--ucRecursionCountByLock[ ulLockNum ] )
-+        ucRecursionCountByLock[ulLockNum] -= 1;
-+        if (ucRecursionCountByLock[ulLockNum] == 0)
++        uint8_t tmp = ucRecursionCountByLock[ulLockNum] - 1;
++        if (tmp == 0)
          {
              ucOwnedByCore[ xCoreID ] [ ulLockNum ] = 0;
              spin_unlock_unsafe(pxSpinLock);
