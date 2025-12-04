@@ -93,6 +93,11 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout GA/TAS
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
       - uses: actions/download-artifact@v4
         with:
           name: firmware-rp2040
@@ -118,7 +123,7 @@ jobs:
           prerelease: true
           draft: false
           name: Pre-Release
-          body_path: /.github/develop.md
+          body_path: ./.github/develop.md
           files: |
             ./.github/develop.md
             ./LICENSE
