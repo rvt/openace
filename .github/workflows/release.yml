@@ -85,15 +85,6 @@ jobs:
           path: src/pico/${{ matrix.platform.outfile }}
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: documentation
-          path: |
-            ./.github/develop.md
-            ./.github/release.md
-            LICENSE
-          if-no-files-found: error
-
   PreRelease:
     needs: [ "Firmware" ]
     runs-on: ubuntu-latest
@@ -127,10 +118,10 @@ jobs:
           prerelease: true
           draft: false
           name: Pre-Release
-          body_path: documentation/.github/develop.md
+          body_path: /.github/develop.md
           files: |
-            documentation/.github/develop.md
-            documentation/LICENSE
+            ./.github/develop.md
+            ./LICENSE
             firmware/GATAS_rp2040.uf2
             firmware/GATAS_rp2350-arm-s.uf2
 
@@ -142,9 +133,9 @@ jobs:
           prerelease: false
           draft: false
           name: Release
-          body_path: documentation/.github/release.md
+          body_path: ./.github/release.md
           files: |
-            documentation/.github/release.md
-            documentation/LICENSE
+            ./.github/release.md
+            ./LICENSE
             firmware/GATAS_rp2040.uf2
             firmware/GATAS_rp2350-arm-s.uf2
