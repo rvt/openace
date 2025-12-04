@@ -95,14 +95,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: artifacts
-
-      - name: Prepare firmware directory
-        run: |
-          mkdir -p firmware
-          cp artifacts/firmware-rp2040/*.uf2 firmware/
-          cp artifacts/firmware-rp2350/*.uf2 firmware/
-          cp artifacts/documentation/* documentation/
+          name: firmware
+          path: firmware
 
       - name: Verify files exist
         run: |
