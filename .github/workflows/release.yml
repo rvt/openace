@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*'
-      - 'prerelease'
+      - 'v*'           # e.g. v1.2.3
+      - '*-prerelease' # e.g. v1.2.3-prerelease
 
 jobs:
 
@@ -54,35 +54,34 @@ jobs:
       - name: Configure CMake
         shell: bash
         run: |
-              export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk/
-              export FREERTOS_KERNEL_PATH=$GITHUB_WORKSPACE/FreeRTOS-Kernel
-              cd src/pico
-              cmake -B build_${{ matrix.platform.name }} \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DPICO_PLATFORM=${{ matrix.platform.cmake_platform }} \
-                -DPICO_BOARD=${{ matrix.platform.board }} \
-                -DGATAS_UART_OVER_USB=1
+          export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk/
+          export FREERTOS_KERNEL_PATH=$GITHUB_WORKSPACE/FreeRTOS-Kernel
+          cd src/pico
+          cmake -B build_${{ matrix.platform.name }} \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPICO_PLATFORM=${{ matrix.platform.cmake_platform }} \
+            -DPICO_BOARD=${{ matrix.platform.board }} \
+            -DGATAS_UART_OVER_USB=1
 
       - name: Build Firmware
         shell: bash
         run: |
-              export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk/
-              export FREERTOS_KERNEL_PATH=$GITHUB_WORKSPACE/FreeRTOS-Kernel
-              cd src/pico
-              ninja -C build_${{ matrix.platform.name }}
+          export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk/
+          export FREERTOS_KERNEL_PATH=$GITHUB_WORKSPACE/FreeRTOS-Kernel
+          cd src/pico
+          ninja -C build_${{ matrix.platform.name }}
 
       - name: Rename UF2
         shell: bash
         run: |
-          # find the uf2 file
           cd src/pico
           UF2=$(find build_${{ matrix.platform.name }} -name "*.uf2" | head -n 1)
           cp "$UF2" "${{ matrix.platform.outfile }}"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: firmware
+          name: firmware-${{ matrix.platform.name }}
           path: src/pico/${{ matrix.platform.outfile }}
           if-no-files-found: error
 
@@ -96,7 +95,7 @@ jobs:
           if-no-files-found: error
 
   PreRelease:
-    needs: ["Firmware"]
+    needs: [ "Firmware" ]
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -105,15 +104,16 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: firmware
+          path: artifacts
 
-      - name: Show artifacts
-        shell: bash
+      - name: Prepare firmware directory
         run: |
-          find .
+          mkdir -p firmware
+          cp artifacts/firmware-rp2040/*.uf2 firmware/
+          cp artifacts/firmware-rp2350/*.uf2 firmware/
+          cp artifacts/documentation/* documentation/
 
       - name: Verify files exist
-        shell: bash
         run: |
           ls -l firmware
           test -f firmware/GATAS_rp2040.uf2
@@ -129,10 +129,10 @@ jobs:
           name: Pre-Release
           body_path: documentation/.github/develop.md
           files: |
-            ./documentation/.github/develop.md
-            ./documentation/LICENSE
-            ./firmware/GATAS_rp2040.uf2
-            ./firmware/GATAS_rp2350-arm-s.uf2
+            documentation/.github/develop.md
+            documentation/LICENSE
+            firmware/GATAS_rp2040.uf2
+            firmware/GATAS_rp2350-arm-s.uf2
 
       - name: Push to Release
         if: startsWith(github.ref, 'refs/tags/v*') && !endsWith(github.ref, '-prerelease')
@@ -144,7 +144,7 @@ jobs:
           name: Release
           body_path: documentation/.github/release.md
           files: |
-            ./documentation/.github/release.md
-            ./documentation/LICENSE
-            ./firmware/GATAS_rp2040.uf2
-            ./firmware/GATAS_rp2350-arm-s.uf2
+            documentation/.github/release.md
+            documentation/LICENSE
+            firmware/GATAS_rp2040.uf2
+            firmware/GATAS_rp2350-arm-s.uf2
