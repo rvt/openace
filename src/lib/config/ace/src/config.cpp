@@ -359,7 +359,7 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
         }
     }
 
-    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
+    etl::vector<uint32_t, MAX_AIRCRAFT_CONFIG> allIcaoAddresses;
     auto aircrafts = doc["aircraft"];
     for (JsonPairConst kv : aircrafts.as<JsonObjectConst>())
     {

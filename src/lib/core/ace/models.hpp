@@ -318,7 +318,7 @@ namespace GATAS
         {
             Conspicuity conspicuity;
             etl::vector<DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
-            etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses; // List of all configured hex codes of all aircraft
+            etl::vector<uint32_t, MAX_AIRCRAFT_CONFIG> allIcaoAddresses; // List of all configured hex codes of all aircraft
         };
 
         /**

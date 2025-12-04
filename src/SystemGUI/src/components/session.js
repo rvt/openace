@@ -3,7 +3,7 @@ import store from "./store";
 import "./aircraftsession";
 import "./aircraftconfig";
 
-const MAX_AIRCRAFT = 6;
+const MAX_AIRCRAFT = 10;
 class Session extends El {
   created() {
     this.state = this.$observable({

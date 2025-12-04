@@ -59,7 +59,7 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     udp_pcb *pcbSend;
     CobsStreamHandler cobsStreamHandler;
 
-    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
+    etl::vector<uint32_t, MAX_AIRCRAFT_CONFIG> allIcaoAddresses;
     GATAS::Config::IpPort gatasServer = {IPADDR_NONE, 0};
     GATAS::OwnshipPositionInfo ownshipPosition;
 private:
