@@ -86,6 +86,15 @@ jobs:
           path: src/pico/${{ matrix.platform.outfile }}
           if-no-files-found: error
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: |
+            ./.github/develop.md
+            ./.github/release.md
+            LICENSE
+          if-no-files-found: error
+
   PreRelease:
     needs: ["Firmware"]
     runs-on: ubuntu-latest
