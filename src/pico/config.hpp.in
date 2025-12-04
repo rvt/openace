@@ -129,9 +129,6 @@
 // Maximum number of bluetooth connections
 #define GATAS_MAX_BLUETOOTH_CONNECTIONS ( 3 )
 
-// See also session.js line 58
-#define MAX_AIRCRAFT_CONFIG ( 10 )
-
 // Signature for Flash configuration. When this signature changes, a compete new and fresh configuration will be loaded
 // Make sure this value is the same as in gatas_default_config.json
 #define GATAS_FLASH_SIGNATURE ( 250801 )

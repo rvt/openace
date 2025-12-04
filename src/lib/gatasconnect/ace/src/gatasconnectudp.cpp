@@ -143,7 +143,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 
     constexpr size_t COBS_EXTRA_BYTES = 3;
     constexpr size_t OWN_MAX = BinaryMessages::serializeOwnshipPositionSizeV1().items();
-    constexpr size_t CFG_MAX = BinaryMessages::serializeAircraftConfigurationSizeV1().items(MAX_AIRCRAFT_CONFIG);
+    constexpr size_t CFG_MAX = BinaryMessages::serializeAircraftConfigurationSizeV1().items(GATAS::MAX_AIRCRAFT_CONFIG);
     constexpr size_t MAX_MSG = etl::max(OWN_MAX, CFG_MAX);
 
     const size_t ownshipSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1);
