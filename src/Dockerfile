@@ -1,4 +1,8 @@
-FROM ubuntu:25.10
+# Using ubuntu:22.04 because 25.10 includes a older compiler that we need to build PICO correctly.
+# We need to wait until it's fixed
+# Note to selve, the issue is that some headers ar enot included standaerd anymore in GCC15
+# FROM ubuntu:25.10
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PICO_SDK_PATH=/opt/pico-sdk
@@ -32,11 +36,12 @@ RUN git config --global http.version HTTP/1.1 && \
     git config fetch.recurseSubmodules on-demand && \
     git submodule update --init --depth 1
 
-COPY ./freertos.patch /opt/
 COPY ./Community-Supported-Ports.patch /opt/
-RUN cd /opt/FreeRTOS-Kernel && git apply /opt/freertos.patch && cd /opt/FreeRTOS-Kernel/portable/ThirdParty/Community-Supported-Ports && git apply /opt/Community-Supported-Ports.patch
+RUN cd /opt/FreeRTOS-Kernel/portable/ThirdParty/Community-Supported-Ports && git apply /opt/Community-Supported-Ports.patch
+COPY ./freertos.patch /opt/
+RUN cd /opt/FreeRTOS-Kernel && git apply /opt/freertos.patch 
 
-RUN mkdir -p /opt/src/
+#RUN mkdir -p /opt/src/
 
 # Copy the entrypoints 
 COPY ./build-entrypoint.sh /build-entrypoint.sh

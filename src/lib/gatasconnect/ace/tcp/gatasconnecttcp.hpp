@@ -53,7 +53,7 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     size_t androidHotspotCurrentMark;
     uint32_t spinLock;
 
-    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIGURATIONS> allIcaoAddresses;
+    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddresses;
     GATAS::OwnshipPositionInfo ownshipPosition;
     CobsStreamHandler cobsStreamHandler;
     TcpClient tcpClient;
