@@ -504,7 +504,7 @@ bool GDL90::time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac )
     return true;
 }
 
-bool GDL90::uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::ivector<uint8_t>& payload )
+bool GDL90::uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
 {
     unpacked.clear();
     if ( time_of_reception_frac >= (1 << 24) ) return error();
@@ -536,7 +536,7 @@ bool GDL90::uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t&
     return true;
 }
 
-bool GDL90::basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::ivector<uint8_t>& payload )
+bool GDL90::basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
 {
     unpacked.clear();
     if ( time_of_reception_frac >= (1 << 24) ) return error();
@@ -568,7 +568,7 @@ bool GDL90::basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint
     return true;
 }
 
-bool GDL90::long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::ivector<uint8_t>& payload )
+bool GDL90::long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
 {
     unpacked.clear();
     if ( time_of_reception_frac >= (1 << 24) ) return error();

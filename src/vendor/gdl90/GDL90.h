@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cmath>
 #include <string>
+#include <etl/array_view.h>
 #include <etl/vector.h>
 #include <etl/string.h>
 
@@ -124,13 +125,13 @@ public:
     bool     time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac );  // frac is fractions of a second since the heartbeat timestamp
     bool     time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac );  // frac set to NaN  if frac_encoded==TIME_OF_RECEPTION_FRAC_ENCODED_INVALID
 
-    bool     uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::ivector<uint8_t>& payload );
+    bool     uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload );
     bool     uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload );
 
-    bool     basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::ivector<uint8_t>& payload );
+    bool     basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload );
     bool     basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload );
 
-    bool     long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::ivector<uint8_t>& payload );
+    bool     long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload );
     bool     long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload );
 
 
