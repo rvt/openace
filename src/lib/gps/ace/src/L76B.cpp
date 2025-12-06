@@ -20,8 +20,11 @@ static auto NOSENTENCES = CoreUtils::createNmeaChecksum("$PMTK314,0,0,0,0,0,0,0,
 static auto PPS3DFIX = CoreUtils::createNmeaChecksum("$PMTK285,4,50"); // Use 1 to always output PPS, even without a fix
 static auto NOPOWERSAVE = CoreUtils::createNmeaChecksum("$PMTK225,0"); // Normal mode
 static auto VERSION = CoreUtils::createNmeaChecksum("$PMTK605");
+static auto VERSIONNO= CoreUtils::createNmeaChecksum("$PQVERNO,R"); 
 static auto ENABLEAIC = CoreUtils::createNmeaChecksum("$PMTK286,1");
 static auto STATICNAVTHD= CoreUtils::createNmeaChecksum("$PMTK386,1"); // 3.6Km/h
+
+
 
 // 255 – Sync 1PPS and NMEA Messages must be turned off because we run the GPS at a higher frequency
 // Note to other developers: It looks like that the L76B in SOftware PPS mode is accurate only once 
@@ -42,7 +45,7 @@ void L76B::popGPSMessages(etl::string_view waitFor)
     {
         while (popQueue(sentence))
         {
-            if (sentence.starts_with("$PMTK"))
+            if (sentence.starts_with("$P"))
             {
                 GATAS_LOG("%s ", sentence.c_str());
                 if (waitFor.length() > 0 && sentence.starts_with(waitFor))
@@ -145,6 +148,9 @@ bool L76B::configureGnss()
 
     getSerial().sendBlocking(NOPOWERSAVE);
     popGPSMessages("$PMTK001,225");
+
+    getSerial().sendBlocking(VERSIONNO);
+    popGPSMessages("$PQVERNO");
 
     setStatus("Configured");
     return true;

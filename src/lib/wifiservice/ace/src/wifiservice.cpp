@@ -62,8 +62,16 @@ void WifiService::wifiTask(void *arg)
 
             case ConnectionState::START:
                 wifiService->wifiMode = GATAS::WifiMode::NC;
-                wifiService->connectionState = ConnectionState::ENABLESTA;
-                wifiService->totalScanAttempt = NUMBER_OF_CONNECTION_ATTEMPTS;
+
+                if (wifiService->wifiData.clients.size() == 0)
+                {
+                    wifiService->connectionState = ConnectionState::APMODESTART;
+                }
+                else
+                {
+                    wifiService->connectionState = ConnectionState::ENABLESTA;
+                    wifiService->totalScanAttempt = NUMBER_OF_CONNECTION_ATTEMPTS;
+                }
                 break;
 
             case ConnectionState::ENABLESTA:
