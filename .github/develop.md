@@ -21,7 +21,7 @@ This is the **DEVELOPMENT** version of GA/TAS, use at your own risk
 ## How to Copy the UF2 File to the Raspberry Pi Pico
 
 ### 1. Download the `GATAS_rp2040.uf2` or `GATAS_rp2350-arm-s.uf2` File
-- Obtain the correct firmware suitable for your PICO from [https://github.com/rvt/OpenAce/release](https://github.com/rvt/OpenAce/release)
+- Obtain the correct firmware suitable for your PICO from [https://github.com/rvt/openace/releases](https://github.com/rvt/openace/releases)
 - Make sure you know where the file is saved on your computer.
 
 ### 2. Connect Raspberry Pi Pico to Your Computer

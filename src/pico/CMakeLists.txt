@@ -30,10 +30,31 @@ add_definitions(-include ${CONFIG_HEADER})
 
 # Add buildtime timestamp Move this to a dedicated 'status' module to reduce
 # build times
-set(BUILD_TIME_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/build_time.hpp")
+# Get the exact tag if the commit is tagged
+execute_process(
+    COMMAND git describe --exact-match --tags
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    RESULT_VARIABLE TAG_RESULT
+    OUTPUT_VARIABLE GIT_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+if(NOT TAG_RESULT EQUAL 0)
+    set(GIT_TAG "UNKNOWN_TAG")
+endif()
+string(TIMESTAMP BUILD_TIMESTAMP_EPOCH "%s" UTC)
+
+set(BUILD_TIME_HEADER "${CMAKE_CURRENT_LIST_DIR}/generated/build_time.hpp")
 string(TIMESTAMP BUILD_TIMESTAMP "%Y-%m-%d %H:%M:%SZ" UTC)
 file(WRITE "${BUILD_TIME_HEADER}"
-     "#pragma once\n" "#define BUILD_TIMESTAMP \"${BUILD_TIMESTAMP}\"\n")
+    "#pragma once\n"
+    "#define BUILD_TIMESTAMP \"${BUILD_TIMESTAMP}\"\n"
+    "#define BUILD_TIMESTAMP_EPOCH ${BUILD_TIMESTAMP_EPOCH}\n"
+    "#define BUILD_GIT_TAG \"${GIT_TAG}\"\n"
+)
+#add_definitions(-include ${BUILD_TIME_HEADER})
+
 # Create a custom command and target to ensure the header is generated
 add_custom_command(
   OUTPUT "${BUILD_TIME_HEADER}"

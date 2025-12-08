@@ -1,5 +1,5 @@
 #include "main.h"
-#include "build_time.hpp"
+#include "generated/build_time.hpp"
 #include "generated/default_config.hpp"
 
 /* System. */
@@ -57,7 +57,9 @@
 #include "ace/fanetace.hpp"
 #include "ace/idle.hpp"
 
-const char *GaTas_buildTime = BUILD_TIMESTAMP;
+const char *GATAS_BUILD_TIMESTAMP = BUILD_TIMESTAMP;
+const char *GATAS_BUILD_GIT_TAG = BUILD_GIT_TAG;
+const uint32_t GATAS_BUILD_TIMESTAMP_EPOCH = BUILD_TIMESTAMP_EPOCH;
 
 void etlcpp_receive_error(const etl::exception &e)
 {

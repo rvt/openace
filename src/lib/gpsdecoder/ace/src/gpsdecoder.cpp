@@ -3,7 +3,8 @@
 #include "../gpsdecoder.hpp"
 #include "ace/moreutils.hpp"
 
-extern const char *GaTas_buildTime;
+extern const char *GATAS_BUILD_TIMESTAMP;
+extern const char *GATAS_BUILD_GIT_TAG;
 
 // Address field
 // The address field starts with “$” followed by the talker ID and a sentence identifier. The used talker IDs are:
@@ -35,7 +36,8 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     constexpr etl::format_spec width2fill0 = etl::format_spec().width(2).fill('0');
     const char *dopValue = GATAS::DOPInterpretationToString(GATAS::floatToDOPInterpretation(pDop));
     stream << "{";
-    stream << "\"GaTas_buildTime\": \"" << GaTas_buildTime << "\"";
+    stream << "\"GATAS_BUILD_TIMESTAMP\": \"" << GATAS_BUILD_TIMESTAMP << "\"";
+    stream << ",\"GATAS_BUILD_GIT_TAG\": \"" << GATAS_BUILD_GIT_TAG << "\"";
     stream << ",\"receivedGGA\":" << statistics.receivedGGA;
     stream << ",\"receivedRMC\":" << statistics.receivedRMC;
     stream << ",\"receivedGSA\":" << statistics.receivedGSA;

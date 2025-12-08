@@ -60,7 +60,8 @@ class GpsStatus extends El {
             ${this._row(html, "pDOP", this.state.data?.pDop + " / " + this.state.data?.dopValue)} 
             ${this._row(html, "Fix Quality", this.state.data?.fixQuality)}
             ${this._row(html, "GGA Messages", this.state.data?.receivedGGA)}
-            ${this._row(html, "GaTas build", this.state.data?.GaTas_buildTime)}
+            ${this._row(html, "GA/TAS Build Time", this.state.data?.GATAS_BUILD_TIMESTAMP)}
+            ${this._row(html, "GA/TAS Version", this.state.data?.GATAS_BUILD_GIT_TAG)}
           </tbody>
         </table>
       </div>
