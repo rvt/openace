@@ -137,7 +137,7 @@ class WifiServiceConfig extends ModuleConfig {
       this.$refs.appassword.value = data.ap.password;
     }
 
-    this.$refs.apDisabled.checked = data.ap.disabled;
+    // this.$refs.apDisabled.checked = data.ap.disabled;
 
     // Get Clients
     if (data != null && data.clients != null) {
@@ -160,7 +160,7 @@ class WifiServiceConfig extends ModuleConfig {
       ap: {
         ssid: this.$refs.apssid.value,
         password: this.$refs.appassword.value,
-        disabled: this.$refs.apDisabled.checked,
+        // disabled: this.$refs.apDisabled.checked,
       },
       clients: clients,
     };
@@ -171,25 +171,22 @@ class WifiServiceConfig extends ModuleConfig {
       <h4>Configuration of the Wifi Service</h4>
       <p>
         This module connects to a Wifi Network in the following order:<br>
-        <ul>
-          <li> Try one of the listed networks
-          <li> If none of the networks could be connected to, set up an Access Point
-          </ul>
+        <ol>
+          <li> Try to connect to the listed networks in the Client Configuration
+          <li> When none of the networks are found, set up an Access Point          
+        </ol>
       </p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
          <hr>
-         <h5>WiFi configuration</h5>
-
+         <h5>Client Configuration</h5>
+        <!--
          <div class="grid">
           <label for="apDisabled">
             <input type="checkbox" id="" id="apDisabled" ref="apDisabled" placeholder="1" />
             When enabled, GA/TAS will only attemt to an Access point and will not create anAccess Point by itself. This setting is recommended when using GA/TAS Connect.
           </label>
-        </div>
+        </div> -->
         <br />
-
-         <p>GA/TAS will try to connect to each of the configured access points, if no connection is possible the an Access Point will be created unless Access Point is disabled.<br />
-         recommended setup is to use your Mobile's Hotspot as the first item and your home network as the second configuration so you always have access to GA/TAS.</p>
 
          <div class="grid md-columns-2 lg-columns-2">
             ${this.clientsIds.map(
@@ -209,8 +206,8 @@ class WifiServiceConfig extends ModuleConfig {
               `,
     )}
           </div>
-          <hr>
-        <h5>Access Point configuration</h5>
+        <br /><br />
+          <h5>Access Point configuration</h5>
         <p>Access point configuration. This AP will be created if GA/TAS could not connect to any other Access Points.
         </p>
         <div class="row g-0">

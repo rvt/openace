@@ -317,7 +317,8 @@ const GATAS::Config::WifiServiceData Config::wifiService() const
         wifiService.ap.password = password;
     }
 
-    wifiService.apDisabled = (bool)wifi["ap"]["disabled"];
+    // Temporary disabled, this might confuse people
+    wifiService.apDisabled = false; // (bool)wifi["ap"]["disabled"];
 
     // Set clients usernames and passwords
     for (auto client : wifi["clients"].as<JsonArrayConst>())
