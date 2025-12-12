@@ -8,14 +8,11 @@ private.data/
 # KiAD
 *-backups/
 **/tmp/
+
 # Builds
-**/default_config.hpp
-**/build_time.hpp
-**/build_test*/
-**/docker_build_test*/
-**/generated/
-**/release_build*/
-**/build/
+*_build_*/
+generated/
+build/
 
 # VSCode + Python
 **/.vscode/settings.json
