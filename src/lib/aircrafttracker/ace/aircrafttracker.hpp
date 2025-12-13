@@ -90,7 +90,7 @@ public:
     AircraftTracker(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                            taskHandle(nullptr)
     {
-        on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::CONFIG});
+        on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::NAME});
     }
 
     virtual ~AircraftTracker() = default;

@@ -112,7 +112,7 @@ GDL90::EMITTER Gdl90Service::aircraftTypeToEmitter(GATAS::AircraftCategory categ
 
 void Gdl90Service::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == Configuration::CONFIG)
+    if (msg.moduleName == Configuration::NAME)
     {
         const Configuration &config = msg.config;
         auto current = config.gaTasConfig();

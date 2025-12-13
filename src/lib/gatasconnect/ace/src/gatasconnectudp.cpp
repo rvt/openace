@@ -76,7 +76,7 @@ void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
 
-    if (msg.moduleName == Configuration::CONFIG)
+    if (msg.moduleName == Configuration::NAME)
     {
         getConfig(msg.config);
     }
@@ -88,11 +88,12 @@ void GatasConnect::getConfig(const Configuration &config)
     gatasServer.port = GATAS_CONNECT_PORT;
 
     auto gatasConfig = config.gaTasConfig();
-    if (SPINLOCK_GUARD(spinLock))
+    if (SPINLOCK_GUARD(spinLock))   
     {
         icaoAddress = gatasConfig.conspicuity.icaoAddress;
         allIcaoAddresses = gatasConfig.allIcaoAddresses;
         gatasId = config.internalStore()->gatasId;
+        localConfigurationUpdateCnt = LOCALCONFIGURATIONCHANGE_HOLD_BACK;
     }
 }
 
@@ -107,26 +108,34 @@ void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
     (void)pcb;
     (void)addr;
     (void)port;
+    GatasConnect *taskCtx = (GatasConnect *)(arg);
+
     if (pbuf == nullptr)
     {
         return;
     }
 
-    GatasConnect *taskCtx = (GatasConnect *)(arg);
-    taskCtx->lastSendCounter = 0;
-    auto ownship = SpinlockGuard::withLock(taskCtx->spinLock, taskCtx->ownshipPosition);
-    // Reset the pkgCount to get a honest pkgSend vs pkg Received
-    if (!taskCtx->statistics.hasConnection)
+    if (taskCtx->localConfigurationUpdateCnt)
     {
-        taskCtx->statistics.pkgReceived = 0;
-        taskCtx->statistics.hasConnection = true;
+        taskCtx->localConfigurationUpdateCnt -= 1;
     }
-    taskCtx->statistics.bytesReceived += pbuf->tot_len;
-    taskCtx->statistics.pkgReceived += 1;
-
-    for (struct pbuf *q = pbuf; q != NULL; q = q->next)
+    else
     {
-        taskCtx->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>((uint8_t *)q->payload, q->len));
+        taskCtx->lastSendCounter = 0;
+        auto ownship = SpinlockGuard::withLock(taskCtx->spinLock, taskCtx->ownshipPosition);
+        // Reset the pkgCount to get a honest pkgSend vs pkg Received
+        if (!taskCtx->statistics.hasConnection)
+        {
+            taskCtx->statistics.pkgReceived = 0;
+            taskCtx->statistics.hasConnection = true;
+        }
+        taskCtx->statistics.bytesReceived += pbuf->tot_len;
+        taskCtx->statistics.pkgReceived += 1;
+
+        for (struct pbuf *q = pbuf; q != NULL; q = q->next)
+        {
+            taskCtx->cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>((uint8_t *)q->payload, q->len));
+        }
     }
 
     pbuf_free(pbuf);
@@ -182,7 +191,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
         position += size;
     }
 
-    // Possible add android hotspot fix
+    // Add android hotspot fix 
     if (taskCtx->androidHotspotFix)
     {
         taskCtx->lastSendCounter += 1;

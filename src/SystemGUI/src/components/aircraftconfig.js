@@ -124,7 +124,7 @@ class AircraftConfig extends El {
 
   _fetchData() {
     if (this.selected) {
-      return store.fetch(`/api/_Configuration/aircraft/${this.selected}.json`).catch((e) => {
+      return store.fetch(`/api/Config/aircraft/${this.selected}.json`).catch((e) => {
         Object.assign(this.state.aircraft, {});
       });
     } else {

@@ -3,6 +3,8 @@ import "./monitormodule";
 import store from "./store";
 import { icon } from "./utils";
 
+const MODULE_NOT_AVAILABLE = 13;
+
 class GaTasModules extends El {
   created() {
     this.state = this.$observable({
@@ -10,9 +12,14 @@ class GaTasModules extends El {
       whatToShow: "modules",
       selectedModule: 0,
       enabled: [],
-      restartDlg: false,
-      changeHwDlg : false,
     });
+
+    // Modules we want to hide because they where never tested, or don't provide any usefull information now
+    this.hide = [
+      "Idle", 
+      "AceSpi", 
+      "SerialADSB"
+    ];
 
     // All modules that can be monitored (Sometime we should automate this by reading this from the Microcontroller)
     this.monitorable = [
@@ -112,118 +119,11 @@ class GaTasModules extends El {
     clearTimeout(this.timer);
   }
 
-  _restart() {
-    store.restart();
-    this.state.restartDlg = false;
-  }
-
-  _usbBoot() {
-    store.usbBoot();
-    this.state.usbBootDlg = false;
-  }
-
-  _restartButton(html) {
-    return html`<button class="btn xs" onclick=${() => (this.state.restartDlg = true)}>Restart</button>
-          ${this.state.restartDlg ? this._restartAreYouSureDlg(html) : ""} ${this.state.usbBootDlg ? this._usbBootDlgAreYouSureDlg(html) : ""}
-    `;
-  }
-
-  _usbBootButton(html) {
-    return html`<button class="btn xs" onclick=${() => (this.state.usbBootDlg = true)}>Upload Firmware</button>`;
-  }
-
-  _restartAreYouSureDlg(html) {
-    return html` <div class="modal show">
-      <div class="modal-content mw-400 rounded">
-        <article class="accent-light shadow">
-          <header>
-            <h4>Restart GaTas?</h4>
-          </header>
-          <div class="overflow-auto accent-primary" style="color: black">
-            <!-- Quick hack to make text black on Safari Desktop -->
-            <p>
-              The connection will be temporarily disconnected. Any unsaved data will be available after restart.<br />
-              Are you sure?
-            </p>
-          </div>
-          <footer class="px-2 jc-end">
-            <button type="button" class="btn btn-error sm ml-1 md-ml-3" onclick=${this._restart}>Yes</button>
-            <button type="button" class="btn btn-primary sm ml-1 md-ml-3" onclick=${() => (this.state.restartDlg = false)}>No</button>
-          </footer>
-        </article>
-      </div>
-    </div>`;
-  }
-
-  _usbBootDlgAreYouSureDlg(html) {
-    return html` <div class="modal blur show">
-      <div class="modal-content mw-400 rounded">
-        <article class="shadow accent-light">
-          <header>
-            <h4>Start Firmware Mode?</h4>
-          </header>
-          <div class="overflow-auto accent-primary" style="color: black">
-            <!-- Quick hack to make text black on Safari Desktop -->
-            <p>
-              To update GaTas, make sure it is connected to your computer with a USB cable through the <strong>Microcontroller port</strong> (the charge port
-              won’t work for this step).
-            </p>
-            <p>
-              When GaTas restarts, it will show up as a new drive on your computer. Once you see the drive, simply drag and drop the
-              <strong>GaTas.uf2</strong> file onto it. After a moment, the device will restart automatically, and GaTas will be ready to use again.
-            </p>
-          </div>
-          <footer class="px-2 jc-end">
-            <button type="button" class="btn btn-error sm ml-1 md-ml-3" onclick=${this._usbBoot}>Yes</button>
-            <button type="button" class="btn btn-primary sm ml-1 md-ml-3" onclick=${() => (this.state.usbBootDlg = false)}>No</button>
-          </footer>
-        </article>
-      </div>
-    </div>`;
-  }
-
-  _changeHwButton(html) {
-    return html`<button class="btn xs" onclick=${() => (this.state.changeHwDlg = true)}>Change Board : ${store.state.hardwareName}</button>
-          ${this.state.changeHwDlg === true ? this._changeHardwareDialog(html) : ""}
-    `;
-  }
-
-  _changeHardwareDialog(html) {
-    return html` <div class="modal show">
-      <div class="modal-content mw-400 rounded">
-        <article class="accent-light shadow">
-          <header>
-          <h4>Change hardware model?</h4>
-          </header>
-          <div class="overflow-auto accent-primary" style="color: black">
-            <!-- Quick hack to make text black on Safari Desktop -->
-            <p>
-              This will change the type of board that GaTas is running on. 
-              After changing, the connection will be temporarily disconnected.
-              Any unsaved data will be available after restart.<br />
-            </p>
-
-            <select onchange=${ e => this._selectedHwIdx = e.currentTarget.selectedIndex}>
-              ${store.availableHardware.map(
-                (item) => html`<option ${item.hardware === store.state?.hardware?.type ? "selected" : ""} value="${item.hardware}">${item.name}</option>`,
-              )}
-            </select>
-
-          </div>
-          <footer class="px-2 jc-end">
-            <button type="button" class="btn btn-error sm ml-1 md-ml-3" onclick=${this._hardwareUpdatedConfirm}>Change</button>
-            <button type="button" class="btn btn-primary sm ml-1 md-ml-3" onclick=${() => (this.state.changeHwDlg = false)}>Cancel</button>
-          </footer>
-        </article>
-      </div>
-    </div>`;
-  }
-
   _postConstructToString(value) {
     const errorMap = {
       0: "Never Loaded",
       1: "Ok",
-      2: "GATAS: PostConstruct failed",
+      2: "PostConstruct failed",
       3: "Memory error",
       4: "A dependency was not found",
       5: "xQueue error",
@@ -235,6 +135,7 @@ class GaTasModules extends El {
       11: "Timer error",
       12: "Mutex error",
       13: "Not Available",
+      14: "Spinlock not available",
     };
     return errorMap[value] || "Unknown error";
   }
@@ -305,47 +206,41 @@ class GaTasModules extends El {
     `;
   }
 
-  async _hardwareUpdatedConfirm(e)  
-  {
-    if (this._selectedHwIdx > 0) {
-      this.state.changeHwDlg = true;
-      await store.updateHardware(this._selectedHwIdx);
-      this._selectedHwIdx = 0;
-      store.restart();
-    } 
-    this.state.changeHwDlg = false;
-  }
-
   _row(html, item) {
-    let monitorBtn =
-      item.poststatus == 1 && this.monitorable.includes(item.name)
-        ? html`<button class="btn xs" onclick=${() => this._monitorModule(item.name)}>👀</button>`
+    if (item.poststatus == MODULE_NOT_AVAILABLE || this.hide.includes(item.name) ) {
+      return html``;
+    } else {
+      let monitorBtn =
+        item.poststatus == 1 && this.monitorable.includes(item.name)
+          ? html`<button class="btn xs" onclick=${() => this._monitorModule(item.name)}>👀</button>`
+          : "";
+      let configureBtn = this.configurable.includes(item.name)
+        ? html`<button class="btn xs" ${this.configurable.includes(item.name) ? "" : "disabled"} onclick=${() => this._configureModule(item.name)}>🛠️</button>`
         : "";
-    let configureBtn = this.configurable.includes(item.name)
-      ? html`<button class="btn xs" ${this.configurable.includes(item.name) ? "" : "disabled"} onclick=${() => this._configureModule(item.name)}>🛠️</button>`
-      : "";
 
-    let toggleBtn = this.state.enabled.includes(item.name)
-      ? html`<button class="btn xs btn-success" onclick=${() => this._toggleModule(item.name)}>Ⓘ</button>`
-      : html`<button class="btn xs btn-error" onclick=${() => this._toggleModule(item.name)}>ⓧ</button>`;
+      let toggleBtn = this.state.enabled.includes(item.name)
+        ? html`<button class="btn xs btn-success" onclick=${() => this._toggleModule(item.name)}>Ⓘ</button>`
+        : html`<button class="btn xs btn-error" onclick=${() => this._toggleModule(item.name)}>ⓧ</button>`;
 
-    let enabledBtn = this.enablers.includes(item.name) ? toggleBtn : "";
+      let enabledBtn = this.enablers.includes(item.name) ? toggleBtn : "";
 
-    let info = "";
-    if (this.info[item.name]) {
-      info = html` <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
-        ${html.raw(icon.help)}
-        <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-          ${this.info[item.name](html)}
-        </p>
-      </label>`;
+      let info = "";
+      if (this.info[item.name]) {
+        info = html` <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
+          ${html.raw(icon.help)}
+          <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
+            ${this.info[item.name](html)}
+          </p>
+        </label>`;
+      }
+
+      return html` <tr>
+        <th style="width:25%" scope="row">${item.name} ${info}</th>
+        <td>${this._postConstructToString(item.poststatus)}</td>
+        <td style="width:150px">${enabledBtn} ${configureBtn} ${monitorBtn}</td>
+      </tr>`;
     }
 
-    return html` <tr>
-      <th style="width:25%" scope="row">${item.name} ${info}</th>
-      <td>${this._postConstructToString(item.poststatus)}</td>
-      <td style="width:150px">${enabledBtn} ${configureBtn} ${monitorBtn}</td>
-    </tr>`;
   }
 
   _filteredItems() {
@@ -366,22 +261,11 @@ class GaTasModules extends El {
     `;
   }
 
-  _showHeader(html) {
-    let items = this._filteredItems();
-    return html`
-      <div style="margin-top: 5px; gap: 1em;align-items: center;justify-content: center;display:flex">
-          <div>${this._restartButton(html)}</div>
-          <div>${this._usbBootButton(html)}</div>
-          <div>${this._changeHwButton(html)}</div>
-      </div>
-    `;
-  }
-
   render(html) {
     let pageContent;
     switch (this.state.whatToShow) {
       case "modules":
-        pageContent = this._showHeader(html) + this._showModuleOverview(html);
+        pageContent = this._showModuleOverview(html);
         break;
       case "monitor":
         pageContent = this._showModuleStatus(html);

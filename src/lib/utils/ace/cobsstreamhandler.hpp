@@ -69,7 +69,7 @@ public:
                         bus.receive(
                             GATAS::ConfigUpdatedMsg{
                                 config,
-                                Configuration::CONFIG,
+                                Configuration::NAME,
                             });
                     }
                 }

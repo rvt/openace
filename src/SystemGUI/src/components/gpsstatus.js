@@ -59,6 +59,7 @@ class GpsStatus extends El {
             ${this._row(html, "Track", this.state.data?.track?.toFixed(0), "deg")}
             ${this._row(html, "pDOP", this.state.data?.pDop + " / " + this.state.data?.dopValue)} 
             ${this._row(html, "Fix Quality", this.state.data?.fixQuality)}
+            ${this._row(html, "Fix Type", this.state.data?.gpsFixType)}
             ${this._row(html, "GGA Messages", this.state.data?.receivedGGA)}
             ${this._row(html, "GA/TAS Build Time", this.state.data?.GATAS_BUILD_TIMESTAMP)}
             ${this._row(html, "GA/TAS Version", this.state.data?.GATAS_BUILD_GIT_TAG)}

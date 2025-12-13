@@ -62,17 +62,17 @@ export class GaTasStore {
     this.state.gatasId = (config.gatasId).toString(16).toUpperCase();
 
     // Fetch current aircraft and hw config
-    const configData = await this.fetch("/api/_Configuration/config.json");
+    const configData = await this.fetch("/api/Config/config.json");
     this.state.aircraftId = configData.aircraftId;
     this.state.configModified = configData._dirty;
 
     // Fetch hardware.json
-    const hardwareData = await this.fetch("/api/_Configuration/hardware.json");
+    const hardwareData = await this.fetch("/api/Config/hardware.json");
     Object.assign(this.state.hardware, hardwareData);
     this.state.hardwareName = this.availableHardware.find(d => d.hardware === hardwareData.type)?.name;
 
     // Fetch aircraft.json
-    const aircraftData = await this.fetch("/api/_Configuration/aircraft.json");
+    const aircraftData = await this.fetch("/api/Config/aircraft.json");
     Object.assign(this.state.aircraftsObj, aircraftData);
     this._updateAircraftArray();
 
@@ -93,7 +93,7 @@ export class GaTasStore {
    * @returns
    */
   deleteAircraft(aircraftId) {
-    return this.fetch(`/api/_Configuration/aircraft/${aircraftId}.json`, {
+    return this.fetch(`/api/Config/aircraft/${aircraftId}.json`, {
       method: "POST",
       headers: {
         "X-Method": "DELETE",
@@ -113,7 +113,7 @@ export class GaTasStore {
    * @returns
    */
   updateAircraft(aircraft) {
-    return this.fetch(`/api/_Configuration/aircraft/${aircraft.callSign}.json`, {
+    return this.fetch(`/api/Config/aircraft/${aircraft.callSign}.json`, {
       method: "POST",
       headers: {
         "X-Method": "POST",
@@ -135,7 +135,7 @@ export class GaTasStore {
   updateHardware(typeIdx) {
     const type = this.availableHardware[typeIdx].hardware;
     this.state.hardwareName = this.availableHardware[typeIdx].name;
-    return this.fetch(`/api/_Configuration/hardware.json`, {
+    return this.fetch(`/api/Config/hardware.json`, {
       method: "POST",
       headers: {
         "X-Method": "POST",
@@ -154,7 +154,7 @@ export class GaTasStore {
    * @returns
    */
   setDefaultAirCraftId(aircraftId) {
-    const url = "/api/_Configuration/config.json";
+    const url = "/api/Config/config.json";
     return store
       .fetch(url)
       .then((data) => {
@@ -171,7 +171,7 @@ export class GaTasStore {
   }
 
   getModuleData(moduleName) {
-    return store.fetch(`/api/_Configuration/${moduleName}.json`).then((data) => {
+    return store.fetch(`/api/Config/${moduleName}.json`).then((data) => {
       // null means configuration did not exist.
       if (data == null) {
         return {};
@@ -182,25 +182,33 @@ export class GaTasStore {
   }
 
   updateModuleData(moduleName, data) {
-    return store.fetch(`/api/_Configuration/${moduleName}.json`, {
+    return store.fetch(`/api/Config/${moduleName}.json`, {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
   storeInBRModuleData() {
-    return store.fetch(`/api/_Configuration/SaveBr.json`, {
+    return store.fetch(`/api/Config/SaveBr.json`, {
       method: "POST",
       body: {},
     });
   }
   restart() {
-    return store.fetch(`/api/_Configuration/Restart.json`, {
+    return store.fetch(`/api/Config/Restart.json`, {
       method: "POST",
       body: {},
     });
   }
+
   usbBoot() {
-    return store.fetch(`/api/_Configuration/UsbBoot.json`, {
+    return store.fetch(`/api/Config/UsbBoot.json`, {
+      method: "POST",
+      body: {},
+    });
+  }
+
+  startAp() {
+    return store.fetch(`/api/WifiService/startAp.json`, {
       method: "POST",
       body: {},
     });

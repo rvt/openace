@@ -35,6 +35,9 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     static constexpr size_t ANDROIDHOTSPOT_FIX_LOWMARK = 160;
     // After how many 'sends' the system sends larger packages again
     static constexpr uint8_t ANDROIDHOTSPOT_COUNT_UNTILL_HIGH = 5;
+    // Seconds to wait accepting packages after a local confiugration change
+    static constexpr uint8_t LOCALCONFIGURATIONCHANGE_HOLD_BACK = 5;
+
     struct
     {
         uint32_t bytesReceived = 0;
@@ -56,6 +59,9 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
 
     uint32_t icaoAddress;
     uint32_t gatasIp;
+    // Stop accepting data from gatasConnect for LOCALCONFIGURATIONCHANGE_HOLD_BACK to ensure the server accepts any new configuration 
+    // So we can disgard packages in transit. Can possibly be redesigned when a package counter can be send?
+    uint8_t localConfigurationUpdateCnt; 
     udp_pcb *pcbSend;
     CobsStreamHandler cobsStreamHandler;
 
@@ -98,6 +104,7 @@ public:
     requestTimer(nullptr),
     icaoAddress(0),
     gatasIp(0),
+    localConfigurationUpdateCnt(0),
     pcbSend(nullptr),
     cobsStreamHandler(CobsStreamHandler(bus, config)),
     ownshipPosition{}

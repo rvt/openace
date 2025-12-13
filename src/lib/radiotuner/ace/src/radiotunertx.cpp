@@ -141,7 +141,7 @@ void RadioTunerTx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
 void RadioTunerTx::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == Configuration::CONFIG)
+    if (msg.moduleName == Configuration::NAME)
     {
         const auto gaTasConfiguration = msg.config.gaTasConfig();
         enableDisableDatasources(gaTasConfiguration.protocols);

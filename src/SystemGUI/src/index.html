@@ -58,6 +58,7 @@
     import "./components/session";
     import "./components/modules";
     import "./components/gpsstatus";
+    import "./components/actionbuttons";
 
     class GaTasMain extends El {
       created() {
@@ -65,7 +66,7 @@
           // Have to set this with a timeout or else the drop down does not appear on the right aircraft
           setTimeout(() => {
             // Default page to open
-            store.state.page = "modules";
+            store.state.page = "session";
           }, 50);
         });
       }
@@ -74,9 +75,9 @@
         let pageContent;
         switch (store.state.page) {
           case "session":
-            pageContent = html`<gatas-session
-              key="session"
-            ></gatas-session>`;
+            pageContent = html`
+            <action-buttons></action-buttons>
+            <gatas-session key="session"></gatas-session>`;
             break;
           case "modules":
             pageContent = html`<gatas-modules

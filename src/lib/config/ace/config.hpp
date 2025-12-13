@@ -103,7 +103,7 @@ private:
      * When fullPath = true, the json extension and /apt/_Configuration is not part of the path and points directly into configuration
      * returns: Result object
      */
-    auto preparePath(const etl::string_view path, bool fullPath = true) const
+    auto getConfigPath(const etl::string_view path, bool fullPath = true) const
     {
         struct Result
         {

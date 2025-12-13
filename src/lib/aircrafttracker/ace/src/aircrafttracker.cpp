@@ -17,7 +17,7 @@ void AircraftTracker::start()
 
 void AircraftTracker::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == Configuration::CONFIG || msg.moduleName == AircraftTracker::NAME)
+    if (msg.moduleName == Configuration::NAME || msg.moduleName == AircraftTracker::NAME)
     {
         ownshipAddress = msg.config.gaTasConfig().conspicuity.icaoAddress;
         trackedAircraft.ddbEnabled(msg.config.valueByPath(false, NAME, "ddbEnabled"));

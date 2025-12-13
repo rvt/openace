@@ -280,7 +280,7 @@ static void loadModules(void *arg)
     config.postConstruct();
     config.start();
 
-    BaseModule::setModuleStatus(Configuration::CONFIG, &config);
+    BaseModule::setModuleStatus(Configuration::NAME, &config);
 
     load(WifiService::NAME, bus, config, true);
     load(Idle::NAME, bus, config, true);
@@ -434,7 +434,7 @@ void vLaunch(void)
     // Bootstrap
     BaseModule::initBase();
     registerModules();
-    BaseModule::setModuleStatus(Configuration::NAME, &config);
+//    BaseModule::setModuleStatus(Configuration::NAME, &config);
     BaseModule::setModuleStatus(Config::NAME, &config);
 
     // Load all the modules

@@ -85,7 +85,7 @@ private:
     // GATAS will stay in client mode but only after it first successfully connected to an AP
     // When successClientConnected was set to true, a client connection was successful
     bool successClientConnected;
-    // When set to true, don't scan for networks, just try to connect to teh configured networks. 
+    // When set to true, don't scan for networks, just try to connect to teh configured networks.
     // This is usefull for hidden networks or hotspots that don't send SSD regurly.
     // The downside is that connection is a bit slow when multiple netwprks are configured
     bool dontScanJustConnectToClient;
@@ -141,6 +141,8 @@ private:
      * Get's the current local IP address
      */
     static WifiService::IpGw getInterfaceInfo();
+
+    virtual bool setData(const etl::string_view data, const etl::string_view path);
 
 public:
     static constexpr const etl::string_view NAME = "WifiService";

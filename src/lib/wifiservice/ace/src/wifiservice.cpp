@@ -31,6 +31,17 @@ void WifiService::start()
     getBus().subscribe(*this);
 };
 
+bool WifiService::setData(const etl::string_view data, const etl::string_view path)
+{
+    (void)data;
+    (void)path;
+
+    if (path.contains("startAp")) {
+        connectionState = ConnectionState::APMODESTART;
+    }
+    return true;
+}
+
 void WifiService::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
@@ -181,7 +192,10 @@ void WifiService::wifiTask(void *arg)
 
             // ----------------------------------------------------------
             // AccessPoint handling
+
             case ConnectionState::APMODESTART:
+                wifiService->disableSta();
+                cyw43_wifi_leave(&cyw43_state, 0);
                 wifiService->startAccessPoint();
                 wifiService->mDnsInit(CYW43_ITF_AP);
                 wifiService->connectionState = ConnectionState::APSTARTED;

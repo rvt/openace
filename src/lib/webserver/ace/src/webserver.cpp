@@ -25,7 +25,6 @@ inline etl::map<uint32_t, uint32_t, 4> captiveCheck;
 
 /* Other consts */
 constexpr etl::string_view X_GATAS_METHOD_DELETE = "X-Method: DELETE"; // Custom HTTP header for method intent
-constexpr etl::string_view CONFIGPATH = "/api/_Configuration";         // Endpoint path
 
 static struct RequestContext_t
 {
@@ -54,7 +53,7 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
     LWIP_UNUSED_ARG(response_uri_len);
     etl::string_view sv_uri(uri);
     etl::string_view sv_http_request(http_request);
-    if (sv_uri.starts_with(CONFIGPATH))
+    if (sv_uri.starts_with("/api/"))
     {
         if (requestContext.connection == nullptr)
         {
@@ -120,36 +119,28 @@ void httpd_post_finished(void *connection, char *response_uri, u16_t response_ur
         return;
     }
 
+    auto path = CoreUtils::parsePath(requestContext.uri);
+    if (path.size() < 3)
+    {
+        return;
+    }
+
     // Lookup can be cached externally if stable.
-    auto *configModule = static_cast<Configuration *>(BaseModule::moduleByName(*webserver, Configuration::NAME));
+    auto *configModule = static_cast<Configuration *>(BaseModule::moduleByName(*webserver, path[1]));
 
     if (configModule)
     {
-        bool updated = false;
-
         if (requestContext.method == RequestContext_t::POST && requestContext.bufferPosition > 0)
         {
             // Null terminate the buffer, httpd_post_receive_data ensures there is room
             requestContext.buffer[requestContext.bufferPosition] = '\0';
-            updated = configModule->setData(requestContext.buffer, requestContext.uri);
+            configModule->setData(requestContext.buffer, requestContext.uri);
         }
         else if (requestContext.method == RequestContext_t::DELETE)
         {
-            updated = configModule->deleteData(requestContext.uri);
+            configModule->deleteData(requestContext.uri);
         }
-
-        if (updated)
-        {
-            auto path = CoreUtils::parsePath(requestContext.uri);
-            const auto &key = path[2];
-            configModule->getBus().receive(GATAS::ConfigUpdatedMsg{*configModule, key});
-
-            // Special-case: If aircraft was modified, inform all modules that would listen to Configuration::CONFIG
-            if (key == "aircraft")
-            {
-                configModule->getBus().receive(  GATAS::ConfigUpdatedMsg{*configModule, Configuration::CONFIG});
-            }
-        }
+       
     }
 
     snprintf(response_uri, response_uri_len, "/ok.json");

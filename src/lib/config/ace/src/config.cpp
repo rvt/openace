@@ -39,7 +39,7 @@ GATAS::PostConstruct Config::postConstruct()
         defaultStore.gatasId = get_rand_64();
         internalStore(defaultStore);
     }
-    
+
     // Load a configuration in this order
     auto loadDefaultConfig = false; // Only usefull for developers, this ensures the default config is always loaded when set to true
     if (loadDefaultConfig)
@@ -110,7 +110,7 @@ void Config::getData(etl::string_stream &stream, const etl::string_view fullPath
         }
     };
 
-    auto [idx, path] = preparePath(fullPath);
+    auto [idx, path] = getConfigPath(fullPath);
 
     // Test for data from configuration, or from the module itself.
     if (path.size() == 0)
@@ -144,7 +144,7 @@ void Config::getData(etl::string_stream &stream, const etl::string_view fullPath
 
 bool Config::setData(const etl::string_view data, const etl::string_view fullPath)
 {
-    auto [idx, path] = preparePath(fullPath);
+    auto [idx, path] = getConfigPath(fullPath);
     bool dataMutated = false;
 
     if (idx.has_value())
@@ -219,6 +219,17 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
     {
         doc["config"]["_dirty"] = true;
         serializeToVolatile();
+
+        // Special-case: If aircraft or config entry was modified, inform all modules that would listen to Configuration::NAME
+        if (path[0] == "aircraft" || path[0] == "config")
+        {
+            getBus().receive(GATAS::ConfigUpdatedMsg{*this, Configuration::NAME});
+        }
+        else
+        {
+            // Inform the module itself
+            getBus().receive(GATAS::ConfigUpdatedMsg{*this, path[0]});
+        }
     }
 
     return dataMutated;
@@ -245,7 +256,7 @@ void Config::serializeToPersistent()
 bool Config::deleteData(const etl::string_view fullPath)
 {
     bool dataMutated = false;
-    auto [idx, path] = preparePath(fullPath);
+    auto [idx, path] = getConfigPath(fullPath);
 
     JsonVariant src = configValueBypath<JsonVariant>(path);
     if (idx.has_value())

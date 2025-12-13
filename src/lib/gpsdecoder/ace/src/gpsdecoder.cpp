@@ -67,7 +67,7 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
 
 void GpsDecoder::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == Configuration::CONFIG)
+    if (msg.moduleName == Configuration::NAME)
     {
         conspicuity = msg.config.gaTasConfig().conspicuity;
     }

@@ -88,7 +88,7 @@ public:
     Gdl90Service(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr)
     {
         (void)config;
-        on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::CONFIG});
+        on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::NAME});
     }
 
     virtual ~Gdl90Service() = default;
