@@ -96,7 +96,7 @@ public:
     static constexpr const char *NAME = "GatasConnect";
     GatasConnect(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME),
     wifiConnected(false),
-    spinLock(0),
+    spinLock(SpinlockGuard::claim()),
     androidHotspotFix(true),
     gatasId(0),
     hasGpsFix(false),
@@ -110,7 +110,6 @@ public:
     ownshipPosition{}
     {
         (void)config;
-        spinLock = SpinlockGuard::claim();
         getConfig(config);
     }
     

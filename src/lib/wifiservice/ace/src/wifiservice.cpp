@@ -36,7 +36,8 @@ bool WifiService::setData(const etl::string_view data, const etl::string_view pa
     (void)data;
     (void)path;
 
-    if (path.contains("startAp")) {
+    if (path.contains("startAp"))
+    {
         connectionState = ConnectionState::APMODESTART;
     }
     return true;
@@ -45,6 +46,19 @@ bool WifiService::setData(const etl::string_view data, const etl::string_view pa
 void WifiService::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
+}
+
+void WifiService::fillScanResultFromConfiguration()
+{
+
+    scanResult.clear();
+    for (auto it : wifiData.clients)
+    {
+        if (!scanResult.full())
+        {
+            scanResult.emplace_back(it.ssid);
+        }
+    }
 }
 
 void WifiService::wifiTask(void *arg)
@@ -90,15 +104,7 @@ void WifiService::wifiTask(void *arg)
                 if (wifiService->dontScanJustConnectToClient)
                 {
                     // When just connect, fill the scanResult with the configured SSD's
-                    wifiService->scanResult.clear();
-                    for (auto it : wifiService->wifiData.clients)
-                    {
-                        if (!wifiService->scanResult.full())
-                        {
-                            wifiService->scanResult.emplace_back(it.ssid);
-                        }
-                    }
-
+                    wifiService->fillScanResultFromConfiguration();
                     wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
                 }
                 else
@@ -190,8 +196,8 @@ void WifiService::wifiTask(void *arg)
                 wifiService->connectionState = ConnectionState::WIFISCAN; // STA already enabled, so just scan for clients
                 break;
 
-            // ----------------------------------------------------------
-            // AccessPoint handling
+                // ----------------------------------------------------------
+                // AccessPoint handling
 
             case ConnectionState::APMODESTART:
                 wifiService->disableSta();
@@ -320,56 +326,49 @@ void WifiService::startWifiScan()
  */
 WifiService::ConnectClientResult WifiService::connectClient()
 {
-    // Keeps track of the number of connections to the same network
     if (scanResult.empty())
     {
         return EXHAUSTED;
     }
 
-    auto nameIt = scanResult.begin();
-    auto it = etl::find_if(wifiData.clients.begin(), wifiData.clients.end(),
-                           [&nameIt](const GATAS::Config::WifiNamePassword &client)
+    // FInd the SSID with the lowest connectAttempt and try each SSID in order untill all connectAttempt is exhausted 
+
+    auto nextItem = etl::min_element(scanResult.begin(), scanResult.end(),
+                                     [](const ScanResultT &a, const ScanResultT &b)
+                                     {
+                                         return a.connectAttempt < b.connectAttempt;
+                                     });
+
+    auto clientIt = etl::find_if(wifiData.clients.begin(), wifiData.clients.end(),
+                           [&nextItem](const GATAS::Config::WifiNamePassword &client)
                            {
-                               return client.ssid == nameIt->ssid;
+                               return client.ssid == nextItem->ssid;
                            });
 
-    // When the client's data not found, remove it from the scan result list, this should normally not happen
-    if (it != wifiData.clients.end())
+    if (clientIt == wifiData.clients.end())
     {
-
-        // for (auto it : wifiData.clients) {
-        //     printf("Configured: %s\n", it.ssid.c_str());
-        // }
-        // for (auto it : scanResult) {
-        //     printf("found: %s\n", it.c_str());
-        // }
-        printf("WifiService: Client Connecting %s %s\n", it->ssid.c_str(), "<hidden>");
-        auto result = cyw43_arch_wifi_connect_timeout_ms(it->ssid.c_str(), it->password.c_str(), CYW43_AUTH_WPA2_AES_PSK, 10000);
-        //    printf("WifiService: Result: %d\n", result);
-
-        if (result == PICO_OK)
-        {
-            // After connection, reset to NUMBER_OF_CONNECTION_ATTEMPTS so if the connections get's lost
-            // a possible fast reconnect will happen.
-            nameIt->connectNo = NUMBER_OF_CONNECTION_ATTEMPTS;
-            wifiMode = GATAS::WifiMode::CLIENT;
-            showSsidPwdIp(it->ssid, "<hidden>");
-            return CONNECTED;
-        }
-        else
-        {
-            // case PICO_ERROR_BADAUTH:        // Sometimes seen that auth just did not work on my own network
-            // case PICO_ERROR_TIMEOUT:        // TImeout if the network was not responding somehow
-            // case PICO_ERROR_CONNECT_FAILED: // Seems to indicate that the network is available, but somehow could not connect
-            // Test if it can be re-scanned
-            nameIt->connectNo--;
-            if (nameIt->connectNo)
-            {
-                return MORE;
-            }
-        }
-        scanResult.erase(nameIt);
+        // This should never happen
+        scanResult.erase(nextItem);
+        return scanResult.empty() ? EXHAUSTED : MORE;
     }
+
+    printf("WifiService: Client Connecting %s %s attempt: %d of %d\n", clientIt->ssid.c_str(), "<hidden>", nextItem->connectAttempt, NUMBER_OF_CONNECTION_ATTEMPTS);
+    auto result = cyw43_arch_wifi_connect_timeout_ms(clientIt->ssid.c_str(), clientIt->password.c_str(), CYW43_AUTH_WPA3_WPA2_AES_PSK, 20000);
+
+    if (result == PICO_OK)
+    {
+        nextItem->connectAttempt = 0;
+        wifiMode = GATAS::WifiMode::CLIENT;
+        showSsidPwdIp(clientIt->ssid, "<hidden>");
+        return CONNECTED;
+    }
+
+
+    if (nextItem->connectAttempt++ >= NUMBER_OF_CONNECTION_ATTEMPTS)
+    {
+        scanResult.erase(nextItem);
+    }
+
     return scanResult.empty() ? EXHAUSTED : MORE;
 }
 

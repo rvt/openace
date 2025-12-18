@@ -36,6 +36,24 @@ export class GaTasStore {
     });
   }
 
+  _deepTrim(value) {
+    if (typeof value === "string") {
+      return value.trim();
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(v => this._deepTrim(v));
+    }
+
+    if (value !== null && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([k, v]) => [k, this._deepTrim(v)])
+      );
+    }
+
+    return value;
+  }
+
   /**
    * Update store aircraft array
    *
@@ -184,7 +202,7 @@ export class GaTasStore {
   updateModuleData(moduleName, data) {
     return store.fetch(`/api/Config/${moduleName}.json`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(this._deepTrim(data)),
     });
   }
   storeInBRModuleData() {

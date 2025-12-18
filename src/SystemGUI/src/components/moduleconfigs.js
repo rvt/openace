@@ -176,6 +176,7 @@ class WifiServiceConfig extends ModuleConfig {
           <li> When none of the networks are found, set up an Access Point          
         </ol>
       </p>
+
       <form ref="form" autocomplete="off" novalidate="novalidate">
          <hr>
          <h5>Client Configuration</h5>
@@ -187,6 +188,18 @@ class WifiServiceConfig extends ModuleConfig {
           </label>
         </div> -->
         <br />
+
+        <div class="alert alert-warning">
+            <div>
+            To make this work with a phone's hotspot:<br/>
+              <ul>
+                <li>Ensure the hotspot is set to 2.4GHz. For an iPhone that means Maximize Compatibility must be enabled, Android phones usually allow both 2.4 and 5GHz.
+                <li>For Security set WPA2 Personal (or WPA3 if supported by your device)
+              </ul>
+              For iPhone we noticed that you need to have the hotspot page open before an iPhone allows a connection. So after starting GA/TAS, go to your iPhones hotspat page and wait, it should just connect.
+            </div>
+        </div>
+
 
          <div class="grid md-columns-2 lg-columns-2">
             ${this.clientsIds.map(

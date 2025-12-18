@@ -15,8 +15,8 @@
 class CoreUtils
 {
 
-inline static __scratch_y("GatasMem_offsetTimeToAbsolute") uint64_t CoreUtils_offsetTimeToAbsolute = 0;
-inline static __scratch_y("GatasMem_timeUs32PpsOffset") uint32_t CoreUtils_timeUs32PpsOffset = 0;
+    inline static __scratch_y("GatasMem_offsetTimeToAbsolute") uint64_t CoreUtils_offsetTimeToAbsolute = 0;
+    inline static __scratch_y("GatasMem_timeUs32PpsOffset") uint32_t CoreUtils_timeUs32PpsOffset = 0;
 
 public:
     /**
@@ -32,10 +32,14 @@ public:
             {
                 printf(", ");
             }
+            if ((i + 1) % 16 == 0)
+            {
+                putchar('\n');
+            }
         }
         if (lf)
         {
-            printf("\n");
+            putchar('\n');
         }
     }
 
@@ -492,6 +496,19 @@ public:
      */
     static int8_t egmGeoidOffset(float lat, float lon);
 
+    static uint8_t calculateNMEAChecksum(const etl::istring &nmea)
+    {
+        uint8_t chk = 0;
+
+        // NMEA checksum starts after '$'
+        for (size_t i = 1; i < nmea.size() && nmea[i] != '*'; ++i)
+        {
+            chk ^= static_cast<uint8_t>(nmea[i]);
+        }
+
+        return chk;
+    }
+
     /**
      * Add's the checksum and postfix characters to a NMEA string. It may contain an existing checksum that will be overwritten
      * When the capacity is not enough, the result is undefined
@@ -502,28 +519,67 @@ public:
     static void addChecksumToNMEA(etl::istring &nmea)
     {
         const char hexChars[] = "0123456789ABCDEF";
-        uint16_t chk = 0, i = 1;
-        while (nmea[i] && nmea[i] != '*')
+
+        const uint8_t chk = calculateNMEAChecksum(nmea);
+
+        // Strip existing checksum if present
+        const auto starPos = nmea.find('*');
+        if (starPos != etl::string_view::npos)
         {
-            chk ^= nmea[i];
-            i += 1;
+            nmea.resize(starPos);
         }
 
-        if (i > (nmea.capacity() - 5))
+        if (nmea.capacity() - nmea.size() < 5)
         {
-            return;
+            return; // not enough space
         }
-        nmea.resize(i);
 
-        char checksumSuffix[] = {
+        char suffix[] = {
             '*',
             hexChars[(chk >> 4) & 0x0F],
             hexChars[chk & 0x0F],
             '\r',
-            '\n',
+            '\n'};
+
+        nmea.append(suffix, sizeof(suffix));
+    }
+
+    static bool validateNMEAChecksum(const etl::istring &nmea)
+    {
+        const auto starPos = nmea.find('*');
+        if (starPos == etl::string_view::npos || starPos + 2 >= nmea.size())
+        {
+            return false;
+        }
+
+        auto hexToNibble = [](char c) -> uint8_t
+        {
+            if (c >= '0' && c <= '9')
+            {
+                return c - '0';
+            }
+            if (c >= 'A' && c <= 'F')
+            {
+                return c - 'A' + 10;
+            }
+            if (c >= 'a' && c <= 'f')
+            {
+                return c - 'a' + 10;
+            }
+            return 0xFF;
         };
 
-        nmea.append(checksumSuffix, 5);
+        const uint8_t hi = hexToNibble(nmea[starPos + 1]);
+        const uint8_t lo = hexToNibble(nmea[starPos + 2]);
+
+        if (hi == 0xFF || lo == 0xFF)
+        {
+            return false;
+        }
+
+        const uint8_t expected = calculateNMEAChecksum(nmea);
+
+        return expected == ((hi << 4) | lo);
     }
 
     template <size_t Array_Size>

@@ -39,7 +39,8 @@
 class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::Every5SecMsg>
 {
 private:
-    static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 2; // Number of times connection to the same network is attempted before trying an other network
+    // 17 Dec Increased from 2 to 4 due to phone of Piet
+    static constexpr uint8_t NUMBER_OF_CONNECTION_ATTEMPTS = 4; // Number of times connection to the same network is attempted before trying an other network
     static constexpr uint8_t NUMBER_OF_SCAN_ATTEMPTS = 3;       // Number is scans done and if no known network is found, create the AP
 
     friend class message_router;
@@ -93,16 +94,8 @@ private:
     struct ScanResultT
     {
         GATAS::SsidOrPasswdStr ssid;
-        uint8_t connectNo = NUMBER_OF_CONNECTION_ATTEMPTS;
-        ScanResultT(const GATAS::SsidOrPasswdStr &_ssdPwd) : ssid(_ssdPwd) {}
-        bool operator<(const ScanResultT &other) const
-        {
-            return ssid < other.ssid;
-        }
-        bool operator==(const ScanResultT &other) const noexcept
-        {
-            return ssid == other.ssid;
-        }
+        uint8_t connectAttempt;
+        ScanResultT(const GATAS::SsidOrPasswdStr &_ssdPwd) : ssid(_ssdPwd), connectAttempt(1) {}
     };
     etl::list<ScanResultT, 4> scanResult;
 
@@ -134,6 +127,7 @@ private:
     void mDnsInit(int itf);
     void mDnsDeinit(int itf);
     void showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const;
+    void fillScanResultFromConfiguration();
     void on_receive_unknown(const etl::imessage &msg);
     void on_receive(const GATAS::Every5SecMsg &msg);
 

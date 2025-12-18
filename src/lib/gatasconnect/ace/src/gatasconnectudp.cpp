@@ -76,7 +76,7 @@ void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
 
-    if (msg.moduleName == Configuration::NAME)
+    if (msg.moduleName == GatasConnect::NAME || msg.moduleName == Configuration::NAME)
     {
         getConfig(msg.config);
     }
