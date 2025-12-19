@@ -45,7 +45,7 @@ public:
     // Be sure to check the return value to see if it passed.
     bool     self_test( void );               
 
-    using RawBytes = etl::vector<uint8_t, 48>;
+    using RawBytes = etl::vector<uint8_t, 52>;
 
     // pack   - take encoded rawbytes and add escape sequences, CRC, and start/end delimiters so message is ready to send out
     // unpack - inverse; returns false if message is corrupted or has an incorrect format

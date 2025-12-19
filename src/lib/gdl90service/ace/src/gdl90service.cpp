@@ -136,7 +136,8 @@ GATAS::CallSign Gdl90Service::makeGdlCallsign(const GATAS::CallSign &callSign) c
         // THis is a NMEA PFLAA indicator send my gatasConnect
         // THis will change in future (gatasConnect) so for now we remove everything
         // after the space
-        if (c == '!' || hasExclamation) {
+        if (c == '!' || hasExclamation)
+        {
             hasExclamation = true;
             c = ' ';
             continue;
@@ -164,7 +165,7 @@ GATAS::CallSign Gdl90Service::makeGdlCallsign(const GATAS::CallSign &callSign) c
 void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     const GATAS::OwnshipPositionInfo &pos = msg.position;
-    geoidSeparation = pos.geoidSeparation;
+    ownshipGeoidSeparation = pos.geoidSeparation;
 
     uint32_t latitude;
     uint32_t longitude;
@@ -179,7 +180,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, pos.ellipseHeight * M_TO_FT);
+    gdl90.altitude_encode(altitude, pos.heightMsl() * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
@@ -205,7 +206,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
             pos.conspicuity.icaoAddress,
             latitude,
             longitude,
-            altitude,
+            altitude, // GDL90 spec states we can set it to 0xFFF if barometric is not available, but SkyDemoon does not like that. So we add this anyways
             // Same as for tracked aircraft, force to AIRBORN unless we can understand how forflight handles this bit
             GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_AIRBORNE_MASK,
             // GDL90::MISC_TT_HEADING_TRUE_MASK | (msg.position.airborne ? GDL90::MISC_AIRBORNE_MASK : GDL90::MISC_ON_GROUND_MASK),
@@ -226,7 +227,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
         statistics.ownEncodingFailureErr += 1;
     }
 
-    if (gpsStatusValid)
+    if (gpsFix.hasFix)
     {
         // TODO: Low priority, to validate:
         // Set warning if vertical position accuracy, a bit of a estimate right now, based on not SBAS/WAAS
@@ -236,9 +237,9 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
         constexpr float vertical_figure_of_merit_f = 10.f * M_TO_FT;
         uint32_t vertical_figure_of_merit;
         uint32_t geo_altitude;
-        gdl90.geo_altitude_encode(geo_altitude, pos.ellipseHeight * M_TO_FT);
-        gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
-        if (gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
+        bool ok = gdl90.geo_altitude_encode(geo_altitude, pos.ellipseHeight * M_TO_FT);
+        ok |= gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
+        if (ok && gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
         {
             packAndSend(unpacked);
         }
@@ -334,7 +335,7 @@ void Gdl90Service::on_receive(const GATAS::TrackedAircraftPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, (pos.ellipseHeight + geoidSeparation) * M_TO_FT);
+    gdl90.altitude_encode(altitude, (pos.ellipseHeight - ownshipGeoidSeparation) * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.course);
@@ -385,7 +386,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
                       /* GDL90::HEARTBEAT_STATUS_ADDR_TYPE_MASK | */
                       /* GDL90::HEARTBEAT_STATUS_IDENT_MASK | */
                       /* GDL90::HEARTBEAT_STATUS_MAINT_REQD_MASK | */ /* Can be used to indicate device is not good*/
-                      (gpsStatusValid ? GDL90::HEARTBEAT_STATUS_GPS_POS_VALID_MASK : 0) |
+                      (gpsFix.hasFix ? GDL90::HEARTBEAT_STATUS_GPS_POS_VALID_MASK : 0) |
                       /* GDL90::HEARTBEAT_STATUS_UAT_OK_MASK | */
                       /* GDL90::HEARTBEAT_STATUS_CSA_NOT_AVAIL_MASK | */
                       /* GDL90::HEARTBEAT_STATUS_CSA_REQUESTED_MASK*/

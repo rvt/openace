@@ -47,7 +47,7 @@ namespace GATAS
     using ConfigString = etl::string<64>;            // Maximum length of value from the configuration
     using Modulename = etl::string<17>;
     using ConfigPathString = etl::string<65>; // Maximum path length of value from the configuration including api name and module name
-    using GDLData = etl::vector<uint8_t, 48>; // GDLXX Message
+    using GDLData = etl::vector<uint8_t, 52>; // GDLXX Message
     using AircraftAddress = uint32_t;         // ICAO code, FLARM ID or OGN ID
     using TxPacketType = uint8_t[GATAS::RADIO_MAX_GFX_FRAME_LENGTH];
     using TxPacketType32 = uint32_t[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];

@@ -49,10 +49,9 @@ private:
     GDL90 gdl90;
 
     GDL90::ADDR_TYPE type;
-    int16_t geoidSeparation = 0;
+    int16_t ownshipGeoidSeparation = 0;
     float hDop = 0.0f;
     float pDop = 0.0f;
-    bool gpsStatusValid = false;
     int spinLock = 0;
     GATAS::GpsFix gpsFix;
     GATAS::CallSign ownshipCallsign;

@@ -101,6 +101,8 @@ void GDLoverUDP::foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_a
     GATAS_MEASURE("foreFlightListener", 90);
     GDLoverUDP *that = static_cast<GDLoverUDP *>(arg);
     that->statistics.foreFlightBroadcasts += 1;
+
+    // When this FF client has been detected already, then ignore
     if (SPINLOCK_GUARD(that->spinLock))
     {
         if (that->connectedClients.contains(ip4_addr_get_u32(ip_2_ip4(remoteAddr))) || that->connectedClients.full())
@@ -112,7 +114,7 @@ void GDLoverUDP::foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_a
     auto buffer = static_cast<char *>(p->payload);
     buffer[p->len] = 0;
     json_t pool[4];
-    GATAS_LOG(buffer);
+    // GATAS_LOG(buffer);
     json_t const *root = json_create(buffer, pool, 4);
     if (!root)
     {

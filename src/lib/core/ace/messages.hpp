@@ -275,8 +275,6 @@ namespace GATAS
     struct GdlMsg : public etl::message<22>
     {
         GDLData msg;
-        GdlMsg(GDLData msg_) : msg(msg_) {};
-        GdlMsg() {};
     };
 
     /**
