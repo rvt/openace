@@ -13,6 +13,7 @@ private.data/
 *_build_*/
 generated/
 build/
+build_test/
 
 # VSCode + Python
 **/.vscode/settings.json

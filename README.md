@@ -84,13 +84,18 @@ is really required, then this can be done. Do let me know the use case
 GA/TAS is currently tested with SkyDemon only, If you made it work with any other software on Phone
 or Tablet, do let me know so I can add or help out to make this work.
 
-| EFB              | GDL90 over WIFI    | Bluetooth          | DataPort (NMEA) WIFI | Note                                              |
-|------------------|--------------------|--------------------|----------------------|---------------------------------------------------|
-| SkyDemon         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:   | Tested Frequently during flight                   |
+| EFB              | GDL90 over WIFI    | Bluetooth          | DataPort (NMEA) WIFI | Note                                                     |
+|------------------|--------------------|--------------------|----------------------|----------------------------------------------------------|
+| SkyDemon         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:   | Tested Frequently during flight                          |
+| EasyVFR 4        | :heavy_check_mark: |                    |                      |                                                          |
 | ForeFlight       | :heavy_check_mark: |                    |                      | With part of ForeFLight extended spec and auto discovery |
-| XTrack           |                    | :heavy_check_mark: |                      | Tested for connectivity                           |
-| Air navigation   | :heavy_check_mark: |                    |                      | Tested for connectivity                           |
-| SeeYou Navigator |                    | :heavy_check_mark: |                      | GPS and traffic targets shown                     |
+| XTrack           |                    | :heavy_check_mark: |                      | Tested for connectivity                                  |
+| Air navigation   | :heavy_check_mark: |                    |                      | Tested for connectivity                                  |
+| SeeYou Navigator |                    | :heavy_check_mark: |                      | GPS and traffic targets shown                            |
+
+> [!INFO]
+> Thanks to PocketFMS (EasyVFR) for providing a Developer license of EasyVFR 4 to help test GA/TAS GDL90
+>
 
 
 ## gatasConnect & gatasServer
@@ -100,6 +105,13 @@ additional traffic information.
 This is still somewhat experimental but up an running and usable, it's free for you to use on the pre-configured server. Just enable
 'gatasConnect' and ensure GA/TAS does have internet access via your mobile dev ice. Configure **Client** mode to connect to
 your mobile's access point, how cool is that!
+
+> [!TIP]
+> gatasConnect uses [https://airplanes.live](https://airplanes.live) to to deliver internet-based traffic to your GA/TAS
+> and into your EFB, including ADS-B Out and MLAT-derived traffic.
+> If you have the chance, please consider adding airplanes.live to your existing feed or creating a new one.
+> By doing so, you help improve traffic coverage for yourself and for others and contribute to safer flying.
+>
 
 ## Features
 
