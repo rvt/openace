@@ -50,7 +50,6 @@ private:
     AdsbDataCollector<MAX_PLANES_TRACKED, 5'000'000> adsbDataCollector;
 
     SemaphoreHandle_t mutex;
-    int spinLock;
     uint32_t filterRadius=100'000;
     GATAS::OwnshipMinimalPositionInfo ownshipPosition;
     mode_s_t state;      
@@ -58,7 +57,7 @@ private:
     int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed    
 public:
     static constexpr const etl::string_view NAME = "ADSBDecoder";
-    ADSBDecoder(etl::imessage_bus &bus, const Configuration &config) : BinaryReceiver(bus, NAME), mutex(nullptr), spinLock(0), filterRadius(100000)
+    ADSBDecoder(etl::imessage_bus &bus, const Configuration &config) : BinaryReceiver(bus, NAME), mutex(nullptr), filterRadius(100000)
     {
         filterAbove = config.valueByPath(true, NAME, "filterAbove");
         filterBelow = config.valueByPath(true, NAME, "filterBelow");
@@ -93,7 +92,7 @@ private:
     virtual void receiveBinary(const uint8_t* data, uint8_t length) override;
     void processAdsbData(const uint8_t* data, uint8_t length);
 
-    bool outOfAltitudeRange(int32_t otherellipseHeight);
+    bool outOfAltitudeRange(const GATAS::OwnshipMinimalPositionInfo &opi, int32_t otherellipseHeight);
     
     void on_receive_unknown(const etl::imessage &msg)
     {

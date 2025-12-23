@@ -396,7 +396,7 @@ namespace GATAS
             return ellipseHeight - geoidSeparation;
         }
 
-        OwnshipMinimalPositionInfo assignTo() const
+        const OwnshipMinimalPositionInfo assignTo() const
         {
             return OwnshipMinimalPositionInfo{conspicuity.icaoAddress, lat, lon, ellipseHeight};
         }

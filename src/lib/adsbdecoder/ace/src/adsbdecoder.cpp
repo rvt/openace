@@ -6,7 +6,6 @@
 
 GATAS::PostConstruct ADSBDecoder::postConstruct()
 {
-    spinLock = SpinlockGuard::claim();
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
@@ -26,7 +25,7 @@ void ADSBDecoder::start()
 
 void ADSBDecoder::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position).assignTo();
+    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position).assignTo();
 }
 
 void ADSBDecoder::getConfiguration(const Configuration &config)
@@ -156,12 +155,12 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         {
             statistics.totalMsgReceived += 1;
             auto &current = adsbDataCollector.current();
-
-            auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipPosition.lat, ownshipPosition.lon, current.lat, current.lon);
+            auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+            auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, current.lat, current.lon);
 
             // Altitude filtering + Radius filtering
             // to prevent aircraft taking up resources that are not a factor.
-            if (outOfAltitudeRange(current.ellipseHeight) || fromOwn.distance > filterRadius)
+            if (outOfAltitudeRange(ownship, current.ellipseHeight) || fromOwn.distance > filterRadius)
             {
                 statistics.totalMsgIgnored += 1;
                 // printf("Ignored  t:%06ld a:%06lX gnsAlt:%ldm gnsAlt:%0.2fft distance:%ld\n", usTime / 1'000'000, current.icao, current.ellipseHeight, current.ellipseHeight * M_TO_FT, fromOwn.distance);
@@ -210,9 +209,9 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     }
 }
 
-bool ADSBDecoder::outOfAltitudeRange(int32_t otherellipseHeight)
+bool ADSBDecoder::outOfAltitudeRange(const GATAS::OwnshipMinimalPositionInfo &opi, int32_t otherellipseHeight)
 {
-    return (otherellipseHeight - ownshipPosition.ellipseHeight) > filterAbove || (ownshipPosition.ellipseHeight - otherellipseHeight) > filterBelow;
+    return (otherellipseHeight - opi.ellipseHeight) > filterAbove || (opi.ellipseHeight - otherellipseHeight) > filterBelow;
 }
 
 void ADSBDecoder::on_receive(const GATAS::Every5SecMsg &msg)

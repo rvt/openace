@@ -106,7 +106,6 @@ private:
     etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // Two frequencies (Europe)
 
     GATAS::OwnshipPositionInfo ownshipPosition;
-    int spinLock;
     GATAS::BarometricPressureMsg lastBarometricPressureMsg;
     GATAS::GpsStatsMsg gpsStats;
     uint16_t distanceIgnore;
@@ -116,7 +115,6 @@ public:
     static constexpr const etl::string_view NAME = "Ogn1";
     Ogn1(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                 ownshipPosition{},
-                                                                spinLock(0),
                                                                 lastBarometricPressureMsg{},
                                                                 gpsStats{}
     {

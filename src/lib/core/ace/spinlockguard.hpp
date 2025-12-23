@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "pico/sync.h"
+#include "etl/utility.h"
 
 /**
  * @brief Classic Guard based on spinlock
@@ -38,10 +39,17 @@ public:
     SpinlockGuard &operator=(SpinlockGuard &&) = delete;
 
     template <typename F>
-    inline static auto withLock(int lock, F &&fn)
+    inline static const auto copyWithLock(int lock, const F &fn)
     {
         SpinlockGuard guard(lock);
         return fn;
+    }
+
+    template <typename T1, typename T2>
+    inline static const auto copyWithLock(int lock, const T1 &val1, const T2 &val2)
+    {
+        SpinlockGuard guard(lock);
+        return etl::pair<const T1 &, const T2 &>(val1, val2);
     }
 
     operator bool() const
@@ -58,4 +66,4 @@ public:
  * @brief Macro to create a SpinlockGuard instance with a unique name.
  */
 #define SPINLOCK_GUARD(id) \
-    auto SPINLOCK_UNIQUE_NAME(spinlock) = SpinlockGuard{id}
+    auto SPINLOCK_UNIQUE_NAME(spinlock) = SpinlockGuard { id }

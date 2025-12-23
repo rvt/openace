@@ -8,7 +8,6 @@
 
 GATAS::PostConstruct Gdl90Service::postConstruct()
 {
-    spinLock = SpinlockGuard::claim();
     return GATAS::PostConstruct::OK;
 }
 
@@ -117,7 +116,7 @@ void Gdl90Service::on_receive(const GATAS::ConfigUpdatedMsg &msg)
         const Configuration &config = msg.config;
         auto current = config.gaTasConfig();
         auto ownCallSign = config.getCallSignFromHex(current.conspicuity.icaoAddress);
-        SPINLOCK_GUARD(spinLock);
+        SPINLOCK_GUARD(CoreUtils::sharedSpinLock());
         ownshipCallsign = makeGdlCallsign(ownCallSign);
     }
 }
@@ -174,7 +173,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
     uint32_t vert_velocity;
     uint32_t track_hdg;
 
-    auto ownCallSign = SpinlockGuard::withLock(spinLock, ownshipCallsign);
+    auto ownCallSign = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipCallsign);
 
     auto type = pos.conspicuity.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
 

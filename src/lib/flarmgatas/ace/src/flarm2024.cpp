@@ -6,7 +6,6 @@
 
 GATAS::PostConstruct Flarm2024::postConstruct()
 {
-    spinLock = SpinlockGuard::claim();
     return GATAS::PostConstruct::OK;
 }
 
@@ -60,7 +59,6 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
 
         Flarm2024Packet packet;
-        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
 
         auto result = packet.loadFromBuffer(epochSeconds, {msg.frame, Flarm2024Packet::TOTAL_LENGTH_WORDS});
         if (result == -1)
@@ -81,6 +79,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
             return;
         }
 
+        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
         if (packet.aircraftId() == ownship.conspicuity.icaoAddress)
         {
             return;
@@ -127,7 +126,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
 void Flarm2024::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
+    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
 }
 
 void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
@@ -137,7 +136,7 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         Flarm2024Packet packet;
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
 
-        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
+        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
         packet.aircraftId(ownship.conspicuity.icaoAddress);
         packet.messageType(0x02);

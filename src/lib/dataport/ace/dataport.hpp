@@ -27,7 +27,6 @@ class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::
         uint32_t messages = 0;
     } statistics;
 
-//    int spinLock;
     uint32_t gatasIp;
 
 public:

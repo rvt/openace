@@ -70,7 +70,7 @@ void GatasConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 
 void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
+    ownshipPosition = SpinlockGuard::copyWithLock(spinLock, msg.position);
 }
 
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -122,7 +122,7 @@ void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
     else
     {
         taskCtx->lastSendCounter = 0;
-        auto ownship = SpinlockGuard::withLock(taskCtx->spinLock, taskCtx->ownshipPosition);
+        auto ownship = SpinlockGuard::copyWithLock(taskCtx->spinLock, taskCtx->ownshipPosition);
         // Reset the pkgCount to get a honest pkgSend vs pkg Received
         if (!taskCtx->statistics.hasConnection)
         {

@@ -19,8 +19,6 @@
 /* Vendor */
 #include "tiny-json.h"
 
-// NOTE: I think this can be cleaned up a bit in it's usage of SpinlockGuard and mutex
-
 void GDLoverUDP::getConfiguration(const Configuration &config)
 {
     getConfigurationNoMutex(config);
@@ -187,7 +185,7 @@ void GDLoverUDP::on_receive_unknown(const etl::imessage &msg)
 
 void GDLoverUDP::on_receive(const GATAS::AccessPointClientsMsg &msg)
 {
-    connectedClients = SpinlockGuard::withLock(spinLock, msg.msg);
+    connectedClients = SpinlockGuard::copyWithLock(spinLock, msg.msg);
 }
 
 void GDLoverUDP::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -241,8 +239,7 @@ void GDLoverUDP::transmitBuffer()
     }
 
     // Calculate how many pbufs we needna d reference them
-    auto lconnectedClients = SpinlockGuard::withLock(spinLock, connectedClients);
-    auto ludpPorts = SpinlockGuard::withLock(spinLock, udpPorts);
+    auto [lconnectedClients, ludpPorts] = SpinlockGuard::copyWithLock(spinLock, connectedClients, udpPorts);
 
     uint8_t totalpBufs = lconnectedClients.size() * ludpPorts.size() + gateWayClient ? ludpPorts.size() : 0;
     for (const auto &client : customClients)

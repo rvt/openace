@@ -52,7 +52,6 @@ private:
     int16_t ownshipGeoidSeparation = 0;
     float hDop = 0.0f;
     float pDop = 0.0f;
-    int spinLock = 0;
     GATAS::GpsFix gpsFix;
     GATAS::CallSign ownshipCallsign;
 

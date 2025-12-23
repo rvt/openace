@@ -18,7 +18,6 @@ GATAS::PostConstruct Ogn1::postConstruct()
         panic("OGN1 packet is smaller than expected");
         return GATAS::PostConstruct::FAILED;
     }
-    spinLock = SpinlockGuard::claim();
 
     return GATAS::PostConstruct::OK;
 }
@@ -163,7 +162,7 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
     float fLatitude = POSITION_DECODE * packet.DecodeLatitude();
     float fLongitude = POSITION_DECODE * packet.DecodeLongitude();
 
-    auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
+    auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
     auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, fLatitude, fLongitude);
 
@@ -211,7 +210,7 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     if (msg.radioParameters.config->dataSource == GATAS::DataSource::OGN1)
     {
-        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
+        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
         OGN1_Packet packet;
         packet.Header =
@@ -320,7 +319,7 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
         }
 
         // Ignore ownship address
-        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
+        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
         if (packet.Header.Address == ownship.conspicuity.icaoAddress)
         {
             return;
@@ -333,7 +332,7 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
 void Ogn1::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
+    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
 }
 
 void Ogn1::on_receive(const GATAS::BarometricPressureMsg &msg)

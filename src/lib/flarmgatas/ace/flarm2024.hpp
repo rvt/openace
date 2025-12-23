@@ -47,7 +47,6 @@ private:
     };
     etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // Two frequencies (Europe)
 
-    int spinLock;
     GATAS::OwnshipPositionInfo ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
     float deltaCourse;
@@ -56,7 +55,6 @@ public:
     static constexpr const etl::string_view NAME = "Flarm";
     Flarm2024(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
-        spinLock(0),
         ownshipPosition{},
         deltaCourse(0.f)
     {

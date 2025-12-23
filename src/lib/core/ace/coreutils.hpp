@@ -9,6 +9,7 @@
 #include "pico/time.h"
 
 #include "messages.hpp"
+#include "spinlockguard.hpp"
 
 #include "etl/string.h"
 
@@ -17,8 +18,17 @@ class CoreUtils
 
     inline static __scratch_y("GatasMem_offsetTimeToAbsolute") uint64_t CoreUtils_offsetTimeToAbsolute = 0;
     inline static __scratch_y("GatasMem_timeUs32PpsOffset") uint32_t CoreUtils_timeUs32PpsOffset = 0;
+    inline static int spinLock;
 
 public:
+    static void init() {
+        spinLock = SpinlockGuard::claim();
+    }
+
+    __force_inline static int sharedSpinLock() {
+        return spinLock;
+    }
+
     /**
      * Dump a buffer as a hexidecimal string for terminal output
      */

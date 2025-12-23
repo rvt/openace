@@ -9,7 +9,6 @@ constexpr const bool DEBUG_DATAPORT = false;
 
 GATAS::PostConstruct DataPort::postConstruct()
 {
-    // spinLock = SpinlockGuard::claim();
     return GATAS::PostConstruct::OK;
 }
 
@@ -18,7 +17,7 @@ void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
     (void)msg;
     static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
 
-    //    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position).assignTo();
+    //    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position).assignTo();
     // if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
     // {
 

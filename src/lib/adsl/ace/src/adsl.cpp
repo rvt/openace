@@ -8,7 +8,6 @@ constexpr float POSITION_DECODE = 0.0001f / 60.f;
 
 GATAS::PostConstruct ADSL::postConstruct()
 {
-    spinLock = SpinlockGuard::claim();
     return GATAS::PostConstruct::OK;
 }
 
@@ -76,7 +75,8 @@ void ADSL::on_receive(const GATAS::RadioRxGfskMsg &msg)
         }
 
         // Ignore ownship address
-        if (packet.address == ownshipPosition.conspicuity.icaoAddress)
+        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+        if (packet.address == ownship.conspicuity.icaoAddress)
         {
             return;
         }
@@ -88,7 +88,7 @@ void ADSL::on_receive(const GATAS::RadioRxGfskMsg &msg)
 
 void ADSL::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
+    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
 }
 
 void ADSL::on_receive(const GATAS::GpsStatsMsg &msg)
@@ -238,7 +238,7 @@ void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 
     if (msg.radioParameters.config->dataSource == GATAS::DataSource::ADSL)
     {
-        auto &ownship = ownshipPosition;
+        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
         ADSL_Packet packet;
         packet.payloadIdent = 0x02; // ADS-L.4.SRD860.F.2.1 :: iConspicuity
@@ -281,7 +281,7 @@ void ADSL::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 int8_t ADSL::parseFrame(const ADSL_Packet &packet, int16_t rssiDbm)
 {
     uint32_t positionTs = CoreUtils::timeUs32();
-    auto &ownship = ownshipPosition;
+    auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
     float fLatitude = packet.getLatitude();
     float fLongitude = packet.getLongitude();

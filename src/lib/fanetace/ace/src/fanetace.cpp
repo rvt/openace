@@ -21,7 +21,6 @@ void FanetAce::start()
 
 GATAS::PostConstruct FanetAce::postConstruct()
 {
-    spinLock = SpinlockGuard::claim();
     mutex = xSemaphoreCreateMutex();
     if (mutex == nullptr)
     {
@@ -71,7 +70,7 @@ void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     if (msg.radioParameters.config->dataSource == GATAS::DataSource::FANET)
     {
-        auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
+        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
         FANET::TrackingPayload payload;
         payload.latitude(ownship.lat)
@@ -122,7 +121,7 @@ void FanetAce::fanet_ackReceived(uint16_t id)
 
 void FanetAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
+    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
 }
 
 void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
@@ -146,7 +145,7 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
         return;
     }
     xTaskNotify(taskHandle, TaskState::HANDLETX, eSetBits);
-    auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
+    auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
     switch (messageType)
     {

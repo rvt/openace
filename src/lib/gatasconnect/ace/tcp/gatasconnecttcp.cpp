@@ -62,7 +62,7 @@ void GatasConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 
 void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::withLock(spinLock, msg.position);
+    ownshipPosition = SpinlockGuard::copyWithLock(spinLock, msg.position);
 }
 
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -99,7 +99,7 @@ void GatasConnect::tcpReceiveHandler(etl::span<uint8_t> data)
     statistics.bytesReceived += data.size();
     statistics.pkgReceived += 1;
 
-    auto ownship = SpinlockGuard::withLock(spinLock, ownshipPosition);
+    auto ownship = SpinlockGuard::copyWithLock(spinLock, ownshipPosition);
     cobsStreamHandler.handle(ownship.lat, ownship.lon, data);
 }
 

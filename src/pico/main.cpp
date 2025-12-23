@@ -277,6 +277,7 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
 static void loadModules(void *arg)
 {
     (void)arg;
+    CoreUtils::init();
     config.postConstruct();
     config.start();
 
