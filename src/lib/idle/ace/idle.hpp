@@ -24,7 +24,7 @@ class Idle : public BaseModule, public etl::message_router<Idle, GATAS::ConfigUp
 {
     static constexpr uint8_t PATTERN_STEPS = 24;
     // clang-format off
-    static constexpr uint8_t WIFI_NC_PATTERN =     0b01111111;
+    static constexpr uint8_t WIFI_NC_PATTERN =     0b00010101;
     static constexpr uint8_t WIFI_AP_PATTERN =     0b00001001;
     static constexpr uint8_t WIFI_CLIENT_PATTERN = 0b00000001;
     // clang-format on

@@ -32,7 +32,9 @@
     "_comment_ip": "IP Address of the server running GA/TAS Server",
     "gatasServer": {
       "ip": "172.235.181.149"
-    }
+    },
+    "_comment_pinCode": "A pincode to be use for connecting to GA/TAS Connect online services",
+    "pinCode": "0"
   },  
   "ADSBDecoder": {
     "filterAbove": 1500,

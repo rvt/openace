@@ -54,23 +54,17 @@ uint32_t CoreUtils::getFreeHeap(void)
 
 int8_t CoreUtils::egmGeoidOffset(float lat, float lon)
 {
-    if (lat < egm2008_min_lat || lat > egm2008_max_lat ||
-        lon < egm2008_min_lon || lon > egm2008_max_lon)
+    // Convert directly to index space
+    constexpr float invRes = 1.0f / egm2008_resolution_deg;
+
+    const int lat_idx = static_cast<int>((egm2008_max_lat - lat) * invRes + 0.5f);
+    const int lon_idx = static_cast<int>((lon - egm2008_min_lon) * invRes + 0.5f);
+
+    // Single bounds check (fast path)
+    if ((unsigned)lat_idx >= egm2008_lat_steps || (unsigned)lon_idx >= egm2008_lon_steps)
     {
-        //            printf("Latitude or longitude out of bounds: lat=%.2f, lon=%.2f\n", lat, lon);
         return 0;
     }
 
-    int lat_idx = static_cast<int>(round((egm2008_max_lat - lat) / egm2008_resolution_deg));
-    int lon_idx = static_cast<int>(round((lon - egm2008_min_lon) / egm2008_resolution_deg));
-
-    if (lat_idx < 0 || lat_idx >= egm2008_lat_steps ||
-        lon_idx < 0 || lon_idx >= egm2008_lon_steps)
-    {
-        //        printf("Latitude or longitude index out of bounds: lat_idx=%d, lon_idx=%d\n", lat_idx, lon_idx);
-        return 0;
-    }
-
-    int8_t val = egm2008s_dem[lon_idx][lat_idx];
-    return (val == -128) ? 0 : val;
+    return egm2008s_dem[lon_idx][lat_idx];
 }

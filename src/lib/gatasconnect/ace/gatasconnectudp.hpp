@@ -59,6 +59,7 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
 
     uint32_t icaoAddress;
     uint32_t gatasIp;
+    uint32_t pinCode;
     // Stop accepting data from gatasConnect for LOCALCONFIGURATIONCHANGE_HOLD_BACK to ensure the server accepts any new configuration 
     // So we can disgard packages in transit. Can possibly be redesigned when a package counter can be send?
     uint8_t localConfigurationUpdateCnt; 
@@ -104,6 +105,7 @@ public:
     requestTimer(nullptr),
     icaoAddress(0),
     gatasIp(0),
+    pinCode(0),
     localConfigurationUpdateCnt(0),
     pcbSend(nullptr),
     cobsStreamHandler(CobsStreamHandler(bus, config)),

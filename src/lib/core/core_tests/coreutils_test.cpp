@@ -280,9 +280,9 @@ TEST_CASE("egmGeoidOffset Example case (72, -15.5)", "[altitude]") {
     REQUIRE(result  == 55);
 }
 
-TEST_CASE("egmGeoidOffset Example case (-34, 4) outside of grid", "[altitude]") {
+TEST_CASE("egmGeoidOffset Example case (-86, 4) outside of grid", "[altitude]") {
 
-    float result = CoreUtils::egmGeoidOffset(-34, 4);
+    float result = CoreUtils::egmGeoidOffset(-86, 4);
 
     REQUIRE(result  == 0);
 }

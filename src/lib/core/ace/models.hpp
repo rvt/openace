@@ -361,11 +361,20 @@ namespace GATAS
         };
     };
 
-    enum WifiMode
+    struct WifiMode
     {
-        NC,
-        AP,
-        CLIENT
+        enum enum_type : uint8_t
+        {
+            NC,
+            AP,
+            CLIENT
+        };
+
+        ETL_DECLARE_ENUM_TYPE(WifiMode, uint8_t)
+        ETL_ENUM_TYPE(NC, "No Connection")
+        ETL_ENUM_TYPE(AP, "Access Point Mode")
+        ETL_ENUM_TYPE(CLIENT, "Client Mode")
+        ETL_END_ENUM_TYPE
     };
 
     struct OwnshipMinimalPositionInfo

@@ -114,6 +114,7 @@ void WifiService::wifiTask(void *arg)
                 break;
 
             case ConnectionState::WIFISCAN:
+                wifiService->getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
                 startScan = CoreUtils::timeUs32Raw() + (GATAS_WIFISERVICE_MAX_SCAN_TIME_MS * 1'000);
                 wifiService->startWifiScan();
                 wifiService->connectionState = ConnectionState::WIFISCANNING;
@@ -220,8 +221,7 @@ void WifiService::wifiTask(void *arg)
 
             case ConnectionState::APSTOPPED:
                 wifiService->mDnsDeinit(CYW43_ITF_AP);
-                wifiService->connectionState = ConnectionState::WIFISCAN;
-                wifiService->getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
+                wifiService->connectionState = ConnectionState::START;
                 break;
 
             default:
@@ -331,7 +331,7 @@ WifiService::ConnectClientResult WifiService::connectClient()
         return EXHAUSTED;
     }
 
-    // FInd the SSID with the lowest connectAttempt and try each SSID in order untill all connectAttempt is exhausted 
+    // FInd the SSID with the lowest connectAttempt and try each SSID in order untill all connectAttempt is exhausted
 
     auto nextItem = etl::min_element(scanResult.begin(), scanResult.end(),
                                      [](const ScanResultT &a, const ScanResultT &b)
@@ -340,10 +340,10 @@ WifiService::ConnectClientResult WifiService::connectClient()
                                      });
 
     auto clientIt = etl::find_if(wifiData.clients.begin(), wifiData.clients.end(),
-                           [&nextItem](const GATAS::Config::WifiNamePassword &client)
-                           {
-                               return client.ssid == nextItem->ssid;
-                           });
+                                 [&nextItem](const GATAS::Config::WifiNamePassword &client)
+                                 {
+                                     return client.ssid == nextItem->ssid;
+                                 });
 
     if (clientIt == wifiData.clients.end())
     {
@@ -362,7 +362,6 @@ WifiService::ConnectClientResult WifiService::connectClient()
         showSsidPwdIp(clientIt->ssid, "<hidden>");
         return CONNECTED;
     }
-
 
     if (nextItem->connectAttempt++ >= NUMBER_OF_CONNECTION_ATTEMPTS)
     {
@@ -489,7 +488,8 @@ void WifiService::on_receive(const GATAS::Every5SecMsg &msg)
 
     if (interface.ip.addr != 0)
     {
-        getBus().receive(GATAS::WifiConnectionStateMsg{wifiMode, /* ip & 0xFFFFFF */ interface.ip.addr, interface.gateWay.addr});
+        currentWifiActiveStatus = true;
+        getBus().receive(GATAS::WifiConnectionStateMsg{wifiMode, interface.ip.addr, interface.gateWay.addr});
         return;
     }
 }

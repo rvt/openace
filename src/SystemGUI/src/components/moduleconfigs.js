@@ -74,7 +74,7 @@ class AircraftTrackerConfig extends ModuleConfig {
               DDB Enabled ${html.raw(icon.help)}
               <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
                 Enable to lookup the Aircrafts callsign from based on hex code from <a href="https://ddb.glidernet.org" target="_blank" rel="noopener noreferrer">DDB<a> connected clients that use GDL90 or NMEA
-              </p> 
+              </p>
             </label>:
             <br />
             <input type="checkbox" id="ddbEnabled" ref="ddbEnabled" placeholder="1" />
@@ -173,7 +173,7 @@ class WifiServiceConfig extends ModuleConfig {
         This module connects to a Wifi Network in the following order:<br>
         <ol>
           <li> Try to connect to the listed networks in the Client Configuration
-          <li> When none of the networks are found, set up an Access Point          
+          <li> When none of the networks are found, set up an Access Point
         </ol>
       </p>
 
@@ -789,6 +789,9 @@ class GatasConnectConfig extends ModuleConfig {
     this._initForm(store.getModuleData("GatasConnect"));
   }
 
+  randomIntFromInterval(min, max) { // min and max included
+    return Math.floor(Math.random() * (max - min + 1) + min);
+  }
   mounted() {
     const validator = new JustValidate(this.$refs.form);
 
@@ -800,6 +803,16 @@ class GatasConnectConfig extends ModuleConfig {
         },
         ...ipValidation,
       ])
+      .addField(this.$refs.pinCode, [
+        {
+          rule: "custom",
+          validator: (value) => {
+            const n = Number(value);
+            return Number.isInteger(n) && (n === 0 || (n >= 1000 && n <= 999999));
+          },
+          errorMessage: "Valid pincode must be 0 (disabled the pincode) or between 1000 and 999999",
+        }
+      ])
       .onSuccess((event) => {
         const data = this._getFormData();
         store.updateModuleData("GatasConnect", { ...this.copyOfData, ...data }).then(() => {
@@ -810,13 +823,16 @@ class GatasConnectConfig extends ModuleConfig {
 
   _setFormData(data) {
     this.$refs.ip.value = data.gatasServer.ip;
+//    this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : this.randomIntFromInterval(1000, 999999);
+    this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : "0";
   }
 
   _getFormData() {
     return {
       gatasServer: {
         ip: this.$refs.ip.value,
-      }
+      },
+      pinCode: this.$refs.pinCode.value,
     };
   }
 
@@ -826,7 +842,7 @@ class GatasConnectConfig extends ModuleConfig {
       <p>
         GA/TAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI to operate.
         It fetches traffic around you up to about 50Km away.
-        <br/>
+        <br/><br/>
         To setup GA/TAS Connect:
         <ul>
           <li>Enter the the IP address of your GA/TAS Connect service you can use <strong>172.235.181.149</strong> which is free to use:
@@ -834,12 +850,27 @@ class GatasConnectConfig extends ModuleConfig {
         </ul>
       </p>
 
+        <div class="alert alert-warning">
+          <div>
+          The Pin Code is used when you use <a href="https://gatas.vantwisk.nl" target="_blank" rel="noopener noreferrer">GA/TAS Connect</a> online
+          application to connect to your GA/TAS system to allow to configure your GA/TAS aircraft you are flying.
+          Instead of using the unique GA/TAS ID which is differcult to remmeber, you can use the Pin Code with your location.
+          When using 0 as Pin Code, the Pin Code functionality is disabled for added security if you whish to not use it.
+          </div>
+        </div>
+
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="row g-0">
             <div class="col-10">
               <label for="ip">
                 IP Address of GA/TAS Server:
                 <input type="text" id="ip" ref="ip" placeholder="172.235.181.149" } />
+              </label>
+            </div>
+            <div class="col-10" style="margin-top:20px;">
+              <label for="ip">
+                Pin Code:
+                <input type="text" id="pinCode" ref="pinCode" placeholder="0" } />
               </label>
             </div>
         </div>

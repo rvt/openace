@@ -7,9 +7,6 @@
 		"path": "."
 	},
 	{
-		"path": "../gatasServer/ServerGui"
-	},
-	{
 		"path": "src/vendor"
 	}
 ]

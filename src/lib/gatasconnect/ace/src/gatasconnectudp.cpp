@@ -6,6 +6,8 @@
 #include "ace/cobs.hpp"
 #include "ace/lwiplock.hpp"
 
+#include "etl/algorithm.h"
+
 /* LwIP */
 #include "lwip/ip_addr.h"
 #include "pico/cyw43_arch.h"
@@ -86,6 +88,8 @@ void GatasConnect::getConfig(const Configuration &config)
 {
     gatasServer = config.ipPortBypath(NAME, "gatasServer");
     gatasServer.port = GATAS_CONNECT_PORT;
+    pinCode = static_cast<uint32_t>(config.valueByPath(0, NAME, "pinCode"));
+    pinCode = (pinCode == 0) ? 0 : etl::clamp(pinCode, static_cast<uint32_t>(1000), static_cast<uint32_t>(999999));
 
     auto gatasConfig = config.gaTasConfig();
     if (SPINLOCK_GUARD(spinLock))   
@@ -152,11 +156,11 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 
     constexpr size_t COBS_EXTRA_BYTES = 3;
     constexpr size_t OWN_MAX = BinaryMessages::serializeOwnshipPositionSizeV1().items();
-    constexpr size_t CFG_MAX = BinaryMessages::serializeAircraftConfigurationSizeV1().items(GATAS::MAX_AIRCRAFT_CONFIG);
+    constexpr size_t CFG_MAX = BinaryMessages::serializeAircraftConfigurationSizeV2().items(GATAS::MAX_AIRCRAFT_CONFIG);
     constexpr size_t MAX_MSG = etl::max(OWN_MAX, CFG_MAX);
 
     const size_t ownshipSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1);
-    const size_t configSize = BinaryMessages::serializeAircraftConfigurationSizeV1().items(taskCtx->allIcaoAddresses.size());
+    const size_t configSize = BinaryMessages::serializeAircraftConfigurationSizeV2().items(taskCtx->allIcaoAddresses.size());
     GATAS_ASSERT((etl::max(ownshipSize, configSize) + COBS_EXTRA_BYTES) < 255, "COBS max length exceeded");
     //    printf("Max Size: %u, %u,%u, %u, %u\n", OWN_MAX, CFG_MAX, ownshipSize, configSize, etl::max(ownshipSize, configSize));
 
@@ -185,8 +189,8 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 
         // --- Aircraft configuration (always send)
         writer.restart();
-        // 22 Byte
-        BinaryMessages::serializeAircraftConfigurationV1(writer, taskCtx->gatasId, taskCtx->icaoAddress, taskCtx->allIcaoAddresses, taskCtx->gatasIp);
+        // > 25 Byte
+        BinaryMessages::serializeAircraftConfigurationV2(writer, taskCtx->gatasId, taskCtx->icaoAddress, taskCtx->allIcaoAddresses, taskCtx->gatasIp, taskCtx->pinCode);
         auto size = encodeCOBS(perCobsBuffer.data(), configSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
         position += size;
     }
