@@ -212,21 +212,24 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
             // preamble_len_in_bits -> transmitted preamble length: number of bits sent as preamble coded as 0x55.
             // preamble_detector -> the packet controller will only become active if a certain number of preamble bits have been successfully received by the rad
             // The user can select a value ranging from “Preamble detector length off” - where the radio will not perform any gating and will try to lock directly on the following Sync Word
+            pkt_params_gfsk.preamble_len_in_bits = newParameters.config->txPreambleLength;
+            pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS;
+            uint8_t syncWordLength;
+            const uint8_t *data;
             if (forTx)
             {
-                pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS;
-                pkt_params_gfsk.preamble_len_in_bits = newParameters.config->txPreambleLength;
+                syncWordLength = newParameters.config->syncLength;
+                data = newParameters.config->syncWord.data();
             }
             else
             {
-                pkt_params_gfsk.preamble_len_in_bits = newParameters.config->txPreambleLength;
-                pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS; // SX126X_GFSK_PREAMBLE_DETECTOR_OFF or SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS 8Bits needed for FLARM!!!
+                syncWordLength = newParameters.config->syncLength - newParameters.config->syncSkipInRxLength;
+                data = newParameters.config->syncWord.data() + newParameters.config->syncSkipInRxLength;
             }
-
-            auto syncWordLength = newParameters.config->syncLength - 1;
             pkt_params_gfsk.sync_word_len_in_bits = syncWordLength * 8;
             sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
-            sx126x_set_gfsk_sync_word(this, newParameters.config->syncWord.data()+1, syncWordLength);
+            sx126x_set_gfsk_sync_word(this, data, syncWordLength);
+
             // printf("Radio %d changed from %s to %s\n", radioNo, GATAS::toString(lastParameters.config->dataSource), GATAS::toString(newParameters.config->dataSource));
         }
         else if (newParameters.config->mode == GATAS::Modulation::LORA)
@@ -234,6 +237,7 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
             sx126x_set_pkt_type(this, SX126X_PKT_TYPE_LORA);
             if (!forTx)
             {
+                // These Setting are handled in sendLORAPacket because codingrate is set per dynamically
                 sx126x_set_lora_mod_params(this, &DEFAULT_MOD_PARAMS_LORA);
                 sx126x_set_lora_pkt_params(this, &DEFAULT_PKG_PARAMS_LORA);
             }

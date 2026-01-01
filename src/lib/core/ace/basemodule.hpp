@@ -260,6 +260,7 @@ public:
         uint8_t packetLength;         // Total packet length including CRC
         uint8_t txPreambleLength;     // Preamble length in bits during transmission
         uint8_t syncLength;
+        uint8_t syncSkipInRxLength;     // In RX Mode skip this nymber of bytes from the syncword
         etl::array<uint8_t, 10> syncWord; // Sync word
     };
 

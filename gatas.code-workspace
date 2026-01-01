@@ -1,16 +1,15 @@
 {
-"folders": [
-	{
-		"path": "src/pico"
-	},
-	{
-		"path": "."
-	},
-	{
-		"path": "src/vendor"
-	}
-]
-  	,
+	"folders": [
+		{
+			"path": "src/pico"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "src/vendor"
+		}
+	],
 	"settings": {
 		"C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
 		"files.associations": {

@@ -125,7 +125,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
             .ldro = 0,
         };
 
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{0, GATAS::Modulation::GFSK, GATAS::DataSource::ADSL, 0, 1*8, 8, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE{0, GATAS::Modulation::GFSK, GATAS::DataSource::ADSL, 0, 1*8, 8, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
