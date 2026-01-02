@@ -206,14 +206,9 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
             sx126x_set_pkt_type(this, SX126X_PKT_TYPE_GFSK);
             sx126x_set_gfsk_mod_params(this, &DEFAULT_MOD_PARAMS_GFSK);
 
-            auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
-            pkt_params_gfsk.pld_len_in_bytes = newParameters.config->packetLength * MANCHESTER;
-
             // preamble_len_in_bits -> transmitted preamble length: number of bits sent as preamble coded as 0x55.
             // preamble_detector -> the packet controller will only become active if a certain number of preamble bits have been successfully received by the rad
             // The user can select a value ranging from “Preamble detector length off” - where the radio will not perform any gating and will try to lock directly on the following Sync Word
-            pkt_params_gfsk.preamble_len_in_bits = newParameters.config->txPreambleLength;
-            pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS;
             uint8_t syncWordLength;
             const uint8_t *data;
             if (forTx)
@@ -226,6 +221,10 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
                 syncWordLength = newParameters.config->syncLength - newParameters.config->syncSkipInRxLength;
                 data = newParameters.config->syncWord.data() + newParameters.config->syncSkipInRxLength;
             }
+            auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
+            pkt_params_gfsk.pld_len_in_bytes = newParameters.config->packetLength * MANCHESTER;
+            pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS;    // Reception
+            pkt_params_gfsk.preamble_len_in_bits = newParameters.config->txPreambleLength;  // During sending, the preamble is added as part of the sync
             pkt_params_gfsk.sync_word_len_in_bits = syncWordLength * 8;
             sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
             sx126x_set_gfsk_sync_word(this, data, syncWordLength);

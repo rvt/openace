@@ -64,12 +64,12 @@ public:
     //                                                                                                                   syncLength
     //                                                                                                                      syncSkipInRxLength
     //                                                                                                                          SYNC
-    static constexpr Radio::ProtocolConfig PROTOCOL_NONE {1, GATAS::Modulation::NONE, GATAS::DataSource::ADSL,    0, 16, 8, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}};       // NONE
-    static constexpr Radio::ProtocolConfig PROTOCOL_FLARM{2, GATAS::Modulation::GFSK, GATAS::DataSource::FLARM,  26, 16, 8, 2, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}};       // 0 FLARM 0 airtime 6ms    
-    static constexpr Radio::ProtocolConfig PROTOCOL_OGN1 {3, GATAS::Modulation::GFSK, GATAS::DataSource::OGN1,   26, 16, 8, 2, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}};       // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
-    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL {4, GATAS::Modulation::GFSK, GATAS::DataSource::ADSL,   24, 16, 8, 2, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}};       // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
-    static constexpr Radio::ProtocolConfig PROTOCOL_PAW  {5, GATAS::Modulation::GFSK, GATAS::DataSource::PAW,    00, 16, 8, 0, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}};       // 4 PAW
-    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{6, GATAS::Modulation::LORA, GATAS::DataSource::FANET, 255, 12, 2, 0, {0xF4, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};       // 5 FANET
+    static constexpr Radio::ProtocolConfig PROTOCOL_NONE {1, GATAS::Modulation::NONE, GATAS::DataSource::ADSL,    0, 12, 8, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}};       // NONE
+    static constexpr Radio::ProtocolConfig PROTOCOL_FLARM{2, GATAS::Modulation::GFSK, GATAS::DataSource::FLARM,  26, 12, 8, 2, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}};       // 0 FLARM 0 airtime 6ms    
+    static constexpr Radio::ProtocolConfig PROTOCOL_OGN1 {3, GATAS::Modulation::GFSK, GATAS::DataSource::OGN1,   26, 12, 8, 2, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}};       // 1 OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
+    static constexpr Radio::ProtocolConfig PROTOCOL_ADSL {4, GATAS::Modulation::GFSK, GATAS::DataSource::ADSL,   24, 12, 8, 2, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A}};       // 3 ADSL == SYNC  0x72 0x4B = Manchester 0x95, 0xA6, 0x9A, 0x65. 0x99 is required as a preamble to be send and rge length is included as sync because it's fixed to 0x18
+    static constexpr Radio::ProtocolConfig PROTOCOL_PAW  {5, GATAS::Modulation::GFSK, GATAS::DataSource::PAW,    00, 12, 8, 0, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}};       // 4 PAW
+    static constexpr Radio::ProtocolConfig PROTOCOL_FANET{6, GATAS::Modulation::LORA, GATAS::DataSource::FANET, 255, 12, 2, 0,  {0xF4, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};       // 5 FANET
 
     struct ProtocolTimeSlot
     {

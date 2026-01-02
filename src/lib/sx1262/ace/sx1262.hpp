@@ -79,9 +79,9 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
             .sync_word_len_in_bits = 0,                                   // SET per protocol
             .address_filtering = SX126X_GFSK_ADDRESS_FILTERING_DISABLE,
             .header_type = SX126X_GFSK_PKT_FIX_LEN,
-            .pld_len_in_bytes = 0,           // SET per protocol
-            .crc_type = SX126X_GFSK_CRC_OFF, // Manchester decoding used. so no CRC possible
-            .dc_free = SX126X_GFSK_DC_FREE_OFF};
+            .pld_len_in_bytes = 0,                                        // SET per protocol
+            .crc_type = SX126X_GFSK_CRC_OFF,                              // Manchester decoding used. so no CRC possible
+            .dc_free = SX126X_GFSK_DC_FREE_OFF};                          // No whitening needed, this is doen software
 
     // Verified, looks ok
     // 13.4.5 SetModulationParams
