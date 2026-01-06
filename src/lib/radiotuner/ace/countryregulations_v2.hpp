@@ -61,7 +61,7 @@ public:
     // First byte of the syncWord is the preamble for TX
     //                                                       mode                     dataSource                packetLength    
     //                                                                                                               txPreambleLength
-    //                                                                                                                   syncLength
+    //                                                                                                                   syncWordLength
     //                                                                                                                      syncSkipInRxLength
     //                                                                                                                          SYNC
     static constexpr Radio::ProtocolConfig PROTOCOL_NONE {1, GATAS::Modulation::NONE, GATAS::DataSource::ADSL,    0, 12, 8, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}};       // NONE

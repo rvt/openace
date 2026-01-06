@@ -30,7 +30,7 @@ Note: Although it's primary design is based around GA traffic, there is nothing 
 prevent other use cases like gliders, paragliders and hang gliders. The goal of the project is to be
 seen by transmitting different protocols and be able to see them.
 
-| ![OpenScad View (Open)](doc/img/gatasServer.png)<br>Additional traffic via gatasServer                                               | ![Sky Demon)](doc/img/skydemon-1.png) <br> soaring planes directly via FLARM                |
+| ![GATAS Server](doc/img/gatasServer.png)<br>Additional traffic via gatasServer                                                       | ![Sky Demon)](doc/img/skydemon-1.png) <br> soaring planes directly via FLARM                |
 |--------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | ![SHowing Range](doc/img/web-showing-range.png) Showing range of 24Km                                                                | ![Sky Demon)](doc/img/firstversion.jpeg)<br> Two Tranceiver Version I have been flying with |
 | ![Gatas Server](doc/img/gatasServer_sel.png) <br> GA/TAS Server selecting Aircraft                                                   | ![All modules](doc/img/gatas-all-modules.png) <br> All modules                              |
