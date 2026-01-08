@@ -37,7 +37,6 @@
  */
 class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg, GATAS::OwnshipPositionMsg>
 {
-    static constexpr uint8_t RFCOM_READYSTATE = 0b101;
     static constexpr uint8_t ATT_READYSTATE = 0b011;
     static constexpr uint8_t CONN_READY = 0b001;
     static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 2048; // TODO: Tune buffer, should be > MTU which is 255 bytes for BLE witj etxnded data length
@@ -60,9 +59,8 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         union
         {
             hci_con_handle_t hciHandle;
-            uint16_t rfcommChannelId;
         };
-        uint8_t readyState; // Simple binary state machine, 0b01 = notification enabled, 0b100 = rfcomm channel opened, 0b010 = att channel open
+        uint8_t readyState; // Simple binary state machine, 0b01 = notification enabled, 0b010 = att channel open
         uint16_t mtu;
         uint16_t attrHandle; // Used for ATT connections only
         uint16_t bufferOverrunErr;
@@ -112,7 +110,6 @@ private:
     static void attContextCallback(void *context);
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void hciPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
-    static void rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     static uint16_t attReadCallback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
@@ -120,7 +117,6 @@ private:
     // Remove any old connections
     static void removeConnection(uint16_t handle);
     // END: methods within this block as running within the BLE task
-    static void eraseBonding();
     static void heartbeat_handler(struct btstack_timer_source *ts);
 
     // Lists of bluetooth contexts
@@ -163,16 +159,14 @@ private:
     GATAS::SsidOrPasswdStr localName;
 
     SemaphoreHandle_t mutex;
-    bool rfComm;
     CobsStreamHandler cobsStreamHandler;
 public:
 
     static constexpr const char *NAME = "Bluetooth";
-    Bluetooth(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), mutex(nullptr), /*spinLock(0),*/ rfComm(false), cobsStreamHandler(CobsStreamHandler(bus, config))
+    Bluetooth(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), mutex(nullptr), cobsStreamHandler(CobsStreamHandler(bus, config))
     {
         instance = this;
         localName = config.strValueByPath("GaTas", NAME, "localName");
-        rfComm = config.valueByPath(0, NAME, "rfComm");
         createAdvData();
     }
 

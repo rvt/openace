@@ -22,8 +22,6 @@
 #include "etl/bit_stream.h"
 #include <etl/algorithm.h>
 
-#define RFCOMM_SERVER_CHANNEL 1
-
 GATAS::PostConstruct Bluetooth::postConstruct()
 {
     instance->mutex = xSemaphoreCreateRecursiveMutex();
@@ -33,12 +31,6 @@ GATAS::PostConstruct Bluetooth::postConstruct()
     }
 
     return GATAS::PostConstruct::OK;
-}
-
-void Bluetooth::eraseBonding()
-{
-    gap_delete_all_link_keys();
-    puts("Bonding data erased successfully.");
 }
 
 void Bluetooth::start()
@@ -53,21 +45,6 @@ void Bluetooth::start()
 
     // setup GATT Client
     gatt_client_init();
-
-    // RFCOMM
-    if (rfComm)
-    {
-        rfcomm_init();
-        rfcomm_register_service(rfcommPacketHandler, RFCOMM_SERVER_CHANNEL, 0xffff);
-
-        // init SDP, create record for SPP (Serial Port Profile) and register with SDP
-        sdp_init();
-        memset(instance->spp_service_buffer, 0, sizeof(instance->spp_service_buffer));
-        spp_create_sdp_record(instance->spp_service_buffer, sdp_create_service_record_handle(), RFCOMM_SERVER_CHANNEL, localName.c_str());
-        btstack_assert(de_get_len(instance->spp_service_buffer) <= sizeof(instance->spp_service_buffer));
-        sdp_register_service(instance->spp_service_buffer);
-        // RFCOMM
-    }
 
     // setup advertisements
     uint16_t adv_int_min = 6;  // 0x0030; change dto 6/12 for possible fix Android very quick disconnect
@@ -112,7 +89,6 @@ void Bluetooth::start()
 #endif
     hci_power_control(HCI_POWER_ON);
 
-    //    eraseBonding();
     getBus().subscribe(*this);
 };
 
@@ -164,7 +140,7 @@ void Bluetooth::createAdvData()
     // bit 2 LE BR/EDR Not Supported. Bit 37 of LMP Feature Mask Definitions (Page 0)
     // bit 3 LE Simultaneous LE and BR/EDR to Same Device Capable (Controller). Bit 49 of LMP Feature Mask Definitions (Page 0)
     // bit 4 Previously Used
-    advertiseData.push_back(rfComm ? 0x02 : 0x06);
+    advertiseData.push_back(0x06);
 
     uint8_t maxSize = etl::min((size_t)8, localName.size());
     advertiseData.push_back(static_cast<uint8_t>(1 + maxSize)); // length = type + name length
@@ -237,10 +213,6 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
             {
                 att_server_request_to_send_notification(&btContext.callBack, btContext.hciHandle);
             }
-            else if (btContext.rfcommChannelId)
-            {
-                rfcomm_request_can_send_now_event(btContext.rfcommChannelId);
-            }
         }
     }
     btstack_run_loop_set_timer(&instance->heartbeat, delay);
@@ -272,10 +244,6 @@ void Bluetooth::attContextCallback(void *context)
         {
             sendStatus = att_server_notify(btContext->hciHandle, btContext->attrHandle, data.data(), data.size());
         }
-        else if (btContext->rfcommChannelId && (btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-        {
-            sendStatus = rfcomm_send(btContext->rfcommChannelId, const_cast<uint8_t*>(data.data()), data.size());
-        }
 
         size_t used=0;
         if (auto guard = SemaphoreGuard<true>(1000, instance->mutex))
@@ -289,10 +257,6 @@ void Bluetooth::attContextCallback(void *context)
             if ((btContext->readyState & ATT_READYSTATE) == ATT_READYSTATE)
             {
                 att_server_request_to_send_notification(&btContext->callBack, btContext->hciHandle);
-            }
-            else if ((btContext->readyState & RFCOM_READYSTATE) == RFCOM_READYSTATE)
-            {
-                rfcomm_request_can_send_now_event(btContext->rfcommChannelId);
             }
         }
 
@@ -387,79 +351,6 @@ void Bluetooth::hciPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
             gap_request_connection_parameter_update(con_handle, 12, 12, 4, 0x0048);
             break;
         }
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-}
-
-/*
- * @section HCI Packet Handler
- *
- * @text The packet handler is used to handle new connections, can trigger Security Request
- */
-void Bluetooth::rfcommPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
-{
-    UNUSED(channel);
-    UNUSED(size);
-
-    switch (packet_type)
-    {
-    case HCI_EVENT_PACKET:
-        switch (hci_event_packet_get_type(packet))
-        {
-        case RFCOMM_EVENT_INCOMING_CONNECTION:
-        {
-            auto channelId = rfcomm_event_incoming_connection_get_rfcomm_cid(packet);
-            if (createConnection(channelId, 24, 0b100))
-            {
-                rfcomm_accept_connection(channelId);
-            }
-            else
-            {
-                rfcomm_decline_connection(channelId);
-            }
-        }
-        break;
-
-        case RFCOMM_EVENT_CHANNEL_OPENED:
-        {
-            auto channelId = rfcomm_event_channel_opened_get_rfcomm_cid(packet);
-            if (rfcomm_event_channel_opened_get_status(packet))
-            {
-                Bluetooth::removeConnection(channelId);
-            }
-            else
-            {
-                // clang-format off
-                Bluetooth::withHandle(channelId,
-                    etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
-                    {
-                        auto rfcomm_mtu = rfcomm_event_channel_opened_get_max_frame_size(packet);
-                        ctx.mtu = static_cast<uint16_t>(rfcomm_mtu);
-                        ctx.readyState |= 0b001;
-                        rfcomm_request_can_send_now_event(ctx.rfcommChannelId);
-                    })
-                );
-                // clang-format on
-            }
-        }
-        break;
-
-        case RFCOMM_EVENT_CAN_SEND_NOW:
-        {
-            // sendPackage(rfcomm_event_can_send_now_get_rfcomm_cid(packet));
-        }
-        break;
-
-        case RFCOMM_EVENT_CHANNEL_CLOSED:
-        {
-            Bluetooth::removeConnection(rfcomm_event_channel_closed_get_rfcomm_cid(packet));
-        }
-        break;
         default:
             break;
         }
