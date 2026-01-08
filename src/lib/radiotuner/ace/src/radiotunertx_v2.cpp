@@ -78,7 +78,7 @@ void RadioTunerTx::radioTuneTask(void *arg)
                     if (opionalTiming.has_value())
                     {
                         const auto &timing = opionalTiming.value();
-                        nextDelay = timing.atTime - CoreUtils::timeMs32();
+                        nextDelay = timing.atTime - CoreUtils::timeMs32(); 
 
                         if (nextDelay < 10)
                         {
@@ -109,7 +109,9 @@ void RadioTunerTx::radioTuneTask(void *arg)
                     nextDelay = 1000;
                     break;
                 }
-                nextDelay -= 2; // -2 to allow for some timing inaccurasies
+                // Takes about 10ms to send, we subsstract this to give it some extra time
+                // TODO: Measure this in a feedback loop?
+                nextDelay -= 10;
                 // Fail safe timing to keep any error within limits
                 if (nextDelay > 5000 || nextDelay < 1)
                 {
