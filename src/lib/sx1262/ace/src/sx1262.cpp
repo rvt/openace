@@ -209,25 +209,25 @@ void Sx1262::configureSx1262(const RadioParameters &newParameters, bool forTx)
             // preamble_len_in_bits -> transmitted preamble length: number of bits sent as preamble coded as 0x55.
             // preamble_detector -> the packet controller will only become active if a certain number of preamble bits have been successfully received by the rad
             // The user can select a value ranging from “Preamble detector length off” - where the radio will not perform any gating and will try to lock directly on the following Sync Word
-            uint8_t syncWordLength;
+            uint8_t syncLength;
             const uint8_t *data;
             if (forTx)
             {
-                syncWordLength = newParameters.config->syncLength;
+                syncLength = newParameters.config->syncLength;
                 data = newParameters.config->syncWord.data();
             }
             else
             {
-                syncWordLength = newParameters.config->syncLength - newParameters.config->syncSkipInRxLength;
+                syncLength = newParameters.config->syncLength - newParameters.config->syncSkipInRxLength;
                 data = newParameters.config->syncWord.data() + newParameters.config->syncSkipInRxLength;
             }
             auto pkt_params_gfsk = DEFAULT_PKG_PARAMS_GFSK;
             pkt_params_gfsk.pld_len_in_bytes = newParameters.config->packetLength * MANCHESTER;
             pkt_params_gfsk.preamble_detector = SX126X_GFSK_PREAMBLE_DETECTOR_MIN_8BITS;    // Reception
-            pkt_params_gfsk.preamble_len_in_bits = newParameters.config->txPreambleLength;  // During sending, the preamble is added as part of the sync
-            pkt_params_gfsk.sync_word_len_in_bits = syncWordLength * 8;
+            pkt_params_gfsk.preamble_len_in_bits = newParameters.config->txPreambleLength;  // In addition to this length, there is also 16 bit preamble specific for nRF905 added to the syncword. THis will works fine for an SX1262
+            pkt_params_gfsk.sync_word_len_in_bits = syncLength * 8;
             sx126x_set_gfsk_pkt_params(this, &pkt_params_gfsk);
-            sx126x_set_gfsk_sync_word(this, data, syncWordLength);
+            sx126x_set_gfsk_sync_word(this, data, syncLength);
 
             // printf("Radio %d changed from %s to %s\n", radioNo, GATAS::toString(lastParameters.config->dataSource), GATAS::toString(newParameters.config->dataSource));
         }
@@ -361,6 +361,8 @@ void Sx1262::receiveGFSKPacket()
             sx126x_read_buffer(this, 0x80, frame.data, receivedFrameLength);
 
             sendToBus(GATAS::DataFrameMsg{frame});
+        } else {
+            GATAS_LOG("Incorrect frame length received %d", receivedFrameLength);
         }
     }
     else

@@ -38,20 +38,55 @@ class MonitorModule extends El {
       });
   }
 
+  _chunkString(str, size, sep = "'") {
+    return str.match(new RegExp(`.{1,${size}}`, "g")).join(sep);
+  }
+
+  _bitsToDots(str) {
+    return str
+      .replace(/1/g, "●")
+      .replace(/0/g, "·");
+  }
+
   _row(html, item) {
-    var value;
-    if (Array.isArray(item.value)) {
-      value = item.value.join(", ");
-    } else {
-      value = item.value;
+    let value = item.value;
+
+    let isNumeric = false;
+    let isBitString = false;
+
+    if (Array.isArray(value)) {
+      value = value.join(", ");
+    } else if (typeof value === "string" && /^[01]+$/.test(value) && value.length >= 10) {
+      isBitString = true;
+      value = this._bitsToDots(this._chunkString(value, 10, "|"));
+    } else if (typeof value === "number") {
+      isNumeric = true;
+    }
+
+    // Styling decisions
+    let style = "";
+
+    // Monospace only for numbers and bitstrings
+    if (isNumeric || isBitString) {
+      style += "font-family: monospace;";
+    }
+
+    // Error highlighting: name ends with Err AND numeric value > 0
+    if (
+      typeof item.name === "string" &&
+      item.name.endsWith("Err") &&
+      typeof item.value === "number" &&
+      item.value > 0
+    ) {
+      style += " color: orange;";
     }
 
     return html`
-      <tr>
-        <th style="width:33%" scope="row">${item.name}</th>
-        <td>${value}</td>
-      </tr>
-    `;
+    <tr>
+      <th style="width:33%" scope="row">${item.name}</th>
+      <td style="${style}">${value}</td>
+    </tr>
+  `;
   }
 
   _filteredItems() {
