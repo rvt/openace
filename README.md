@@ -5,7 +5,7 @@
 [<img src="doc/img/Discord-Logo-Blurple.png" height="45px">](https://discord.gg/J6mXTcWndS)
 
 > [!TIP]
-> Please visit the [GA/TAS WIKI](https://github.com/rvt/OpenAce/wiki) for build information.
+> Please visit the [GA/TAS WIKI](https://rvt.github.io/gatas-doc/) for build information.
 
 The GA/TAS Conspicuity device is designed for General Aviation pilots flying in areas where multiple
 protocols, such as OGN, Flarm, ADS-L and FANET, are used. It can transmit and receive multiple

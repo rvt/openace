@@ -744,13 +744,11 @@ class BluetoothConfig extends ModuleConfig {
     } else {
       this.$refs.localName.value = data.localName;
     }
-    //    this.$refs.rfComm.checked = data.rfComm;
   }
 
   _getFormData() {
     return {
       localName: this.$refs.localName.value,
-      //rfComm: this.$refs.rfComm.checked,
     };
   }
 
@@ -769,12 +767,6 @@ class BluetoothConfig extends ModuleConfig {
             <input type="text" id="localName" ref="localName" placeholder="GaTas" />
           </label>
         </div>
-        <!--div class="row g-0">
-          <label for="rfComm">
-            <input type="checkbox" id="rfComm" id="rfComm" ref="rfComm" placeholder="0" />
-            Enable SPP (Serial Port Profile) on Bluetooth. Normally just BLE is enough for systems like SkyDemon.
-          </label>
-        </div-->
 
         ${this.buttonArray(html)}
       </form>
