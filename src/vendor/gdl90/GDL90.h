@@ -30,6 +30,7 @@
 #include <string>
 #include <etl/array_view.h>
 #include <etl/vector.h>
+#include <etl/span.h>
 #include <etl/string.h>
 
 class GDL90
@@ -67,6 +68,7 @@ public:
 
         // popular extensions
         FOREFLIGHT                      = 0x65,
+        HILTON_SX_HEARTBEAT             = 0x1D,
     };
     enum class MESSAGE_FOREFLIGHT_SUBID
     {
@@ -308,6 +310,23 @@ public:
 
     bool     foreflight_ahrs_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  roll, uint32_t  pitch, uint32_t  heading, uint32_t  ias, uint32_t  tas );
     bool     foreflight_ahrs_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& roll, uint32_t& pitch, uint32_t& heading, uint32_t& ias, uint32_t& tas );
+
+
+    //           0 = No fix
+    //           1 = 3D GPS fix
+    //           2 = DGPS / SBAS / WAAS
+    //           3 = Reserved
+    bool sx_heartbeat_encode(etl::ivector<uint8_t> &unpacked,
+                                bool gpsValid,
+                                uint8_t gpsFixQuality,   // 0,1,2
+                                bool esEnabled,
+                                bool cpuTempValid,
+                                uint8_t numRadios,
+                                uint8_t satLock, uint8_t satConn,
+                                uint16_t num978, uint16_t num1090,
+                                uint16_t rate978, uint16_t rate1090,
+                                float cpuTemp,
+                                const etl::span<etl::pair<float, float>> &towers);
 
 private:
     uint16_t crc_table[256]; 

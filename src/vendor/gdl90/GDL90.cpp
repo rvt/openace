@@ -1102,3 +1102,125 @@ bool GDL90::foreflight_ahrs_decode( const etl::ivector<uint8_t>& unpacked, uint3
     tas |= unpacked[i++] << 0;
     return true;
 }
+
+
+bool GDL90::sx_heartbeat_encode(etl::ivector<uint8_t> &unpacked,
+                                bool gpsValid,
+                                uint8_t gpsFixQuality,   // 0,1,2
+                                bool esEnabled,
+                                bool cpuTempValid,
+                                uint8_t numRadios,
+                                uint8_t satLock, uint8_t satConn,
+                                uint16_t num978, uint16_t num1090,
+                                uint16_t rate978, uint16_t rate1090,
+                                float cpuTemp,
+                                const etl::span<etl::pair<float, float>> &towers)
+{
+
+    unpacked.clear();
+    unpacked.push_back(uint8_t(MESSAGE_ID::HILTON_SX_HEARTBEAT));
+    unpacked.push_back('S');
+    unpacked.push_back('X');
+    unpacked.push_back(1);
+    unpacked.push_back(1);
+
+    // [4]
+    unpacked.push_back(1); // major
+    unpacked.push_back(0); // minor
+    unpacked.push_back(1); // 1=beta 2=release 3=RC
+    unpacked.push_back(1); // build
+
+    // [8]
+    unpacked.push_back(0xff);
+    unpacked.push_back(0xff);
+    unpacked.push_back(0xff);
+    unpacked.push_back(0xff);
+
+    // [12]
+    unpacked.push_back(0); // IMU Sensor
+
+    // Bit 0-1 : GPS Fix Quality
+    //           0 = No fix
+    //           1 = 3D GPS fix
+    //           2 = DGPS / SBAS / WAAS
+    //           3 = Reserved
+
+    // Bit 2   : AHRS data valid
+    // Bit 3   : Pressure altitude valid
+    // Bit 4   : CPU temperature valid
+    // Bit 5   : UAT (978 MHz) enabled/present
+    // Bit 6   : ES (1090 MHz) enabled/present
+    // Bit 7   : GPS enabled
+    uint8_t b13 = 0;
+
+    // Bits 0-1: GPS fix quality
+    // 0 = no fix, 1 = 3D, 2 = DGPS
+    b13 |= (gpsFixQuality & 0x03);
+
+    // Bit 4: CPU temperature valid
+    if (cpuTempValid) {
+        b13 |= (1 << 4);
+    }
+
+    // Bit 6: ES enabled
+    if (esEnabled) {
+        b13 |= (1 << 6);
+    }
+
+    // Bit 7: GPS enabled
+    if (gpsValid) {
+        b13 |= (1 << 7);
+    }
+
+    // [13]
+    unpacked.push_back(b13); 
+
+    // [14]
+    unpacked.push_back(0); // No idea what this is
+
+    // [15]
+    unpacked.push_back(0); // IMU Connected
+
+    // [16]
+    unpacked.push_back(satLock);
+    unpacked.push_back(satConn);
+
+    // [18] UAT
+    unpacked.push_back(num978 >> 8);
+    unpacked.push_back(num978 & 0xFF);
+
+    // [20] 1090
+    unpacked.push_back(num1090 >> 8);
+    unpacked.push_back(num1090 & 0xFF);
+
+    // [22] UAT Rate
+    unpacked.push_back(rate978 >> 8);
+    unpacked.push_back(rate978 & 0xFF);
+
+    // [24] 1090 Rate
+    unpacked.push_back(rate1090 >> 8);
+    unpacked.push_back(rate1090 & 0xFF);
+
+    // [26] Temp
+    auto t = uint16_t(10.0f * cpuTemp);
+    unpacked.push_back(t >> 8);
+    unpacked.push_back(t & 0xFF);
+
+    // [28]
+    unpacked.push_back(towers.size());
+    uint32_t latitude;
+    uint32_t longitude;
+    for (const auto &t : towers)
+    {
+        latlon_encode(latitude, t.first);
+        latlon_encode(longitude, t.second);
+        unpacked.push_back((latitude >> 16) & 0xff);
+        unpacked.push_back((latitude >> 8) & 0xff);
+        unpacked.push_back((latitude >> 0) & 0xff);
+        unpacked.push_back((longitude >> 16) & 0xff);
+        unpacked.push_back((longitude >> 8) & 0xff);
+        unpacked.push_back((longitude >> 0) & 0xff);
+    }
+
+    return true;
+}
