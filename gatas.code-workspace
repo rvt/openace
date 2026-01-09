@@ -120,6 +120,16 @@
 			"stdint.h": "c",
 			"*.hpp_withtype": "cpp"
 		},
-		"cmake.autoSelectActiveFolder": false
+		"cmake.autoSelectActiveFolder": false,
+		"files.exclude": {
+			"**/.DS_Store": false,
+			"**/.git": false,
+			"**/.hg": false,
+			"**/.svn": false,
+			"**/Thumbs.db": false,
+			"**/build": true,
+			"**/Debug_*": true,
+			"**/Release_*": true
+		}
 	  }
 }
