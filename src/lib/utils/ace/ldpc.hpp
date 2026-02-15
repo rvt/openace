@@ -11,7 +11,7 @@
 #include "pico/stdlib.h"
 
 #include <limits.h>
-#include <math.h>
+#include <cmath>
 
 #include "bitcount.hpp"
 

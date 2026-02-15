@@ -73,7 +73,7 @@ namespace GATAS
             }
             else
             {
-                GATAS_LOG("Message not send current:%d:%d core0:%d core1:%d\n", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
+                GATAS_INFO("Message not send current:%d:%d core0:%d core1:%d\n", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
             }
         }
 
@@ -90,7 +90,7 @@ namespace GATAS
 #endif
 
 #if GATAS_DEBUG == 1
-            GATAS_MEASURE_M("", 10'000);
+            GATAS_MEASURE_M("", 20'000 /* 10'000 */);
             processMessage(message);
             if (measure)
             {

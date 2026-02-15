@@ -196,23 +196,25 @@ namespace GATAS
     enum class DataSource : uint8_t
     {
         FLARM = 0,
-        ADSL = 1,
-        FANET = 2,
-        OGN1 = 3,
-        _TRANSPROTOCOLS = 4, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
-        PAW = 4,
-        ADSB = 5,
-        _ITEMS = 6,   // Maximum number of items eg last item + 1
-        UNKNOWN = 255 // Note: Never use this! Unly used for stringToEnum(..)
+        _TRANSPROTOCOLSSTART = 0,
+        ADSLM = 1,
+        ADSLO_HDR = 2,
+        FANET = 3,
+        OGN1 = 4,
+        PAW = 5,
+        //        HDR = 6,
+        ADSB = 6,
+        _TRANSPROTOCOLS = 6, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
+        ADSLFLARM = 253,     // Combination of ADSL/FLARM, not an acutal protocol but needed for RX of multiple protocols
+        ADSLOGN = 254,       // Combination of ADSL/OGN, not an acutal protocol but needed for RX of multiple protocols
+        _ITEMS = 9,          // Maximum number of items eg last item + 1
+        NONE = 255           // Note: Never use this! Unly used for stringToEnum(..)
     };
 
     // Get a string representation of a datasource
     const char *dataSourceIntToString(uint8_t ds);
     const char *toString(DataSource ds);
     DataSource stringToDataSource(const char *str);
-
-    // Get a character representation of a datasource
-    const char *dataSourceToChar(DataSource ds);
 
     // Values from https://en.wikipedia.org/wiki/Dilution_of_precision_(navigation)
     enum class pDopInterpretation : uint8_t
@@ -291,7 +293,7 @@ namespace GATAS
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::ADSL), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN) // , bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), course(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN) // , bearingFromOwn(INT16_MIN)
         {
         }
 
@@ -317,7 +319,7 @@ namespace GATAS
         struct GaTasConfiguration
         {
             Conspicuity conspicuity;
-            etl::vector<DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
+            etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
             etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddresses; // List of all configured hex codes of all aircraft
         };
 
@@ -393,7 +395,7 @@ namespace GATAS
         int16_t ellipseHeight;           // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
         float verticalSpeed;             // in m/s
         float groundSpeed;               // in m/s
-        float course;                    // 0..359
+        float track;                     // 0..359
         float hTurnRate;                 // deg/s Turn rate in the horizontal plane
         float velocityNorth;             // North velocity in m/s
         float velocityEast;              // East velocity in m/s
@@ -420,6 +422,50 @@ namespace GATAS
 
     const char *modulationToString(GATAS::Modulation mode);
 
+    struct ProtocolConfig
+    {
+        uint8_t pcId;                     // Internally used to opnise tranceiver state
+        GATAS::Modulation mode;           // Mode of the radio
+        GATAS::DataSource __dataSource;   // Data source
+        bool manchester;                  // True when data is manchester encoded
+        uint8_t packetLength;             // Total packet length including CRC, but when left to zero. THe protocol send the packet length
+        uint8_t txPreambleLength;         // Preamble length in bits during transmission
+        uint8_t syncLength;               // Length of the sync word in bytes
+        uint8_t syncSkipInRxLength;       // When setting the receiver, skip n bytes from the sync
+        etl::array<uint8_t, 10> syncWord; // Sync word for RX/TX depending on the mode we only take portion or full sync
+
+        constexpr GATAS::DataSource dataSource() const
+        {
+            return __dataSource;
+        }
+
+        /**
+         * Use this during Tx context of matching datasources
+         */
+        constexpr bool isTxDataSource(GATAS::DataSource ds) const
+        {
+            return __dataSource == ds;
+        }
+
+        /**
+         * USe this during Rx context of matching datasources
+         * 23 Jan 2026 : This was added because now RX Datasource can be combined ADSL/FLARM or ADSL/OGN
+         */
+        constexpr bool isRxDataSource(GATAS::DataSource ds) const
+        {
+            switch (__dataSource)
+            {
+            case GATAS::DataSource::ADSLFLARM:
+                return ds == GATAS::DataSource::FLARM || ds == GATAS::DataSource::ADSLM;
+
+            case GATAS::DataSource::ADSLOGN:
+                return ds == GATAS::DataSource::OGN1 || ds == GATAS::DataSource::ADSLM;
+
+            default:
+                return __dataSource == ds;
+            }
+        }
+    };
     /**
      * @brief Radio frame received by transceiver. Can contain both LORA and GFSK data frames
      *
@@ -428,15 +474,23 @@ namespace GATAS
     {
         uint32_t epochSeconds;
         uint32_t frequency;
+        const GATAS::ProtocolConfig *config;
+        size_t length; // Length of the data frame in bytes
         int8_t rssidBm;
-        GATAS::DataSource dataSource;
-        GATAS::Modulation modulation;
-        uint8_t length;                         // Length of the data frame
-        uint8_t data[MAXIMUM_RAW_FRAME_LENGTH]; // Data frame content
+        union
+        {
+            // dataWord or data can contain both Manchester or non encoded bytes depending on the value of modulation
+            uint32_t dataWord[MAXIMUM_RAW_FRAME_WORD_LENGTH];
+            uint8_t data[MAXIMUM_RAW_FRAME_LENGTH];
+        };
 
         static constexpr size_t maxFrameDataLength()
         {
-            return sizeof(std::declval<DataFrame>().data);
+            return MAXIMUM_RAW_FRAME_LENGTH;
+        }
+        static constexpr size_t maxFrameDataWordLength()
+        {
+            return MAXIMUM_RAW_FRAME_WORD_LENGTH;
         }
     };
 

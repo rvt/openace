@@ -7,7 +7,6 @@
 
 #include "../fanetace.hpp"
 
-#include "ace/messagerouter.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
@@ -68,7 +67,7 @@ void FanetAce::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 
 void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config->dataSource == GATAS::DataSource::FANET)
+    if (msg.radioParameters.config->isTxDataSource(GATAS::DataSource::FANET))
     {
         auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
@@ -77,7 +76,7 @@ void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
             .longitude(ownship.lon)
             .altitude(ownship.heightMsl())
             .speed(ownship.groundSpeed * MS_TO_KPH)
-            .groundTrack(ownship.course)
+            .groundTrack(ownship.track)
             .climbRate(ownship.verticalSpeed)
             .tracking(!gaTasConfiguration.conspicuity.noTrack)
             .turnRate(ownship.hTurnRate)

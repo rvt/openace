@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <time.h>
 #include <type_traits>
-#include <inttypes.h>
 
 #include "pico/time.h"
 
@@ -18,14 +17,17 @@ class CoreUtils
 
     inline static __scratch_y("GatasMem_offsetTimeToAbsolute") uint64_t CoreUtils_offsetTimeToAbsolute = 0;
     inline static __scratch_y("GatasMem_timeUs32PpsOffset") uint32_t CoreUtils_timeUs32PpsOffset = 0;
+    
     inline static int spinLock;
 
 public:
-    static void init() {
+    static void init()
+    {
         spinLock = SpinlockGuard::claim();
     }
 
-    __force_inline static int sharedSpinLock() {
+    __force_inline static int sharedSpinLock()
+    {
         return spinLock;
     }
 
@@ -50,29 +52,6 @@ public:
         if (lf)
         {
             putchar('\n');
-        }
-    }
-
-    template <typename T>
-    static void printBufferHex(etl::span<T> buffer)
-    {
-        GATAS_ASSERT(std::is_integral<T>::value, "T must be an integral type");
-
-        printf("Length(%d) ", static_cast<int>(buffer.size()));
-
-        for (size_t i = 0; i < buffer.size(); ++i)
-        {
-            if constexpr (sizeof(T) == 1)
-                printf("0x%02" PRIX8, static_cast<uint8_t>(buffer[i]));
-            else if constexpr (sizeof(T) == 2)
-                printf("0x%04" PRIX16, static_cast<uint16_t>(buffer[i]));
-            else if constexpr (sizeof(T) == 4)
-                printf("0x%08" PRIX32, static_cast<uint32_t>(buffer[i]));
-            else
-                printf("0x%X", static_cast<unsigned int>(buffer[i])); // fallback
-
-            if (i + 1 < buffer.size())
-                printf(", ");
         }
     }
 
@@ -111,7 +90,7 @@ public:
 
     /**
      * Get a timestamp in ms
-     * This timestamp monotonically increases from power up
+     * This timestamp monotonically increases from power up and alligned with PPS
      * \sa timeUs32
      */
     static uint32_t timeMs32()
@@ -120,7 +99,7 @@ public:
     }
     /**
      * Get a timestamp in seconds
-     * This timestamp monotonically increases from power up
+     * This timestamp monotonically increases from power up and alligned with PPS
      */
     static uint32_t timeS32()
     {
@@ -131,9 +110,9 @@ public:
      * Calculate the time from referenceUs to us
      * If referenceUs is in the past, the result is negative, eg the event happened
      */
-    __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t us = timeUs32())
+    __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t now = timeUs32())
     {
-        auto diff = static_cast<int32_t>(referenceUs - us);
+        auto diff = static_cast<int32_t>(referenceUs - now);
 #if GATAS_DEBUG == 1
         if (diff < -15 * 60 * 1'000'000 || diff > 15 * 60 * 1'000'000)
         {
@@ -193,7 +172,7 @@ public:
     }
 
     /**
-     * Returns the current ms within the current second (based on PPS)
+     * Returns the current ms within the current second and alligned with PPS
      * eg: a value of 119 means 119ms since PPS
      */
     static uint16_t msInSecond()
@@ -246,6 +225,7 @@ public:
     {
         return (time_us_64() / 1'000) + CoreUtils_offsetTimeToAbsolute;
     }
+
     /**
      * Seconds since EPOCH, like unix time
      */
@@ -308,18 +288,33 @@ public:
         return d * DIAMETER_EARTH_M;
     }
 
-    static auto northEastDistance(float fromLat, float fromLon, float toLat, float toLon)
+    static inline float wrapLonDelta(float dLon)
     {
-        struct relNorthRllEast
+        // Wrap to [-180, +180]
+        if (dLon > 180.0f)
+        {
+            dLon -= 360.0f;
+        }
+        if (dLon < -180.0f)
+        {
+            dLon += 360.0f;
+        }
+        return dLon;
+    }
+
+    static auto northEastDistance(float fromLat, float fromLon, float toLat,
+                                  float toLon)
+    {
+        struct RelNorthRelEast
         {
             float north;
             float east;
         };
 
-        float kx = cosf(fromLat * DEG_TO_RADS) * 111321;
-        float dx = (toLon - fromLon) * kx;
-        float dy = (toLat - fromLat) * 111139;
-        return relNorthRllEast{dy, dx};
+        float kx = cosf(fromLat * DEG_TO_RADS) * 111321.0f;
+        float dx = wrapLonDelta(toLon - fromLon) * kx;
+        float dy = (toLat - fromLat) * 111139.0f;
+        return RelNorthRelEast{dy, dx};
     }
 
     /**

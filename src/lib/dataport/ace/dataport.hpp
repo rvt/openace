@@ -5,7 +5,6 @@
 
 #include "ace/constants.hpp"
 #include "ace/models.hpp"
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/messages.hpp"

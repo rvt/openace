@@ -18,7 +18,7 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
 {
     (void)path;
     stream << "{";
-    for (const auto &stat : dataSourceTimeStats)
+    for (const auto &stat : datasourceTimeStats.span())
     {
         stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",";
     }
@@ -30,32 +30,11 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
     stream << "}";
 }
 
-void Flarm2024::addReceiveStat(uint32_t frequency)
-{
-    // TODO: Something strange happening with multiple frequencies we receive
-    auto msInSec = 99 - CoreUtils::msInSecond() / 10;
-    for (auto &stat : dataSourceTimeStats)
-    {
-        if (stat.frequency == frequency)
-        {
-            stat.timeTenthMs.set(msInSec);
-            return;
-        }
-    }
-
-    if (!dataSourceTimeStats.full())
-    {
-        // If frequency not found, add a new stat
-        dataSourceTimeStats.push_back(DataSourceTimeStats{});
-        dataSourceTimeStats.back().frequency = frequency;
-        dataSourceTimeStats.back().timeTenthMs.set(msInSec);
-    }
-}
-
 void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
     if (msg.dataSource == GATAS::DataSource::FLARM)
     {
+        datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
 
         Flarm2024Packet packet;
@@ -71,7 +50,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxGfskMsg &msg)
             // LSB seconds error not matched, or any other
             return;
         }
-        addReceiveStat(msg.frequency);
+
 
         if (packet.messageType() != 0x02)
         {
@@ -131,7 +110,7 @@ void Flarm2024::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
 void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config->dataSource == GATAS::DataSource::FLARM)
+    if (msg.radioParameters.config->isTxDataSource(GATAS::DataSource::FLARM))
     {
         Flarm2024Packet packet;
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
@@ -150,7 +129,7 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         packet.turnRate(ownship.hTurnRate);
         packet.groundSpeed(ownship.groundSpeed);
         packet.verticalSpeed(ownship.verticalSpeed);
-        packet.groundTrack(ownship.course);
+        packet.groundTrack(ownship.track);
         // Abuse GROUNDSPEED_CONSIDERING_AIRBORN for movement status, which is not AirBorn status, but more what the aircraft is doing
         packet.movementStatus(ownship.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN ? 2 : 1);
 

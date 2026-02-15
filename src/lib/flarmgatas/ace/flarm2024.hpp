@@ -17,11 +17,10 @@
 
 /* GATAS. */
 #include "ace/constants.hpp"
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
-
+#include "ace/datasourcetimestatstable.hpp"
 
 
 class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024,
@@ -40,12 +39,7 @@ private:
         uint32_t messageTypeNot0x02 = 0;
     } statistics;
 
-    struct DataSourceTimeStats
-    {
-        etl::bitset<100> timeTenthMs;
-        uint32_t frequency;
-    };
-    etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // Two frequencies (Europe)
+    GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
 
     GATAS::OwnshipPositionInfo ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
@@ -88,11 +82,6 @@ private:
     GATAS::AddressType addressTypeFromFlarm(uint8_t addressType) const;
 
     uint8_t addressTypeToFlarm(GATAS::AddressType) const;
-
-    /**
-     * Keep track of what timestamp (roughly) we receive flarm frames
-    */
-    void addReceiveStat(uint32_t frequency);
 
     GATAS::AircraftCategory toAircraftCategory(uint8_t flarmCode) const;
     uint8_t fromAircraftCategory(GATAS::AircraftCategory category) const;

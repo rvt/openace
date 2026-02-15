@@ -19,7 +19,6 @@ inline uint8_t Count1s(uint16_t Word)
     return __builtin_popcount(Word);
 }
 
-
 inline uint8_t Count1s(uint32_t LongWord)
 {
     return __builtin_popcountl(LongWord);
@@ -27,7 +26,7 @@ inline uint8_t Count1s(uint32_t LongWord)
 
 inline uint8_t Count1s(int32_t LongWord)
 {
-    return Count1s((uint32_t)LongWord);
+    return __builtin_popcountl(LongWord);
 }
 
 inline uint8_t Count1s(uint64_t LongWord)

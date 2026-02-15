@@ -3,6 +3,7 @@
 #include "pico/time.h"
 #include "etl/string_view.h"
 #include "coreutils.hpp"
+#include "debug.hpp"
 #include <inttypes.h>
 
 #if GATAS_DEBUG == 1
@@ -66,17 +67,6 @@ struct Measure
                        file_, line_, name_.begin(), id_, duration);
             }
         }
-    }
-
-    static constexpr const char *basename(const char *path)
-    {
-        const char *last = path;
-        for (const char *p = path; *p; ++p)
-        {
-            if (*p == '/' || *p == '\\')
-                last = p + 1;
-        }
-        return last;
     }
 
     Measure(const Measure &) = delete;

@@ -54,7 +54,7 @@ set( ACE_SOURCE_FILES
 #      ${CMAKE_CURRENT_SOURCE_DIR}/mocks/pico/time.c
 
         ../ace/src/countryregulations_v2.cpp
-        ../ace/src/radiotunertx_v2.cpp
+#        ../ace/src/radiotunertx_v2.cpp
 )
 
 

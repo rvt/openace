@@ -1,15 +1,15 @@
 // Copyright (c) 2022-2023 Robert A. Alfieri
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -17,8 +17,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-// 
-// GDL90.h - single header file implementing GDL90 message encoding and decoding 
+//
+// GDL90.h - single header file implementing GDL90 message encoding and decoding
 //
 // Refer to README.md for usage.
 //
@@ -30,6 +30,7 @@
 #include <string>
 #include <etl/array_view.h>
 #include <etl/vector.h>
+#include <etl/span.h>
 #include <etl/string.h>
 
 class GDL90
@@ -43,7 +44,7 @@ public:
 
     // Call this once to perform self-testing of these functions.
     // Be sure to check the return value to see if it passed.
-    bool     self_test( void );               
+    bool     self_test( void );
 
     using RawBytes = etl::vector<uint8_t, 52>;
 
@@ -67,12 +68,13 @@ public:
 
         // popular extensions
         FOREFLIGHT                      = 0x65,
+        HILTON_SX_HEARTBEAT             = 0x1D,
     };
     enum class MESSAGE_FOREFLIGHT_SUBID
     {
         ID                              = 0,
         AHRS                            = 1,
-    };    
+    };
 
     // predecode helpers
     bool     id_decode( MESSAGE_ID& id, const etl::ivector<uint8_t>& unpacked );
@@ -235,13 +237,13 @@ public:
     };
 
     bool     latlon_encode( uint32_t& latlon_encoded, float  latlon );  // latlon must be -180.0 .. 180.0(minus LSB epsilon); north and east are considered positive
-    bool     latlon_decode( uint32_t  latlon_encoded, float& latlon );  
+    bool     latlon_decode( uint32_t  latlon_encoded, float& latlon );
 
-    static constexpr uint32_t ALTITUDE_ENCODED_INVALID                = 0xfff;  
+    static constexpr uint32_t ALTITUDE_ENCODED_INVALID                = 0xfff;
     bool     altitude_encode( uint32_t& altitude_encoded, float  altitude );  // altitude must be -1000 ft to +101,350 ft
     bool     altitude_decode( uint32_t  altitude_encoded, float& altitude );  // altitude is set to NaN if altitude_encoded==ALTITUDE_ENCODED_INVALID
 
-    static constexpr uint32_t HORIZONTAL_VELOCITY_ENCODED_INVALID          = 0xfff;  
+    static constexpr uint32_t HORIZONTAL_VELOCITY_ENCODED_INVALID          = 0xfff;
     bool     horizontal_velocity_encode( uint32_t& velocity_encoded, float  velocity );  // valid range is 0 .. 4094 knots; if exceeded, then it is hammered to 4094
     bool     horizontal_velocity_decode( uint32_t  velocity_encoded, float& velocity );  // velocity is set to NaN if velocity_encoded==HORIZONTAL_VELOCITY_ENCODED_INVALID
 
@@ -250,17 +252,17 @@ public:
     bool     vertical_velocity_decode( uint32_t  velocity_encoded, float& velocity );  // velocity is set to NaN if velocity_encoded==VERTICAL_VELOCITY_ENCODED_INVALID
 
     bool     track_hdg_encode( uint32_t& track_hdg_encoded, float  track_hdg );        // valid range is 0-360 deg
-    bool     track_hdg_decode( uint32_t  track_hdg_encoded, float& track_hdg );        
+    bool     track_hdg_decode( uint32_t  track_hdg_encoded, float& track_hdg );
 
     bool     is_valid_call_sign( const etl::string_view call_sign );
 
-    bool     ownership_or_traffic_report_encode(       etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS alert_status, ADDR_TYPE addr_type, uint32_t participant_address, 
-                                                                                 uint32_t latitude, uint32_t longitude, uint32_t altitude, uint32_t misc, 
-                                                                                 NIC nic, NACP nacp, uint32_t horiz_velocity, uint32_t vert_velocity, uint32_t track_hdg, 
+    bool     ownership_or_traffic_report_encode(       etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS alert_status, ADDR_TYPE addr_type, uint32_t participant_address,
+                                                                                 uint32_t latitude, uint32_t longitude, uint32_t altitude, uint32_t misc,
+                                                                                 NIC nic, NACP nacp, uint32_t horiz_velocity, uint32_t vert_velocity, uint32_t track_hdg,
                                                                                  EMITTER emitter, const etl::string_view call_sign, EMERGENCY_PRIO emergency_prio_code );
-    bool     ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS& alert_status, ADDR_TYPE& addr_type, uint32_t& participant_address, 
-                                                                                 uint32_t& latitude, uint32_t& longitude, uint32_t& altitude, uint32_t& misc, 
-                                                                                 NIC& nic, NACP& nacp, uint32_t& horiz_velocity, uint32_t& vert_velocity, uint32_t& track_hdg, 
+    bool     ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS& alert_status, ADDR_TYPE& addr_type, uint32_t& participant_address,
+                                                                                 uint32_t& latitude, uint32_t& longitude, uint32_t& altitude, uint32_t& misc,
+                                                                                 NIC& nic, NACP& nacp, uint32_t& horiz_velocity, uint32_t& vert_velocity, uint32_t& track_hdg,
                                                                                  EMITTER& emitter, etl::istring & call_sign, EMERGENCY_PRIO& emergency_prio_code );
 
     // HEIGHT_ABOVE_TERRAIN
@@ -268,12 +270,12 @@ public:
     bool     height_encode( uint32_t& height_encoded, float  height );  // height must be -32767 .. 32767; if NaN, height_encoded is set to HEIGHT_ENCODED_INVALID
     bool     height_decode( uint32_t  height_encoded, float& height );  // height is set to NaN if height_encoded==HEIGHT_ENCODED_INVALID
 
-    bool     height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  height );  
-    bool     height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& height );  
-    
+    bool     height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  height );
+    bool     height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& height );
+
     // OWNERSHIP_GEOMETRIC_ALTITUDE
-    bool     geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude );  // geo_altitude must be -5*32768 .. 5*32767; 
-    bool     geo_altitude_decode( uint32_t  geo_altitude_encoded, float& geo_altitude );  
+    bool     geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude );  // geo_altitude must be -5*32768 .. 5*32767;
+    bool     geo_altitude_decode( uint32_t  geo_altitude_encoded, float& geo_altitude );
 
     static constexpr uint32_t VERTICAL_FIGURE_OF_MERIT_NOT_AVAIL = 0x7fff;
     static constexpr uint32_t VERTICAL_FIGURE_OF_MERIT_GE_32766  = 0x7ffe;
@@ -309,8 +311,25 @@ public:
     bool     foreflight_ahrs_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  roll, uint32_t  pitch, uint32_t  heading, uint32_t  ias, uint32_t  tas );
     bool     foreflight_ahrs_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& roll, uint32_t& pitch, uint32_t& heading, uint32_t& ias, uint32_t& tas );
 
+
+    //           0 = No fix
+    //           1 = 3D GPS fix
+    //           2 = DGPS / SBAS / WAAS
+    //           3 = Reserved
+    bool sx_heartbeat_encode(etl::ivector<uint8_t> &unpacked,
+                                bool gpsValid,
+                                uint8_t gpsFixQuality,   // 0,1,2
+                                bool esEnabled,
+                                bool cpuTempValid,
+                                uint8_t numRadios,
+                                uint8_t satLock, uint8_t satConn,
+                                uint16_t num978, uint16_t num1090,
+                                uint16_t rate978, uint16_t rate1090,
+                                float cpuTemp,
+                                const etl::span<etl::pair<float, float>> &towers);
+
 private:
-    uint16_t crc_table[256]; 
+    uint16_t crc_table[256];
     void     crc_init( void );                            // computes crc_table once
     uint16_t crc_compute( const etl::ivector<uint8_t>& unpacked, size_t length );
 

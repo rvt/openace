@@ -55,23 +55,18 @@ namespace GATAS
         return stringToEnum(addressMappings, str, AddressType::UNKNOWN);
     };
 
-    constexpr Mapping<DataSource, const char *> dataSourceMappings1[] =
+    constexpr Mapping<DataSource, const char *> dataSourceMappings[] =
     {
-        {DataSource::FLARM, "FLARM"},
-        {DataSource::ADSL, "ADSL"},
-        {DataSource::FANET, "FANET"},
+        {DataSource::FLARM, "Flarm"},
+        {DataSource::ADSLM, "ADSL"}, // <-- Don;t change to ADSM, this is also used frok teh frontend
+        {DataSource::ADSLO_HDR, "ADSL Hdr"},
+        {DataSource::ADSLFLARM, "ADSL FLARM"},
+        {DataSource::ADSLOGN, "ADSL OGN"},
+        {DataSource::FANET, "Fanet"},
         {DataSource::ADSB, "ADSB"},
         {DataSource::OGN1, "OGN"},
-        {DataSource::PAW, "PAW"}
-    };
-    constexpr Mapping<DataSource, const char *> dataSourceMappings2[] =
-    {
-        {DataSource::FLARM, "F"},
-        {DataSource::ADSL, "L"},
-        {DataSource::FANET, "N"},
-        {DataSource::ADSB, "A"},
-        {DataSource::OGN1, "O"},
-        {DataSource::PAW, "P"}
+        {DataSource::PAW, "PAW"},
+        {DataSource::NONE, "NONE"}
     };
 
     const char *dataSourceIntToString(uint8_t ds)
@@ -80,16 +75,11 @@ namespace GATAS
     }
     const char *toString(DataSource ds)
     {
-        return enumToString(dataSourceMappings1, ds, "UNKNOWN");
+        return enumToString(dataSourceMappings, ds, "UNKNOWN");
     }
     DataSource stringToDataSource(const char *str)
     {
-        return stringToEnum(dataSourceMappings1, str, DataSource::UNKNOWN);
-    }
-
-    const char *dataSourceToChar(DataSource ds)
-    {
-        return enumToString(dataSourceMappings2, ds, "U");
+        return stringToEnum(dataSourceMappings, str, DataSource::NONE);
     }
 
     struct pDopInterpretationMapping

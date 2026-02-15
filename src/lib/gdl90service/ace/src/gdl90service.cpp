@@ -179,10 +179,11 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
+    // TODO: try with JensRO set altitude to 0xFFF
     gdl90.altitude_encode(altitude, pos.heightMsl() * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
-    gdl90.track_hdg_encode(track_hdg, pos.course);
+    gdl90.track_hdg_encode(track_hdg, pos.track);
     GDL90::RawBytes unpacked;
 
     // TODO: set UERE based on GPS status, for example when we have SBAS set a lower uere to like 2??

@@ -13,7 +13,8 @@
 
 // #include "flarm_utils.hpp"
 #include "flarm2024.hpp"
-// #include "ace/ognconv.hpp"
+#include "ace/ognconv.hpp"
+#include "ace/messagerouter.hpp"
 #include "mockutils.h"
 
 class Test : public etl::message_router<Test, GATAS::AircraftPositionMsg>
@@ -45,7 +46,7 @@ public:
 GATAS::ThreadSafeBus<50> bus;
 MockConfig mockConfig{bus};
 Flarm2024 flarm{bus, mockConfig};
-auto protocol = Radio::ProtocolConfig{1, GATAS::Modulation::GFSK, GATAS::DataSource::FLARM, 26, 8, 7, {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
+auto protocol = GATAS::ProtocolConfig{1, GATAS::Modulation::GFSK, GATAS::DataSource::FLARM, true, 26, 16, 64, 8, {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}}; // 0 FLARM 0 airtime 6ms
 
 TEST_CASE("addressTypeToFlarm", "[single-file]")
 {

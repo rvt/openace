@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <type_traits> // std::is_unsigned
 #include <limits>  // std::numeric_limits
-#include <math.h> // isinf
+#include <cmath> // isinf
 // From https://tttapa.github.io/Pages/Mathematics/Systems-and-Control-Theory/Digital-filters/Exponential%20Moving%20Average/C++Implementation.html
 
 /**
@@ -144,7 +144,7 @@ public:
     */
     float operator()(float input)
     {
-        if (isinf(input))
+        if (std::isinf(input))
         {
             return 0.f;
         }

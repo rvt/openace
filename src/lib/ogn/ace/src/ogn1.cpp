@@ -31,7 +31,7 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
 {
     (void)path;
     stream << "{";
-    for (const auto &stat : dataSourceTimeStats)
+    for (const auto &stat : datasourceTimeStats.span())
     {
         stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",";
     }
@@ -54,28 +54,6 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
     stream << ",\"encrypted\":" << statistics.encrypted;
     stream << ",\"nonPositional\":" << statistics.nonPositional;
     stream << "}";
-}
-
-void Ogn1::addReceiveStat(uint32_t frequency)
-{
-    auto msInSec = 99 - CoreUtils::msInSecond() / 10;
-    for (auto &stat : dataSourceTimeStats)
-    {
-        if (stat.frequency == frequency)
-        {
-            stat.timeTenthMs.set(msInSec);
-            return;
-        }
-    }
-
-    // If frequency not found, add a new stat
-    if (!dataSourceTimeStats.full())
-    {
-        // If frequency not found, add a new stat
-        dataSourceTimeStats.push_back(DataSourceTimeStats{});
-        dataSourceTimeStats.back().frequency = frequency;
-        dataSourceTimeStats.back().timeTenthMs.set(msInSec);
-    }
 }
 
 uint8_t Ogn1::ErrCount(const uint8_t *err, uint8_t length) // count detected manchester errors
@@ -208,7 +186,7 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
 
 void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config->dataSource == GATAS::DataSource::OGN1)
+    if (msg.radioParameters.config->isTxDataSource(GATAS::DataSource::OGN1))
     {
         auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
@@ -229,7 +207,7 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         packet.EncodeLatitude(ownship.lat * POSITION_ENDECODE);
         packet.EncodeLongitude(ownship.lon * POSITION_ENDECODE);
         packet.EncodeSpeed(ownship.groundSpeed * 10.f);
-        packet.EncodeHeading(ownship.course * 10.f);
+        packet.EncodeHeading(ownship.track * 10.f);
         packet.EncodeClimbRate(ownship.verticalSpeed * 10.f);
         packet.EncodeTurnRate(ownship.hTurnRate * 10.f);
         packet.EncodeAltitude(ownship.heightMsl());
@@ -302,7 +280,9 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
 {
     if (msg.dataSource == GATAS::DataSource::OGN1)
     {
+        datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
         OGN1_Packet packet;
+
         // Validate packet, and correct if possible
         uint8_t check = Ogn1::errorCorrect((uint8_t *)&packet, (uint8_t *)msg.frame, (uint8_t *)msg.err);
         if (check & 0x0F)
@@ -325,7 +305,6 @@ void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
             return;
         }
 
-        addReceiveStat(msg.frequency);
         parseFrame(packet, msg.rssidBm);
     }
 }

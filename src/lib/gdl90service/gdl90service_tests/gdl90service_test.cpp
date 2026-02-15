@@ -7,7 +7,6 @@
 #include "pico/stdlib.h"
 
 #include "../ace/gdl90service.hpp"
-#include "ace/messagerouter.hpp"
 #include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
 #include "geomock.hpp"

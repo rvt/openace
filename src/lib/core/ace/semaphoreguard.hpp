@@ -36,7 +36,7 @@ public:
         }
         else
         {
-            GATAS_LOG("SemaphoreGuard not aquired");
+            GATAS_INFO("SemaphoreGuard not aquired");
         }
     }
 
@@ -72,7 +72,7 @@ public:
         else
         {
             {
-                GATAS_LOG("SpiGuard not aquired");
+                GATAS_INFO("SpiGuard not aquired");
             }
         }
     }

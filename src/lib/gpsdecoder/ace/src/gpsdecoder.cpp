@@ -143,14 +143,14 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
 
                 // The time in a RMC sentence is the UTC time, not GPS time
                 getBus().receive(
-                    GATAS::UtcTimeMsg{
+                    GATAS::UtcTimeMsg(
                         static_cast<int16_t>(frame.date.year + 2000),
                         static_cast<int8_t>(frame.date.month),
                         static_cast<int8_t>(frame.date.day),
                         static_cast<int8_t>(frame.time.hours),
                         static_cast<int8_t>(frame.time.minutes),
                         static_cast<int8_t>(frame.time.seconds),
-                        static_cast<int16_t>(millis)});
+                        static_cast<int16_t>(millis)));
             }
 
             // Update planes position when fix is valid
@@ -219,6 +219,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             {
                 pDop = getFloat(frame.pdop, 100);
                 hDop = getFloat(frame.hdop, 100);
+                vDop = getFloat(frame.vdop, 100);
 
                 // 2=2D 3=3D
                 switch (frame.fix_type)
@@ -251,6 +252,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
                         satsUsedForFix,
                         pDop,
                         hDop,
+                        vDop,
                         GATAS::floatToDOPInterpretation(pDop)});
             }
         }
@@ -312,7 +314,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .ellipseHeight = static_cast<int16_t>(altGeoid + geoidSeparation),
                     .verticalSpeed = altitudeGeoid.perSecond(), // vertical speed
                     .groundSpeed = groundSpeed,                 // Ground Speed
-                    .course = course(),
+                    .track = course(),
                     .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
                     .velocityNorth = velocityNorth,
                     .velocityEast = velocityEast,

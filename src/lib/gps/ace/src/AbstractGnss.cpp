@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <inttypes.h>
 
 #include "etl/string.h"
 #include "pico/stdlib.h"
@@ -6,7 +7,6 @@
 
 #include "../AbstractGnss.hpp"
 
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/utils.hpp"

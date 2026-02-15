@@ -153,9 +153,6 @@ namespace GATAS
         int16_t millisecond; // 0..999
         // Constructor
         UtcTimeMsg(int16_t year_, int8_t month_, int8_t day_, int8_t hour_, int8_t minute_, int8_t second_, int16_t millisecond_) : year(year_), month(month_), day(day_), hour(hour_), minute(minute_), second(second_), millisecond(millisecond_) {};
-
-        // Default constructor
-        UtcTimeMsg() : year(0), month(0), day(0), hour(0), minute(0), second(0), millisecond(0) {};
     };
 
     struct GpsStatsMsg : public etl::message<14>
@@ -164,10 +161,10 @@ namespace GATAS
         uint8_t satsUsedForFix;     // From GGA Sentence
         float pDop;                 // From GSA Sentence
         float hDop;                 // From GSA Sentence
+        float vDop;                 // From GSA Sentence
         pDopInterpretation pDopInt; // Interpretation from pDop
-        GpsStatsMsg() : gpsFix(), satsUsedForFix(0), pDop(0.0f), hDop(0.0f), pDopInt(pDopInterpretation::POOR) {};
-        GpsStatsMsg(GATAS::GpsFix gpsFix_, uint8_t satsUsedForFix_, float pDop_, float hDop_, pDopInterpretation pDopInt_) : 
-            gpsFix(gpsFix_), satsUsedForFix(satsUsedForFix_), pDop(pDop_), hDop(hDop_), pDopInt(pDopInt_) {};        
+        GpsStatsMsg() : gpsFix(), satsUsedForFix(0), pDop(0.0f), hDop(0.0f), vDop(0.f), pDopInt(pDopInterpretation::POOR) {};
+        GpsStatsMsg(GATAS::GpsFix gpsFix_, uint8_t satsUsedForFix_, float pDop_, float hDop_, float vDop_, pDopInterpretation pDopInt_) : gpsFix(gpsFix_), satsUsedForFix(satsUsedForFix_), pDop(pDop_), hDop(hDop_), vDop(vDop_), pDopInt(pDopInt_) {};
     };
 
     struct BarometricPressureMsg : public etl::message<15>
@@ -180,19 +177,44 @@ namespace GATAS
 
     struct RadioRxGfskMsg : public etl::message<16>
     {
-        uint32_t frame[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
-        uint32_t err[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
+        union
+        {
+            uint32_t frame[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
+            uint8_t frameBytes[GATAS::RADIO_MAX_GFX_FRAME_LENGTH];
+        };
+        union
+        {
+            uint32_t err[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
+            uint8_t errBytes[GATAS::RADIO_MAX_GFX_FRAME_LENGTH];
+        };
         uint32_t epochSeconds;
-        uint8_t length; 
+        size_t lengthBytes; // Length in bytes of the frame
         int8_t rssidBm;
         uint32_t frequency;
         GATAS::DataSource dataSource;
-        RadioRxGfskMsg(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
+        RadioRxGfskMsg(size_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), lengthBytes(setLength(length_)), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
         {
+#if GATAS_DEBUG
+            // Zero out last word for clarity during debugging
+            frame[length_ / 4] = 0;
+#endif
         };
-        RadioRxGfskMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::ADSL)
+        RadioRxGfskMsg() : epochSeconds(0), lengthBytes(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::NONE) {
+                           };
+
+        size_t setLength(size_t length)
         {
-        };
+            if (length < RADIO_MAX_GFX_FRAME_LENGTH)
+            {
+                lengthBytes = length;
+            }
+            return lengthBytes;
+        }
+        // Number of words in frame
+        static constexpr size_t maxFrameDataWordLength()
+        {
+            return GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH;
+        }
     };
 
     struct RadioRxLoraMsg : public etl::message<27>
@@ -204,7 +226,7 @@ namespace GATAS
         GATAS::DataSource dataSource;
         RadioRxLoraMsg(uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_) {
                                                                                                                       };
-        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::ADSL) {
+        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::NONE) {
                            };
     };
 
@@ -221,11 +243,11 @@ namespace GATAS
 
     /**
      * @brief RAW data frame from a radio
-     * 
+     *
      */
     struct DataFrameMsg : public etl::message<17>
     {
-        const DataFrame& dataFrame; // Using a reference to avoid copying the data frame, Seems like about 4ms extra time is needed for the databus to process this
+        const DataFrame &dataFrame; // Using a reference to avoid copying the data frame, Seems like about 4ms extra time is needed for the databus to process this
         DataFrameMsg(const DataFrame &dataFrame_) : dataFrame(dataFrame_) {};
     };
 
@@ -282,7 +304,7 @@ namespace GATAS
      * NOTE: Don't change message ID!
      */
     struct WifiConnectionStateMsg : public etl::message<24>
-    {        
+    {
         GATAS::WifiMode wifiMode;
         uint32_t gatasIp;
         uint32_t gateWay;
@@ -299,7 +321,7 @@ namespace GATAS
         AdapativeRadiusMsg(uint32_t radius_) : radius(radius_) {};
     };
 
-        /**
+    /**
      * Idle Message send at intervals that allows to due small tasks without creating a new task
      * Modules using this message should never block a task
      */

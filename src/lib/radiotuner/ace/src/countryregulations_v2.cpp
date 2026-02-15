@@ -34,17 +34,30 @@ CountryRegulations::Zone CountryRegulations::zone(float lat, float lon)
 }
 
 // New simplified methods
-const CountryRegulations::ProtocolTimeSlot &CountryRegulations::getSlot(CountryRegulations::Zone zone, GATAS::DataSource dataSource)
+const CountryRegulations::ProtocolTxTimeSlot &CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone zone, GATAS::DataSource dataSource)
 {
-    for (size_t i = 0; i < protocolTimimgs.size(); ++i)
+    for (size_t i = 0; i < protocolTxTimimgs.size(); ++i)
     {
-        const auto &slot = protocolTimimgs[i];
-        if (slot.radioConfig.dataSource == dataSource && slot.zone == zone)
+        const auto &slot = protocolTxTimimgs[i];
+        if (slot.radioConfig.isTxDataSource(dataSource) && slot.zone == zone)
         {
-            return protocolTimimgs[i];
+            return protocolTxTimimgs[i];
         }
     }
-    return protocolTimimgs[0]; // Not found
+    return CountryRegulations::NOOP_TX_TIMESLOT; // Not found
+}
+
+const CountryRegulations::ProtocolRxTimeSlot &CountryRegulations::getProtocolRxTimings(CountryRegulations::Zone zone, GATAS::DataSource dataSource)
+{
+    for (size_t i = 0; i < protocolRxTimimgs.size(); ++i)
+    {
+        const auto &slot = protocolRxTimimgs[i];
+        if (slot.radioConfig.isRxDataSource(dataSource) && slot.zone == zone)
+        {
+            return protocolRxTimimgs[i];
+        }
+    }
+    return CountryRegulations::NOOP_TX_TIMESLOT; // Not found
 }
 
 uint32_t CountryRegulations::getFrequency(const Frequency &frequency, CountryRegulations::Channel channel)
@@ -52,9 +65,20 @@ uint32_t CountryRegulations::getFrequency(const Frequency &frequency, CountryReg
     switch (channel)
     {
     case Channel::CH00:
-        return frequency.baseFrequency + (frequency.channelSeperation * 0);
+        return frequency.baseFrequency;
     case Channel::CH01:
-        return frequency.baseFrequency + (frequency.channelSeperation * 1);
+        return frequency.baseFrequency + frequency.channelSeperation;
+    case Channel::CH00_01:
+    {
+        if (get_rand_64() & 0x01)
+        {
+            return frequency.baseFrequency;
+        }
+        else
+        {
+            return frequency.baseFrequency + frequency.channelSeperation;
+        }
+    }
     case Channel::CH24:
         return frequency.baseFrequency + CountryRegulations::frequencyByTimestamp(CoreUtils::secondsSinceEpoch(), 24) * frequency.channelSeperation;
     case Channel::CH65:
@@ -76,45 +100,43 @@ uint32_t CountryRegulations::frequencyByTimestamp(uint32_t timestamp, uint32_t n
     return v9 % nch;
 }
 
-uint32_t CountryRegulations::nextRandomTime(const CountryRegulations::ProtocolTimeSlot& pts)
+uint32_t CountryRegulations::nextRandomTxTime(const CountryRegulations::ProtocolTxTimeSlot &pts)
 {
-    constexpr uint32_t MS_IN_SECOND = 1000;
-    constexpr auto  variations = etl::make_array<int16_t>(0, -200, 200); // Variations in case with are in an area where Channel::NOP
+    const uint32_t nowInSecond = CoreUtils::msInSecond();
 
-    const auto now = CoreUtils::timeMs32();  // Time in ms from power up but alligned with PPS from the GPS
-    const auto maxRandTime = pts.txMaxTime - pts.txMinTime;
-    const auto baseOffset = ((get_rand_64() >> 4) % maxRandTime) + pts.txMinTime; // >>4 is used, becaus there was a bug where the lowest 4 bits where not truly random
+    const uint32_t minDelay = pts.txMinTime;
+    const uint32_t maxDelay = pts.txMaxTime;
 
-    size_t i = 0;
-    do {
-        int32_t totalOffset = static_cast<int32_t>(baseOffset) + variations[i];
+    constexpr int MAX_TRIES = 5;
 
-        uint32_t targetMs = (now + totalOffset) % MS_IN_SECOND;
-        size_t slotIndex = targetMs / SLOT_MS;
+    uint32_t randRange = (uint32_t)(get_rand_64() % (maxDelay - minDelay + 1));
+    uint32_t delay = minDelay + randRange;
 
-        if (pts.timing[slotIndex] != Channel::NOOP &&
-            totalOffset >= pts.txMinTime &&
-            totalOffset <= pts.txMaxTime)
+    for (int i = 0; i < MAX_TRIES; ++i)
+    {
+        uint32_t futureMs = (nowInSecond + delay) % 1000;
+        if (fitsAnyTiming(futureMs, pts.timeSlots))
         {
-            return now + totalOffset;
+            return delay;
         }
+        delay = delay + 225;
+    }
 
-        ++i;
-    } while (i < variations.size());
-
-    // fallback: 1s from now
-    return now + 1000;
+    // No suitable slot found this time
+    return UINT32_MAX;
 }
 
-uint32_t CountryRegulations::getFrequency(float lat, float lon, GATAS::DataSource dataSource) {
+uint32_t CountryRegulations::getFrequency(float lat, float lon, GATAS::DataSource dataSource)
+{
     auto zone = CountryRegulations::zone(lat, lon);
-    auto &timeSlot = CountryRegulations::getSlot(zone, dataSource);
+    const auto &timeSlot = CountryRegulations::getProtocolTxTimings(zone, dataSource);
 
     // WHen no datasource could be found
-    if (timeSlot.zone == CountryRegulations::ZONE0) {
+    if (timeSlot.zone == CountryRegulations::ZONE0)
+    {
         return 0;
     }
 
-    auto currentSlot = ((CoreUtils::msInSecond() + 50) / CountryRegulations::SLOT_MS) % 5;
-    return CountryRegulations::getFrequency(timeSlot.frequency, timeSlot.timing[currentSlot]);
+    auto timing = CountryRegulations::findFittingTiming(CoreUtils::msInSecond(), timeSlot.timeSlots);
+    return CountryRegulations::getFrequency(timeSlot.frequency, timing->channel);
 }

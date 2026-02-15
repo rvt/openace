@@ -4,7 +4,6 @@
 #define private public
 
 #include "../ace/radiotunerrx.hpp"
-#include "ace/messagerouter.hpp"
 #include "ace/messages.hpp"
 #include "pico/time.h"
 #include "etl/vector.h"
@@ -20,7 +19,7 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
     etl::array<uint8_t, (uint8_t)GATAS::DataSource::_TRANSPROTOCOLS> slotReceived = {};
 
     ctx.updateDataSources(etl::vector<GATAS::DataSource, 1> {});
-    ctx.prioritizeDatasources();
+    ctx.prioritizeRxTimings();
     REQUIRE(etl::vector<GATAS::DataSource, 1> {} == ctx.dataSourceTimeSlots);
 
     SECTION("Prioritise should return 500ms on default zone", "[single-file]")
@@ -30,21 +29,21 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
     SECTION("extra FLARM Data Source", "[single-file]")
     {
         ctx.updateDataSources(etl::vector{GATAS::DataSource::FLARM});
-        ctx.prioritizeDatasources();
+        ctx.prioritizeRxTimings();
         REQUIRE(etl::vector{GATAS::DataSource::FLARM} == ctx.dataSourceTimeSlots);
     }
 
     SECTION("3 Data Sources", "[single-file]")
     {
         ctx.updateDataSources(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL});
-        ctx.prioritizeDatasources();
+        ctx.prioritizeRxTimings();
         REQUIRE(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL} == ctx.dataSourceTimeSlots);
 
         SECTION("FLARM Data Received", "[single-file]")
         {
             slotReceived[(uint8_t)(GATAS::DataSource::FLARM)] += 1;
             ctx.updateSlotReceive(slotReceived);
-            ctx.prioritizeDatasources();
+            ctx.prioritizeRxTimings();
             REQUIRE(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL} == ctx.dataSourceTimeSlots);
 
             SECTION("OGN and FLARM Data Received", "[single-file]")
@@ -52,7 +51,7 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
                 slotReceived[(uint8_t)(GATAS::DataSource::FLARM)] += 1;
                 slotReceived[(uint8_t)(GATAS::DataSource::OGN1)] += 1;
                 ctx.updateSlotReceive(slotReceived);
-                ctx.prioritizeDatasources();
+                ctx.prioritizeRxTimings();
                 REQUIRE(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL} == ctx.dataSourceTimeSlots);
                 REQUIRE(*ctx.upcomingDataSource == GATAS::DataSource::FLARM);
 
@@ -80,20 +79,20 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
             {
                 slotReceived[(uint8_t)(GATAS::DataSource::OGN1)] += 1;
                 ctx.updateSlotReceive(slotReceived);
-                ctx.prioritizeDatasources();
+                ctx.prioritizeRxTimings();
                 REQUIRE(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL} == ctx.dataSourceTimeSlots);
 
                 SECTION("NO Data Received", "[single-file]")
                 {
                     ctx.updateSlotReceive(slotReceived);
-                    ctx.prioritizeDatasources();
+                    ctx.prioritizeRxTimings();
                     REQUIRE(etl::vector{GATAS::DataSource::FLARM, GATAS::DataSource::OGN1, GATAS::DataSource::ADSL} == ctx.dataSourceTimeSlots);
                 }
 
                 SECTION("Data sources removed", "[single-file]")
                 {
                     ctx.updateDataSources(etl::vector<GATAS::DataSource, 1> {});
-                    ctx.prioritizeDatasources();
+                    ctx.prioritizeRxTimings();
                     REQUIRE(etl::vector{etl::vector<GATAS::DataSource, 1>{}} == ctx.dataSourceTimeSlots);
                 }
             }
@@ -226,7 +225,7 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
 //         GATAS::AircraftPositionInfo position= {};
 //         position.dataSource = GATAS::DataSource::OGN1;
 //         radioController.on_receive(GATAS::AircraftPositionMsg{position});
-//         radioController.prioritizeDatasources();
+//         radioController.prioritizeRxTimings();
 //         // printf("%s-\n", radioController.visualizeTimeSlots(radioController.radioTasks.at(0)).c_str());
 //         // printf("%s-\n", radioController.visualizeTimeSlots(radioController.radioTasks.at(1)).c_str());
 //         REQUIRE( (strcmp(radioController.visualizeTimeSlots(radioController.radioTasks.at(0)).c_str(), "l3c0:OOA") == 0 ) );
@@ -236,14 +235,14 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
 //         {
 //             position.dataSource = GATAS::DataSource::FLARM;
 //             radioController.on_receive(GATAS::AircraftPositionMsg{position});
-//             radioController.prioritizeDatasources();
+//             radioController.prioritizeRxTimings();
 //             // printf("%s-\n", radioController.visualizeTimeSlots(radioController.radioTasks.at(0)).c_str());
 //             // printf("%s-\n", radioController.visualizeTimeSlots(radioController.radioTasks.at(1)).c_str());
 //             REQUIRE( (strcmp(radioController.visualizeTimeSlots(radioController.radioTasks.at(0)).c_str(), "l2c0:OA") == 0 ) );
 //             REQUIRE( (strcmp(radioController.visualizeTimeSlots(radioController.radioTasks.at(1)).c_str(), "l2c0:FF") == 0 ) );
 
 //             // Nothing received anymore
-//             radioController.prioritizeDatasources();
+//             radioController.prioritizeRxTimings();
 //             // printf("%s-\n", radioController.visualizeTimeSlots(radioController.radioTasks.at(0)).c_str());
 //             // printf("%s-\n", radioController.visualizeTimeSlots(radioController.radioTasks.at(1)).c_str());
 //             REQUIRE( (strcmp(radioController.visualizeTimeSlots(radioController.radioTasks.at(0)).c_str(), "l2c0:OA") == 0 ) );
@@ -256,7 +255,7 @@ TEST_CASE("RadioProtocolCtx", "[single-file]")
 //             position.dataSource = GATAS::DataSource::OGN1;
 //             radioController.on_receive(GATAS::AircraftPositionMsg{position});
 //             radioController.radioTasks.at(0).slotIdx = 1;
-//             radioController.prioritizeDatasources();
+//             radioController.prioritizeRxTimings();
 //             printf("%s-\n", radioController.visualizeTimeSlots(radioController.radioTasks.at(0)).c_str());
 //             REQUIRE( (strcmp(radioController.visualizeTimeSlots(radioController.radioTasks.at(0)).c_str(), "l3c1:OOA") == 0 ) );
 //         }

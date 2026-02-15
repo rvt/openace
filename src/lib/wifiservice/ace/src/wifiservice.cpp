@@ -250,7 +250,7 @@ void WifiService::handleAccesspointClients()
 
 void WifiService::startAccessPoint()
 {
-    // GATAS_LOG("Starting access point");
+    // GATAS_INFO("Starting access point");
     cyw43_arch_enable_ap_mode(wifiData.ap.ssid.c_str(), wifiData.ap.password.c_str(), CYW43_AUTH_WPA2_AES_PSK);
     // cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
     //  https://github.com/raspberrypi/pico-sdk/issues/1661#issuecomment-3238252048
@@ -279,7 +279,7 @@ int WifiService::scanResultCb(void *env, const cyw43_ev_scan_result_t *result)
 {
     if (result)
     {
-        // GATAS_LOG("Scan Result received");
+        // GATAS_INFO("Scan Result received");
         WifiService *service = (WifiService *)env;
         GATAS::SsidOrPasswdStr name = (char *)result->ssid;
 
@@ -291,7 +291,7 @@ int WifiService::scanResultCb(void *env, const cyw43_ev_scan_result_t *result)
 
         if (it != service->wifiData.clients.end() && !service->scanResult.full())
         {
-            // GATAS_LOG("Added: %s\n", name.c_str());
+            // GATAS_INFO("Added: %s\n", name.c_str());
             service->scanResult.emplace_back(name);
         }
 

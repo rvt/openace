@@ -47,15 +47,15 @@ void L76B::popGPSMessages(etl::string_view waitFor)
         {
             if (sentence.starts_with("$P"))
             {
-                GATAS_LOG("%s ", sentence.c_str());
+                GATAS_INFO("%s ", sentence.c_str());
                 if (waitFor.length() > 0 && sentence.starts_with(waitFor))
                 {
-                    GATAS_LOG(" -> FOUND\n");
+                    GATAS_INFO(" -> FOUND\n");
                     c = 0;
                 }
                 else
                 {
-                    GATAS_LOG("\n");
+                    GATAS_INFO("\n");
                 }
             }
         }
@@ -102,7 +102,7 @@ bool L76B::configureGnss()
         return false;
     }
 
-    GATAS_LOG("Starting L76B configuration");
+    GATAS_INFO("Starting L76B configuration");
 
     // Ensure queue is empty
     popGPSMessages();

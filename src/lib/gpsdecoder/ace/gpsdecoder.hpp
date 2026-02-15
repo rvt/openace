@@ -5,7 +5,6 @@
 #include "ace/constants.hpp"
 #include "ace/models.hpp"
 
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
@@ -59,6 +58,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
     uint8_t satsUsedForFix;
     float pDop;
     float hDop;
+    float vDop;
     minmea_time lastRMCTimestamp;
     minmea_time lastGGATimestamp;
     const uint32_t taskStartTime;

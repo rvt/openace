@@ -165,6 +165,7 @@ target_link_libraries(
           minmea
           etl::etl
           fanet::fanet
+          adsl::adsl
           ArduinoJson
           # /lib
           core
@@ -182,7 +183,7 @@ target_link_libraries(
           acespi
           bmp280
           sx1262
-          adsl
+          adslace
           flarmgatas
           fanetace
           ogn

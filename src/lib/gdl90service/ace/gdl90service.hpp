@@ -9,7 +9,6 @@
 
 /* GATAS. */
 #include "ace/constants.hpp"
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 

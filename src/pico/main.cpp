@@ -47,7 +47,7 @@
 #include "ace/radiotunertx_v2.hpp"
 #include "ace/flarm2024.hpp"
 #include "ace/ogn1.hpp"
-#include "ace/adsl.hpp"
+#include "ace/adslace.hpp"
 #include "ace/gdl90service.hpp"
 #include "ace/gdloverudp.hpp"
 #include "ace/dataport.hpp"
@@ -95,7 +95,7 @@ void registerModules()
     BaseModule::registerModule(ADSBDecoder::NAME, false);
     BaseModule::registerModule(Flarm2024::NAME, false);
     BaseModule::registerModule(Ogn1::NAME, false);
-    BaseModule::registerModule(ADSL::NAME, false);
+    BaseModule::registerModule(ADSLAce::NAME, false);
     BaseModule::registerModule(GDLoverUDP::NAME, false);
     BaseModule::registerModule(GpsDecoder::NAME, false);
     BaseModule::registerModule(UbloxM8N::NAME, true);
@@ -130,8 +130,8 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
         return new Ogn1(bus, config);
     if (name == FanetAce::NAME)
         return new FanetAce(bus, config);
-    if (name == ADSL::NAME)
-        return new ADSL(bus, config);
+    if (name == ADSLAce::NAME)
+        return new ADSLAce(bus, config);
     if (name == Flarm2024::NAME)
         return new Flarm2024(bus, config);
     if (name == AirConnect::NAME)
@@ -320,7 +320,7 @@ static void loadModules(void *arg)
     load(ADSBDecoder::NAME, bus, config);
 
     // Protocols
-    load(ADSL::NAME, bus, config);
+    load(ADSLAce::NAME, bus, config);
     load(FanetAce::NAME, bus, config);
     load(Flarm2024::NAME, bus, config);
     load(Ogn1::NAME, bus, config);

@@ -265,7 +265,7 @@ void fs_close_custom(fs_file *file)
 
 int fs_read_custom(struct fs_file *file, char *buffer, int count)
 {
-    GATAS_LOG("not implemented in this example configuration");
+    GATAS_INFO("not implemented in this example configuration");
     LWIP_ASSERT("not implemented in this example configuration", 0);
     LWIP_UNUSED_ARG(file);
     LWIP_UNUSED_ARG(buffer);

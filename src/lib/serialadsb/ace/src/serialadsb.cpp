@@ -4,7 +4,6 @@
 
 #include "../serialadsb.hpp"
 
-#include "ace/messagerouter.hpp"
 #include "ace/coreutils.hpp"
 
 void SerialADSB::start()

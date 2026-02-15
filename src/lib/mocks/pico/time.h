@@ -21,6 +21,11 @@ inline uint64_t to_ms_since_boot(uint64_t time)
 }
 
 inline uint64_t time_us_Value = 0;
+inline void time_us_64_SET(uint64_t v) 
+{
+    time_us_Value = v;
+}
+
 inline uint64_t time_us_64()
 {
     return time_us_Value;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <math.h>
+#include <cmath>
 #include "etl/flat_map.h"
 #include "etl/string.h"
 #include "etl/vector.h"
@@ -32,7 +32,8 @@ namespace GATAS
     constexpr uint8_t NMEA_MAX_LENGTH = 84;                                                    // Maximum length NMEA sentence + 1 for null terminator
     constexpr uint8_t RADIO_MAX_GFX_FRAME_WORD_LENGTH = 7;                                         // OGN:26 FLARM:24 Maximum length expected for a frame received via Radio (OGN/ Flarm, etc...) This includes address bytes + Some zero's for parity calculations
     constexpr uint8_t RADIO_MAX_GFX_FRAME_LENGTH = RADIO_MAX_GFX_FRAME_WORD_LENGTH * sizeof(uint32_t); // Maximum length expected for a frame received via Radio (OGN/ Flarm etc...) This includes address bytes + Some zero's for parity calculations
-    constexpr uint8_t MAXIMUM_RAW_FRAME_LENGTH = 128;
+    constexpr uint8_t MAXIMUM_RAW_FRAME_LENGTH = 128; // Set to 128 because of FANET message sizes
+    constexpr uint8_t MAXIMUM_RAW_FRAME_WORD_LENGTH = (MAXIMUM_RAW_FRAME_LENGTH + 3) / 4;
     constexpr uint8_t MAX_CALLSIGN_LENGTH = 12;
 
     constexpr uint8_t MAX_AIRCRAFT_CONFIG = 10; // See also session.js line 58
