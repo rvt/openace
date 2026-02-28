@@ -461,7 +461,7 @@ const GATAS::Config::IpPort Config::ipPortBypath(const etl::string_view pathToVa
     else
     {
         auto ipStr = src["ip"].as<const char *>();
-        auto ip = parseIpv4String(ipStr, 0xffffffffUL);
+        auto ip = parseIpv4String(ipStr);
         auto port = src["port"].as<uint16_t>();
         return GATAS::Config::IpPort{
             ip,

@@ -50,8 +50,8 @@ void manchesterDecode(uint8_t destination[],
     for (uint8_t i = 0; i + 1 < manchesterLength; i += 2)
     {
         uint8_t h = manchesterDecodeLookupTable[source[i]];
-        h &= 0x0F;
         uint8_t l = manchesterDecodeLookupTable[source[i + 1]];
+        h &= 0x0F;
         l &= 0x0F;
         destination[out] = (h << 4) | l;
         ++out;
@@ -80,7 +80,6 @@ void manchesterDecodeInline(uint8_t buffer[],
         l &= 0x0F;
         buffer[out] = (h << 4) | l;
         err[out] = (errH << 4) | errL;
-
         ++out;
     }
 }

@@ -72,13 +72,11 @@ set(ALL_EXAMPLE_TARGETS
 )
 
 foreach( name ${ALL_EXAMPLE_TARGETS} )
-    target_link_libraries( 
-      ${name} 
-      Catch2WithMain 
-#      core
+    target_link_libraries(
+      ${name}
+      Catch2WithMain
       etl
       GDL90
-      
       )
 endforeach()
 

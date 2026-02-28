@@ -10,40 +10,14 @@
 #include "EMA.hpp"
 #include "encryption.hpp"
 #include "bitutils.hpp"
-#include "mockutils.h"
+#include "testhelpers.h"
 #include "manchester.hpp"
 
 constexpr float MS_TO_FTPMIN = 196.850394f; // meter/sec to feet/min
 constexpr float DEG_TO_RADS = M_PI / 180.f; // degrees to radians
 
-TEST_CASE("swapBytes16", "[single-file]")
-{
-    REQUIRE((swapBytes16(0x1234) == 0x3412));
-    REQUIRE((swapBytes16(0xABCD) == 0xCDAB));
-}
 
-TEST_CASE("manchesterEncodeTest", "[single-file]")
-{
-    uint8_t decode[] = {0x72, 0x4B};
-    uint8_t encoded[] = {0, 0, 0, 0};
-    manchesterEncode(encoded, decode, 2);
-    printf("Manchester Encoded:");
-    print_buffer_hex(encoded, 4);
-    printf("\n");
-}
-
-TEST_CASE("manchesterDecodeTest", "[single-file]")
-{
-    uint8_t encoded[] = {0x55, 0x55};
-    uint8_t decoded[] = {0, 0, 0, 0};
-    manchesterDecode(decoded, encoded, 2);
-    REQUIRE(decoded[0] == 0xFF);
-    printf("Manchester Decoded:");
-    print_buffer_hex(encoded, 4);
-    printf("\n");
-}
-
-TEST_CASE("AMA", "[single-file]")
+TEST_CASE("EMA", "[single-file]")
 {
     // Tuned such that within 5 seconds (5GPS positions per second) the resulting values is within 3%
     EMAFloat filter{GATAS_EMAFLOAT_K_FACTOR_5PS};
@@ -312,3 +286,4 @@ TEST_CASE("diffBits basic functionality", "[diffBits]")
         REQUIRE(count == 61);
     }
 }
+

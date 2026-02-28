@@ -36,11 +36,13 @@ endif()
 # These examples use the standard separate compilation
 set( SOURCES_IDIOMATIC_EXAMPLES
       # Tests
-      utils_test.cpp
       moreutils_test.cpp
       packetbuffer_test.cpp
       gulp_test.cpp
       ddb_test.cpp
+      manchester_test.cpp
+      EMA_test.cpp
+      bitutils_test.cpp
 )
 
 string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAMPLES}" )

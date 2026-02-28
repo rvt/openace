@@ -7,6 +7,7 @@ message("=======================================================================
 
 # Add cmake modules
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/etl etlcpp)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/gdl90 GDL90)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcrc libcrc)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/libmodes libmodes)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/FLARM flarm::flarm)
@@ -20,4 +21,4 @@ add_subdirectory(lib/utils/utils_tests)
 add_subdirectory(lib/radiotuner/radiotuner_tests)
 add_subdirectory(lib/aircrafttracker/aircrafttracker_tests)
 add_subdirectory(lib/config/config_tests)
-add_subdirectory(gdl90service/gdl90service_tests)
+add_subdirectory(lib/gdl90service/gdl90service_tests)

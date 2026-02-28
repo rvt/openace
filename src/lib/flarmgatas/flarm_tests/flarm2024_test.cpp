@@ -9,7 +9,7 @@
 #include "flarm2024.hpp"
 #include "ace/ognconv.hpp"
 #include "ace/messagerouter.hpp"
-#include "mockutils.h"
+#include "testhelpers.h"
 
 GATAS::ThreadSafeBus<50> bus;
 MockConfig mockConfig{bus};

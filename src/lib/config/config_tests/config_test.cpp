@@ -50,12 +50,7 @@ TEST_CASE("Fully Configured", "[single-file]")
     Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
     config.postConstruct();
 
-    SECTION("IPv4", "[single-file]")
-    {
-        REQUIRE(1689430208 == config.parseIpv4String("192.168.178.100", 0xffffffffUL));
-        REQUIRE(0xffffffff == config.parseIpv4String("300", 0xffffffffUL));
-        REQUIRE(43200 == config.parseIpv4String("192.168", 0xffffffffUL));
-    }
+
 
     SECTION("AircraftHwConfig")
     {

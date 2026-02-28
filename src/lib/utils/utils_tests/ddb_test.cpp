@@ -11,7 +11,7 @@
 #define __in_flash()
 // #include "ddb_db.hpp"
 #include "ddb.hpp"
-#include "mockutils.h"
+#include "testhelpers.h"
 
 TEST_CASE("Lookup hex above and below mid", "[single-file]")
 {

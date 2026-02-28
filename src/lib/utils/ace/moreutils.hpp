@@ -34,7 +34,7 @@ public:
 
 
 template <typename T>
-static void printBufferHex(etl::span<T> buffer)
+inline void printBufferHex(etl::span<T> buffer)
 {
     GATAS_ASSERT(std::is_integral<T>::value, "T must be an integral type");
 
@@ -57,7 +57,7 @@ static void printBufferHex(etl::span<T> buffer)
 }
 
 template <typename T>
-static void printBufferBits(etl::span<T> buffer)
+inline void printBufferBits(etl::span<T> buffer)
 {
     static_assert(std::is_integral<T>::value, "T must be an integral type");
 
@@ -78,4 +78,4 @@ static void printBufferBits(etl::span<T> buffer)
     printf("\n");
 }
 
-uint32_t parseIpv4String(const etl::string_view ipStr, uint32_t defaultValue);
+uint32_t parseIpv4String(const etl::string_view ipStr, uint32_t defaultValue=0xffffffffUL);
