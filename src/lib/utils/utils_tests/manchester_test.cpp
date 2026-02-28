@@ -26,11 +26,10 @@ TEST_CASE("manchesterDecode Test", "[single-file]")
 
 TEST_CASE("manchesterDecodeInline with bit flip Test", "[single-file]")
 {
-    uint8_t encoded[] = {0x58, 0x5A};
-    etl::array<uint8_t, 1> decoded;
+    etl::array<uint8_t, 2> encoded = {0x58, 0x5A};
     etl::array<uint8_t, 1> error;
-    manchesterDecodeInline(decoded.data(), error.data(), 2);
-    REQUIRE(etl::make_array<uint8_t>(0xF1) == error);
+    manchesterDecodeInline(encoded.data(), error.data(), 2);
+    REQUIRE(etl::make_array<uint8_t>(0x10) == error); // Tested machinally online for the correct bit
 }
 
 TEST_CASE("manchesterDecodeInline Test", "[single-file]")

@@ -1,7 +1,7 @@
 #include "../manchester.hpp"
 #include "ace/coreutils.hpp"
 
-const uint8_t manchesterDecodeLookupTable[] =
+constexpr uint8_t manchesterDecodeLookupTable[] =
     {
         0xF0, 0xE1, 0xE0, 0xF1, 0xD2, 0xC3, 0xC2, 0xD3, 0xD0, 0xC1, 0xC0, 0xD1, 0xF2, 0xE3, 0xE2, 0xF3,
         0xB4, 0xA5, 0xA4, 0xB5, 0x96, 0x87, 0x86, 0x97, 0x94, 0x85, 0x84, 0x95, 0xB6, 0xA7, 0xA6, 0xB7,
@@ -69,7 +69,6 @@ void manchesterDecodeInline(uint8_t buffer[],
                       uint8_t manchesterLength)
 {
     uint8_t out = 0;
-
     for (uint8_t i = 0; i + 1 < manchesterLength; i += 2)
     {
         uint8_t h = manchesterDecodeLookupTable[buffer[i]];

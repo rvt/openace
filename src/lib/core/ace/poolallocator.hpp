@@ -7,7 +7,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "semaphoreguard.hpp"
-
+#include <cstddef> // For max_alignas_t
 #include <cstring>
 
 template <typename Pool, typename T>
@@ -134,7 +134,7 @@ public:
         auto masked_ptr = ptr;
 #endif
         SemaphoreGuard lock(portMAX_DELAY, mutex);
-        release_impl<0>(masked_ptr);
+        release_impl<0>(ptr);
     }
 
     void *realloc(void *ptr, size_t newSize)
