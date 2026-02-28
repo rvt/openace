@@ -129,12 +129,12 @@ public:
     void release(const void *ptr)
     {
 #if UINTPTR_MAX == 0xFFFFFFFF
-        auto masked_ptr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(ptr) & ~0x3U);
+        auto masked_ptr = reinterpret_cast<void *>(reinterpret_cast<const uintptr_t>(ptr) & ~0x3U);
 #else
         auto masked_ptr = ptr;
 #endif
         SemaphoreGuard lock(portMAX_DELAY, mutex);
-        release_impl<0>(ptr);
+        release_impl<0>(masked_ptr);
     }
 
     void *realloc(void *ptr, size_t newSize)
