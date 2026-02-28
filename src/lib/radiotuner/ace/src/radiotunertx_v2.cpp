@@ -90,7 +90,7 @@ void RadioTunerTx::radioTuneTask()
                             (void)dsId;
 
                             // GATAS_INFO("DS: %s radio:%d", GATAS::toString(ds.dataSource), dataSourceToRadio[dsId]);
-                            GATAS_MEASURE("Request TX ds", 2000);
+                            GATAS_MEASURE("Request TX", 2000);
                             getBus().receive(
                                 GATAS::RadioTxPositionRequestMsg{
                                     GATAS::RadioParameters{
@@ -101,7 +101,7 @@ void RadioTunerTx::radioTuneTask()
                         }
                         else
                         {
-                            GATAS_INFO("Warning: No timeslot for %s found %d", GATAS::toString(ds.dataSource), CoreUtils::msInSecond());
+                            GATAS_WARN("Warning: No timeslot for %s found %d", GATAS::toString(ds.dataSource), CoreUtils::msInSecond());
                         }
 
                         auto delayMs = CountryRegulations::nextRandomTxTime(timing);
@@ -112,7 +112,7 @@ void RadioTunerTx::radioTuneTask()
                         }
                         else
                         {
-                            GATAS_INFO("Warning: Next random no timing found %s", GATAS::toString(ds.dataSource));
+                            GATAS_WARN("Warning: Next random no timing found %s", GATAS::toString(ds.dataSource));
                             ds.atTime = currentTime + 950'000;
                         }
                     }

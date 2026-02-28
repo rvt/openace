@@ -130,7 +130,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
                 CoreUtils::secondsSinceEpoch() > 1000'000'000)
             {
 
-                printf("CoreUtils::secondsSinceEpoch(): %02d:%02d:%02d.%03ld RMC:%02d:%02d:%02d.%03d\n",
+                GATAS_WARN("RMC and Local time don't match %02d:%02d:%02d.%03ld RMC:%02d:%02d:%02d.%03d",
                        timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, msSinceEpoch,
                        frame.time.hours, frame.time.minutes, frame.time.seconds, msInSecond);
             }

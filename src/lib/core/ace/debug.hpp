@@ -11,16 +11,16 @@ static constexpr const char *basename(const char *path)
 }
 
 #define GATAS_INFO(fmt, ...) \
-    printf("(%s:%d) \033[37m INFO: " fmt "\n", basename(__FILE__), __LINE__, ##__VA_ARGS__)
+    printf("\033[01;00m (%s:%d) INFO: " fmt "\n", basename(__FILE__), __LINE__, ##__VA_ARGS__)
 
 #define GATAS_WARN(fmt, ...) \
-    printf("(%s:%d) \033[40m WARN: " fmt "\n", basename(__FILE__), __LINE__, ##__VA_ARGS__)
+    printf("\033[01;33m (%s:%d) WARN: " fmt "\n", basename(__FILE__), __LINE__, ##__VA_ARGS__)
 
 #define GATAS_LOG_IF(mask, fmt, ...)                                  \
     do                                                                \
     {                                                                 \
         if (GATAS_LOG_ACTIVE_MODULES & (mask))                        \
-            printf("(%s:%d) INFO: " fmt "\n",                         \
+            printf("\033[01;30m (%s:%d) INFO: " fmt "\n",                         \
                    basename(__FILE__), __LINE__, ##__VA_ARGS__);     \
     } while (0)
 
@@ -29,7 +29,7 @@ static constexpr const char *basename(const char *path)
     {                                                                 \
         if (!(cond))                                                  \
         {                                                             \
-            printf("\033[31m (%s:%d) ASSERT: " fmt "\n",                       \
+            printf("\033[01;31m (%s:%d) ASSERT: " fmt "\n",                       \
                    basename(__FILE__), __LINE__, ##__VA_ARGS__);     \
             panic("Assertion");                                       \
         }                                                             \
