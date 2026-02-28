@@ -91,10 +91,10 @@ TestRadioPacket createRadioPacket(F &&serializer)
 // - `header`: the ADSL header to serialize
 // - `networkPayload`: the network-layer byte to insert (protocol version, flags, ...)
 // - `serializer`: callable that accepts an `etl::bit_stream_writer &` and writes the payload bits
-template <size_t FRAME_WORD_SIZE, typename F>
-FrameBuffer<FRAME_WORD_SIZE> buildRadioPacket(const Header &header, const NetworkPayload &networkPayload, F &&serializer)
+template <typename F>
+FrameBuffer buildRadioPacket(etl::span<uint32_t> buffer, const Header &header, const NetworkPayload &networkPayload, F &&serializer)
 {
-  FrameBuffer<FRAME_WORD_SIZE> frame;
+  FrameBuffer frame{buffer};
   etl::bit_stream_writer writer(frame.fullSpan(), etl::endian::little);
 
   // Serialize Header
@@ -112,7 +112,7 @@ FrameBuffer<FRAME_WORD_SIZE> buildRadioPacket(const Header &header, const Networ
   // Encrypt header + payload that is now byte aligned
   if (networkPayload.keyIndex() < 3)
   {
-    XXTEA_Encrypt_Key0(frame.words(), frame.storage.size() - 1, 6);
+    XXTEA_Encrypt_Key0(frame.words(), frame.usedSpan32().size(), 6);
   }
 
   // Add the network header at the beginning, not part of encryption

@@ -25,6 +25,7 @@
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
+#include "rxdataframequeue.hpp"
 
 // https://www.waveshare.com/wiki/SX1262_XXXM_LoRaWAN/GNSS_HAT
 
@@ -52,6 +53,8 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
         uint32_t transmittedPackets = 0;
         uint32_t buzyWaitsTimeout = 0;
         uint32_t queueFull = 0;
+        uint32_t queueMissedErr = 0;
+
     } statistics;
 
     // ************************************************************************************
@@ -110,7 +113,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
         {
             .preamble_len_in_symb = 12,
             .header_type = SX126X_LORA_PKT_EXPLICIT,
-            .pld_len_in_bytes = 0xFF,
+            .pld_len_in_bytes = 0x80,
             .crc_is_on = true,
             .invert_iq_is_on = false,
         };
@@ -123,7 +126,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
             .ldro = 0,
         };
 
-    static constexpr GATAS::ProtocolConfig PROTOCOL_NONE{1, GATAS::Modulation::NONE, GATAS::DataSource::NONE, false, 0, 16, 64, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
+    static constexpr GATAS::LinkLayerConfig PROTOCOL_NONE{1, GATAS::DataSource::NONE, false, 0, 16, 64, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
@@ -135,11 +138,11 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     uint8_t lastPcId;
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
-    etl::queue_spsc_atomic<TxPacket, 4, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
-    Radio::RadioParameters rxRadioParameters{&PROTOCOL_NONE, 868'000'000, -100, 0};
-    Radio::RadioParameters newRxRadioParameters{&PROTOCOL_NONE, 868'000'000, -100, 0};
-
     SemaphoreHandle_t mutex;
+    RxDataFrameQueue *rxDataFrameQueue;
+    etl::queue_spsc_atomic<TxPacket, 4, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
+    GATAS::RadioParameters rxRadioParameters{&PROTOCOL_NONE, nullptr, 868'000'000};
+    GATAS::RadioParameters newRxRadioParameters{&PROTOCOL_NONE, nullptr, 868'000'000};
 
 public:
     static constexpr etl::array<etl::string_view, 4> NAMES{"Sx1262_0", "Sx1262_1", "Sx1262_2", "Sx1262_3"};
@@ -154,7 +157,9 @@ public:
                                                                                                                            hasGpsFix(false),
                                                                                                                            lastPcId(0),
                                                                                                                            spiHall(nullptr),
-                                                                                                                           taskHandle(nullptr)
+                                                                                                                           taskHandle(nullptr),
+                                                                                                                           mutex(nullptr),
+                                                                                                                           rxDataFrameQueue(nullptr)
     {
         //        assert(num >=0 && num <= 1);
     }
@@ -212,15 +217,16 @@ public:
     void checkAndClearDeviceErrors();
     void receiveGFSKPacket();
     void receiveLORAPacket();
-    void sendGFSKPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length);
-    void sendLORAPacket(const RadioParameters &parameters, const uint8_t *data, uint8_t length);
-    void configureSx1262(const RadioParameters &newParameters, bool forTx);
+    void sendGFSKPacket(const GATAS::RadioParameters &parameters, const uint8_t *data, uint8_t length);
+    void sendLORAPacket(const GATAS::RadioParameters &parameters, const uint8_t *data, uint8_t length);
+    void configureSx1262(const GATAS::RadioParameters &newParameters, uint8_t txPayloadLength);
     sx126x_irq_mask_t getIrqStatus();
 
     void listen();
     void standBy();
 
-    static void sx1262Task(void *arg);
+    static void sx1262Trampoline(void *arg);
+    void sx1262Task(void *arg);
 
     uint8_t receivedPacketLength() const;
 

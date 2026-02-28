@@ -202,7 +202,6 @@ namespace GATAS
         FANET = 3,
         OGN1 = 4,
         PAW = 5,
-        //        HDR = 6,
         ADSB = 6,
         _TRANSPROTOCOLS = 6, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         ADSLFLARM = 253,     // Combination of ADSL/FLARM, not an acutal protocol but needed for RX of multiple protocols
@@ -416,16 +415,27 @@ namespace GATAS
     enum class Modulation : uint8_t
     {
         NONE = 0,
-        GFSK = 1,
-        LORA = 2,
+        GFSK,
+        LORA,
     };
 
     const char *modulationToString(GATAS::Modulation mode);
 
-    struct ProtocolConfig
+    struct RfConfig
+    {
+        GATAS::Modulation mode;
+        uint32_t baseFrequency;
+        uint32_t channelSeperation;
+        int8_t powerdBm;
+        uint32_t channelBandwidth;
+        uint32_t chipRate;
+        uint16_t freqDiv;
+        uint8_t gaussBt;
+    };
+
+    struct LinkLayerConfig
     {
         uint8_t pcId;                     // Internally used to opnise tranceiver state
-        GATAS::Modulation mode;           // Mode of the radio
         GATAS::DataSource __dataSource;   // Data source
         bool manchester;                  // True when data is manchester encoded
         uint8_t packetLength;             // Total packet length including CRC, but when left to zero. THe protocol send the packet length
@@ -466,6 +476,30 @@ namespace GATAS
             }
         }
     };
+
+    struct RadioParameters
+    {
+        static constexpr GATAS::RfConfig DEFAULT     {GATAS::Modulation::GFSK, 868'200'000, 200'000, 14, 234300, 100000, 50000,  5}; // 868.2 / 868.4
+
+        const GATAS::LinkLayerConfig *config = nullptr;
+        const GATAS::RfConfig *frequency = &DEFAULT;
+        uint32_t hopFrequency = 0;
+        uint8_t codingRate = 0;
+
+        constexpr RadioParameters(const GATAS::LinkLayerConfig *config_,
+                                  const GATAS::RfConfig *frequency_,
+                                  uint32_t hopFrequency_)
+            : config(config_), frequency(frequency_), hopFrequency(hopFrequency_), codingRate(0) {}
+
+        constexpr RadioParameters(const GATAS::LinkLayerConfig *config_,
+                                  const GATAS::RfConfig *frequency_,
+                                  uint32_t hopFrequency_,
+                                  uint8_t codingRate_)
+            : config(config_), frequency(frequency_), hopFrequency(hopFrequency_), codingRate(codingRate_) {}
+
+        RadioParameters() : config(nullptr), frequency(nullptr), hopFrequency(0), codingRate(8) {}
+    };
+
     /**
      * @brief Radio frame received by transceiver. Can contain both LORA and GFSK data frames
      *
@@ -474,29 +508,17 @@ namespace GATAS
     {
         uint32_t epochSeconds;
         uint32_t frequency;
-        const GATAS::ProtocolConfig *config;
+        const GATAS::LinkLayerConfig *config;
+        uint8_t *frame;
         size_t length; // Length of the data frame in bytes
         int8_t rssidBm;
-        union
-        {
-            // dataWord or data can contain both Manchester or non encoded bytes depending on the value of modulation
-            uint32_t dataWord[MAXIMUM_RAW_FRAME_WORD_LENGTH];
-            uint8_t data[MAXIMUM_RAW_FRAME_LENGTH];
-        };
-
-        static constexpr size_t maxFrameDataLength()
-        {
-            return MAXIMUM_RAW_FRAME_LENGTH;
-        }
-        static constexpr size_t maxFrameDataWordLength()
-        {
-            return MAXIMUM_RAW_FRAME_WORD_LENGTH;
-        }
     };
 
     /**
      * Binry store is used to store occasionaly data that does not require user modification
-     * Usually hardware status and performance..
+     * Usually hardware status and performance. Used in teh configuration class to store the 
+     * unique GATAS ID and a magic to check if the flash needs to be reset
+     * Other valueas could be added that could be of intereset during lifetime of the project
      */
     struct BinaryStore
     {

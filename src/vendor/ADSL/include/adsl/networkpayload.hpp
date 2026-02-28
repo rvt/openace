@@ -85,7 +85,7 @@ namespace ADSL
 
     /**
      * @brief Get Key Index (2 bits)
-     * Designates the key used, 0 for public
+     * Designates the key used, 0 for public 3 ke
      */
     uint8_t keyIndex() const
     {

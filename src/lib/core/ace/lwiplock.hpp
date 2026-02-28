@@ -13,11 +13,8 @@ public:
         cyw43_arch_lwip_end();
     }
 
-    // Non-copyable
     LwipLock(const LwipLock&) = delete;
     LwipLock& operator=(const LwipLock&) = delete;
-
-    // Movable if you want
     LwipLock(LwipLock&&) = delete;
     LwipLock& operator=(LwipLock&&) = delete;
 };

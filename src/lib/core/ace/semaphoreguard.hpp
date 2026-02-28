@@ -7,19 +7,19 @@
 /* GATAS */
 #include "debug.hpp"
 
-template <bool RECURSIVE = false>
 /**
  * @brief Clasic semaphore Guard based on a FreeRTOS mutex
  *
  */
+template <bool RECURSIVE = false>
 class SemaphoreGuard
 {
 private:
-    SemaphoreHandle_t &sem;
+    SemaphoreHandle_t sem;
     bool acquired;
 
 public:
-    SemaphoreGuard(uint32_t waitMs, SemaphoreHandle_t &sem_) : sem(sem_), acquired(RECURSIVE ? xSemaphoreTakeRecursive(sem, TASK_DELAY_MS(waitMs)) == pdTRUE : xSemaphoreTake(sem, TASK_DELAY_MS(waitMs)) == pdTRUE) {}
+    SemaphoreGuard(uint32_t waitMs, SemaphoreHandle_t sem_) : sem(sem_), acquired(RECURSIVE ? xSemaphoreTakeRecursive(sem, TASK_DELAY_MS(waitMs)) == pdTRUE : xSemaphoreTake(sem, TASK_DELAY_MS(waitMs)) == pdTRUE) {}
 
     ~SemaphoreGuard()
     {
@@ -36,7 +36,7 @@ public:
         }
         else
         {
-            GATAS_INFO("SemaphoreGuard not aquired");
+            GATAS_WARN("SemaphoreGuard not aquired");
         }
     }
 
@@ -71,9 +71,7 @@ public:
         }
         else
         {
-            {
-                GATAS_INFO("SpiGuard not aquired");
-            }
+            GATAS_WARN("Guard not aquired");
         }
     }
 

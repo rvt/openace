@@ -8,6 +8,8 @@
 /* GATAS. */
 #include "ace/coreutils.hpp"
 #include "ace/binarymessages.hpp"
+#include "ace/moreutils.hpp"
+
 #include "etl/string.h"
 
 #include "pico/rand.h"
@@ -446,29 +448,6 @@ const GATAS::ConfigString Config::strValueByPath(const etl::string_view defaultV
         return GATAS::ConfigString(string);
     }
 };
-
-/**
- * Simple IPv4 parser, Not sure where to put this but di dnot want to include LWiP into Config
- */
-uint32_t Config::parseIpv4String(const etl::string_view ipStr, uint32_t defaultValue) const
-{
-    using Token = etl::optional<etl::string_view>;
-    uint32_t ip = 0;
-    uint8_t shift = 0;
-    Token token;
-    while ((token = etl::get_token(ipStr, ".", token, true)))
-    {
-        uint32_t value = atoi(token.value().cbegin());
-        if (value > 255)
-        {
-            return defaultValue;
-        }
-        ip |= (value << shift);
-        shift += 8;
-    }
-
-    return ip;
-}
 
 const GATAS::Config::IpPort Config::ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const
 {

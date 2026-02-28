@@ -31,7 +31,6 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     static constexpr uint32_t FOREFLIGHT_UDP_PORT = 63093;
     enum TaskState : uint32_t
     {
-        EXIT = 1 << 0,
         TRANSMIT = 1 << 2,
     };
 

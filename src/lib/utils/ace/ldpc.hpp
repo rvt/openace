@@ -13,7 +13,7 @@
 #include <limits.h>
 #include <cmath>
 
-#include "bitcount.hpp"
+#include "bitutils.hpp"
 
 
 

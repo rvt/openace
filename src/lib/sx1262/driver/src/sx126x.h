@@ -46,6 +46,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "sx126x_status.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -141,17 +142,6 @@ extern "C" {
  */
 
 /**
- * @brief SX126X APIs return status enumeration definition
- */
-typedef enum sx126x_status_e
-{
-    SX126X_STATUS_OK = 0,
-    SX126X_STATUS_UNSUPPORTED_FEATURE,
-    SX126X_STATUS_UNKNOWN_VALUE,
-    SX126X_STATUS_ERROR,
-} sx126x_status_t;
-
-/**
  * @brief SX126X sleep mode configurations definition
  */
 typedef enum sx126x_sleep_cfgs_e
@@ -219,9 +209,9 @@ enum sx126x_irq_masks_e
     SX126X_IRQ_TIMEOUT           = ( 1 << 9 ),
     SX126X_IRQ_LR_FHSS_HOP       = ( 1 << 14 ),
     SX126X_IRQ_ALL               = SX126X_IRQ_TX_DONE | SX126X_IRQ_RX_DONE | SX126X_IRQ_PREAMBLE_DETECTED |
-                                   SX126X_IRQ_SYNC_WORD_VALID | SX126X_IRQ_HEADER_VALID | SX126X_IRQ_HEADER_ERROR |
-                                   SX126X_IRQ_CRC_ERROR | SX126X_IRQ_CAD_DONE | SX126X_IRQ_CAD_DETECTED | SX126X_IRQ_TIMEOUT |
-                                   SX126X_IRQ_LR_FHSS_HOP,
+                     SX126X_IRQ_SYNC_WORD_VALID | SX126X_IRQ_HEADER_VALID | SX126X_IRQ_HEADER_ERROR |
+                     SX126X_IRQ_CRC_ERROR | SX126X_IRQ_CAD_DONE | SX126X_IRQ_CAD_DETECTED | SX126X_IRQ_TIMEOUT |
+                     SX126X_IRQ_LR_FHSS_HOP,
 };
 
 typedef uint16_t sx126x_irq_mask_t;
@@ -239,7 +229,7 @@ enum sx126x_cal_mask_e
     SX126X_CAL_ADC_BULK_P = ( 1 << 5 ),
     SX126X_CAL_IMAGE      = ( 1 << 6 ),
     SX126X_CAL_ALL        = SX126X_CAL_RC64K | SX126X_CAL_RC13M | SX126X_CAL_PLL | SX126X_CAL_ADC_PULSE |
-                            SX126X_CAL_ADC_BULK_N | SX126X_CAL_ADC_BULK_P | SX126X_CAL_IMAGE,
+                     SX126X_CAL_ADC_BULK_N | SX126X_CAL_ADC_BULK_P | SX126X_CAL_IMAGE,
 };
 
 typedef uint8_t sx126x_cal_mask_t;
@@ -266,6 +256,7 @@ typedef enum sx126x_pkt_types_e
 {
     SX126X_PKT_TYPE_GFSK    = 0x00,
     SX126X_PKT_TYPE_LORA    = 0x01,
+    SX126X_PKT_TYPE_BPSK    = 0x02,
     SX126X_PKT_TYPE_LR_FHSS = 0x03,
 } sx126x_pkt_type_t;
 
@@ -316,7 +307,6 @@ typedef enum sx126x_gfsk_bw_e
     SX126X_GFSK_BW_78200  = 0x1B,
     SX126X_GFSK_BW_93800  = 0x13,
     SX126X_GFSK_BW_117300 = 0x0B,
-    SX126X_GFSK_BW_125000 = 0x19,
     SX126X_GFSK_BW_156200 = 0x1A,
     SX126X_GFSK_BW_187200 = 0x12,
     SX126X_GFSK_BW_234300 = 0x0A,
@@ -786,7 +776,7 @@ sx126x_status_t sx126x_stop_timer_on_preamble( const void* context, const bool e
  * @returns Operation status
  */
 sx126x_status_t sx126x_set_rx_duty_cycle( const void* context, const uint32_t rx_time_in_ms,
-    const uint32_t sleep_time_in_ms );
+                                          const uint32_t sleep_time_in_ms );
 
 /**
  * @brief Set the chip in reception mode with duty cycling
@@ -806,8 +796,8 @@ sx126x_status_t sx126x_set_rx_duty_cycle( const void* context, const uint32_t rx
  * @returns Operation status
  */
 sx126x_status_t sx126x_set_rx_duty_cycle_with_timings_in_rtc_step( const void*    context,
-    const uint32_t rx_time_in_rtc_step,
-    const uint32_t sleep_time_in_rtc_step );
+                                                                   const uint32_t rx_time_in_rtc_step,
+                                                                   const uint32_t sleep_time_in_rtc_step );
 
 /**
  * @brief Set the chip in CAD (Channel Activity Detection) mode
@@ -1013,7 +1003,7 @@ sx126x_status_t sx126x_read_buffer( const void* context, const uint8_t offset, u
  * @see sx126x_clear_irq_status, sx126x_get_irq_status, sx126x_set_dio2_as_rf_sw_ctrl, sx126x_set_dio3_as_tcxo_ctrl
  */
 sx126x_status_t sx126x_set_dio_irq_params( const void* context, const uint16_t irq_mask, const uint16_t dio1_mask,
-    const uint16_t dio2_mask, const uint16_t dio3_mask );
+                                           const uint16_t dio2_mask, const uint16_t dio3_mask );
 
 /**
  * @brief Get system interrupt status
@@ -1075,7 +1065,7 @@ sx126x_status_t sx126x_set_dio2_as_rf_sw_ctrl( const void* context, const bool e
  *
  */
 sx126x_status_t sx126x_set_dio3_as_tcxo_ctrl( const void* context, const sx126x_tcxo_ctrl_voltages_t tcxo_voltage,
-    const uint32_t timeout );
+                                              const uint32_t timeout );
 
 //
 // RF Modulation and Packet-Related Functions
@@ -1144,10 +1134,16 @@ sx126x_status_t sx126x_set_tx_params( const void* context, const int8_t pwr_in_d
  * @remark The command @ref sx126x_set_pkt_type must be called prior to this
  * one.
  *
+ * Depending on the modulation to configure, workarounds may applies.
+ * Refer to @ref sx126x_workaround_gfsk_0_6_kbps, @ref sx126x_workaround_gfsk_1_2_kbps and @ref
+ * sx126x_workaround_gfsk_reset.
+ *
  * @param [in] context Chip implementation context
  * @param [in] params The structure of GFSK modulation configuration
  *
  * @returns Operation status
+ *
+ * @see sx126x_workaround_gfsk_0_6_kbps, sx126x_workaround_gfsk_1_2_kbps, sx126x_workaround_gfsk_reset
  */
 sx126x_status_t sx126x_set_gfsk_mod_params( const void* context, const sx126x_mod_params_gfsk_t* params );
 
@@ -1200,7 +1196,7 @@ sx126x_status_t sx126x_set_lora_pkt_params( const void* context, const sx126x_pk
  * @returns Operation status
  */
 sx126x_status_t sx126x_set_gfsk_pkt_address( const void* context, const uint8_t node_address,
-    const uint8_t broadcast_address );
+                                             const uint8_t broadcast_address );
 
 /**
  * @brief Set the parameters for CAD operation
@@ -1224,7 +1220,7 @@ sx126x_status_t sx126x_set_cad_params( const void* context, const sx126x_cad_par
  * @returns Operation status
  */
 sx126x_status_t sx126x_set_buffer_base_address( const void* context, const uint8_t tx_base_address,
-    const uint8_t rx_base_address );
+                                                const uint8_t rx_base_address );
 
 /**
  * @brief Set the timeout to be used when the chip is configured in Rx mode (only in LoRa)
@@ -1400,7 +1396,7 @@ uint32_t sx126x_get_lora_bw_in_hz( sx126x_lora_bw_t bw );
  * @returns LoRa time-on-air numerator
  */
 uint32_t sx126x_get_lora_time_on_air_numerator( const sx126x_pkt_params_lora_t* pkt_p,
-    const sx126x_mod_params_lora_t* mod_p );
+                                                const sx126x_mod_params_lora_t* mod_p );
 
 /**
  * @brief Get the time on air in ms for LoRa transmission
@@ -1411,7 +1407,7 @@ uint32_t sx126x_get_lora_time_on_air_numerator( const sx126x_pkt_params_lora_t* 
  * @returns Time-on-air value in ms for LoRa transmission
  */
 uint32_t sx126x_get_lora_time_on_air_in_ms( const sx126x_pkt_params_lora_t* pkt_p,
-    const sx126x_mod_params_lora_t* mod_p );
+                                            const sx126x_mod_params_lora_t* mod_p );
 
 /**
  * @brief Compute the numerator for GFSK time-on-air computation.
@@ -1434,7 +1430,7 @@ uint32_t sx126x_get_gfsk_time_on_air_numerator( const sx126x_pkt_params_gfsk_t* 
  * @returns Time-on-air value in ms for GFSK transmission
  */
 uint32_t sx126x_get_gfsk_time_on_air_in_ms( const sx126x_pkt_params_gfsk_t* pkt_p,
-    const sx126x_mod_params_gfsk_t* mod_p );
+                                            const sx126x_mod_params_gfsk_t* mod_p );
 
 /**
  * @brief Generate one or more 32-bit random numbers.
@@ -1610,7 +1606,7 @@ sx126x_status_t sx126x_set_ocp_value( const void* context, const uint8_t ocp_in_
  * @returns Operation status
  */
 sx126x_status_t sx126x_set_trimming_capacitor_values( const void* context, const uint8_t trimming_cap_xta,
-    const uint8_t trimming_cap_xtb );
+                                                      const uint8_t trimming_cap_xtb );
 
 /**
  * @brief Add registers to the retention list
@@ -1627,7 +1623,7 @@ sx126x_status_t sx126x_set_trimming_capacitor_values( const void* context, const
  * @returns Operation status
  */
 sx126x_status_t sx126x_add_registers_to_retention_list( const void* context, const uint16_t* register_addr,
-    uint8_t register_nb );
+                                                        uint8_t register_nb );
 
 /**
  * @brief Add SX126X_REG_RXGAIN, SX126X_REG_TX_MODULATION and SX126X_REG_IQ_POLARITY registers to the retention list
@@ -1659,6 +1655,71 @@ sx126x_status_t sx126x_init_retention_list( const void* context );
  * @returns Operation status
  */
 sx126x_status_t sx126x_get_lora_params_from_header( const void* context, sx126x_lora_cr_t* cr, bool* crc_is_on );
+
+/**
+ * @brief Apply GFSK workaround for GFSK 1.2 kbps
+ *
+ * This workaround is to be applied after calling @ref sx126x_set_gfsk_mod_params and @ref sx126x_set_gfsk_pkt_params if
+ * an only if:
+ *  - sx126x_mod_params_gfsk_s.br_in_bps = 1200 bps; and
+ *  - sx126x_mod_params_gfsk_s.fdev_in_hz = 5000 Hz; and
+ *  - sx126x_mod_params_gfsk_s.bw_dsb_param = @ref SX126X_GFSK_BW_19500
+ *
+ * @param [in] context Chip implementation context
+ *
+ * @return Operation status
+ *
+ * @see sx126x_set_gfsk_mod_params, sx126x_set_gfsk_pkt_params, sx126x_workaround_gfsk_reset
+ */
+sx126x_status_t sx126x_workaround_gfsk_1_2_kbps( const void* context );
+
+/**
+ * @brief Apply GFSK workaround for GFSK 0.6 kbps
+ *
+ * This workaround is to be applied after calling @ref sx126x_set_gfsk_mod_params and @ref sx126x_set_gfsk_pkt_params if
+ * an only if:
+ *  - sx126x_mod_params_gfsk_s.br_in_bps = 600 bps; and
+ *  - sx126x_mod_params_gfsk_s.fdev_in_hz = 800 Hz; and
+ *  - sx126x_mod_params_gfsk_s.bw_dsb_param = @ref SX126X_GFSK_BW_4800
+ *
+ * @param [in] context Chip implementation context
+ *
+ * @return Operation status
+ *
+ * @see sx126x_set_gfsk_mod_params, sx126x_set_gfsk_pkt_params, sx126x_workaround_gfsk_reset
+ */
+sx126x_status_t sx126x_workaround_gfsk_0_6_kbps( const void* context );
+
+/**
+ * @brief Reset workaround applied by @ref sx126x_workaround_gfsk_1_2_kbps or sx126x_workaround_gfsk_0_6_kbps
+ *
+ * This workaround reset must be called before attempting to configure a modulation different from the one specified in
+ * @ref sx126x_workaround_gfsk_0_6_kbps or @ref sx126x_workaround_gfsk_1_2_kbps.
+ *
+ * @param [in] context Chip implementation context
+ *
+ * @return Operation status
+ *
+ * @see sx126x_workaround_gfsk_1_2_kbps, sx126x_workaround_gfsk_0_6_kbps
+ */
+sx126x_status_t sx126x_workaround_gfsk_reset( const void* context );
+
+/**
+ * @brief 15.1.2 Workaround
+ *
+ * This workaround is automatically called by the driver where appropriate.
+ *
+ * @remark Before any packet transmission, bit #2 of SX126X_REG_TX_MODULATION shall be set to:
+ * 0 if the LoRa BW = 500 kHz
+ * 1 for any other LoRa BW and other modulation
+ *
+ * @param [in] context Chip implementation context.
+ * @param [in] pkt_type The modulation type
+ * @param [in] bw In case of LoRa modulation the bandwith must be specified
+ *
+ * @returns Operation status
+ */
+sx126x_status_t sx126x_tx_modulation_workaround( const void* context, sx126x_pkt_type_t pkt_type, sx126x_lora_bw_t bw );
 
 #ifdef __cplusplus
 }

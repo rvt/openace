@@ -48,7 +48,7 @@ void RadioTunerRx::getData(etl::string_stream &stream, const etl::string_view pa
     {
         taskCtx.getData(stream);
     }
-    stream << ",\"zone\":\"" << CountryRegulations::zoneToString(currentZone) << "\"";
+    stream << ",\"zone\":\"" << currentZone.value().c_str() << "\"";
     stream << "}";
 }
 
@@ -78,7 +78,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
             // for (auto &ref : radioTunerRx->radioCtxList)
             // {
             //     radioTunerRx->getBus().receive(GATAS::RadioControlMsg{
-            //         Radio::RadioParameters{&CountryRegulations::PROTOCOL_NONE, CountryRegulations::Europe.baseFrequency, 0, 8},
+            //         GATAS::RadioParameters{&CountryRegulations::PROTOCOL_NONE, CountryRegulations::Europe.baseFrequency, 0, 8},
             //         ref.radioNo});
             // }
             radioTunerRx->eventSync.set(BIT_EVENT_DONE);
@@ -125,7 +125,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
             auto frequency = CountryRegulations::getFrequency(timeSlot->frequency, timingPtr->channel);
 
             // Note to self, the tranceiver itself will decide if to reconfigure or not
-            radioTunerRx->getBus().receive(GATAS::RadioControlMsg{Radio::RadioParameters(&timeSlot->radioConfig, frequency, timeSlot->frequency.powerdBm), ref.radioNo});
+            radioTunerRx->getBus().receive(GATAS::RadioControlMsg{GATAS::RadioParameters(&timeSlot->radioConfig, &timeSlot->frequency, frequency, 0), ref.radioNo});
             ref.statistics.taskActivity += 1;
         }
 
@@ -143,7 +143,7 @@ void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
     // Set to current time else bluetooth connections will fail
     static auto lastTime = CoreUtils::timeUs32Raw();
 
-    if (CoreUtils::isUsReachedRaw(lastTime) || static_cast<uint8_t>(currentZone) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0))
+    if (CoreUtils::isUsReachedRaw(lastTime) || currentZone.value() == CountryRegulations::Zone::ZONE0)
     {
         lastTime = CoreUtils::timeUs32Raw() + UPDATE_ZONE_REGULATION_EVERY;
         currentZone.set(CountryRegulations::zone(msg.position.lat, msg.position.lon));
@@ -188,7 +188,7 @@ bool RadioTunerRx::hasReceived(GATAS::DataSource ds)
 
 void RadioTunerRx::assignDataSources()
 {
-    if (currentZone == CountryRegulations::ZONE0)
+    if (currentZone.value() == CountryRegulations::Zone::enum_type::ZONE0)
     {
         return;
     }
@@ -233,7 +233,7 @@ bool RadioTunerRx::blockTasks()
     // We 'should' never end up here??
     if (!eventSync.wait(BIT_EVENT_DONE, pdMS_TO_TICKS(CountryRegulations::SLOT_MS * 10)))
     {
-        GATAS_INFO("RadioTunerRx: Failed to wait for event sync");
+        GATAS_WARN("Failed to wait for event sync");
         return false;
     }
     return true;

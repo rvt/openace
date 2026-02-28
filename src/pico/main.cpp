@@ -56,6 +56,7 @@
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
 #include "ace/idle.hpp"
+#include "ace/manchester.hpp"
 
 const char *GATAS_BUILD_TIMESTAMP = BUILD_TIMESTAMP;
 const char *GATAS_BUILD_GIT_TAG = BUILD_GIT_TAG;
@@ -117,11 +118,18 @@ void registerModules()
 }
 
 __scratch_y("aceSpi_Mem") static uint8_t aceSpi_Mem[sizeof(AceSpi)];
-__scratch_y("sx1262_1_Mem") static uint8_t sx1262_1_Mem[sizeof(Sx1262)];
-__scratch_y("sx1262_2_Mem") static uint8_t sx1262_2_Mem[sizeof(Sx1262)];
-__scratch_y("GpsDecoder_Mem") static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
+static uint8_t sx1262_1_Mem[sizeof(Sx1262)];
+static uint8_t sx1262_2_Mem[sizeof(Sx1262)];
+static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
 __scratch_y("GPS_Mem") static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B))];
 __scratch_y("DataPort_Mem") static uint8_t DataPort_Mem[sizeof(DataPort)];
+
+using MultiPool = MultiPoolAllocator<
+    PoolSpec<32, 16>,
+    PoolSpec<64, 8>,
+    PoolSpec<160, 4>>;
+
+MultiPool pool;
 
 BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configuration &config)
 {
@@ -206,7 +214,7 @@ constexpr size_t BINSTORE_NUM_SECTORS = (sizeof(GATAS::BinaryStore) + FLASH_SECT
 static FlashStore permanentStore{PERMSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 3}; // FLASH_SECTOR_SIZE => 4096 on the PICO
 // Used to store runtime information not stored in permanent store, counters, id's etc...
 static FlashStore binaryStore{BINSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 4};
-__scratch_y("GatasMem_Bus") static GATAS::ThreadSafeBus<25> bus;
+__scratch_y("GatasMem_Bus") static GATAS::ThreadSafeBus<24> bus;
 static Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
 volatile static bool loadIndicator = false;
 volatile static int8_t ledStatusIndicatorPin = -1;
@@ -307,6 +315,7 @@ static void loadModules(void *arg)
     load(GatasConnect::NAME, bus, config);
     load(Bmp280::NAME, bus, config);
 
+    load(RxDataFrameQueue::NAME, bus, config, true);
     for (uint8_t i = 0; i < GATAS_MAX_RADIOS; i++)
     {
         load(Sx1262::NAMES[i], bus, config);
@@ -316,7 +325,6 @@ static void loadModules(void *arg)
     // Data sources
     load(RadioTunerTx::NAME, bus, config);
     load(RadioTunerRx::NAME, bus, config);
-    load(RxDataFrameQueue::NAME, bus, config, true);
     load(ADSBDecoder::NAME, bus, config);
 
     // Protocols
@@ -435,7 +443,7 @@ void vLaunch(void)
     // Bootstrap
     BaseModule::initBase();
     registerModules();
-//    BaseModule::setModuleStatus(Configuration::NAME, &config);
+    //    BaseModule::setModuleStatus(Configuration::NAME, &config);
     BaseModule::setModuleStatus(Config::NAME, &config);
 
     // Load all the modules

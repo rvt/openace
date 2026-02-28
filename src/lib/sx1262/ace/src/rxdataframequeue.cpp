@@ -1,7 +1,7 @@
 #include "../rxdataframequeue.hpp"
 #include "ace/manchester.hpp"
-#include "ace/utils.hpp"
 #include "ace/moreutils.hpp"
+#include "ace/poolallocator.hpp"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -17,6 +17,7 @@ GATAS::PostConstruct RxDataFrameQueue::postConstruct()
         return GATAS::PostConstruct::XQUEUE_ERROR;
     }
 
+    // Task must be lower compared to any SX1262 task
     if (xTaskCreate(radioQueueTaskTrampoline, RxDataFrameQueue::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 2, &taskHandle) != pdPASS)
     {
         vQueueDelete(dataQueue);
@@ -35,19 +36,9 @@ void RxDataFrameQueue::getData(etl::string_stream &stream, const etl::string_vie
 {
     (void)path;
     stream << "{";
-    stream << "\"missedErr\":\"" << statistics.missedErr << "\"";
     stream << ",\"totalIncoming\":\"" << statistics.totalIncoming << "\"";
     stream << ",\"totalOutgoing\":\"" << statistics.totalOutgoing << "\"";
     stream << "}";
-}
-
-void RxDataFrameQueue::on_receive(const GATAS::DataFrameMsg &msg)
-{
-    statistics.totalIncoming += 1;
-    if (xQueueSendToBack(dataQueue, &msg.dataFrame, TASK_DELAY_MS(5)) != pdPASS)
-    {
-        statistics.missedErr += 1;
-    }
 }
 
 void RxDataFrameQueue::radioQueueTaskTrampoline(void *arg)
@@ -60,50 +51,71 @@ void RxDataFrameQueue::radioQueueTaskTrampoline(void *arg)
 void RxDataFrameQueue::radioQueueTask(void *arg)
 {
     (void)arg;
-    GATAS::DataFrame frame;
+    GATAS::DataFrame rxFrame;
     while (true)
     {
-        if (xQueueReceive(dataQueue, &frame, portMAX_DELAY) == pdPASS)
+        if (xQueueReceive(dataQueue, &rxFrame, portMAX_DELAY) == pdPASS)
         {
-            statistics.totalOutgoing += 1;
-            if (frame.config->manchester)
+            PoolReleaseGuard guard{getGlobalPool(), rxFrame.frame};
+            if (rxFrame.length < 4)
             {
-                size_t byteLength = frame.length >> 1;
-                auto rxGfskMsg = GATAS::RadioRxGfskMsg{static_cast<uint8_t>(byteLength), frame.epochSeconds, frame.rssidBm, frame.frequency, frame.config->dataSource()};
-                //              printBufferBits(etl::span(frame.data, frame.length));
+                GATAS_WARN("Received frame with length < 4 bytes, ignoring");
+                continue;
+            }
 
-                manchesterDecode(rxGfskMsg.frameBytes, rxGfskMsg.errBytes, frame.data, frame.length);
+            statistics.totalOutgoing += 1;
+            if (rxFrame.config->manchester)
+            {
+                size_t byteLength = rxFrame.length >> 1;
+                auto error = static_cast<uint8_t *>(getGlobalPool().alloc(byteLength));
+                if (error == nullptr)
+                {
+                    GATAS_WARN("Failed to allocate memory for manchester error, ignoring frame");
+                    continue;
+                }
+
+                auto msg = GATAS::RadioRxManchesterMsg{
+                    rxFrame.frame,
+                    error,
+                    byteLength,
+                    rxFrame.epochSeconds,
+                    rxFrame.frequency,
+                    rxFrame.config->dataSource(),
+                    rxFrame.rssidBm};
+
+                manchesterDecodeInline(msg.frame, msg.error, rxFrame.length);
 
                 // Handle multi protocol situations
-                auto ds = decideDataSource(frame.config->dataSource(), rxGfskMsg.frame, frame.length);
-                if (ds.dataSource < GATAS::DataSource::_TRANSPROTOCOLS)
-                {
-                    bitShift(
-                        rxGfskMsg.frameBytes,
-                        rxGfskMsg.lengthBytes,
-                        ds.bitsToShift);
+                // auto ds = decideDataSource(rxFrame.config->dataSource(), msg.frame32(), rxFrame.length );
+                // if (ds.dataSource < GATAS::DataSource::_TRANSPROTOCOLS)
+                // {
+                //     bitShift(
+                //         msg.frame,
+                //         msg.lengthBytes,
+                //         ds.bitsToShift);
 
-                    bitShift(
-                        rxGfskMsg.errBytes,
-                        rxGfskMsg.lengthBytes,
-                        ds.bitsToShift);
+                //     bitShift(
+                //         msg.error,
+                //         msg.lengthBytes,
+                //         ds.bitsToShift);
 
-                    rxGfskMsg.lengthBytes = ds.frameLength;
-                    rxGfskMsg.dataSource = ds.dataSource;
-                }
+                //     msg.lengthBytes = ds.frameLength;
+                //     msg.dataSource = ds.dataSource;
+                // }
 
-                if (rxGfskMsg.dataSource < GATAS::DataSource::_TRANSPROTOCOLS)
-                {
-                    // printBufferBits(etl::span(rxGfskMsg.frame, frame.length - 3));
-                    // printf("\n");
-                    getBus().receive(rxGfskMsg);
-                }
+                guard.disarm();
+                getBus().receive(msg);
             }
-            else 
+            else
             {
-                auto rxLoraMsg = GATAS::RadioRxLoraMsg(frame.epochSeconds, frame.rssidBm, frame.frequency, frame.config->dataSource());
-                rxLoraMsg.frame.assign(frame.data, frame.data + frame.length);
-                getBus().receive(rxLoraMsg);
+                guard.disarm();
+                getBus().receive(GATAS::RadioRxMsg{
+                    rxFrame.frame,
+                    rxFrame.length,
+                    rxFrame.epochSeconds,
+                    rxFrame.frequency,
+                    rxFrame.config->dataSource(),
+                    rxFrame.rssidBm});
             }
         }
     }
@@ -115,7 +127,6 @@ void RxDataFrameQueue::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-// TODO: Change uint32_t frame[] to a span
 RxDataFrameQueue::DataSourceMatch RxDataFrameQueue::decideDataSource(GATAS::DataSource ds, uint32_t frame[], uint8_t frameLengthBytes) // resolve multi-system receptions into unique types
 {
     if (ds == GATAS::DataSource::ADSLOGN) // if OGN+ADSL SYNC
@@ -130,14 +141,14 @@ RxDataFrameQueue::DataSourceMatch RxDataFrameQueue::decideDataSource(GATAS::Data
             return {
                 .dataSource = GATAS::DataSource::ADSLM,
                 .bitsToShift = 20,
-                .frameLength = CountryRegulations::PROTOCOL_ADSL.packetLength};
+                .frameLength = 25 /*CountryRegulations::PROTOCOL_ADSL.packetLength */};
         }
         else if (diffBits<1>(frame, SignOGN32, MaskOGN32) <= 1)
         {
             return {
                 .dataSource = GATAS::DataSource::OGN1,
                 .bitsToShift = 21,
-                .frameLength = CountryRegulations::PROTOCOL_OGN.packetLength};
+                .frameLength = 26 /*CountryRegulations::PROTOCOL_OGN.packetLength*/};
         }
     }
     if (ds == GATAS::DataSource::ADSLFLARM) // if FLARM+ADSL SYNC
@@ -151,14 +162,14 @@ RxDataFrameQueue::DataSourceMatch RxDataFrameQueue::decideDataSource(GATAS::Data
             return {
                 .dataSource = GATAS::DataSource::ADSLM,
                 .bitsToShift = 6,
-                .frameLength = CountryRegulations::PROTOCOL_ADSL.packetLength};
+                .frameLength = 26 /*CountryRegulations::PROTOCOL_ADSL.packetLength*/};
         }
         else if (diffBits<1>(frame, SignFLR32, MaskFLR32) <= 1)
         {
             return {
                 .dataSource = GATAS::DataSource::FLARM,
                 .bitsToShift = 15,
-                .frameLength = CountryRegulations::PROTOCOL_FLARM.packetLength};
+                .frameLength = 26 /*CountryRegulations::PROTOCOL_FLARM.packetLength*/};
         }
     }
 
@@ -170,11 +181,11 @@ RxDataFrameQueue::DataSourceMatch RxDataFrameQueue::decideDataSource(GATAS::Data
             return {
                 .dataSource = GATAS::DataSource::PAW,
                 .bitsToShift = 48,
-                .frameLength = CountryRegulations::PROTOCOL_PAW.packetLength};
+                .frameLength = frameLengthBytes};
         }
     }
     return {
-        .dataSource = GATAS::DataSource::NONE,
+        .dataSource = ds,
         .bitsToShift = 0,
         .frameLength = frameLengthBytes};
 }

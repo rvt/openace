@@ -26,13 +26,10 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../ace")
 
 # Other dependencies
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
-#include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
-# include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 
 # Add vendor modules
 if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/libcrc libcrc)
 endif()
 
 
@@ -50,16 +47,9 @@ string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAM
 set( TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES} )
 
 set( ACE_SOURCE_FILES
- #    ${CMAKE_CURRENT_SOURCE_DIR}/../../../core/ace/messagerouter.cpp
-      # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/basemodule.cpp
-      # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core/ace/coreutils.cpp
-      # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/utils.cpp
-      # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/encryption.cpp
-      # ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils/ace/ognconv.cpp
-
+        ../ace/src/bitutils.cpp
         ../ace/src/encryption.cpp
         ../ace/src/EMA.cpp
-        ../ace/src/utils.cpp
         ../ace/src/moreutils.cpp
         ../ace/src/manchester.cpp
 )

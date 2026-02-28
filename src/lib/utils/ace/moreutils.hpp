@@ -3,6 +3,9 @@
 #include <stdio.h>
 
 #include "etl/span.h"
+#include "etl/string_view.h"
+#include "etl/optional.h"
+#include "etl/algorithm.h"
 
 /**
  * Small helper class to do something every XX
@@ -29,31 +32,6 @@ public:
     };
 };
 
-/**
- * Keep track of the state of a primitive variable and ensures that even for the first the time state is set to 'changed'
- *
- */
-template <typename StateType>
-class StateHolder
-{
-    enum
-    {
-        START,
-        RUNNING
-    } status;
-    StateType state;
-
-public:
-    StateHolder(StateType start_) : status(START), state(start_) {};
-
-    bool isChanged(StateType thisState)
-    {
-        auto changed = (status == START) || (state != thisState);
-        status = RUNNING;
-        state = thisState;
-        return changed;
-    }
-};
 
 template <typename T>
 static void printBufferHex(etl::span<T> buffer)
@@ -91,17 +69,13 @@ static void printBufferBits(etl::span<T> buffer)
         U v = static_cast<U>(buffer[i]);
 
         constexpr int bitCount = sizeof(T) * 8;
-
-//        printf("0b");
-
         for (int b = bitCount - 1; b >= 0; --b)
         {
             putchar((v & (U(1) << b)) ? '1' : '0');
         }
-
-        // if (i + 1 < buffer.size())
-        //     printf(" ");
     }
 
     printf("\n");
 }
+
+uint32_t parseIpv4String(const etl::string_view ipStr, uint32_t defaultValue);

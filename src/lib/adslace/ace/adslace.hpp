@@ -33,7 +33,7 @@
 // #include "ace/ldpc.hpp"
 // #include "adsl_packet.hpp"
 
-class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<ADSLAce, GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::GpsStatsMsg>
+class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<ADSLAce, GATAS::RadioRxManchesterMsg, GATAS::RadioRxMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::GpsStatsMsg>
 {
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int MAX_IGNORE_DISTANCE = 50000;
@@ -56,14 +56,14 @@ class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<A
     ADSL::Protocol protocol;
     GATAS::OwnshipPositionInfo ownshipPosition;
 
-    GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
+    GATAS::DataSourceTimeStatsTable<3> datasourceTimeStats;
 
     GATAS::GpsStatsMsg gpsStats;
     uint16_t distanceIgnore;
-
+    SemaphoreHandle_t rxMutex;
     struct Tx_Struct
     {
-        Radio::RadioParameters radioParameters;
+        GATAS::RadioParameters radioParameters;
         uint8_t radioNo;
     };
     Tx_Struct rqMBandRadioParameters;
@@ -92,7 +92,8 @@ private:
      * Send a FreeRTOS message when a ADSL is received
      * This will release the sender from the task and allow it to continue in a seperate thread
      */
-    void on_receive(const GATAS::RadioRxGfskMsg &msg);
+    void on_receive(const GATAS::RadioRxManchesterMsg &msg);
+    void on_receive(const GATAS::RadioRxMsg &msg);
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
@@ -108,14 +109,14 @@ private:
     static GATAS::AircraftCategory mapAircraftCategory(ADSL::TrafficPayload::AircraftCategory category);
     static ADSL::TrafficPayload::AircraftCategory mapAircraftCategory(GATAS::AircraftCategory category);
 
-    //    int8_t parseFrame(const ADSL_Packet &packet, int16_t rssiDbm);
 
+    // ADSL Protocol Handler functions
     virtual uint32_t adsl_getTick() const
     {
         return CoreUtils::timeUs32();
     }
 
-    virtual bool adsl_sendFrame(const void *ctx, etl::span<const uint8_t> data);
+    virtual bool adsl_sendFrame(const void *ctx, const uint8_t *data, size_t lengthBytes) override;
 
     // Called when a payload/header/status is received by the protocol layer
     virtual void adsl_receivedTraffic(const ADSL::Header &header, const ADSL::TrafficPayload &tp);
@@ -123,6 +124,7 @@ private:
 
     virtual void adsl_buildTraffic(const void *ctx, ADSL::TrafficPayload &tp);
     virtual void adsl_buildStatusPayload(const void *ctx, ADSL::StatusPayload &sp);
+    virtual uint8_t *adsl_alloc(const void *ctx, size_t sizeBytes);
 
     ADSL::TrafficPayload::HorizontalPositionAccuracy mapHFOM(float hfomMeters);
     ADSL::TrafficPayload::NavigationIntegrity mapHPL(float hplMeters);

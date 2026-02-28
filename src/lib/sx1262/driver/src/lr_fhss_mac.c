@@ -80,8 +80,7 @@ STATIC const uint8_t lr_fhss_lfsr_poly2[] = { 65, 68, 71, 72 };
 STATIC const uint8_t lr_fhss_lfsr_poly3[] = { 142, 149 };
 
 /** @brief used for 1/3 rate viterbi encoding */
-STATIC const uint8_t lr_fhss_viterbi_1_3_table[64][2] =
-{
+STATIC const uint8_t lr_fhss_viterbi_1_3_table[64][2] = {
     { 0, 7 }, { 3, 4 }, { 7, 0 }, { 4, 3 }, { 6, 1 }, { 5, 2 }, { 1, 6 }, { 2, 5 }, { 1, 6 }, { 2, 5 }, { 6, 1 },
     { 5, 2 }, { 7, 0 }, { 4, 3 }, { 0, 7 }, { 3, 4 }, { 4, 3 }, { 7, 0 }, { 3, 4 }, { 0, 7 }, { 2, 5 }, { 1, 6 },
     { 5, 2 }, { 6, 1 }, { 5, 2 }, { 6, 1 }, { 2, 5 }, { 1, 6 }, { 3, 4 }, { 0, 7 }, { 4, 3 }, { 7, 0 }, { 7, 0 },
@@ -92,13 +91,11 @@ STATIC const uint8_t lr_fhss_viterbi_1_3_table[64][2] =
 
 /** @brief used for 1/2 rate viterbi encoding */
 STATIC const uint8_t lr_fhss_viterbi_1_2_table[16][2] = { { 0, 3 }, { 1, 2 }, { 2, 1 }, { 3, 0 }, { 2, 1 }, { 3, 0 },
-    { 0, 3 }, { 1, 2 }, { 3, 0 }, { 2, 1 }, { 1, 2 }, { 0, 3 },
-    { 1, 2 }, { 0, 3 }, { 3, 0 }, { 2, 1 }
-};
+                                                          { 0, 3 }, { 1, 2 }, { 3, 0 }, { 2, 1 }, { 1, 2 }, { 0, 3 },
+                                                          { 1, 2 }, { 0, 3 }, { 3, 0 }, { 2, 1 } };
 
 /** @brief used header interleaving */
-STATIC const uint8_t lr_fhss_header_interleaver_minus_one[80] =
-{
+STATIC const uint8_t lr_fhss_header_interleaver_minus_one[80] = {
     0,  18, 36, 54, 72, 4,  22, 40,  //
     58, 76, 8,  26, 44, 62, 12, 30,  //
     48, 66, 16, 34, 52, 70, 1,  19,  //
@@ -112,8 +109,7 @@ STATIC const uint8_t lr_fhss_header_interleaver_minus_one[80] =
 };
 
 /** @brief lookup table for lr_fhss_header_crc8 */
-const uint8_t lr_fhss_header_crc8_lut[256] =
-{
+const uint8_t lr_fhss_header_crc8_lut[256] = {
     0,   47,  94,  113, 188, 147, 226, 205, 87,  120, 9,   38,  235, 196, 181, 154,  //
     174, 129, 240, 223, 18,  61,  76,  99,  249, 214, 167, 136, 69,  106, 27,  52,   //
     115, 92,  45,  2,   207, 224, 145, 190, 36,  11,  122, 85,  152, 183, 198, 233,  //
@@ -133,8 +129,7 @@ const uint8_t lr_fhss_header_crc8_lut[256] =
 };
 
 /** @brief lookup table for lr_fhss_payload_crc16 */
-const uint16_t lr_fhss_payload_crc16_lut[256] =
-{
+const uint16_t lr_fhss_payload_crc16_lut[256] = {
     0,     30043, 60086, 40941, 41015, 54636, 19073, 16346, 13621, 16494, 57219, 43736, 38146, 57433, 32692, 2799,   //
     27242, 7985,  32988, 62855, 51805, 48902, 8427,  21936, 24415, 10756, 46569, 49330, 65384, 35379, 5598,  24709,  //
     54484, 41359, 15970, 19257, 29923, 440,   40533, 60174, 57825, 38074, 2903,  32268, 16854, 13453, 43872, 56891,  //
@@ -228,7 +223,7 @@ STATIC void lr_fhss_set_bit_in_byte_vector( uint8_t* vector, uint32_t bit_number
  * @returns Length of output buffer, in bits
  */
 STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_2_base( uint8_t* encod_state, const uint8_t* data_in,
-    uint16_t data_in_bitcount, uint8_t* data_out );
+                                                             uint16_t data_in_bitcount, uint8_t* data_out );
 
 /**
  * @brief Compute 1/3 rate Viterbi encoding
@@ -241,7 +236,7 @@ STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_2_base( uint8_t* encod_stat
  * @returns Length of output buffer, in bits
  */
 STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_3_base( uint8_t* encod_state, const uint8_t* data_in,
-    uint16_t data_in_bitcount, uint8_t* data_out );
+                                                             uint16_t data_in_bitcount, uint8_t* data_out );
 
 /**
  * @brief Convolute using lr_fhss_convolution_encode_viterbi_1_2_base with optional tail-biting
@@ -256,7 +251,7 @@ STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_3_base( uint8_t* encod_stat
  * @returns Length of output buffer, in bits
  */
 STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_2( const uint8_t* data_in, uint16_t data_in_bitcount,
-    bool tail_biting, uint8_t* data_out );
+                                                        bool tail_biting, uint8_t* data_out );
 
 /**
  * @brief Convolute using lr_fhss_convolution_encode_viterbi_1_3_base
@@ -268,7 +263,7 @@ STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_2( const uint8_t* data_in, 
  * @returns Length of output buffer, in bits
  */
 STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_3( const uint8_t* data_in, uint16_t data_in_bitcount,
-    uint8_t* data_out );
+                                                        uint8_t* data_out );
 
 /**
  * @brief Computes payload interleaving
@@ -281,7 +276,7 @@ STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_3( const uint8_t* data_in, 
  * @returns Length of output buffer, in bits
  */
 STATIC uint16_t lr_fhss_payload_interleaving( const uint8_t* data_in, uint16_t data_in_bitcount, uint8_t* data_out,
-    uint32_t output_offset );
+                                              uint32_t output_offset );
 
 /**
  * @brief Create the raw LR-FHSS header
@@ -312,7 +307,7 @@ STATIC void lr_fhss_store_header_sync_word_index( uint8_t sync_word_index, uint8
  * @returns Length of physical payload, in bits
  */
 STATIC uint16_t lr_fhss_get_bit_and_hop_count( const lr_fhss_v1_params_t* params, uint16_t payload_length,
-    uint8_t* nb_hops_out );
+                                               uint8_t* nb_hops_out );
 
 /*
  * -----------------------------------------------------------------------------
@@ -322,7 +317,7 @@ STATIC uint16_t lr_fhss_get_bit_and_hop_count( const lr_fhss_v1_params_t* params
 unsigned int lr_fhss_get_hop_sequence_count( const lr_fhss_v1_params_t* params )
 {
     if( ( params->grid == LR_FHSS_V1_GRID_25391_HZ ) ||
-            ( ( params->grid == LR_FHSS_V1_GRID_3906_HZ ) && ( params->bw < LR_FHSS_V1_BW_335938_HZ ) ) )
+        ( ( params->grid == LR_FHSS_V1_GRID_3906_HZ ) && ( params->bw < LR_FHSS_V1_BW_335938_HZ ) ) )
     {
         return 384;
     }
@@ -341,7 +336,7 @@ void lr_fhss_process_parameters( const lr_fhss_v1_params_t* params, uint16_t pay
 }
 
 lr_fhss_status_t lr_fhss_get_hop_params( const lr_fhss_v1_params_t* params, lr_fhss_hop_params_t* hop_params,
-    uint16_t* initial_state, uint16_t hop_sequence_id )
+                                         uint16_t* initial_state, uint16_t hop_sequence_id )
 {
     uint32_t channel_count = lr_fhss_channel_count[params->bw];
 
@@ -434,8 +429,7 @@ uint16_t lr_fhss_get_next_state( uint16_t* lfsr_state, const lr_fhss_hop_params_
         {
             hop ^= *lfsr_state;
         }
-    }
-    while( hop > hop_params->n_grid );
+    } while( hop > hop_params->n_grid );
 
     return hop - 1;
 }
@@ -620,13 +614,14 @@ STATIC void lr_fhss_payload_whitening( const uint8_t* data_in, uint16_t data_in_
 {
     uint8_t lfsr = 0xFF;
 
-    for( uint8_t index = 0; index < data_in_bytecount; index++ )
+    for( uint16_t index = 0; index < data_in_bytecount; index++ )
     {
         uint8_t u       = data_in[index] ^ lfsr;
         data_out[index] = ( ( u & 0x0F ) << 4 ) | ( ( u & 0xF0 ) >> 4 );
         lfsr =
-            ( lfsr << 1 ) | ( ( ( lfsr & 0x80 ) >> 7 ) ^
-                              ( ( ( lfsr & 0x20 ) >> 5 ) ^ ( ( ( lfsr & 0x10 ) >> 4 ) ^ ( ( lfsr & 0x8 ) >> 3 ) ) ) );
+            ( uint8_t ) ( ( lfsr << 1 ) |
+                          ( ( ( lfsr & 0x80 ) >> 7 ) ^
+                            ( ( ( lfsr & 0x20 ) >> 5 ) ^ ( ( ( lfsr & 0x10 ) >> 4 ) ^ ( ( lfsr & 0x8 ) >> 3 ) ) ) ) );
     }
 }
 
@@ -651,7 +646,7 @@ STATIC void lr_fhss_set_bit_in_byte_vector( uint8_t* vector, uint32_t bit_number
 }
 
 STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_2_base( uint8_t* encod_state, const uint8_t* data_in,
-    uint16_t data_in_bitcount, uint8_t* data_out )
+                                                             uint16_t data_in_bitcount, uint8_t* data_out )
 {
     uint8_t  g1g0;
     uint8_t  cur_bit;
@@ -677,14 +672,13 @@ STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_2_base( uint8_t* encod_stat
     {
         *data_out++ = ( uint8_t ) ( bin_out_16 >> 8 );
         *data_out++ = ( uint8_t ) bin_out_16;
-        bin_out_16  = 0;
     }
 
     return data_out_bitcount;
 }
 
 STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_3_base( uint8_t* encod_state, const uint8_t* data_in,
-    uint16_t data_in_bitcount, uint8_t* data_out )
+                                                             uint16_t data_in_bitcount, uint8_t* data_out )
 {
     uint8_t  g1g0;
     uint8_t  cur_bit;
@@ -712,14 +706,13 @@ STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_3_base( uint8_t* encod_stat
         *data_out++ = ( uint8_t ) ( bin_out_32 >> 16 );
         *data_out++ = ( uint8_t ) ( bin_out_32 >> 8 );
         *data_out++ = ( uint8_t ) bin_out_32;
-        bin_out_32  = 0;
     }
 
     return data_out_bitcount;
 }
 
 STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_2( const uint8_t* data_in, uint16_t data_in_bitcount,
-    bool tail_biting, uint8_t* data_out )
+                                                        bool tail_biting, uint8_t* data_out )
 {
     uint8_t  encode_state = 0;
     uint16_t data_out_bitcount;
@@ -735,7 +728,7 @@ STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_2( const uint8_t* data_in, 
 }
 
 STATIC uint16_t lr_fhss_convolution_encode_viterbi_1_3( const uint8_t* data_in, uint16_t data_in_bitcount,
-    uint8_t* data_out )
+                                                        uint8_t* data_out )
 {
     uint8_t encode_state = 0;
     return lr_fhss_convolution_encode_viterbi_1_3_base( &encode_state, data_in, data_in_bitcount, data_out );
@@ -754,7 +747,7 @@ STATIC uint16_t sqrt_uint16( uint16_t x )
 }
 
 STATIC uint16_t lr_fhss_payload_interleaving( const uint8_t* data_in, uint16_t data_in_bitcount, uint8_t* data_out,
-    uint32_t output_offset )
+                                              uint32_t output_offset )
 {
     uint16_t       step   = sqrt_uint16( data_in_bitcount );
     const uint16_t step_v = step >> 1;
@@ -817,7 +810,7 @@ STATIC void lr_fhss_store_header_sync_word_index( uint8_t sync_word_index, uint8
 }
 
 STATIC uint16_t lr_fhss_get_bit_and_hop_count( const lr_fhss_v1_params_t* params, uint16_t payload_length,
-    uint8_t* nb_hops_out )
+                                               uint8_t* nb_hops_out )
 {
     // check length : payload + 16bit crc, encoded, padded to 48bits, adding 2 guard bit / 48bits
     uint16_t length_bits = ( payload_length + 2 ) * 8 + 6;

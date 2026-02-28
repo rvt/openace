@@ -90,12 +90,7 @@ void AceSpi::resetDevices() const
     gpio_put(rst, 1);
 }
 
-SpiGuard AceSpi::getLock(bool &locked){
-    // if (lastBusFrequency != busFrequencyMhz)
-    // {
-    //     lastBusFrequency = busFrequencyMhz;
-    //     spi_init(spi?spi1:spi0, lastBusFrequency * 1'000'000);
-    // }
+SpiGuard AceSpi::getLock(bool &locked) {
     return SpiGuard(mutex, locked);
 };
 

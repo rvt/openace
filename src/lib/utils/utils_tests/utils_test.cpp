@@ -9,7 +9,7 @@
 
 #include "EMA.hpp"
 #include "encryption.hpp"
-#include "utils.hpp"
+#include "bitutils.hpp"
 #include "mockutils.h"
 #include "manchester.hpp"
 

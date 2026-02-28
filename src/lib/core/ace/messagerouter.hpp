@@ -24,20 +24,12 @@ namespace GATAS
         etl::array<uint8_t, 2> lastMsgPerCore;
 #endif
     public:
-        ThreadSafeBus() : etl::imessage_bus(router_list), xMutex(nullptr)
+        ThreadSafeBus() : etl::imessage_bus(router_list), xMutex(xSemaphoreCreateRecursiveMutex())
         {
-            xMutex = xSemaphoreCreateRecursiveMutex();
         }
 
-        ThreadSafeBus(etl::imessage_router &successor) : etl::imessage_bus(router_list, successor), xMutex(nullptr)
+        ThreadSafeBus(etl::imessage_router &successor) : etl::imessage_bus(router_list, successor), xMutex(xSemaphoreCreateRecursiveMutex())
         {
-            xMutex = xSemaphoreCreateRecursiveMutex();
-        }
-
-        virtual ~ThreadSafeBus()
-        {
-            // MessageBus will be active for a lifetime
-            vSemaphoreDelete(xMutex);
         }
 
         void processMessage(const etl::imessage &message)
@@ -48,13 +40,13 @@ namespace GATAS
             switch (msgId) {
                 // These are message that must be delivered with high guarantee 
                 // therefor setting a higher lock timeout
-                case 21:
-                case 24:
-                case 29:
+                case 21: // AccessPointClientsMsg
+                case 24: // WifiConnectionStateMsg
+                case 29: // Every1SecMsg
                     blockTime = 1000;
                     skipMutex = false;
                     break;
-                case 20:
+                case 20: // ConfigUpdatedMsg
                     blockTime = 1;
                     skipMutex = true;
                     break;
@@ -73,7 +65,7 @@ namespace GATAS
             }
             else
             {
-                GATAS_INFO("Message not send current:%d:%d core0:%d core1:%d\n", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
+                GATAS_WARN("Message not send current:%d:%d core0:%d core1:%d", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
             }
         }
 

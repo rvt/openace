@@ -6,6 +6,7 @@ set(MSG_PREFIX "${PROJECT_NAME} |")
 set(MODULE_SOURCE_FILES
     ace/src/sx1262.cpp
     ace/src/sx1262_hal.cpp
+    ace/src/rxdataframequeue.cpp
 
     # Driver from Semtech
     driver/src/sx126x.c 

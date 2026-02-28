@@ -8,29 +8,29 @@ CountryRegulations::Zone CountryRegulations::zone(float lat, float lon)
 {
     if (34.0f <= lon && lon <= 54.0f && 29.25f <= lat && lat <= 33.5f)
     {
-        return ZONE5; // Zone 5: Israel (34E to 54E and 29.25N to 33.5N)
+        return Zone::enum_type::ZONE5; // Zone 5: Israel (34E to 54E and 29.25N to 33.5N)
     }
     else if (-30.0f <= lon && lon <= 110.0f)
     {
-        return ZONE1; // Zone 1: Europe, Africa, Russia, China (30W to 110E, excl. zone 5)
+        return Zone::enum_type::ZONE1; // Zone 1: Europe, Africa, Russia, China (30W to 110E, excl. zone 5)
     }
     else if (lon < -30.0f && 10.0f < lat)
     {
-        return ZONE2; // Zone 2: North America (west of 30W, north of 10N)
+        return Zone::enum_type::ZONE2; // Zone 2: North America (west of 30W, north of 10N)
     }
     else if (160.0f < lon)
     {
-        return ZONE3; // Zone 3: New Zealand (east of 160E)
+        return Zone::enum_type::ZONE3; // Zone 3: New Zealand (east of 160E)
     }
     else if (110.0f <= lon && lon <= 160.0f)
     {
-        return ZONE4; // Zone 4: Australia (110E to 160E)
+        return Zone::enum_type::ZONE4; // Zone 4: Australia (110E to 160E)
     }
     else if (lon < -30.0f && lat < 10.0f)
     {
-        return ZONE6; // Zone 6: South America (west of 30W, south of 10N)
+        return Zone::enum_type::ZONE6; // Zone 6: South America (west of 30W, south of 10N)
     }
-    return ZONE0; // not defined
+    return Zone::enum_type::ZONE0; // not defined
 }
 
 // New simplified methods
@@ -60,7 +60,7 @@ const CountryRegulations::ProtocolRxTimeSlot &CountryRegulations::getProtocolRxT
     return CountryRegulations::NOOP_TX_TIMESLOT; // Not found
 }
 
-uint32_t CountryRegulations::getFrequency(const Frequency &frequency, CountryRegulations::Channel channel)
+uint32_t CountryRegulations::getFrequency(const GATAS::RfConfig &frequency, CountryRegulations::Channel channel)
 {
     switch (channel)
     {
@@ -124,19 +124,4 @@ uint32_t CountryRegulations::nextRandomTxTime(const CountryRegulations::Protocol
 
     // No suitable slot found this time
     return UINT32_MAX;
-}
-
-uint32_t CountryRegulations::getFrequency(float lat, float lon, GATAS::DataSource dataSource)
-{
-    auto zone = CountryRegulations::zone(lat, lon);
-    const auto &timeSlot = CountryRegulations::getProtocolTxTimings(zone, dataSource);
-
-    // WHen no datasource could be found
-    if (timeSlot.zone == CountryRegulations::ZONE0)
-    {
-        return 0;
-    }
-
-    auto timing = CountryRegulations::findFittingTiming(CoreUtils::msInSecond(), timeSlot.timeSlots);
-    return CountryRegulations::getFrequency(timeSlot.frequency, timing->channel);
 }

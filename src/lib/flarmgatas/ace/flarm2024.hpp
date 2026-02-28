@@ -24,7 +24,7 @@
 
 
 class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024,
-GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
+GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
 {
     friend class message_router;
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
@@ -43,14 +43,12 @@ private:
 
     GATAS::OwnshipPositionInfo ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
-    float deltaCourse;
     uint16_t distanceIgnore;
 public:
     static constexpr const etl::string_view NAME = "Flarm";
     Flarm2024(etl::imessage_bus& bus, const Configuration &config) :
         BaseModule(bus, NAME),
-        ownshipPosition{},
-        deltaCourse(0.f)
+        ownshipPosition{}
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Flarm", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
@@ -69,7 +67,7 @@ private:
      * Send a FreeRTOS message when a FlarmFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
     */
-    void on_receive(const GATAS::RadioRxGfskMsg &msg);
+    void on_receive(const GATAS::RadioRxManchesterMsg &msg);
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
 

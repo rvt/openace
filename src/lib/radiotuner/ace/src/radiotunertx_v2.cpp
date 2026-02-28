@@ -78,22 +78,25 @@ void RadioTunerTx::radioTuneTask()
                 if (CoreUtils::isUsReached(ds.atTime))
                 {
                     const auto &timing = CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, ds.dataSource);
-                    if (timing.radioConfig.mode != GATAS::Modulation::NONE)
+                    if (timing.radioConfig.dataSource() != GATAS::DataSource::NONE)
                     {
                         auto dsId = static_cast<uint8_t>(ds.dataSource);
                         auto timeSlot = CountryRegulations::findFittingTiming(CoreUtils::msInSecond(), timing.timeSlots);
                         if (timeSlot != nullptr)
                         {
                             auto frequency = CountryRegulations::getFrequency(timing.frequency, timeSlot->channel);
+ 
+                            (void)frequency;
+                            (void)dsId;
 
-                            //                            GATAS_LOG("DS: %s radio:%d\n", GATAS::toString(ds.dataSource), dataSourceToRadio[dsId]);
-                            GATAS_MEASURE("Request TX", 2000);
+                            // GATAS_INFO("DS: %s radio:%d", GATAS::toString(ds.dataSource), dataSourceToRadio[dsId]);
+                            GATAS_MEASURE("Request TX ds", 2000);
                             getBus().receive(
                                 GATAS::RadioTxPositionRequestMsg{
-                                    Radio::RadioParameters{
+                                    GATAS::RadioParameters{
                                         &timing.radioConfig,
-                                        frequency,
-                                        timing.frequency.powerdBm},
+                                        &timing.frequency,
+                                        frequency},
                                     dataSourceToRadio[dsId]});
                         }
                         else
@@ -109,7 +112,7 @@ void RadioTunerTx::radioTuneTask()
                         }
                         else
                         {
-                            GATAS_INFO("Warning: Next random no timing found %s\n", GATAS::toString(ds.dataSource));
+                            GATAS_INFO("Warning: Next random no timing found %s", GATAS::toString(ds.dataSource));
                             ds.atTime = currentTime + 950'000;
                         }
                     }
@@ -123,7 +126,7 @@ void RadioTunerTx::radioTuneTask()
 
             // Decide the protcol that should be send next
             currentTime = CoreUtils::timeUs32();
-            int32_t nextUpIn = INT32_MAX;
+            int32_t nextUpIn = 2'000'000;
             for (auto &&ds : dataSources)
             {
                 auto toRef = CoreUtils::usToReference(ds.atTime, currentTime);
@@ -135,19 +138,10 @@ void RadioTunerTx::radioTuneTask()
 
             if (nextUpIn < 0)
             {
-                nextDelayMs = 10;
-                // This message we might occasionally see when the device starts up due to GPS time beeing set and correct
-                // They don't cause any harm
-                if (nextUpIn < -1000)
-                {
-                    GATAS_INFO("Event in the past should normally not happen %ldms", nextUpIn / 1000);
-                }
+                nextUpIn = 1000;
             }
-            else
-            {
-                // clap to max 500 seconds incase datasources waas empty
-                nextDelayMs = etl::min(nextUpIn / 1000, static_cast<int32_t>(5000));
-            }
+            // clap to max 1 second incase datasources was empty
+            nextDelayMs = nextUpIn / 1000;
         }
     }
 }
@@ -184,7 +178,7 @@ void RadioTunerTx::on_receive(const GATAS::RadioControlMsg &msg)
     else
     {
         printf("DS: %d ", dsId);
-//        GATAS_ASSERT(false, "Not expected to be full");
+        //        GATAS_ASSERT(false, "Not expected to be full");
     }
 }
 

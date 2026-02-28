@@ -23,7 +23,6 @@
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
-#include "ace/utils.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/datasourcetimestatstable.hpp"
@@ -34,7 +33,7 @@
 
 #include "ognpacket.hpp"
 
-class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
+class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
 {
 public:
     static constexpr uint8_t OGN_PACKET_LENGTH = 20;
@@ -124,7 +123,7 @@ public:
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
 private:
-    void on_receive(const GATAS::RadioRxGfskMsg &msg);
+    void on_receive(const GATAS::RadioRxManchesterMsg &msg);
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::BarometricPressureMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);

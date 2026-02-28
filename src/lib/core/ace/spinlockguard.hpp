@@ -17,8 +17,7 @@ private:
 
 public:
     explicit SpinlockGuard(int lock_num)
-        : lock(spin_lock_instance(lock_num)),
-          save(spin_lock_blocking(lock)) {}
+        : lock(spin_lock_instance(lock_num)), save(spin_lock_blocking(lock)) {}
 
     ~SpinlockGuard()
     {

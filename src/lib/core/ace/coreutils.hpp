@@ -32,30 +32,6 @@ public:
     }
 
     /**
-     * Dump a buffer as a hexidecimal string for terminal output
-     */
-    static void printBuffer(etl::span<uint8_t> buffer, bool lf = false)
-    {
-        printf("Length(%d) ", static_cast<int>(buffer.size()));
-        for (size_t i = 0; i < buffer.size(); ++i)
-        {
-            printf("0x%02X", buffer[i]);
-            if (i + 1 < buffer.size())
-            {
-                printf(", ");
-            }
-            if ((i + 1) % 16 == 0)
-            {
-                putchar('\n');
-            }
-        }
-        if (lf)
-        {
-            putchar('\n');
-        }
-    }
-
-    /**
      * Convert and timestamp to an uint32_t which is synced with GPS time such that at PPS the ms should reppresents (somewhere close) to a ms
      * eg: 45'453'010 = represents 10ms after PPS
      * \deprecated

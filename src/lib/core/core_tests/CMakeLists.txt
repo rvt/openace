@@ -26,19 +26,19 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
 
 # Add other modules (usually lib or core)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 
 # Add cmake modules
 
 if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
     # This project is part of a larger build
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/etl etlcpp)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/libcrc libcrc)
 endif()
 
 # These examples use the standard separate compilation
 set(SOURCES_IDIOMATIC_EXAMPLES # Tests
-    coreutils_test.cpp)
+    coreutils_test.cpp
+    poolallocator_test.cpp
+    )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
                "${SOURCES_IDIOMATIC_EXAMPLES}")
@@ -47,7 +47,6 @@ set(TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES})
 set(ACE_SOURCE_FILES
         ../ace/src/models.cpp
         ../ace/src/basemodule.cpp
-        ../../utils/ace/src/utils.cpp
         ../ace/src/coreutils.cpp)
 
 foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})

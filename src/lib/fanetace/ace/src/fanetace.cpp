@@ -106,9 +106,23 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
     (void)data;
     statistics.send += 1;
     radioParameters.codingRate = codingRate;
+
+    auto poolData = static_cast<uint8_t *>(getGlobalPool().alloc(data.size()));
+    if (poolData == nullptr)
+    {
+        return false;
+    }
+
+    etl::mem_copy(data.cbegin(), data.cend(), poolData);
     getBus().receive(GATAS::RadioTxFrameMsg{
-        Radio::TxPacket{radioParameters, data},
+        Radio::TxPacket{
+            .radioParameters = radioParameters,
+            .frame = poolData,
+            .length = data.size(),
+        },
         radioNo});
+
+    GATAS_INFO("FANET request position");
 
     return true;
 }
@@ -123,22 +137,23 @@ void FanetAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
     ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
 }
 
-void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
+void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
 {
     (void)msg;
     statistics.received += 1;
 
     FANET::Header::MessageType messageType;
+    auto spanMsg = etl::span<const uint8_t>(msg.frame, msg.lengthBytes);
     if (auto guard = SemaphoreGuard(10, mutex))
     {
-        messageType = protocol.handleRx(msg.rssidBm, msg.frame);
+        messageType = protocol.handleRx(msg.rssidBm, spanMsg);
     }
     else
     {
         return;
     }
 
-    auto packet = FANET::PacketParser<12>::parse(msg.frame);
+    auto packet = FANET::PacketParser<12>::parse(spanMsg);
     if (packet.source() == protocol.ownAddress())
     {
         return;
@@ -208,9 +223,9 @@ void FanetAce::on_receive(const GATAS::RadioRxLoraMsg &msg)
                 GATAS::AircraftCategory::POINT_OBSTACLE,
                 false,
                 !tp.tracking(), // FANET uses 'tracking' to indicate it want's to be tracked
-                // Controversial! Even though this is a ground tracking, somw EFB's (ForeFLight) may not show this traffic due to the ground glag. 
+                // Controversial! Even though this is a ground tracking, somw EFB's (ForeFLight) may not show this traffic due to the ground glag.
                 // By setting this to true we ensure that also this traffic is seen on the EFB
-                true, 
+                true,
                 tp.latitude(),
                 tp.longitude(),
                 ownship.heightMsl(),
@@ -264,7 +279,7 @@ GATAS::AircraftCategory FanetAce::mapAircraftCategory(FANET::TrackingPayload::Ai
     case FANET::TrackingPayload::AircraftType::GLIDER:
         return GATAS::AircraftCategory::GLIDER;
     case FANET::TrackingPayload::AircraftType::POWERED_AIRCRAFT:
-        return GATAS::AircraftCategory::LIGHT; 
+        return GATAS::AircraftCategory::LIGHT;
     case FANET::TrackingPayload::AircraftType::HELICOPTER:
         return GATAS::AircraftCategory::ROTORCRAFT;
     case FANET::TrackingPayload::AircraftType::UAV:

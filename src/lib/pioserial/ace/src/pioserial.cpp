@@ -5,7 +5,7 @@
 
 #include "pico/binary_info.h"
 
-#include "ace/utils.hpp"
+#include "ace/picopio.hpp"
 
 etl::array<PioSerial*, 4> PioSerial::interruptHandlers;
 
@@ -122,14 +122,14 @@ void __isr __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex
 {
     if (irqHandlerIndex >= interruptHandlers.size())
     {
-        GATAS_INFO("irqHandlerIndex >= numEntries");
+        GATAS_WARN("irqHandlerIndex >= numEntries");
         return;
     }
 
     PioSerial *pioSerial = interruptHandlers[irqHandlerIndex];
     if (pioSerial == nullptr)
     {
-        GATAS_INFO("pioSerial == nullptr");
+        GATAS_WARN("pioSerial == nullptr");
         return;
     }
 
@@ -181,7 +181,7 @@ bool PioSerial::enableTx(uint32_t givenBaudRate)
     {
         if (!add_pio_program(&uart_tx_program, &txPio, &txSmIndx, &txOffset))
         {
-            GATAS_INFO("failed to setup pio for tx");
+            GATAS_WARN("failed to setup pio for tx");
             return false;
         }
     }

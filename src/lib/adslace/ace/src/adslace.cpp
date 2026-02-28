@@ -1,15 +1,23 @@
 #include <stdio.h>
 
 #include "../adslace.hpp"
-#include "ace/bitcount.hpp"
+#include "ace/bitutils.hpp"
 #include "ace/spinlockguard.hpp"
 #include "adsl/adsl.hpp"
 #include "ace/moreutils.hpp"
+#include "ace/poolallocator.hpp"
+#include "ace/semaphoreguard.hpp"
 
 constexpr float POSITION_DECODE = 0.0001f / 60.f;
 
 GATAS::PostConstruct ADSLAce::postConstruct()
 {
+    rxMutex = xSemaphoreCreateMutex();
+    if (rxMutex == nullptr)
+    {
+        return GATAS::PostConstruct::MUTEX_ERROR;
+    }
+
     return GATAS::PostConstruct::OK;
 }
 
@@ -41,80 +49,125 @@ void ADSLAce::getData(etl::string_stream &stream, const etl::string_view path) c
     stream << "}";
 }
 
-void ADSLAce::on_receive(const GATAS::RadioRxGfskMsg &msg)
+void ADSLAce::on_receive(const GATAS::RadioRxMsg &msg)
 {
-    union
+    if (msg.dataSource == GATAS::DataSource::ADSLO_HDR)
     {
-        uint32_t frame[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
-        uint8_t frameBytes[GATAS::RADIO_MAX_GFX_FRAME_LENGTH];
-    };
+        PoolReleaseGuard frameGuard{getGlobalPool(), msg.frame};
 
-    // ADSL packets on M-BAND are manchester encoded
-    // ADSLO_HDR packets on O-BAND or not thus handled separatly
-    ADSL::Protocol::RxStatudeCode status;
-    if (msg.dataSource == GATAS::DataSource::ADSLM)
-    {
+        protocol.crcCheckOnReceive = true;
+        auto status = protocol.handleRx(msg.rssidBm, msg.frame32Span()); // Currently expected that the frame size is always a multiple of 4
 
-        size_t length = msg.frameBytes[0];
-        if (length > msg.lengthBytes)
+        // clang-format off
+        switch (status)
         {
-            status = ADSL::Protocol::RxStatudeCode::OTHER_ERROR;
+            case ADSL::Protocol::RxStatudeCode::OK: { 
+                datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
+                break;
+            }
+            case ADSL::Protocol::RxStatudeCode::CRC_FAILED:                   { statistics.fecErr += 1; break;}
+            case ADSL::Protocol::RxStatudeCode::UNSUPORTED_PROTOCOL_VERSION:  { statistics.protocolVersionErr += 1; break; }
+            case ADSL::Protocol::RxStatudeCode::UNSUPORTED_DECRYPTION_KEY:    { statistics.decryptionKeyErr += 1; break; }
+            case ADSL::Protocol::RxStatudeCode::UNSUPORTED_ERROR_CONTROL_FEC: { statistics.unsupportedFec += 1; break; }
+            case ADSL::Protocol::RxStatudeCode::UNSUPPORTED_PAYLOAD:          { statistics.payloadUnSupportedErr += 1; break; }
+            default:                                                          { statistics.unknownErr += 1; break;}
+        };
+        // clang-format on
+    }
+}
+
+void ADSLAce::on_receive(const GATAS::RadioRxManchesterMsg &msg)
+{
+    if (msg.dataSource != GATAS::DataSource::ADSLM && msg.dataSource != GATAS::DataSource::ADSLO_HDR)
+    {
+        return;
+    }
+    PoolReleaseGuard frameGuard{getGlobalPool(), msg.frame};
+    PoolReleaseGuard errorGuard{getGlobalPool(), msg.error};
+
+    // Two receivers can send a message at the same time, so protect the protocol handler with a mutex
+    if (auto guard = SemaphoreGuard(20, rxMutex))
+    {
+        ADSL::Protocol::RxStatudeCode status = ADSL::Protocol::RxStatudeCode::OTHER_ERROR;
+        if (msg.dataSource == GATAS::DataSource::ADSLM)
+        {
+            const size_t length = msg.frame[0];
+            if (length > msg.lengthBytes || length < 16) // 16 Seems to be minimum length of a valid ADSL frame
+            {
+                status = ADSL::Protocol::RxStatudeCode::OTHER_ERROR;
+            }
+            else
+            {
+                // Remove length header (shift left)
+                etl::mem_move(&msg.frame[1], length, msg.frame);
+                etl::mem_move(&msg.error[1], length, msg.error);
+                msg.lengthBytes = length;
+
+                const int check = ADSL::Correct(msg.frameSpan(), msg.errorSpan());
+                if (check == -1)
+                {
+                    status = ADSL::Protocol::RxStatudeCode::CRC_FAILED;
+                }
+                else
+                {
+                    protocol.crcCheckOnReceive = false;
+                    status = protocol.handleRx(msg.rssidBm, msg.frame32Span());
+                    datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
+                }
+            }
         }
-        else
+        else // ADSLO_HDR
         {
-            // THis did assert once, but since length is checked, the CRC should beable to pick it up...
-            // GATAS_ASSERT((length & 0x3U) == 0U, "Must be multiple of 4 (due to XXTEA used)");
-            etl::mem_copy(&msg.frameBytes[1], length, frameBytes);
-
-            auto check = ADSL::Correct(etl::span(frameBytes, length), etl::span(msg.frameBytes, length));
+            const int check = ADSL::Correct(msg.frameSpan(), msg.errorSpan());
             if (check == -1)
             {
                 status = ADSL::Protocol::RxStatudeCode::CRC_FAILED;
             }
             else
             {
-                // crcCheckOnReceive is set to false, at this point we assume all corrections where handled correctly
                 protocol.crcCheckOnReceive = false;
-                status = protocol.handleRx(msg.rssidBm, etl::span<uint32_t>(frame, length / 4));
+                status = protocol.handleRx(msg.rssidBm, msg.frame32Span());
                 datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
             }
         }
-    }
-    else if (msg.dataSource == GATAS::DataSource::ADSLO_HDR)
-    {
-        // crcCheckOnReceive is set to false, at this point we assume all corrections where handled correctly
-        protocol.crcCheckOnReceive = false;
-        etl::mem_copy(msg.frame, (msg.lengthBytes + 3) / 4, frame);
-        status = protocol.handleRx(msg.rssidBm, etl::span<uint32_t>(frame, msg.lengthBytes));
-        datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
-    }
-    else
-    {
-        // Not ADSL can handle
-        return;
-    }
 
-    // clang-format off
-    switch (status)
-    {
-        case ADSL::Protocol::RxStatudeCode::OK:                           { break;}
-        case ADSL::Protocol::RxStatudeCode::CRC_FAILED:                   { statistics.fecErr += 1; break;}
-        case ADSL::Protocol::RxStatudeCode::UNSUPORTED_PROTOCOL_VERSION:  { statistics.protocolVersionErr += 1; break; }
-        case ADSL::Protocol::RxStatudeCode::UNSUPORTED_DECRYPTION_KEY:    { statistics.decryptionKeyErr += 1; break; }
-        case ADSL::Protocol::RxStatudeCode::UNSUPORTED_ERROR_CONTROL_FEC: { statistics.unsupportedFec += 1; break; }
-        case ADSL::Protocol::RxStatudeCode::UNSUPPORTED_PAYLOAD:          { statistics.payloadUnSupportedErr += 1; break; }
-        default:                                                          { statistics.unknownErr += 1; break;}
-    };
-    // clang-format on
+        switch (status)
+        {
+        case ADSL::Protocol::RxStatudeCode::OK:
+            break;
+        case ADSL::Protocol::RxStatudeCode::CRC_FAILED:
+            statistics.fecErr += 1;
+            break;
+        case ADSL::Protocol::RxStatudeCode::UNSUPORTED_PROTOCOL_VERSION:
+            statistics.protocolVersionErr += 1;
+            break;
+        case ADSL::Protocol::RxStatudeCode::UNSUPORTED_DECRYPTION_KEY:
+            statistics.decryptionKeyErr += 1;
+            break;
+        case ADSL::Protocol::RxStatudeCode::UNSUPORTED_ERROR_CONTROL_FEC:
+            statistics.unsupportedFec += 1;
+            break;
+        case ADSL::Protocol::RxStatudeCode::UNSUPPORTED_PAYLOAD:
+            statistics.payloadUnSupportedErr += 1;
+            break;
+        default:
+            statistics.unknownErr += 1;
+            break;
+        }
+    }
 }
 
-bool ADSLAce::adsl_sendFrame(const void *ctx, etl::span<const uint8_t> packet)
+bool ADSLAce::adsl_sendFrame(const void *ctx, const uint8_t *data, size_t lengthBytes)
 {
+    (void)ctx;
+    (void)lengthBytes;
+
     const Tx_Struct *params = static_cast<const Tx_Struct *>(ctx);
     getBus().receive(GATAS::RadioTxFrameMsg{
         Radio::TxPacket{
-            params->radioParameters,
-            packet},
+            .radioParameters = params->radioParameters,
+            .frame = data,
+            .length = lengthBytes},
         params->radioNo});
 
     statistics.transmittedAircraftPositions += 1;
@@ -133,11 +186,12 @@ void ADSLAce::on_receive(const GATAS::GpsStatsMsg &msg)
 
 void ADSLAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-
+    // All RadioTX messages always come from one FreeRTOS Task, so guaranteed to be task safe
     if (msg.radioParameters.config->isTxDataSource(GATAS::DataSource::ADSLM))
     {
         auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
+        protocol.addPayloadLength = true;
         rqMBandRadioParameters = Tx_Struct{msg.radioParameters, msg.radioNo};
         protocol.tick(ownship.lat, ownship.lon, ownship.ellipseHeight, ownship.groundSpeed, ownship.track);
         protocol.rqSendTrafficPayload(&rqMBandRadioParameters);
@@ -147,16 +201,17 @@ void ADSLAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
         rqOBandRadioParameters = Tx_Struct{msg.radioParameters, msg.radioNo};
+        protocol.addPayloadLength = false;
         protocol.tick(ownship.lat, ownship.lon, ownship.ellipseHeight, ownship.groundSpeed, ownship.track);
-        //        protocol.rqSendTrafficUplinkPayload(&rqOBandRadioParameters);
+        protocol.rqSendTrafficPayload(&rqOBandRadioParameters);
     }
 }
 
 // Called when a payload/header/status is received by the protocol layer
 void ADSLAce::adsl_receivedTraffic(const ADSL::Header &header, const ADSL::TrafficPayload &tp)
 {
-    //     uint32_t positionTs = CoreUtils::timeUs32();
     auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+    statistics.receivedAircraftPositions += 1;
 
     // Own Address
     if (header.address().asUint() == ownship.conspicuity.icaoAddress)
@@ -175,10 +230,11 @@ void ADSLAce::adsl_receivedTraffic(const ADSL::Header &header, const ADSL::Traff
     }
     // printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
     // packet.address, fLatitude, fLongitude, packet.getaltitudeGeoid(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
-    auto msElapsed = etl::max(static_cast<uint32_t>(0), static_cast<uint32_t>(CoreUtils::msSinceEpoch() - tp.timestampRestored(CoreUtils::msSinceEpoch())));
+    auto epochMs = CoreUtils::msSinceEpoch();
+    auto msElapsed = etl::max(static_cast<uint32_t>(0), static_cast<uint32_t>(epochMs - tp.timestampRestored(epochMs)));
     GATAS::AircraftPositionMsg aircraftPosition{
         GATAS::AircraftPositionInfo{
-            CoreUtils::timeUs32() - msElapsed,
+            CoreUtils::timeUs32() - (msElapsed * 1000),
             "",
             header.address().asUint(),
             addressMapToAddressType(header.addressMappingTable()),
@@ -198,7 +254,6 @@ void ADSLAce::adsl_receivedTraffic(const ADSL::Header &header, const ADSL::Traff
             fromOwn.relNorth,
             fromOwn.relEast},
         0};
-    statistics.receivedAircraftPositions += 1;
     getBus().receive(aircraftPosition);
     (void)tp;
 }
@@ -242,13 +297,23 @@ void ADSLAce::adsl_buildTraffic(const void *ctx, ADSL::TrafficPayload &tp)
 void ADSLAce::adsl_buildStatusPayload(const void *ctx, ADSL::StatusPayload &sp)
 {
     (void)ctx;
+    GATAS_INFO("Send Status Payload");
     sp.mBandReceiveCapability(ADSL::StatusPayload::ReceiveCapability::Partial);
     sp.oBandHdrReceiveCapability(ADSL::StatusPayload::ReceiveCapability::Partial);
-    GATAS_INFO("Send Status Payload");
 
     // TODO: Find a way to correctly know what
-    // sp.eReceiveConspicuityBits();
-    // sp.eTransmitConspicuityBits();
+    sp.eReceiveConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_FANET);
+    sp.eReceiveConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_FLARM);
+    sp.eReceiveConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_OGN);
+    sp.eTransmitConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_FANET);
+    sp.eTransmitConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_FLARM);
+    sp.eTransmitConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_OGN);
+}
+
+uint8_t *ADSLAce::adsl_alloc(const void *ctx, size_t sizeBytes)
+{
+    (void)ctx;
+    return static_cast<uint8_t *>(getGlobalPool().alloc(sizeBytes));
 }
 
 ADSL::TrafficPayload::AircraftCategory ADSLAce::mapAircraftCategory(GATAS::AircraftCategory category)

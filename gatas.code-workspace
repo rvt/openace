@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "src/vendor/ADSL"
+		},
+		{
+			"path": "src/lib/radiotuner/radiotuner_tests"
 		}
 	],
 	"settings": {
@@ -131,6 +134,6 @@
 			"**/Debug_*": true,
 			"**/Release_*": true
 	},
-	"cortex-debug.variableUseNaturalFormat": true
+	"cortex-debug.variableUseNaturalFormat": false
 }
 }

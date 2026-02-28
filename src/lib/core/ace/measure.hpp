@@ -41,7 +41,7 @@ struct Measure
             const char *file = __FILE__,
             uint32_t line = __LINE__,
             uint32_t alertTimeoutUs = 1000,
-            uint32_t id = 0xFFFFFFFF)
+            uint32_t id = UINT32_MAX)
         : start_(CoreUtils::timeUs32Raw()),
           name_(name),
           alertTimeout_(alertTimeoutUs),
@@ -56,15 +56,13 @@ struct Measure
         uint32_t duration = CoreUtils::timeUs32Raw() - start_;
         if (duration > alertTimeout_)
         {
-            if (id_ == 0xFFFFFFFF)
+            if (id_ == UINT32_MAX)
             {
-                printf("(%s:%" PRIu32 ") %s %" PRIu32 "us\n",
-                       file_, line_, name_.begin(), duration);
+                printf("(%s:%" PRIu32 ") %s %" PRIu32 "us\n", file_, line_, name_.begin(), duration);
             }
             else
             {
-                printf("(%s:%" PRIu32 ") %s%" PRIu32 " %" PRIu32 "us\n",
-                       file_, line_, name_.begin(), id_, duration);
+                printf("(%s:%" PRIu32 ") %s%" PRIu32 " %" PRIu32 "us\n", file_, line_, name_.begin(), id_, duration);
             }
         }
     }

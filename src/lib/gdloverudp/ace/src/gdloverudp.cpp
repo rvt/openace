@@ -7,7 +7,7 @@
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
 #include "ace/lwiplock.hpp"
-#include "ace/pbufguard.hpp"
+#include "ace/scopedpbuf.hpp"
 #include "ace/spinlockguard.hpp"
 
 /* LwIP */
@@ -94,7 +94,7 @@ void GDLoverUDP::foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_a
     {
         return;
     }
-    PbufGuard str(p);
+    ScopedPbuf scopedPbuf(p);
 
     GATAS_MEASURE("foreFlightListener", 90);
     GDLoverUDP *that = static_cast<GDLoverUDP *>(arg);
@@ -202,14 +202,9 @@ void GDLoverUDP::gdlOverUDPTask(void *arg)
     while (true)
     {
         uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1000));
-        if (notifyValue & TaskState::EXIT)
-        {
-            vTaskDelete(nullptr);
-            return;
-        }
 
         // Handle TRANSMIT
-        if (notifyValue == 0 || notifyValue & TaskState::TRANSMIT)
+        if (notifyValue == 0 || (notifyValue & TaskState::TRANSMIT))
         {
             at->transmitBuffer();
         }
@@ -238,7 +233,7 @@ void GDLoverUDP::transmitBuffer()
         return;
     }
 
-    // Calculate how many pbufs we needna d reference them
+    // Calculate how many pbufs 
     auto [lconnectedClients, ludpPorts] = SpinlockGuard::copyWithLock(spinLock, connectedClients, udpPorts);
 
     uint8_t totalpBufs = lconnectedClients.size() * ludpPorts.size() + gateWayClient ? ludpPorts.size() : 0;
@@ -296,12 +291,6 @@ void GDLoverUDP::transmitBuffer()
             sendTo(client.ip, client.port == 0 ? GDL90OVERUDP_DEFAULT_PORT : client.port, data);
         }
     }
-
-    // if (auto guard = SemaphoreGuard(1000, mutex))
-    // {
-    //     // printf("GDLoverUDP: %zu bytes sent\n", size);
-    //     gdlDataBuffer.compact();
-    // }
 }
 
 void GDLoverUDP::sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data)

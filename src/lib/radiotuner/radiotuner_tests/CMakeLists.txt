@@ -11,7 +11,6 @@ add_definitions(-DGATAS_MAX_RADIOS=2)
 add_definitions(-DGATAS_MAX_SOURCE_PER_RADIO=3)
 
 
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -24,9 +23,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../ace")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
 
 if(${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
     # This project is part of a larger build
@@ -50,8 +49,6 @@ set( ACE_SOURCE_FILES
         ../../core/ace/src/basemodule.cpp
         ../../core/ace/src/coreutils.cpp
         ../../core/ace/src/models.cpp
-
-#      ${CMAKE_CURRENT_SOURCE_DIR}/mocks/pico/time.c
 
         ../ace/src/countryregulations_v2.cpp
 #        ../ace/src/radiotunertx_v2.cpp

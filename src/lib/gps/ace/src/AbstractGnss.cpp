@@ -9,7 +9,7 @@
 
 #include "ace/basemodule.hpp"
 #include "ace/coreutils.hpp"
-#include "ace/utils.hpp"
+#include "ace/bitutils.hpp"
 
 // Global pointert to PicoRTC so the PPS event can be called from the iterrupt
 RtcModule *AbstractGnss_rtc = nullptr;

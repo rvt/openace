@@ -277,6 +277,11 @@ namespace ADSL
     return __builtin_popcount(Byte);
   }
 
+    inline uint8_t FindLowestSetBit(uint8_t val)
+  {
+    return __builtin_ctz(val);
+  }
+
   inline uint32_t CRCsyndrome(size_t Bit, size_t size)
   {
     const uint16_t PacketBytes = 24;
@@ -372,73 +377,77 @@ namespace ADSL
     return 0xFF;
   }
 
-  inline int Correct(etl::span<uint8_t> PktData, etl::span<const uint8_t> PktErr, const int MaxBadBits = 6)
+  inline int Correct(etl::span<uint8_t> PktData, etl::span<const uint8_t> PktErr, int MaxBadBits = 6)
   {
+    const uint32_t pktSize = PktData.size();
+
     uint32_t CRC = checkPI(PktData);
     if (CRC == 0)
     {
       return 0;
     }
 
-    uint8_t ErrBit = FindCRCsyndrome(CRC, PktData.size());
+    uint8_t ErrBit = FindCRCsyndrome(CRC, pktSize);
     if (ErrBit != 0xFF)
     {
       FlipBit(PktData, ErrBit);
       return 1;
     }
 
-    uint8_t BadBitIdx[MaxBadBits];                                 // bad bit index
-    uint8_t BadBitMask[MaxBadBits];                                // bad bit mask
-    uint32_t Syndrome[MaxBadBits];                                 // bad bit mask
-    uint8_t BadBits = 0;                                           // count the bad bits
-    for (uint8_t ByteIdx = 0; ByteIdx < PktData.size(); ByteIdx++) // loop over bytes
+    uint8_t BadBitIdx[MaxBadBits];
+    uint8_t BadBitMask[MaxBadBits];
+    uint32_t Syndrome[MaxBadBits];
+    uint32_t BadBits = 0;
+
+    for (uint8_t ByteIdx = 0; ByteIdx < pktSize; ByteIdx++)
     {
-      uint8_t Byte = PktErr[ByteIdx];
-      uint8_t Mask = 0x80;
-      for (uint8_t BitIdx = 0; BitIdx < 8; BitIdx++) // loop over bits
+      const uint8_t Byte = PktErr[ByteIdx];
+      if (!Byte)
+        continue; // skip clean bytes - important on slow flash
+
+      for (uint8_t BitIdx = 0; BitIdx < 8; BitIdx++)
       {
-        if (Byte & Mask)
+        if (Byte & (0x80u >> BitIdx))
         {
           if (BadBits < MaxBadBits)
           {
-            BadBitIdx[BadBits] = ByteIdx; // store the bad bit index
-            BadBitMask[BadBits] = Mask;
-            Syndrome[BadBits] = CRCsyndrome(ByteIdx * 8 + BitIdx, PktData.size());
+            BadBitIdx[BadBits] = ByteIdx;
+            BadBitMask[BadBits] = 0x80u >> BitIdx;
+            Syndrome[BadBits] = CRCsyndrome(ByteIdx * 8 + BitIdx, pktSize);
           }
-          BadBits += 1;
+          if (++BadBits > MaxBadBits)
+            goto search_done;
         }
-        Mask >>= 1;
       }
-      if (BadBits > MaxBadBits)
-        break;
     }
+
+  search_done:
     if (BadBits > MaxBadBits)
+      return -1;
+
+    const uint32_t Loops = 1u << BadBits;
+    uint32_t PrevGrayIdx = 0;
+
+    for (uint8_t Idx = 1; Idx < Loops; Idx++)
     {
-      return -1; // return failure when too many bad bits
-    }
-    uint8_t Loops = 1 << BadBits;
-    uint8_t PrevGrayIdx = 0;
-    for (uint8_t Idx = 1; Idx < Loops; Idx++) // loop through all combination of bad bit flips
-    {
-      uint8_t GrayIdx = Idx ^ (Idx >> 1); // use Gray code to change flip just one bit at a time
-      uint8_t BitExp = GrayIdx ^ PrevGrayIdx;
-      uint8_t Bit = 0;
-      while (BitExp >>= 1)
-      {
-        Bit += 1;
-      }
+      const uint32_t GrayIdx = Idx ^ (Idx >> 1);
+      const uint32_t Bit = FindLowestSetBit(GrayIdx ^ PrevGrayIdx);
+
       PktData[BadBitIdx[Bit]] ^= BadBitMask[Bit];
       CRC ^= Syndrome[Bit];
+
       if (CRC == 0)
       {
         return Count1s(GrayIdx);
       }
-      uint8_t ErrBit = FindCRCsyndrome(CRC, PktData.size());
+
+      ErrBit = FindCRCsyndrome(CRC, pktSize);
       if (ErrBit != 0xFF)
       {
         FlipBit(PktData, ErrBit);
         return Count1s(GrayIdx) + 1;
       }
+
       PrevGrayIdx = GrayIdx;
     }
     return -1;

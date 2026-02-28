@@ -3,12 +3,16 @@
 #include "etl/bitset.h"
 #include "etl/vector.h"
 #include "etl/span.h"
+#include "etl/array.h"
 
 namespace GATAS
 {
 
-    template <size_t MaxSources>
-    class DataSourceTimeStatsTable
+    /**
+     * @brief Helper class to store reception times of messages from different data sources.
+     *        This can be used to understand if timings are correct.
+     */
+    class DataSourceTimeStatsTableBase
     {
     public:
         struct DataSourceTimeStats
@@ -17,20 +21,16 @@ namespace GATAS
             uint32_t frequency = 0;
         };
 
-        using container_type = etl::vector<DataSourceTimeStats, MaxSources>;
-        using const_span_type = etl::span<const DataSourceTimeStats>;
+        using const_span_type   = etl::span<const DataSourceTimeStats>;
+        using mutable_span_type = etl::span<DataSourceTimeStats>;
 
-        /**
-         * @param frequency On what frequency this was received
-         * @param msInSecond value of 0..100 of the ms within teh second aligned to PPS
-         */
         void addReceiveStat(uint32_t frequency, uint16_t msInSecond)
         {
             GATAS_ASSERT(msInSecond < 1000, "Must be smaller than 1000");
 
             auto tenthMsIndex = 99 - msInSecond / 10;
 
-            for (auto &&stat : stats_)
+            for (auto &&stat : used_span())
             {
                 if (stat.frequency == frequency)
                 {
@@ -39,37 +39,52 @@ namespace GATAS
                 }
             }
 
-            if (!stats_.full())
+            if (size_ < storage_.size())
             {
-                DataSourceTimeStats stat{};
+                auto &stat = storage_[size_++];
+                stat = DataSourceTimeStats{};
                 stat.frequency = frequency;
                 stat.timeTenthMs.set(tenthMsIndex);
-                stats_.emplace_back(stat);
             }
         }
 
-        const_span_type span() const
+        const_span_type span() const { return const_span_type(storage_.data(), size_); }
+        size_t size() const { return size_; }
+        bool empty() const { return size_ == 0; }
+        void clear() { size_ = 0; }
+
+    protected:
+        DataSourceTimeStatsTableBase() = default;
+
+        void init(mutable_span_type storage)
         {
-            return const_span_type(stats_.data(), stats_.size());
+            GATAS_ASSERT(storage.data() != nullptr, "Storage must be valid");
+            storage_ = storage;
+            size_ = 0;
         }
 
-        size_t size() const
+        mutable_span_type used_span()
         {
-            return stats_.size();
-        }
-
-        bool empty() const
-        {
-            return stats_.empty();
-        }
-
-        void clear()
-        {
-            stats_.clear();
+            return mutable_span_type(storage_.data(), size_);
         }
 
     private:
-        container_type stats_{};
+        mutable_span_type storage_{};
+        size_t size_ = 0;
     };
 
-}
+    // Templated wrapper — only owns storage, zero logic here
+    template <size_t MaxSources>
+    class DataSourceTimeStatsTable : public DataSourceTimeStatsTableBase
+    {
+    public:
+        DataSourceTimeStatsTable()
+        {
+            init(mutable_span_type(buffer_.data(), MaxSources));
+        }
+
+    private:
+        etl::array<DataSourceTimeStats, MaxSources> buffer_{};
+    };
+
+} // namespace GATAS

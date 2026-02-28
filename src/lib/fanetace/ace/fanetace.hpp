@@ -13,7 +13,7 @@
 
 #include "fanet/fanet.hpp"
 
-class FanetAce : public BaseModule, public FANET::Connector, public etl::message_router<FanetAce, GATAS::RadioTxPositionRequestMsg, GATAS::RadioRxLoraMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg>
+class FanetAce : public BaseModule, public FANET::Connector, public etl::message_router<FanetAce, GATAS::RadioTxPositionRequestMsg, GATAS::RadioRxMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg>
 {
     static constexpr uint8_t QUEUE_SIZE = 6;
 
@@ -42,7 +42,7 @@ private:
     static void FanetAceTask(void *arg);
 
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
-    void on_receive(const GATAS::RadioRxLoraMsg &msg);
+    void on_receive(const GATAS::RadioRxMsg &msg);
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
@@ -59,7 +59,7 @@ private:
 
     GATAS::OwnshipPositionInfo ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
-    Radio::RadioParameters radioParameters;
+    GATAS::RadioParameters radioParameters;
 
     GATAS::AircraftCategory mapAircraftCategory(FANET::TrackingPayload::AircraftType category) const;
     FANET::TrackingPayload::AircraftType mapAircraftCategory(GATAS::AircraftCategory category) const;

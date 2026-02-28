@@ -1,7 +1,7 @@
 import { El } from "@frameable/el";
 import store from "./store";
 import JustValidate from "just-validate";
-import { icon, portValidation, ipValidation, ssidValidation, passwordValidation } from "./utils";
+import { icon, portValidation, ipValidation, ssidValidation, passwordValidation, configStringLengthValidator } from "./utils";
 
 class ModuleConfig extends El {
   _initForm(dataFuture) {
@@ -791,9 +791,9 @@ class GatasConnectConfig extends ModuleConfig {
       .addField(this.$refs.ip, [
         {
           rule: "required",
-          errorMessage: "IPv4 address is required",
+          errorMessage: "IPv4 address or domain name is required",
         },
-        ...ipValidation,
+        ...configStringLengthValidator,
       ])
       .addField(this.$refs.pinCode, [
         {
@@ -822,9 +822,9 @@ class GatasConnectConfig extends ModuleConfig {
   _getFormData() {
     return {
       gatasServer: {
-        ip: this.$refs.ip.value,
+        ip: this.$refs.ip.value.trim(),
       },
-      pinCode: this.$refs.pinCode.value,
+      pinCode: this.$refs.pinCode.value.trim(),
     };
   }
 
@@ -837,7 +837,7 @@ class GatasConnectConfig extends ModuleConfig {
         <br/><br/>
         To setup GA/TAS Connect:
         <ul>
-          <li>Enter the the IP address of your GA/TAS Connect service you can use <strong>172.235.181.149</strong> which is free to use:
+          <li>Enter the the IP address of your GA/TAS Connect service you can use <span style="font-style: italic">gatas.vantwisk.nl</span> which is free to use:
           <li>Then setup your WIFI to connect to your mobile hotspot and ensure to enable 'Client Only' in WifiService.
         </ul>
       </p>
@@ -855,8 +855,8 @@ class GatasConnectConfig extends ModuleConfig {
         <div class="row g-0">
             <div class="col-10">
               <label for="ip">
-                IP Address of GA/TAS Server:
-                <input type="text" id="ip" ref="ip" placeholder="172.235.181.149" } />
+                IP Address or domain name of GA/TAS Server:
+                <input type="text" id="ip" ref="ip" placeholder="gatas.vantwisk.nl" } />
               </label>
             </div>
             <div class="col-10" style="margin-top:20px;">

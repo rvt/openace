@@ -8,11 +8,11 @@
     "prettier": "npx prettier . --write"
   },
   "devDependencies": {
-    "@parcel/compressor-brotli": "2.15.4",
-    "@parcel/compressor-gzip": "2.15.4",
-    "@parcel/optimizer-terser": "2.15.4",
-    "@parcel/transformer-sass": "2.15.4",
-    "parcel": "2.15.4",
+    "@parcel/compressor-brotli": "2.16.4",
+    "@parcel/compressor-gzip": "2.16.4",
+    "@parcel/optimizer-terser": "2.16.4",
+    "@parcel/transformer-sass": "2.16.4",
+    "parcel": "2.16.4",
     "http-proxy-middleware": "3.0.0",
     "prettier": "3.2.5"
   },

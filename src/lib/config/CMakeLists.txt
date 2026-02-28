@@ -9,7 +9,8 @@ set(MODULE_SOURCE_FILES
 )
 
 set(MODULE_TARGET_LINK
-    ArduinoJson    
+    ArduinoJson
+    utils
 )
 
 set(PICO_EXTRA_LIBS

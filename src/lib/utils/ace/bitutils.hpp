@@ -1,14 +1,42 @@
 #pragma once
 
-#include "hardware/pio.h"
-#include "stdint.h"
-#include "stddef.h"
-#include "bitcount.hpp"
+#include <stdint.h>
 #include "etl/memory.h"
 
-// Find a free pio and state machine and load the program into it.
-// Returns false if this fails
-bool add_pio_program(const pio_program_t *program, PIO *pio_hw, int *sm, uint *offset);
+
+// http://stackoverflow.com/questions/109023/how-to-count-the-number-of-set-bits-in-a-32-bit-integer
+inline uint8_t Count1s(uint8_t Byte)
+{
+    return __builtin_popcount(Byte);
+}
+
+inline uint8_t Count1s(uint16_t Word)
+{
+    return __builtin_popcount(Word);
+}
+
+inline uint8_t Count1s(uint32_t LongWord)
+{
+    return __builtin_popcountl(LongWord);
+}
+
+inline uint8_t Count1s(int32_t LongWord)
+{
+    return __builtin_popcountl(LongWord);
+}
+
+inline uint8_t Count1s(uint64_t LongWord)
+{
+    return __builtin_popcountll(LongWord);
+}
+
+inline uint8_t Count1s(int64_t LongWord)
+{
+    return Count1s((uint64_t)LongWord);
+}
+
+int Count1s(const uint8_t *Byte, int Bytes);
+
 
 /**
  * Shift left a XX number of bits in the Data array
@@ -93,4 +121,3 @@ uint8_t diffBits(const uint32_t Data[], const uint32_t Ref[])
 
     return Count;
 }
-

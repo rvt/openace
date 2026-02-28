@@ -96,6 +96,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     -ffast-math
     -ffunction-sections
     -fdata-sections
+    -fno-exceptions
     )
 else()
   add_compile_options(
@@ -106,6 +107,7 @@ else()
     -ffast-math
     -ffunction-sections
     -fdata-sections
+    -fno-exceptions
     )
     endif()
 

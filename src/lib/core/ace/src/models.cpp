@@ -122,6 +122,7 @@ namespace GATAS
     {
         {Modulation::GFSK, "Gfsk"},
         {Modulation::LORA, "Lora"},
+        {Modulation::NONE, "None"},
     };
 
     const char *modulationToString(GATAS::Modulation at)

@@ -24,11 +24,8 @@ namespace GATAS
             {
             }
 
-            // Delete copy constructor & assignment
              Measurement(const Measurement&) = delete;
              Measurement& operator=(const Measurement&) = delete;
-
-            // Delete move constructor & assignment
              Measurement(Measurement&&) = delete;
              Measurement& operator=(Measurement&&) = delete;
         };

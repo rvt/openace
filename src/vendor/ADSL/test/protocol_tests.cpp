@@ -11,10 +11,15 @@
 using namespace ADSL;
 
 // // Test connector that captures objects passed via the Connector interface
+etl::array<uint32_t, 40> localMemory{};
+etl::span<uint32_t> bufferSpan(localMemory.data(), localMemory.size());
+
+etl::array<uint32_t, 40> newMemory{};
+etl::span<uint32_t> newBufferSpan(localMemory.data(), localMemory.size());
 struct TestConnector : public Connector
 {
     uint32_t tick = 1000;
-    FrameBuffer<12> lastFrame;
+    FrameBuffer lastFrame{bufferSpan};
     TrafficPayload lastTrafficPayload{};
     bool trafficSet = false;
     StatusPayload lastStatusPayload{};
@@ -25,9 +30,10 @@ struct TestConnector : public Connector
 
     uint32_t adsl_getTick() const override { return tick; }
 
-    virtual bool adsl_sendFrame(const void *ctx, etl::span<const uint8_t> data) override
+    virtual bool adsl_sendFrame(const void *ctx, uint8_t const *data, size_t lengthBytes) override
     {
-        lastFrame.assign(data);
+        lastFrame.assign(etl::span<const uint8_t>(data, lengthBytes));
+        lastFrame.used_bytes = lengthBytes;
         lastCtx = ctx;
         return true;
     }
@@ -56,6 +62,12 @@ struct TestConnector : public Connector
     virtual void adsl_buildStatusPayload(const void *ctx, StatusPayload &tp) override
     {
     }
+
+    virtual uint8_t *adsl_alloc(const void *ctx, size_t sizeBytes) override
+    {
+        static uint8_t memoryPool[256];
+        return memoryPool;
+    }
 };
 const auto buffer = etl::make_array<uint32_t>(0xB229CC00, 0x9981C4E4, 0x5DD2E995, 0x20492D0B, 0xBD66A043, 0xEE82CD94);
 
@@ -70,7 +82,8 @@ TEST_CASE("Protocol handleRx", "[Protocol]")
     protocol.crcCheckOnReceive = true;
 
     // Actual generated and validated ADSL packet
-    FrameBuffer<6> buf{buffer};
+    auto newBuffer = buffer;
+    FrameBuffer buf{newBuffer.data(), newBuffer.size()};
     protocol.crcCheckOnReceive = true;
     auto result = protocol.handleRx(-42, buf.fullSpan32());
 
@@ -109,7 +122,8 @@ TEST_CASE("Protocol rqSendTrafficPayload", "[Protocol]")
     Protocol protocol(&conn);
     protocol.crcCheckOnReceive = true;
 
-    FrameBuffer<6> buf{buffer};
+    auto newBuffer = buffer;
+    FrameBuffer buf{newBuffer.data(), newBuffer.size()};
     auto result = protocol.handleRx(-42, buf.fullSpan32());
     REQUIRE(result == Protocol::RxStatudeCode::OK);
 
@@ -135,8 +149,8 @@ TEST_CASE("Protocol validation", "[Protocol]")
     SECTION("OK")
     {
         header.type(Header::PayloadTypeIdentifier::STATUS);
-        auto frame = buildRadioPacket<4>(header, network, [&](etl::bit_stream_writer &writer)
-                                         { status.serialize_issue2(writer); });
+        auto frame = buildRadioPacket(newBufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                      { status.serialize_issue2(writer); });
 
         auto result = protocol.handleRx(-42, frame.usedSpan32());
         REQUIRE(result == Protocol::RxStatudeCode::OK);
@@ -145,8 +159,8 @@ TEST_CASE("Protocol validation", "[Protocol]")
     SECTION("UNSUPPORTED_PAYLOAD")
     {
         header.type(Header::PayloadTypeIdentifier::REMOTEID);
-        auto frame = buildRadioPacket<6>(header, network, [&](etl::bit_stream_writer &writer)
-                                         { traffic.serialize_issue1(writer); });
+        auto frame = buildRadioPacket(bufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                      { traffic.serialize_issue1(writer); });
 
         auto result = protocol.handleRx(-42, frame.usedSpan32());
         REQUIRE(result == Protocol::RxStatudeCode::UNSUPPORTED_PAYLOAD);
@@ -155,8 +169,8 @@ TEST_CASE("Protocol validation", "[Protocol]")
     SECTION("CRC Error")
     {
         header.type(Header::PayloadTypeIdentifier::REMOTEID);
-        auto frame = buildRadioPacket<6>(header, network, [&](etl::bit_stream_writer &writer)
-                                         { traffic.serialize_issue1(writer); });
+        auto frame = buildRadioPacket(bufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                      { traffic.serialize_issue1(writer); });
 
         frame[23] = 0; // Set incorrect CRC
         auto result = protocol.handleRx(-42, frame.usedSpan32());
@@ -166,8 +180,8 @@ TEST_CASE("Protocol validation", "[Protocol]")
     SECTION("Decryption key 1 unsupported")
     {
         network.keyIndex(1);
-        auto frame = buildRadioPacket<4>(header, network, [&](etl::bit_stream_writer &writer)
-                                         { status.serialize_issue2(writer); });
+        auto frame = buildRadioPacket(bufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                      { status.serialize_issue2(writer); });
 
         auto result = protocol.handleRx(-42, frame.usedSpan32());
         REQUIRE(result == Protocol::RxStatudeCode::UNSUPORTED_DECRYPTION_KEY);
@@ -177,8 +191,8 @@ TEST_CASE("Protocol validation", "[Protocol]")
     {
         header.type(Header::PayloadTypeIdentifier::STATUS);
         network.keyIndex(3);
-        auto frame = buildRadioPacket<4>(header, network, [&](etl::bit_stream_writer &writer)
-                                         { status.serialize_issue2(writer); });
+        auto frame = buildRadioPacket(bufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                      { status.serialize_issue2(writer); });
 
         auto result = protocol.handleRx(-42, frame.usedSpan32());
         REQUIRE(result == Protocol::RxStatudeCode::OK);
@@ -187,8 +201,8 @@ TEST_CASE("Protocol validation", "[Protocol]")
     SECTION("FEC Not supported")
     {
         network.errorControlMode(NetworkPayload::ErrorControlMode::FEC);
-        auto frame = buildRadioPacket<4>(header, network, [&](etl::bit_stream_writer &writer)
-                                         { status.serialize_issue2(writer); });
+        auto frame = buildRadioPacket(bufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                      { status.serialize_issue2(writer); });
 
         auto result = protocol.handleRx(-42, frame.usedSpan32());
         REQUIRE(result == Protocol::RxStatudeCode::UNSUPORTED_ERROR_CONTROL_FEC);
@@ -197,8 +211,8 @@ TEST_CASE("Protocol validation", "[Protocol]")
     SECTION("Unsupported protocol version")
     {
         network.protocolVersion(static_cast<NetworkPayload::ProtocolVersion>(3));
-        auto frame = buildRadioPacket<4>(header, network, [&](etl::bit_stream_writer &writer)
-                                         { status.serialize_issue2(writer); });
+        auto frame = buildRadioPacket(bufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                      { status.serialize_issue2(writer); });
 
         auto result = protocol.handleRx(-42, frame.usedSpan32());
         REQUIRE(result == Protocol::RxStatudeCode::UNSUPORTED_PROTOCOL_VERSION);
@@ -331,8 +345,8 @@ TEST_CASE("Protocol Version With Traffic", "[Protocol]")
         header.type(Header::PayloadTypeIdentifier::STATUS);
         StatusPayload status;
         status.maxProtocolversion(tc.statusVersion);
-        auto frame = buildRadioPacket<4>(header, network, [&](etl::bit_stream_writer &writer)
-                                         { status.serialize_issue2(writer); });
+        auto frame = buildRadioPacket(bufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                      { status.serialize_issue2(writer); });
         auto result = protocol.handleRx(-42, frame.usedSpan32());
         REQUIRE(result == Protocol::RxStatudeCode::OK);
     }
@@ -349,8 +363,8 @@ TEST_CASE("Protocol Version With Traffic", "[Protocol]")
     traffic.speed(50);
     traffic.groundTrack(45);
 
-    auto frame = buildRadioPacket<6>(header, network, [&](etl::bit_stream_writer &writer)
-                                     { traffic.serialize_issue1(writer); });
+    auto frame = buildRadioPacket(bufferSpan, header, network, [&](etl::bit_stream_writer &writer)
+                                  { traffic.serialize_issue1(writer); });
     auto result = protocol.handleRx(-42, frame.usedSpan32());
 
     REQUIRE(result == Protocol::RxStatudeCode::OK);
@@ -406,12 +420,11 @@ TEST_CASE("Protocol Version expiry", "[Protocol]")
         StatusPayload status;
         status.maxProtocolversion(NP::ISSUE_2);
 
-        auto frame = buildRadioPacket<4>(
-            header, network,
-            [&](etl::bit_stream_writer &writer)
-            {
-                status.serialize_issue2(writer);
-            });
+        auto frame = buildRadioPacket(bufferSpan, header, network,
+                                      [&](etl::bit_stream_writer &writer)
+                                      {
+                                          status.serialize_issue2(writer);
+                                      });
 
         auto result = protocol.handleRx(-42, frame.usedSpan32());
 

@@ -2,7 +2,7 @@
 
 #include "../ogn1.hpp"
 #include "../ognpacket.hpp"
-#include "ace/bitcount.hpp"
+#include "ace/bitutils.hpp"
 #include "ace/spinlockguard.hpp"
 #include "etl/algorithm.h"
 
@@ -266,25 +266,36 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         LDPC_Encode(packet.Word());
         statistics.transmittedAircraftPositions += 1;
 
+        auto data = static_cast<uint8_t *>(getGlobalPool().alloc(OGN_PACKET_LENGTH_FEC));
+        if (data == nullptr)
+        {
+            return;
+        }
+        etl::mem_copy(reinterpret_cast<uint8_t *>(&packet), OGN_PACKET_LENGTH_FEC, data);
+
         getBus().receive(GATAS::RadioTxFrameMsg{
             Radio::TxPacket{
-                msg.radioParameters,
-                OGN_PACKET_LENGTH_FEC,
-                &packet},
+                .radioParameters = msg.radioParameters,
+                .frame = data,
+                .length = OGN_PACKET_LENGTH_FEC},
             msg.radioNo});
-        // printf("OGN request position\n");
+
+        // GATAS_INFO("OGN request position");
     }
 }
 
-void Ogn1::on_receive(const GATAS::RadioRxGfskMsg &msg)
+void Ogn1::on_receive(const GATAS::RadioRxManchesterMsg &msg)
 {
     if (msg.dataSource == GATAS::DataSource::OGN1)
     {
+        PoolReleaseGuard frameGuard{getGlobalPool(), msg.frame};
+        PoolReleaseGuard errorGuard{getGlobalPool(), msg.error};
+
         datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
         OGN1_Packet packet;
 
         // Validate packet, and correct if possible
-        uint8_t check = Ogn1::errorCorrect((uint8_t *)&packet, (uint8_t *)msg.frame, (uint8_t *)msg.err);
+        uint8_t check = Ogn1::errorCorrect((uint8_t *)&packet, msg.frame, msg.error);
         if (check & 0x0F)
         {
             statistics.fecErr += 1;

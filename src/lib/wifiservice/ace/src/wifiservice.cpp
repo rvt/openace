@@ -291,7 +291,7 @@ int WifiService::scanResultCb(void *env, const cyw43_ev_scan_result_t *result)
 
         if (it != service->wifiData.clients.end() && !service->scanResult.full())
         {
-            // GATAS_INFO("Added: %s\n", name.c_str());
+            // GATAS_INFO("Added: %s", name.c_str());
             service->scanResult.emplace_back(name);
         }
 

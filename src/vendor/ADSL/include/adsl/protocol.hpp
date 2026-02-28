@@ -9,6 +9,7 @@
 #include "utils.hpp"
 #include "print.hpp"
 #include "framebuffer.hpp"
+#include "utils.hpp"
 
 #include "etl/map.h"
 #include "etl/optional.h"
@@ -246,13 +247,18 @@ namespace ADSL
         PayloadSerializer serializer,
         Connector *connector) // Pass connector
     {
-      constexpr size_t FRAME_WORD_SIZE = 7;
       constexpr size_t CRC_LENGTH = 3;
       constexpr size_t HEADER_LENGTH = 5;
       constexpr size_t NETWORK_LENGTH = 1;
 
-      FrameBuffer<FRAME_WORD_SIZE> frame;
-      etl::fill(frame.fullSpan32().begin(), frame.fullSpan32().end(), uint8_t{0});
+      auto ptrMemory = connector->adsl_alloc(ctx, 28);
+      if (!ptrMemory)
+      {
+        printf("Failed to allocate memory for sending frame\n");
+        return;
+      }
+
+      FrameBuffer frame{etl::span<uint32_t>(reinterpret_cast<uint32_t *>(ptrMemory), 8)};
       etl::bit_stream_writer writer(frame.fullSpan(), etl::endian::little);
 
       // Serialize Header
@@ -276,6 +282,7 @@ namespace ADSL
         XXTEA_Encrypt_Key0(frame.words(), headerAndPayload / 4, 6);
       }
 
+      // Shift one whole word to to optionally make place for a network header and to make the payload start at the same place as the received payload for easier CRC calculation
       frame.shiftOneWord();
 
       // Add the network header at the beginning, not part of encryption
@@ -285,17 +292,18 @@ namespace ADSL
       // Finally calculate the CRC
       uint32_t crc = ADSL::calcPI(frame.fullSpan().subspan(3, NETWORK_LENGTH + headerAndPayload)) & 0xFFFFFF;
 
+      // Add CRC
       auto wordOffset = (headerAndPayload) / 4 + 1;
       frame.fullSpan32()[wordOffset] = (crc << 16) | (crc & 0x00FF00) | (crc >> 16);
 
       if (addPayloadLength)
       {
         frame[2] = static_cast<uint8_t>(headerAndPayload + CRC_LENGTH + NETWORK_LENGTH);
-        connector->adsl_sendFrame(ctx, frame.fullSpan().subspan(2, 1 + NETWORK_LENGTH + headerAndPayload + CRC_LENGTH));
+        connector->adsl_sendFrame(ctx, static_cast<const uint8_t *>(ptrMemory) + 2, 1 + NETWORK_LENGTH + headerAndPayload + CRC_LENGTH);
       }
       else
       {
-        connector->adsl_sendFrame(ctx, frame.fullSpan().subspan(3, NETWORK_LENGTH + headerAndPayload + CRC_LENGTH));
+        connector->adsl_sendFrame(ctx, static_cast<const uint8_t *>(ptrMemory) + 3, NETWORK_LENGTH + headerAndPayload + CRC_LENGTH);
       }
     }
 
@@ -394,6 +402,27 @@ namespace ADSL
       }
     }
 
+    template <typename T>
+    inline void printBufferHex(etl::span<T> buffer)
+    {
+
+      printf("Length(%d) ", static_cast<int>(buffer.size()));
+
+      for (size_t i = 0; i < buffer.size(); ++i)
+      {
+        if constexpr (sizeof(T) == 1)
+          printf("0x%02" PRIX8, static_cast<uint8_t>(buffer[i]));
+        else if constexpr (sizeof(T) == 2)
+          printf("0x%04" PRIX16, static_cast<uint16_t>(buffer[i]));
+        else if constexpr (sizeof(T) == 4)
+          printf("0x%08" PRIX32, static_cast<uint32_t>(buffer[i]));
+        else
+          printf("0x%X", static_cast<unsigned int>(buffer[i])); // fallback
+        if (i + 1 < buffer.size())
+          printf(", ");
+      }
+    }
+
     /**
      * @brief Handle a received ADSL packet, it expect the payload length be already stripped
      * @tparam MAXFRAMESIZE The size of the message payload.
@@ -404,8 +433,11 @@ namespace ADSL
      */
     RxStatudeCode handleRx(int16_t rssddBm, etl::span<uint32_t> wordBuffer)
     {
+
+      //      printf("Received packet size: %d, RSSI: %d dBm\n", wordBuffer.size(), rssddBm);
+      //      printBufferHex(wordBuffer);
       // Create a view into the word buffer as bytes
-      auto buffer = etl::span<uint8_t>(reinterpret_cast<uint8_t *>(wordBuffer.data()), wordBuffer.size() * 4);
+      auto buffer = etl::span<uint8_t>(reinterpret_cast<uint8_t *>(wordBuffer.data()), wordBuffer.size() * sizeof(uint32_t));
 
       auto result = validateBuffer(buffer);
       if (result != RxStatudeCode::OK)

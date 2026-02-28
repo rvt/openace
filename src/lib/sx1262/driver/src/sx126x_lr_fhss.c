@@ -40,11 +40,14 @@
 #include "lr_fhss_mac.h"
 #include "sx126x_lr_fhss.h"
 #include "sx126x_hal.h"
+#include "sx126x.h"
 
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE MACROS-----------------------------------------------------------
  */
+
+#define UNUSED( x ) ( void ) ( x )
 
 /*
  * -----------------------------------------------------------------------------
@@ -106,7 +109,7 @@ sx126x_status_t sx126x_lr_fhss_write_hop_config( const void* context, const uint
  * @returns Operation status
  */
 sx126x_status_t sx126x_lr_fhss_write_hop( const void* context, const uint8_t index, const uint16_t nb_symbols,
-    const uint32_t freq_in_pll_steps );
+                                          const uint32_t freq_in_pll_steps );
 
 /**
  * @brief Get Frequency, in PLL steps, of the next hop
@@ -117,7 +120,7 @@ sx126x_status_t sx126x_lr_fhss_write_hop( const void* context, const uint8_t ind
  * @returns Frequency, in PLL steps, of the next hop
  */
 uint32_t sx126x_lr_fhss_get_next_freq_in_pll_steps( const sx126x_lr_fhss_params_t* params,
-    sx126x_lr_fhss_state_t*        state );
+                                                    sx126x_lr_fhss_state_t*        state );
 
 /**
  * @brief Get grid frequency, in PLL steps
@@ -135,14 +138,12 @@ static inline unsigned int sx126x_lr_fhss_get_grid_in_pll_steps( const sx126x_lr
 
 sx126x_status_t sx126x_lr_fhss_init( const void* context, const sx126x_lr_fhss_params_t* params )
 {
-    (void)params;
-    const uint8_t pkt_params_buf[] =
-    {
+    UNUSED( params );
+    const uint8_t pkt_params_buf[] = {
         SX126X_SET_PKT_PARAMS, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     };
 
-    const uint8_t mod_params_buf[] =
-    {
+    const uint8_t mod_params_buf[] = {
         SX126X_SET_MODULATION_PARAMS, 32, 0, 0, SX126X_GFSK_PULSE_SHAPE_BT_1, 0, 0, 0, 0,
     };
 
@@ -165,6 +166,14 @@ sx126x_status_t sx126x_lr_fhss_init( const void* context, const sx126x_lr_fhss_p
     }
 
     status = sx126x_set_buffer_base_address( context, 0x00, 0x00 );
+    if( status != SX126X_STATUS_OK )
+    {
+        return status;
+    }
+
+    // WORKAROUND - Modulation Quality with 500 kHz LoRa Bandwidth, see DS_SX1261-2_V1.2 datasheet chapter 15.1
+    status = sx126x_tx_modulation_workaround( context, SX126X_PKT_TYPE_LR_FHSS, ( sx126x_lora_bw_t ) 0 );
+    // WORKAROUND END
     return status;
 }
 
@@ -180,7 +189,7 @@ uint16_t sx126x_lr_fhss_get_bit_delay_in_us( const sx126x_lr_fhss_params_t* para
 }
 
 sx126x_status_t sx126x_lr_fhss_process_parameters( const sx126x_lr_fhss_params_t* params, uint16_t hop_sequence_id,
-    uint16_t payload_length, sx126x_lr_fhss_state_t* state )
+                                                   uint16_t payload_length, sx126x_lr_fhss_state_t* state )
 {
     lr_fhss_process_parameters( &params->lr_fhss_params, payload_length, &state->digest );
 
@@ -230,7 +239,7 @@ sx126x_status_t sx126x_lr_fhss_process_parameters( const sx126x_lr_fhss_params_t
 }
 
 sx126x_status_t sx126x_lr_fhss_write_hop_sequence_head( const void* context, const sx126x_lr_fhss_params_t* params,
-    sx126x_lr_fhss_state_t* state )
+                                                        sx126x_lr_fhss_state_t* state )
 {
     sx126x_status_t status = sx126x_lr_fhss_write_hop_config( context, state->digest.nb_bytes, state->digest.nb_hops );
     if( status != SX126X_STATUS_OK )
@@ -251,7 +260,7 @@ sx126x_status_t sx126x_lr_fhss_write_hop_sequence_head( const void* context, con
         {
             return status;
         }
-        state->current_hop += 1;
+        state->current_hop++;
         state->digest.nb_bits = 0;
     }
     else
@@ -295,7 +304,7 @@ sx126x_status_t sx126x_lr_fhss_write_hop_sequence_head( const void* context, con
                 return status;
             }
 
-            state->current_hop += 1;
+            state->current_hop++;
             state->digest.nb_bits -= nb_symbols;
 
             state->next_freq_in_pll_steps = sx126x_lr_fhss_get_next_freq_in_pll_steps( params, state );
@@ -306,15 +315,15 @@ sx126x_status_t sx126x_lr_fhss_write_hop_sequence_head( const void* context, con
 }
 
 sx126x_status_t sx126x_lr_fhss_write_payload( const void* context, const sx126x_lr_fhss_state_t* state,
-    const uint8_t* payload )
+                                              const uint8_t* payload )
 {
     return sx126x_write_buffer( context, 0x00, payload, state->digest.nb_bytes );
 }
 
 sx126x_status_t sx126x_lr_fhss_build_frame( const void* context, const sx126x_lr_fhss_params_t* params,
-    sx126x_lr_fhss_state_t* state, uint16_t hop_sequence_id,
-    const uint8_t* payload, uint16_t payload_length,
-    uint32_t* first_frequency_in_pll_steps )
+                                            sx126x_lr_fhss_state_t* state, uint16_t hop_sequence_id,
+                                            const uint8_t* payload, uint16_t payload_length,
+                                            uint32_t* first_frequency_in_pll_steps )
 {
     sx126x_status_t status = sx126x_lr_fhss_process_parameters( params, hop_sequence_id, payload_length, state );
     if( status != SX126X_STATUS_OK )
@@ -342,7 +351,7 @@ sx126x_status_t sx126x_lr_fhss_build_frame( const void* context, const sx126x_lr
 }
 
 sx126x_status_t sx126x_lr_fhss_handle_hop( const void* context, const sx126x_lr_fhss_params_t* params,
-    sx126x_lr_fhss_state_t* state )
+                                           sx126x_lr_fhss_state_t* state )
 {
     if( state->current_hop < state->digest.nb_hops )
     {
@@ -356,13 +365,13 @@ sx126x_status_t sx126x_lr_fhss_handle_hop( const void* context, const sx126x_lr_
             nb_bits = state->digest.nb_bits;
         }
         sx126x_status_t status = sx126x_lr_fhss_write_hop( context, state->current_hop % SX126X_LR_FHSS_HOP_TABLE_SIZE,
-                                 LR_FHSS_BLOCK_BITS, state->next_freq_in_pll_steps );
+                                                           LR_FHSS_BLOCK_BITS, state->next_freq_in_pll_steps );
         if( status != SX126X_STATUS_OK )
         {
             return status;
         }
 
-        state->current_hop += 1;
+        state->current_hop++;
         state->digest.nb_bits -= nb_bits;
         state->next_freq_in_pll_steps = sx126x_lr_fhss_get_next_freq_in_pll_steps( params, state );
     }
@@ -370,10 +379,10 @@ sx126x_status_t sx126x_lr_fhss_handle_hop( const void* context, const sx126x_lr_
 }
 
 sx126x_status_t sx126x_lr_fhss_handle_tx_done( const void* context, const sx126x_lr_fhss_params_t* params,
-    sx126x_lr_fhss_state_t* state )
+                                               sx126x_lr_fhss_state_t* state )
 {
-    (void)params;
-    (void)state;
+    UNUSED( params );
+    UNUSED( state );
     const uint8_t ctrl = SX126X_LR_FHSS_DISABLE_HOPPING;
 
     return sx126x_write_register( context, SX126X_LR_FHSS_REG_CTRL, &ctrl, 1 );
@@ -392,15 +401,14 @@ sx126x_status_t sx126x_lr_fhss_write_hop_config( const void* context, const uint
 }
 
 sx126x_status_t sx126x_lr_fhss_write_hop( const void* context, const uint8_t index, const uint16_t nb_symbols,
-    const uint32_t freq_in_pll_steps )
+                                          const uint32_t freq_in_pll_steps )
 {
     if( index >= SX126X_LR_FHSS_HOP_TABLE_SIZE )
     {
         return SX126X_STATUS_ERROR;
     }
 
-    uint8_t data[SX126X_LR_FHSS_HOP_ENTRY_SIZE] =
-    {
+    uint8_t data[SX126X_LR_FHSS_HOP_ENTRY_SIZE] = {
         ( uint8_t ) ( nb_symbols >> 8 ),         ( uint8_t ) nb_symbols,
         ( uint8_t ) ( freq_in_pll_steps >> 24 ), ( uint8_t ) ( freq_in_pll_steps >> 16 ),
         ( uint8_t ) ( freq_in_pll_steps >> 8 ),  ( uint8_t ) freq_in_pll_steps,
@@ -411,7 +419,7 @@ sx126x_status_t sx126x_lr_fhss_write_hop( const void* context, const uint8_t ind
 }
 
 uint32_t sx126x_lr_fhss_get_next_freq_in_pll_steps( const sx126x_lr_fhss_params_t* params,
-    sx126x_lr_fhss_state_t*        state )
+                                                    sx126x_lr_fhss_state_t*        state )
 {
 #ifdef HOP_AT_CENTER_FREQ
     const int16_t freq_table  = 0;
@@ -425,7 +433,7 @@ uint32_t sx126x_lr_fhss_get_next_freq_in_pll_steps( const sx126x_lr_fhss_params_
 
     unsigned int grid_in_pll_steps = sx126x_lr_fhss_get_grid_in_pll_steps( params );
     uint32_t     freq              = params->center_freq_in_pll_steps - freq_table * grid_in_pll_steps -
-                                     ( params->device_offset + grid_offset ) * SX126X_LR_FHSS_GRID_INDEX_TO_PLL_STEPS;
+                    ( params->device_offset + grid_offset ) * SX126X_LR_FHSS_GRID_INDEX_TO_PLL_STEPS;
 
 #ifndef HOP_AT_CENTER_FREQ
     // Perform frequency correction for every other sync header
@@ -445,7 +453,7 @@ uint32_t sx126x_lr_fhss_get_next_freq_in_pll_steps( const sx126x_lr_fhss_params_
 static inline unsigned int sx126x_lr_fhss_get_grid_in_pll_steps( const sx126x_lr_fhss_params_t* params )
 {
     return ( params->lr_fhss_params.grid == LR_FHSS_V1_GRID_3906_HZ ) ? SX126X_LR_FHSS_GRID_3906_HZ_PLL_STEPS
-           : SX126X_LR_FHSS_GRID_25391_HZ_PLL_STEPS;
+                                                                      : SX126X_LR_FHSS_GRID_25391_HZ_PLL_STEPS;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

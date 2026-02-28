@@ -50,12 +50,12 @@ void L76B::popGPSMessages(etl::string_view waitFor)
                 GATAS_INFO("%s ", sentence.c_str());
                 if (waitFor.length() > 0 && sentence.starts_with(waitFor))
                 {
-                    GATAS_INFO(" -> FOUND\n");
+                    GATAS_INFO(" -> FOUND");
                     c = 0;
                 }
                 else
                 {
-                    GATAS_INFO("\n");
+                    GATAS_INFO("");
                 }
             }
         }

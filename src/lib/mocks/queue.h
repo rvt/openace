@@ -24,7 +24,6 @@ typedef struct QueueDefinition   * QueueHandle_t;
 #define queueQUEUE_TYPE_BINARY_SEMAPHORE      ( ( uint8_t ) 3U )
 #define queueQUEUE_TYPE_RECURSIVE_MUTEX       ( ( uint8_t ) 4U )
 
-#define portMAX_DELAY              ( TickType_t ) 0xffffffffUL
 
 #define xQueueSendToBack( xQueue, pvItemToQueue, xTicksToWait ) \
     xQueueGenericSend( ( xQueue ), ( pvItemToQueue ), ( xTicksToWait ), queueSEND_TO_BACK )
