@@ -5,6 +5,7 @@
 #include "etl/string.h"
 #include "etl/vector.h"
 #include "etl/string_stream.h"
+#include "poolallocator.hpp"
 
 constexpr float KN_TO_MS = 0.514444444f;            // knots to meter/sec
 constexpr float MS_TO_KN = 1.0f / KN_TO_MS;         // meter/sec to knots
@@ -46,6 +47,10 @@ namespace GATAS
     using GDLData = etl::vector<uint8_t, 52>; // GDLXX Message
     using AircraftAddress = uint32_t;         // ICAO code, FLARM ID or OGN ID
     using SsidOrPasswdStr = etl::string<32>;
+    // 32 Byte is a decoded manchester frame
+    // 64 is an manchester frame
+    // 160 byte are LORA ADSL-H Frames
+    using GlobalPoolConfiguration = MultiPoolAllocator<PoolSpec<32, 8>, PoolSpec<64, 4>, PoolSpec<160, 4>>;
 
     enum class PinType : uint8_t;
     using PinTypeMap = etl::flat_map<PinType, int8_t, 8>;

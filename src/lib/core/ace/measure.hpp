@@ -58,11 +58,11 @@ struct Measure
         {
             if (id_ == UINT32_MAX)
             {
-                printf("(%s:%" PRIu32 ") %s %" PRIu32 "us\n", file_, line_, name_.begin(), duration);
+                printf("\033[01;30m (%s:%" PRIu32 ") %s %" PRIu32 "us\n", file_, line_, name_.begin(), duration);
             }
             else
             {
-                printf("(%s:%" PRIu32 ") %s%" PRIu32 " %" PRIu32 "us\n", file_, line_, name_.begin(), id_, duration);
+                printf("\033[01;30m (%s:%" PRIu32 ") %s%" PRIu32 " %" PRIu32 "us\n", file_, line_, name_.begin(), id_, duration);
             }
         }
     }

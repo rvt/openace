@@ -4,6 +4,7 @@
 #include "models.hpp"
 #include "semaphoreguard.hpp"
 #include "poolallocator.hpp"
+#include "constants.hpp"
 
 #include "pico.h"
 
@@ -27,18 +28,13 @@ typedef std::function<void(const uint32_t)> pinIntrCallback_t;
 // function to transform a reason into text
 const char *postConstructToString(GATAS::PostConstruct reason);
 
-// 32 Byte is a decoded manchester frame
-// 64 is an manchester frame
-// 160 byte are LORA ADSL-H Frames
-using GlobalPoolConfiguration = MultiPoolAllocator<PoolSpec<32, 8>, PoolSpec<64, 4>, PoolSpec<160, 4>>;
-
 class Configuration;
 class BaseModule
 {
     static constexpr uint8_t MAX_MODULES = 40;
     // Mutex to be used during load/unloading and changes in interrupts
     inline static SemaphoreHandle_t baseMutex = nullptr;
-    inline static GlobalPoolConfiguration globalPool;
+    inline static GATAS::GlobalPoolConfiguration globalPool;
 
 public:
     static void initBase()
@@ -92,7 +88,7 @@ public:
         moduleLoaderMap[name] = {GATAS::PostConstruct::NA, hwCheck, nullptr};
     }
 
-    static GlobalPoolConfiguration &getGlobalPool()
+    static GATAS::GlobalPoolConfiguration &getGlobalPool()
     {
         return globalPool;
     }
@@ -253,13 +249,6 @@ public:
     Radio(etl::imessage_bus &bus, const etl::string_view name) : BaseModule(bus, name)
     {
     }
-
-    struct TxPacket
-    {
-        GATAS::RadioParameters radioParameters;
-        mutable const uint8_t *frame; // We use a mutable se we can change the pointer to a nullptr aftere clearing it
-        size_t length=0;
-    };
 
     struct RxMode
     {

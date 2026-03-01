@@ -266,21 +266,17 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         LDPC_Encode(packet.Word());
         statistics.transmittedAircraftPositions += 1;
 
-        auto data = static_cast<uint8_t *>(getGlobalPool().alloc(OGN_PACKET_LENGTH_FEC));
-        if (data == nullptr)
+        if (auto data = static_cast<uint8_t *>(getGlobalPool().alloc(OGN_PACKET_LENGTH_FEC)))
         {
-            return;
+            etl::mem_copy(reinterpret_cast<uint8_t *>(&packet), OGN_PACKET_LENGTH_FEC, data);
+
+            getBus().receive(GATAS::RadioTxFrameMsg{
+                msg.radioParameters,
+                data,
+                OGN_PACKET_LENGTH_FEC,
+                msg.radioNo});
+            // GATAS_INFO("OGN request position");
         }
-        etl::mem_copy(reinterpret_cast<uint8_t *>(&packet), OGN_PACKET_LENGTH_FEC, data);
-
-        getBus().receive(GATAS::RadioTxFrameMsg{
-            Radio::TxPacket{
-                .radioParameters = msg.radioParameters,
-                .frame = data,
-                .length = OGN_PACKET_LENGTH_FEC},
-            msg.radioNo});
-
-        // GATAS_INFO("OGN request position");
     }
 }
 

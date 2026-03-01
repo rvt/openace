@@ -113,7 +113,7 @@ void Sx1262::on_receive(const GATAS::RadioTxFrameMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
-        PoolReleaseGuard guard{getGlobalPool(), msg.txPacket.frame};
+        PoolReleaseGuard guard{getGlobalPool(), msg.frame};
 
         if (txQueue.full())
         {
@@ -122,8 +122,12 @@ void Sx1262::on_receive(const GATAS::RadioTxFrameMsg &msg)
         else if (hasGpsFix && txEnabled)
         {
             guard.disarm();
-            txQueue.push(msg.txPacket);
+            txQueue.push(TxPacket{
+                .radioParameters = msg.radioParameters,
+                .frame = msg.frame,
+                .length = msg.length});
         }
+
         xTaskNotify(taskHandle, TaskState::HANDLETX, eSetBits);
     }
 }
@@ -413,7 +417,7 @@ void Sx1262::receiveGFSKPacket()
         statistics.receivedPackets += 1;
         uint8_t receivedFrameLength = receivedPacketLength();
 
-        if (receivedFrameLength >= 4)
+        if (receivedFrameLength >= 4 && receivedFrameLength <= getGlobalPool().maxPoolSize())
         {
             GATAS::DataFrame frame{
                 .epochSeconds = CoreUtils::secondsSinceEpoch(),
@@ -423,9 +427,11 @@ void Sx1262::receiveGFSKPacket()
                 .length = receivedFrameLength,
                 .rssidBm = pkt_status.rssi_avg};
 
+            if (frame.frame == nullptr) {
+                return;
+            }
 
             sx126x_read_buffer(this, 0x80, frame.frame, receivedFrameLength);
-
             if (xQueueSendToBack(rxDataFrameQueue->queue(), &frame, TASK_DELAY_MS(10)) != pdPASS)
             {
                 getGlobalPool().release(frame.frame);
@@ -434,7 +440,7 @@ void Sx1262::receiveGFSKPacket()
         }
         else
         {
-            GATAS_INFO("Incorrect frame length received %d", receivedFrameLength);
+            GATAS_WARN("Incorrect frame length received %d", receivedFrameLength);
         }
     }
     else
@@ -472,7 +478,6 @@ void Sx1262::receiveLORAPacket()
             };
             if (rxFrame.frame == nullptr)
             {
-                GATAS_WARN("Failed to allocate memory for received frame of length %d", receivedFrameLength);
                 return;
             }
             sx126x_read_buffer(this, 0x80, rxFrame.frame, receivedFrameLength);
@@ -538,7 +543,7 @@ void Sx1262::checkAndClearDeviceErrors()
     {
         statistics.deviceErrors += 1;
         sx126x_clear_device_errors(this);
-        GATAS_INFO("Device Error: %d", errors);
+        GATAS_WARN("Device Error: %d", errors);
     }
 }
 
@@ -667,7 +672,7 @@ void Sx1262::sx1262Task(void *arg)
                     // GATAS_INFO("%8ld TX Packet ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(txPacket.radioParameters.config->dataSource));
                     txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     configureSx1262(txPacket.radioParameters, txPacket.length);
-                    sendPacket(txPacket);                    
+                    sendPacket(txPacket);
                     statistics.transmittedPackets += 1;
                     continue; // Need to wait for TX done
                 }

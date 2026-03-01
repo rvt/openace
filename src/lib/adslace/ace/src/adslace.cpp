@@ -164,10 +164,9 @@ bool ADSLAce::adsl_sendFrame(const void *ctx, const uint8_t *data, size_t length
 
     const Tx_Struct *params = static_cast<const Tx_Struct *>(ctx);
     getBus().receive(GATAS::RadioTxFrameMsg{
-        Radio::TxPacket{
-            .radioParameters = params->radioParameters,
-            .frame = data,
-            .length = lengthBytes},
+        params->radioParameters,
+        data,
+        lengthBytes,
         params->radioNo});
 
     statistics.transmittedAircraftPositions += 1;

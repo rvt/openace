@@ -137,17 +137,15 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         packet.groundTrack(ownship.track);
         packet.movementStatus(ownship.airborne ? 2 : 1);
 
-        if (auto data = static_cast<uint8_t *>(getGlobalPool().alloc(Flarm2024Packet::TOTAL_LENGTH)))
+        if (auto frame = static_cast<uint8_t *>(getGlobalPool().alloc(Flarm2024Packet::TOTAL_LENGTH)))
         {
-            packet.writeToBuffer(epochSeconds, data);
+            packet.writeToBuffer(epochSeconds, frame);
 
             statistics.transmittedAircraftPositions += 1;
             getBus().receive(GATAS::RadioTxFrameMsg{
-                Radio::TxPacket{
-                    .radioParameters = msg.radioParameters,
-                    .frame = data,
-                    .length = Flarm2024Packet::TOTAL_LENGTH,
-                },
+                msg.radioParameters,
+                frame,
+                Flarm2024Packet::TOTAL_LENGTH,
                 msg.radioNo});
         };
 

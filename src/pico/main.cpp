@@ -120,7 +120,7 @@ void registerModules()
 __scratch_y("aceSpi_Mem") static uint8_t aceSpi_Mem[sizeof(AceSpi)];
 static uint8_t sx1262_1_Mem[sizeof(Sx1262)];
 static uint8_t sx1262_2_Mem[sizeof(Sx1262)];
-static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
+__scratch_y("GpsDecoder_Mem") static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
 __scratch_y("GPS_Mem") static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B))];
 __scratch_y("DataPort_Mem") static uint8_t DataPort_Mem[sizeof(DataPort)];
 
@@ -214,7 +214,9 @@ constexpr size_t BINSTORE_NUM_SECTORS = (sizeof(GATAS::BinaryStore) + FLASH_SECT
 static FlashStore permanentStore{PERMSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 3}; // FLASH_SECTOR_SIZE => 4096 on the PICO
 // Used to store runtime information not stored in permanent store, counters, id's etc...
 static FlashStore binaryStore{BINSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 4};
+
 __scratch_y("GatasMem_Bus") static GATAS::ThreadSafeBus<24> bus;
+
 static Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
 volatile static bool loadIndicator = false;
 volatile static int8_t ledStatusIndicatorPin = -1;
@@ -285,6 +287,9 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
 static void loadModules(void *arg)
 {
     (void)arg;
+    
+    bus.setPool(&BaseModule::getGlobalPool()); // Hack to set the pool into the messagebus
+
     CoreUtils::init();
     config.postConstruct();
     config.start();

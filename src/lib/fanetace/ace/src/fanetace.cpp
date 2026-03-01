@@ -107,24 +107,18 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
     statistics.send += 1;
     radioParameters.codingRate = codingRate;
 
-    auto poolData = static_cast<uint8_t *>(getGlobalPool().alloc(data.size()));
-    if (poolData == nullptr)
+    if (auto poolData = static_cast<uint8_t *>(getGlobalPool().alloc(data.size())))
     {
-        return false;
+        etl::mem_copy(data.cbegin(), data.cend(), poolData);
+        getBus().receive(GATAS::RadioTxFrameMsg{
+            radioParameters,
+            poolData,
+            data.size(),
+            radioNo});
+        GATAS_INFO("FANET request position");
+        return true;
     }
-
-    etl::mem_copy(data.cbegin(), data.cend(), poolData);
-    getBus().receive(GATAS::RadioTxFrameMsg{
-        Radio::TxPacket{
-            .radioParameters = radioParameters,
-            .frame = poolData,
-            .length = data.size(),
-        },
-        radioNo});
-
-    GATAS_INFO("FANET request position");
-
-    return true;
+    return false;
 }
 
 void FanetAce::fanet_ackReceived(uint16_t id)

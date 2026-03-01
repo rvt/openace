@@ -46,6 +46,13 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
         HANDLE_NEW_CONFIG = 16,
     };
 
+    struct TxPacket
+    {
+        GATAS::RadioParameters radioParameters;
+        const uint8_t *frame;
+        size_t length = 0;
+    };
+
     mutable struct
     {
         uint16_t deviceErrors = 0;

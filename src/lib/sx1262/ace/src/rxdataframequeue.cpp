@@ -70,7 +70,6 @@ void RxDataFrameQueue::radioQueueTask(void *arg)
                 auto error = static_cast<uint8_t *>(getGlobalPool().alloc(byteLength));
                 if (error == nullptr)
                 {
-                    GATAS_WARN("Failed to allocate memory for manchester error, ignoring frame");
                     continue;
                 }
 

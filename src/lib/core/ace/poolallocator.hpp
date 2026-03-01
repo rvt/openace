@@ -97,6 +97,7 @@ template <typename... Pools>
 class MultiPoolAllocator
 {
     static_assert(sizeof...(Pools) >= 2, "Need at least 2 pools");
+    static constexpr size_t max_block_size = std::max({Pools::block_size...});
 
     using PoolTuple = etl::tuple<PoolWrapper<Pools>...>;
     PoolTuple pools;
@@ -107,6 +108,10 @@ public:
     {
         mutex = xSemaphoreCreateMutex();
         GATAS_ASSERT(mutex != nullptr, "Failed to create MultiPoolAllocator mutex");
+    }
+
+    constexpr size_t maxPoolSize() const {
+        return max_block_size;
     }
 
     void *alloc(size_t size)
@@ -133,7 +138,6 @@ public:
 #else
         auto masked_ptr = ptr;
 #endif
-        SemaphoreGuard lock(portMAX_DELAY, mutex);
         release_impl<0>(masked_ptr);
     }
 
@@ -272,6 +276,7 @@ private:
     {
         if constexpr (I >= sizeof...(Pools))
         {
+            GATAS_WARN("Alloc to large");
             return nullptr;
         }
         else
@@ -280,6 +285,10 @@ private:
             if (size <= PoolT::block_size)
             {
                 auto ptr = etl::get<I>(pools).allocate();
+                if (ptr == nullptr)
+                {
+                    GATAS_WARN("Alloc full");
+                }
                 return ptr;
                 // We could enable this if we want to automatically find a larger pool
                 // wheer this fits
@@ -311,6 +320,7 @@ private:
     {
         if constexpr (I >= sizeof...(Pools))
         {
+            GATAS_WARN("Realloc to large");
             return nullptr;
         }
         else
@@ -328,6 +338,8 @@ private:
                     void *newPtr = alloc(newSize);
                     if (!newPtr)
                     {
+                        GATAS_WARN("Realloc full");
+                        etl::get<I>(pools).release(ptr);
                         return nullptr;
                     }
 

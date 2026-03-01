@@ -1,5 +1,15 @@
 #pragma once
 
+
+// 0;30m black      1;30m bold black      0;90m light black
+// 0;31m red        1;31m bold red        0;91m light red
+// 0;32m green      1;32m bold green      0;92m light green
+// 0;33m yellow     1;33m bold yellow     0;93m light yellow
+// 0;34m blue       1;34m bold blue       0;94m light blue
+// 0;35m magenta    1;35m bold magenta    0;95m light magenta
+// 0;36m cyan       1;36m bold cyan       0;96m light cyan
+// 0;37m white      1;37m bold white      0;97m light white
+
 #if GATAS_DEBUG
 
 static constexpr const char *basename(const char *path)
@@ -11,7 +21,7 @@ static constexpr const char *basename(const char *path)
 }
 
 #define GATAS_INFO(fmt, ...) \
-    printf("\033[01;00m (%s:%d) INFO: " fmt "\n", basename(__FILE__), __LINE__, ##__VA_ARGS__)
+    printf("\033[01;37m (%s:%d) INFO: " fmt "\n", basename(__FILE__), __LINE__, ##__VA_ARGS__)
 
 #define GATAS_WARN(fmt, ...) \
     printf("\033[01;33m (%s:%d) WARN: " fmt "\n", basename(__FILE__), __LINE__, ##__VA_ARGS__)

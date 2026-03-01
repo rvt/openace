@@ -5,6 +5,7 @@
 #include "semphr.h"
 
 #include "measure.hpp"
+#include "constants.hpp"
 
 /* Vendor. */
 #include "etl/message_router.h"
@@ -23,6 +24,8 @@ namespace GATAS
 #if GATAS_DEBUG == 1
         etl::array<uint8_t, 2> lastMsgPerCore;
 #endif
+        GATAS::GlobalPoolConfiguration *pool = nullptr;
+
     public:
         ThreadSafeBus() : etl::imessage_bus(router_list), xMutex(xSemaphoreCreateRecursiveMutex())
         {
@@ -32,27 +35,33 @@ namespace GATAS
         {
         }
 
+        void setPool(GATAS::GlobalPoolConfiguration *pool_)
+        {
+            pool = pool_;
+        }
+
         void processMessage(const etl::imessage &message)
         {
             auto msgId = message.get_message_id();
             bool skipMutex;
             uint16_t blockTime;
-            switch (msgId) {
-                // These are message that must be delivered with high guarantee 
-                // therefor setting a higher lock timeout
-                case 21: // AccessPointClientsMsg
-                case 24: // WifiConnectionStateMsg
-                case 29: // Every1SecMsg
-                    blockTime = 1000;
-                    skipMutex = false;
-                    break;
-                case 20: // ConfigUpdatedMsg
-                    blockTime = 1;
-                    skipMutex = true;
-                    break;
-                default:
-                    skipMutex = false;
-                    blockTime = 50;
+            switch (msgId)
+            {
+            // These are message that must be delivered with high guarantee
+            // therefor setting a higher lock timeout
+            case 21: // AccessPointClientsMsg
+            case 24: // WifiConnectionStateMsg
+            case 29: // Every1SecMsg
+                blockTime = 1000;
+                skipMutex = false;
+                break;
+            case 20: // ConfigUpdatedMsg
+                blockTime = 1;
+                skipMutex = true;
+                break;
+            default:
+                skipMutex = false;
+                blockTime = 50;
             }
             if (skipMutex || xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(blockTime)) == pdTRUE)
             {
@@ -65,6 +74,10 @@ namespace GATAS
             }
             else
             {
+                if (msgId >= 200 && msgId < 255 && pool != nullptr)
+                {
+                    reinterpret_cast<GATAS::PoolRelease &>(const_cast<etl::imessage &>(message)).releasePool(*pool);
+                }
                 GATAS_WARN("Message not send current:%d:%d core0:%d core1:%d", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
             }
         }
@@ -97,21 +110,29 @@ namespace GATAS
 #endif
         }
 
-    //*******************************************
-    virtual void
-    receive(etl::shared_message shared_msg) override
-    {
-        // Note: Skipping Only for <20> / ConfigUpdatedMsg
-        auto skipMutex = shared_msg.get_message().get_message_id() == 20;
-        if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
+        //*******************************************
+        virtual void
+        receive(etl::shared_message shared_msg) override
         {
-            etl::imessage_bus::receive(shared_msg);
-            if (!skipMutex)
+            // Note: Skipping Only for <20> / ConfigUpdatedMsg
+            auto msgId = shared_msg.get_message().get_message_id();
+            auto skipMutex = msgId == 20;
+            if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
             {
-                xSemaphoreGiveRecursive(xMutex);
+                etl::imessage_bus::receive(shared_msg);
+                if (!skipMutex)
+                {
+                    xSemaphoreGiveRecursive(xMutex);
+                }
+            }
+            else
+            {
+                if (msgId >= 200 && msgId < 255 && pool != nullptr)
+                {
+                    reinterpret_cast<GATAS::PoolRelease &>(const_cast<etl::imessage &>(shared_msg.get_message())).releasePool(*pool);
+                }
+                GATAS_WARN("Message not send current:%d:%d core0:%d core1:%d", get_core_num(), msgId, lastMsgPerCore[0], lastMsgPerCore[1]);
             }
         }
-    }
+    };
 };
-}
-;
