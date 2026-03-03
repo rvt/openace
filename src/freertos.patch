@@ -1,5 +1,5 @@
 diff --git a/portable/ThirdParty/GCC/RP2040/include/portmacro.h b/portable/ThirdParty/GCC/RP2040/include/portmacro.h
-index 4e5b2d1..41fcd6b 100644
+index 4e5b2d144..41fcd6bed 100644
 --- a/portable/ThirdParty/GCC/RP2040/include/portmacro.h
 +++ b/portable/ThirdParty/GCC/RP2040/include/portmacro.h
 @@ -227,7 +227,7 @@ static inline void vPortRecursiveLock( BaseType_t xCoreID,
@@ -14,7 +14,7 @@ index 4e5b2d1..41fcd6b 100644
 @@ -241,7 +241,8 @@ static inline void vPortRecursiveLock( BaseType_t xCoreID,
          configASSERT( ( ucOwnedByCore[ xCoreID ] [ulLockNum ] ) != 0 );
          configASSERT( ucRecursionCountByLock[ ulLockNum ] != 0 );
- 
+
 -        if( !--ucRecursionCountByLock[ ulLockNum ] )
 +        ucRecursionCountByLock[ulLockNum] -= 1;
 +        if (ucRecursionCountByLock[ulLockNum] == 0)
