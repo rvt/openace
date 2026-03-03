@@ -3,9 +3,9 @@ function(determine_version_with_file VER_FILE_NAME)
     # Remove trailing whitespaces and/or newline
     string(STRIP ${ADSL_LIB_VERSION_RAW} ADSL_LIB_VERSION)
     set(ADSL_LIB_VERSION ${ADSL_LIB_VERSION} CACHE STRING
-        "ETL version determined from version.txt" FORCE
+        "ADSL version determined from version.txt" FORCE
     )
-    message(STATUS "${MSG_PREFIX} Determined ETL version ${ADSL_LIB_VERSION} from version.txt file")
+    message(STATUS "${MSG_PREFIX} Determined ADSL version ${ADSL_LIB_VERSION} from version.txt file")
 endfunction()
 
 function(determine_version_with_git)
@@ -29,7 +29,7 @@ function(determine_version_with_git)
     set(ADSL_LIB_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
     set(ADSL_LIB_VERSION ${ADSL_LIB_VERSION} CACHE STRING
-        "ETL version determined with git describe" FORCE
+        "ADSL version determined with git describe" FORCE
     )
-    message(STATUS "${MSG_PREFIX} Determined ETL version ${ADSL_LIB_VERSION} from the git tag")
+    message(STATUS "${MSG_PREFIX} Determined ADSL version ${ADSL_LIB_VERSION} from the git tag")
 endfunction()

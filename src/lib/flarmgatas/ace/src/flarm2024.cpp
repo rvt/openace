@@ -185,7 +185,7 @@ GATAS::AircraftCategory Flarm2024::toAircraftCategory(uint8_t flarmCode) const
     // clang-format off
     switch (flarmCode) {
         case 1:    return GATAS::AircraftCategory::GLIDER;
-        case 2:    
+        case 2:
         case 8:    return GATAS::AircraftCategory::LIGHT;
         case 3:    return GATAS::AircraftCategory::ROTORCRAFT;
         case 4:    return GATAS::AircraftCategory::SKY_DIVER;
@@ -193,7 +193,7 @@ GATAS::AircraftCategory Flarm2024::toAircraftCategory(uint8_t flarmCode) const
         case 6:    return GATAS::AircraftCategory::HANG_GLIDER;
         case 7:    return GATAS::AircraftCategory::PARA_GLIDER;
         case 9:    return GATAS::AircraftCategory::LARGE;
-        case 0x0b:              
+        case 0x0b:
         case 0x0c: return GATAS::AircraftCategory::LIGHT_THAN_AIR;
         case 0x0d: return GATAS::AircraftCategory::UN_MANNED;
         case 0x0f: return GATAS::AircraftCategory::POINT_OBSTACLE;
@@ -214,7 +214,7 @@ uint8_t Flarm2024::fromAircraftCategory(GATAS::AircraftCategory category) const
         case GATAS::AircraftCategory::HANG_GLIDER:             return 0x06;
         case GATAS::AircraftCategory::PARA_GLIDER:             return 0x07;
         case GATAS::AircraftCategory::ULTRA_LIGHT_FIXED_WING:
-        case GATAS::AircraftCategory::LIGHT:                   
+        case GATAS::AircraftCategory::LIGHT:
         case GATAS::AircraftCategory::SMALL:                   return 0x08;
         case GATAS::AircraftCategory::HIGH_VORTEX:
         case GATAS::AircraftCategory::HEAVY_ICAO:
@@ -223,9 +223,9 @@ uint8_t Flarm2024::fromAircraftCategory(GATAS::AircraftCategory category) const
         case GATAS::AircraftCategory::LIGHT_THAN_AIR:          return 0x0b;
         case GATAS::AircraftCategory::UN_MANNED:               return 0x0d;
         case GATAS::AircraftCategory::POINT_OBSTACLE:          return 0x0f;
-        
+
         // Cases with no direct equivalent
-        case GATAS::AircraftCategory::SPACE_VEHICLE:             
+        case GATAS::AircraftCategory::SPACE_VEHICLE:
         case GATAS::AircraftCategory::SURFACE_EMERGENCY_VEHICLE:
         case GATAS::AircraftCategory::SURFACE_VEHICLE:
         case GATAS::AircraftCategory::CLUSTER_OBSTACLE:
