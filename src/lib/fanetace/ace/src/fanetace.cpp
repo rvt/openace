@@ -115,7 +115,7 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
             poolData,
             data.size(),
             radioNo});
-        GATAS_INFO("FANET request position");
+        //GATAS_INFO("FANET request position");
         return true;
     }
     return false;

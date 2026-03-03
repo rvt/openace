@@ -142,7 +142,6 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     uint32_t offsetHz;
     bool txEnabled;
     bool hasGpsFix;
-    uint8_t lastPcId;
     SpiModule *spiHall;
     TaskHandle_t taskHandle;
     SemaphoreHandle_t mutex;
@@ -162,7 +161,6 @@ public:
                                                                                                                            offsetHz(offsetHz_),
                                                                                                                            txEnabled(txEnabled_),
                                                                                                                            hasGpsFix(false),
-                                                                                                                           lastPcId(0),
                                                                                                                            spiHall(nullptr),
                                                                                                                            taskHandle(nullptr),
                                                                                                                            mutex(nullptr),

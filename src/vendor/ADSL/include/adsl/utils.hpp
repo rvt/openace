@@ -377,7 +377,7 @@ namespace ADSL
     return 0xFF;
   }
 
-  inline int Correct(etl::span<uint8_t> PktData, etl::span<const uint8_t> PktErr, int MaxBadBits = 6)
+  inline int Correct(etl::span<uint8_t> PktData, etl::span<const uint8_t> PktErr, uint32_t MaxBadBits = 6)
   {
     const uint32_t pktSize = PktData.size();
 

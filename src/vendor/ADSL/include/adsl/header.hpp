@@ -140,15 +140,6 @@ namespace ADSL
             reader.read_unchecked<bool>(); // reserved
             header.relay_ = reader.read_unchecked<bool>();
             return header;
-
-            //             return Header
-            // {
-            //     PayloadTypeIdentifier(reader.read_unchecked<uint8_t>(8)),
-            //         reader.read_unchecked<uint8_t>(6),
-            //         Address::deserialize(reader),
-            //         reader.read_unchecked<bool>(), // reserved
-            //         reader.read_unchecked<bool>()
-            // };
         }
     };
 

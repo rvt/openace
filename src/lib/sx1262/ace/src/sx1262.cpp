@@ -211,7 +211,7 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
     // 9.8 Transceiver Circuit Modes Graphical Illustration
     standBy();
 
-    if (newParameters.config->pcId != lastPcId || true)
+    if (newParameters.config->pcId != rxRadioParameters.config->pcId || true)
     {
         GATAS_MEASURE("configureSx1262", 1600 /* 500 */);
 
@@ -310,7 +310,6 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
             sx126x_write_register(this, 0x0740, newParameters.config->syncWord.data(), newParameters.config->syncLength);
             // GATAS_INFO("Radio %d changed frequency from %ld to %ld", radioNo, lastParameters.frequency, newParameters.frequency);
         }
-        lastPcId = newParameters.config->pcId;
     }
 
     if (newParameters.hopFrequency != rxRadioParameters.hopFrequency || true)
@@ -569,9 +568,9 @@ void Sx1262::sendPacket(const TxPacket &txPacket)
                 GATAS_WARN("Frame too long for manchester encoding %d", txPacket.length);
                 return;
             }
-            uint8_t frame[GATAS::RADIO_MAX_TX_GFSK_FRAME_LENGTH * MANCHESTER];
-            manchesterEncode(frame, txPacket.frame, txPacket.length);
-            sendGFSKPacket(txPacket.radioParameters, frame, txPacket.length * 2);
+            uint8_t manchesterFrame[GATAS::RADIO_MAX_TX_GFSK_FRAME_LENGTH * MANCHESTER];
+            manchesterEncode(manchesterFrame, txPacket.frame, txPacket.length);
+            sendGFSKPacket(txPacket.radioParameters, manchesterFrame, txPacket.length * MANCHESTER);
         }
         else
         {
@@ -663,13 +662,13 @@ void Sx1262::sx1262Task(void *arg)
             // Only in TX
             if (TxPacket txPacket; txQueue.pop(txPacket))
             {
-                PoolReleaseGuard guard{getGlobalPool(), txPacket.frame};
+                PoolReleaseGuard poolGuard{getGlobalPool(), txPacket.frame};
 
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
                     GATAS_MEASURE("Send Radio:", 1500, radioNo);
-                    // GATAS_INFO("%8ld TX Packet ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(txPacket.radioParameters.config->dataSource));
+                    // GATAS_INFO("%8ld TX Packet ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(txPacket.radioParameters.config->dataSource()));
                     txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     configureSx1262(txPacket.radioParameters, txPacket.length);
                     sendPacket(txPacket);
@@ -684,7 +683,7 @@ void Sx1262::sx1262Task(void *arg)
                 if (auto g = SemaphoreGuard(10, mutex))
                 {
                     rxRadioParameters = newRxRadioParameters;
-                    // GATAS_INFO("%8ld New Config ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(rxRadioParameters.config->dataSource));
+                    // GATAS_INFO("%8ld New Config ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(rxRadioParameters.config->dataSource()));
                     hasNewConfig = false;
                 }
                 bool _;

@@ -272,6 +272,7 @@ void ADSLAce::adsl_buildTraffic(const void *ctx, ADSL::TrafficPayload &tp)
     auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
     protocol.setAddress(ownship.conspicuity.icaoAddress);
 
+    tp.timestamp(CoreUtils::msSinceEpoch());
     tp.latitude(ownship.lat);
     tp.longitude(ownship.lon);
     tp.speed(ownship.groundSpeed);

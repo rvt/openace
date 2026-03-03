@@ -11,6 +11,9 @@
 		},
 		{
 			"path": "src/lib/radiotuner/radiotuner_tests"
+		},
+		{
+			"path": "src/vendor/FLARM"
 		}
 	],
 	"settings": {
@@ -134,6 +137,6 @@
 			"**/Debug_*": true,
 			"**/Release_*": true
 	},
-	"cortex-debug.variableUseNaturalFormat": false
+	"cortex-debug.variableUseNaturalFormat": true
 }
 }

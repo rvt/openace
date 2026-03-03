@@ -113,7 +113,6 @@ public:
     static constexpr GATAS::LinkLayerConfig PROTOCOL_OGN           { 3, GATAS::DataSource::OGN1,       true,  26, 16, 64, 8, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}};       // OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
 
     static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSL          { 4, GATAS::DataSource::ADSLM,      true,  25, 16, 48, 8, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65}};                   // ADSL on normal 0xA9, 0x6A => 0x18 26Byte first byt elength = 25Byte
-//. static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSLO_HDR     { 5, GATAS::DataSource::ADSLO_HDR, false,  24, 16, 24, 0, {0x2D, 0xD4, 0x18}};                                     // ADSL on O band HDR
     static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSLO_HDR     { 5, GATAS::DataSource::ADSLO_HDR, false,   0, 16, 16, 0, {0x2D, 0xD4}};                                           // ADSL on O band HDR
     static constexpr GATAS::LinkLayerConfig PROTOCOL_PAW           { 6, GATAS::DataSource::PAW,        true,   0, 16, 64, 0, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}};       // Pilot Aware (ogn tracker calls this LDR???)
     static constexpr GATAS::LinkLayerConfig PROTOCOL_FANET         { 7, GATAS::DataSource::FANET,     false, 255, 12, 16, 0, {0xF4, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};       // FANET
@@ -165,10 +164,10 @@ public:
      * When adding additional zones, all zones must be grpouped together
      */
     static constexpr auto protocolTxTimimgs = etl::make_array<const ProtocolTxTimeSlot>(
-        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_FLARM,         etl::span(EU_FLARMT),       600, 1400, 15, 150},
-        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_OGN,           etl::span(EU_OGNT),         600, 1400, 15, 150},
-        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_ADSL,          etl::span(EU_ADSLT),        600, 1400, 15, 250},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT),   600, 1400, 15, 250},
+        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_ADSL,          etl::span(EU_ADSLT),        600, 1400, 15, 250},
+        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_OGN,           etl::span(EU_OGNT),         600, 1400, 15, 150},
+        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_FLARM,         etl::span(EU_FLARMT),       600, 1400, 15, 150},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_lora,  PROTOCOL_FANET,         etl::span(EU_FANETT),      2000, 3000, 15, 000},
 
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE2, NorthAmerica, PROTOCOL_FLARM,         etl::span(NA_FLARMT),       600, 1400, 15, 150},

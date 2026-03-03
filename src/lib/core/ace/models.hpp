@@ -442,7 +442,7 @@ namespace GATAS
         uint8_t txPreambleLength;         // Preamble length in bits during transmission
         uint8_t syncLength;               // Length of the sync word in bytes
         uint8_t syncSkipInRxLength;       // When setting the receiver, skip n bytes from the sync
-        etl::array<uint8_t, 10> syncWord; // Sync word for RX/TX depending on the mode we only take portion or full sync
+        etl::array<uint8_t, 8> syncWord; // Sync word for RX/TX depending on the mode we only take portion or full sync
 
         constexpr GATAS::DataSource dataSource() const
         {
