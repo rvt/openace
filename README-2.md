@@ -197,10 +197,13 @@ https://serial.huhn.me/
 
 Note: SoftRF puts out OGN1
 file:///opt/source/SoftRF-Moshe/software/app/Settings/settings1.html
-Latest : $PSRFC,1,0,7,1,8,1,0,0,2,1,1,1,1,4,0,0,0,0,0*40
-OGN1   : $PSRFC,1,0,1,1,1,1,0,0,2,1,0,1,1,4,0,0,0,0,0*4E
-PIW    : $PSRFC,1,0,2,1,8,1,0,0,2,1,1,1,1,4,0,0,0,0,0*45
-FANET  : $PSRFC,1,0,5,1,8,1,0,0,2,1,1,1,1,4,0,0,0,0,0*42
+
+All Settings: $PSRFS,0,?*4B
+Latest : $PSRFS,1,protocol,7*78
+OGN1   : $PSRFS,1,protocol,1*7E
+PIW    : $PSRFS,1,protocol,2*7D
+FANET  : $PSRFS,1,protocol,5*7A
+ADSL   : $PSRFS,1,protocol,8*77
 
 
 Latest+BLE_+GDL90 over BLE: $PSRFC,1,0,7,1,1,1,0,0,2,1,0,1,1,5,5,0,0,0,0*4C

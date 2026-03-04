@@ -4,7 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include "gulp.hpp"
-#include "mockutils.h"
+#include "testhelpers.h"
 
 TEST_CASE("Gulp: multiple packets", "[Gulp]")
 {

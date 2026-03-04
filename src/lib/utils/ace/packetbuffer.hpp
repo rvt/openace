@@ -217,7 +217,6 @@ class PacketBuffer : public PacketBufferBase<PacketBuffer<SIZE, MAXENTRIES>>
     friend class PacketBufferBase<PacketBuffer<SIZE, MAXENTRIES>>;
 
 private:
-    // Reorder members: buffer must be declared FIRST
     uint8_t buffer[SIZE];
     etl::vector<etl::span<uint8_t>, MAXENTRIES> entryVec;
 

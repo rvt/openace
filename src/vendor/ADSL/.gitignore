@@ -1,0 +1,5 @@
+build/
+work/
+.idea/
+.cache/
+.py

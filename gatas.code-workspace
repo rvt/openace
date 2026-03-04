@@ -1,16 +1,21 @@
 {
-"folders": [
-	{
-		"path": "src/pico"
-	},
-	{
-		"path": "."
-	},
-	{
-		"path": "src/vendor"
-	}
-]
-  	,
+	"folders": [
+		{
+			"path": "src/pico"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "src/vendor/ADSL"
+		},
+		{
+			"path": "src/lib/radiotuner/radiotuner_tests"
+		},
+		{
+			"path": "src/vendor/FLARM"
+		}
+	],
 	"settings": {
 		"C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
 		"files.associations": {
@@ -121,6 +126,17 @@
 			"stdint.h": "c",
 			"*.hpp_withtype": "cpp"
 		},
-		"cmake.autoSelectActiveFolder": false
-	  }
+		"cmake.autoSelectActiveFolder": false,
+		"files.exclude": {
+			"**/.DS_Store": false,
+			"**/.git": false,
+			"**/.hg": false,
+			"**/.svn": false,
+			"**/Thumbs.db": false,
+			"**/build": true,
+			"**/Debug_*": true,
+			"**/Release_*": true
+	},
+	"cortex-debug.variableUseNaturalFormat": true
+}
 }

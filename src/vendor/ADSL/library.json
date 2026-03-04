@@ -1,0 +1,30 @@
+{
+  "name": "ADSL Protocol implementation in c++",
+  "version": "0.0.1",
+  "authors": {
+    "name": "R. van Twisk",
+    "email": "github@rvt.dds.nl"
+  },
+  "homepage": "http://github.com/rvt/ADSL",
+  "license": "MIT",
+  "description": "A header only c++ implementation of the ADSL protocol",
+  "keywords": "ADSL, c-plus-plus",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/rvt/ADSL"
+  },
+  "build": {
+    "includeDir": "include"
+  },
+  "export": {
+    "include": [
+      "include",
+      "LICENSE",
+      "README.md"
+    ],
+    "exclude": [
+    ]
+  },
+  "platforms": "*",
+  "frameworks": "*"
+}

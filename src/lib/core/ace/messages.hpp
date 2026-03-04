@@ -3,6 +3,8 @@
 #include "constants.hpp"
 #include "basemodule.hpp"
 #include "models.hpp"
+#include "poolallocator.hpp"
+#include "constants.hpp"
 
 #include "etl/message.h"
 #include "etl/message_router.h"
@@ -84,64 +86,6 @@ namespace GATAS
         OwnshipPositionMsg() : position() {}
     };
 
-    /**
-     * Aircraft Position
-     * @deprecated We might want to just use an array of future position pre estimated
-     */
-    // struct AircraftPositionEstimated : public etl::message<7>
-    // {
-    //     uint32_t timeAtEstimated; // in milliseconds when the position was estimated
-    //     AircraftPositionInfo position;
-    // };
-
-    /**
-     * Aircraft Position Filtered
-     * THis is the same as AircraftPosition, but aircraft that are to far away or to high/low
-     * are removed from these messages to reduce pressure on the cDetector
-     * and the messagebus in general
-     */
-    // struct AircraftPositionFiltered : public etl::message<8>
-    // {
-    //     AircraftPositionInfo position;
-    // };
-
-    // /**
-    //  * Request for estimation positions. THis will effectifly enable the estimation of the position
-    //  * of the current known aircraft
-    //  */
-    // struct EstimationRequest : public etl::message<9>
-    // {
-    //     AircraftAddress address;
-    //     uint8_t rate;     // updates per second request (1..5)
-    //     uint8_t duration; // For how long should the estimations be active (in seconds) after the last reception
-    // };
-
-    // /**
-    //  * Cancel estimation requests
-    //  */
-    // struct CancelEstimationRequest : public etl::message<10>
-    // {
-    //     AircraftAddress address;
-    // };
-
-    // struct CollisionWarning : public etl::message<11>
-    // {
-    //     AircraftAddress address;
-    //     AddressType addressType;
-    //     AircraftCategory aircraftType;
-    //     DataSource dataSource;
-    //     uint8_t alarmLevel;      // 0..3
-    //     uint8_t secondsToImpact; // 0..30
-    //     float relativeNorth;     // relative position
-    //     float relativeEast;
-    //     float relativeVertical; // relative Altitude above ownship in meter
-    //     float track;            // Track of aircraft
-    //     float turnRate;         // Turnrate of aircraft
-    //     float groundSpeed;      // Groundspeed of aircraft
-    //     float climbRate;        // Clibrate of aircraft
-    //     bool noTrack;           // Privacy option see dataport of explanation
-    // };
-
     struct UtcTimeMsg : public etl::message<12>
     {
         int16_t year;        // Set with full year, e.g. 2021
@@ -153,9 +97,6 @@ namespace GATAS
         int16_t millisecond; // 0..999
         // Constructor
         UtcTimeMsg(int16_t year_, int8_t month_, int8_t day_, int8_t hour_, int8_t minute_, int8_t second_, int16_t millisecond_) : year(year_), month(month_), day(day_), hour(hour_), minute(minute_), second(second_), millisecond(millisecond_) {};
-
-        // Default constructor
-        UtcTimeMsg() : year(0), month(0), day(0), hour(0), minute(0), second(0), millisecond(0) {};
     };
 
     struct GpsStatsMsg : public etl::message<14>
@@ -164,10 +105,10 @@ namespace GATAS
         uint8_t satsUsedForFix;     // From GGA Sentence
         float pDop;                 // From GSA Sentence
         float hDop;                 // From GSA Sentence
+        float vDop;                 // From GSA Sentence
         pDopInterpretation pDopInt; // Interpretation from pDop
-        GpsStatsMsg() : gpsFix(), satsUsedForFix(0), pDop(0.0f), hDop(0.0f), pDopInt(pDopInterpretation::POOR) {};
-        GpsStatsMsg(GATAS::GpsFix gpsFix_, uint8_t satsUsedForFix_, float pDop_, float hDop_, pDopInterpretation pDopInt_) : 
-            gpsFix(gpsFix_), satsUsedForFix(satsUsedForFix_), pDop(pDop_), hDop(hDop_), pDopInt(pDopInt_) {};        
+        GpsStatsMsg() : gpsFix(), satsUsedForFix(0), pDop(0.0f), hDop(0.0f), vDop(0.f), pDopInt(pDopInterpretation::POOR) {};
+        GpsStatsMsg(GATAS::GpsFix gpsFix_, uint8_t satsUsedForFix_, float pDop_, float hDop_, float vDop_, pDopInterpretation pDopInt_) : gpsFix(gpsFix_), satsUsedForFix(satsUsedForFix_), pDop(pDop_), hDop(hDop_), vDop(vDop_), pDopInt(pDopInt_) {};
     };
 
     struct BarometricPressureMsg : public etl::message<15>
@@ -178,34 +119,89 @@ namespace GATAS
         BarometricPressureMsg() : pressurehPa(0), usSinceBoot(0) {};
     };
 
-    struct RadioRxGfskMsg : public etl::message<16>
+    struct PoolRelease
     {
-        uint32_t frame[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
-        uint32_t err[GATAS::RADIO_MAX_GFX_FRAME_WORD_LENGTH];
-        uint32_t epochSeconds;
-        uint8_t length; 
-        int8_t rssidBm;
-        uint32_t frequency;
-        GATAS::DataSource dataSource;
-        RadioRxGfskMsg(uint8_t length_, uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), length(length_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_)
-        {
-        };
-        RadioRxGfskMsg() : epochSeconds(0), length(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::ADSL)
-        {
-        };
+        virtual void releasePool(GATAS::GlobalPoolConfiguration &pool) = 0;
     };
 
-    struct RadioRxLoraMsg : public etl::message<27>
+    struct RadioRxMsgBase : public PoolRelease
     {
-        etl::vector<uint8_t, GATAS::MAX_LORA_MSG_SIZE> frame;
+        mutable uint8_t *frame;     // Mutable Hack to set the ptr to nullptr once it was freed
+        mutable size_t lengthBytes; // hack to allow reset the length on a const object from the messagebus
         uint32_t epochSeconds;
-        int8_t rssidBm;
         uint32_t frequency;
         GATAS::DataSource dataSource;
-        RadioRxLoraMsg(uint32_t epochSeconds_, int8_t rssidBm_, uint32_t frequency_, GATAS::DataSource dataSource_) : epochSeconds(epochSeconds_), rssidBm(rssidBm_), frequency(frequency_), dataSource(dataSource_) {
-                                                                                                                      };
-        RadioRxLoraMsg() : epochSeconds(0), rssidBm(0), frequency(0), dataSource(GATAS::DataSource::ADSL) {
-                           };
+        int8_t rssidBm;
+
+        RadioRxMsgBase(uint8_t *frame_, size_t lengthBytes_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : frame(frame_), lengthBytes(lengthBytes_), epochSeconds(epochSeconds_), frequency(frequency_), dataSource(dataSource_), rssidBm(rssidBm_) {}
+
+        uint32_t *frame32() const
+        {
+            return reinterpret_cast<uint32_t *>(frame);
+        }
+
+        etl::span<uint32_t> frame32Span() const
+        {
+            return etl::span<uint32_t>(reinterpret_cast<uint32_t *>(frame), (lengthBytes + 3) / 4);
+        }
+
+        etl::span<uint8_t> frameSpan() const
+        {
+            return etl::span<uint8_t>(frame, lengthBytes);
+        }
+
+        virtual void releasePool(GATAS::GlobalPoolConfiguration &pool) override
+        {
+            if (frame)
+            {
+                GATAS_WARN("Release pool RadioRxMsgBase");
+                pool.release(frame);
+                pool.release(static_cast<uint8_t *>(frame));
+            }
+        }
+    };
+
+    struct RadioRxMsg : public RadioRxMsgBase, public etl::message<200>
+    {
+        explicit RadioRxMsg(uint8_t *data_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : RadioRxMsgBase(data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_)
+        {
+        }
+    };
+
+    struct RadioRxManchesterMsg : public RadioRxMsgBase, public etl::message<201>
+    {
+        mutable uint8_t *error; // Mutable Hack to set the ptr to nullptr once it was freed
+
+        explicit RadioRxManchesterMsg(uint8_t *data_, uint8_t *error_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : RadioRxMsgBase(data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_), error(error_) {}
+
+        uint32_t *err32()
+        {
+            return reinterpret_cast<uint32_t *>(error);
+        }
+
+        etl::span<uint32_t> error32Span() const
+        {
+            return etl::span<uint32_t>(reinterpret_cast<uint32_t *>(error), (lengthBytes + 3) / 4);
+        }
+
+        etl::span<uint8_t> errorSpan() const
+        {
+            return etl::span<uint8_t>(error, lengthBytes);
+        }
+
+        virtual void releasePool(GATAS::GlobalPoolConfiguration &pool) override
+        {
+            RadioRxMsgBase::releasePool(pool);
+            if (error)
+            {
+                GATAS_WARN("Release pool RadioRxManchesterMsg");
+                pool.release(static_cast<uint8_t *>(error));
+                error = nullptr;
+            }
+        }
     };
 
     /**
@@ -214,30 +210,34 @@ namespace GATAS
      */
     struct RadioTxPositionRequestMsg : public etl::message<2>
     {
-        const Radio::RadioParameters radioParameters;
+        const GATAS::RadioParameters radioParameters;
         uint8_t radioNo;
-        RadioTxPositionRequestMsg(const Radio::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
-    };
-
-    /**
-     * @brief RAW data frame from a radio
-     * 
-     */
-    struct DataFrameMsg : public etl::message<17>
-    {
-        const DataFrame& dataFrame; // Using a reference to avoid copying the data frame, Seems like about 4ms extra time is needed for the databus to process this
-        DataFrameMsg(const DataFrame &dataFrame_) : dataFrame(dataFrame_) {};
+        RadioTxPositionRequestMsg(const GATAS::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
     };
 
     /**
      * @brief Message send to transmit a frame over the radio
      *
      */
-    struct RadioTxFrameMsg : public etl::message<18>
+    struct RadioTxFrameMsg : public PoolRelease, public etl::message<202>
     {
-        const Radio::TxPacket txPacket;
+        GATAS::RadioParameters radioParameters;
+        mutable const uint8_t *frame; // We use a mutable se we can change the pointer to a nullptr aftere clearing it
+        size_t length;
         uint8_t radioNo;
-        RadioTxFrameMsg(const Radio::TxPacket &txPacket_, uint8_t radioNo_) : txPacket(txPacket_), radioNo(radioNo_) {}
+
+        RadioTxFrameMsg(const GATAS::RadioParameters &radioParameters_, const uint8_t *frame_, size_t length_, uint8_t radioNo_) : radioParameters(radioParameters_), frame(frame_), length(length_), radioNo(radioNo_) {}
+
+        virtual void releasePool(GATAS::GlobalPoolConfiguration &pool) override
+        {
+            if (frame)
+            {
+                GATAS_WARN("Release pool RadioTxFrameMsg");
+                (void)pool;
+                pool.release(const_cast<uint8_t *>(frame));
+                frame = nullptr;
+            }
+        }
     };
 
     /**
@@ -246,9 +246,9 @@ namespace GATAS
      */
     struct RadioControlMsg : public etl::message<28>
     {
-        const Radio::RadioParameters radioParameters;
+        const GATAS::RadioParameters radioParameters;
         uint8_t radioNo;
-        RadioControlMsg(const Radio::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
+        RadioControlMsg(const GATAS::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
     };
 
     struct ConfigUpdatedMsg : public etl::message<20> /* Don't change from 20!!!! They are used in MessageRouter*/
@@ -282,7 +282,7 @@ namespace GATAS
      * NOTE: Don't change message ID!
      */
     struct WifiConnectionStateMsg : public etl::message<24>
-    {        
+    {
         GATAS::WifiMode wifiMode;
         uint32_t gatasIp;
         uint32_t gateWay;
@@ -299,7 +299,7 @@ namespace GATAS
         AdapativeRadiusMsg(uint32_t radius_) : radius(radius_) {};
     };
 
-        /**
+    /**
      * Idle Message send at intervals that allows to due small tasks without creating a new task
      * Modules using this message should never block a task
      */

@@ -117,7 +117,7 @@ public:
         writer.write_unchecked(static_cast<int32_t>(ownship.lat * 1E7 + 0.5f), 32U);
         writer.write_unchecked(static_cast<int32_t>(ownship.lon * 1E7 + 0.5f), 32U);
         writer.write_unchecked(ownship.ellipseHeight + 100, 16U); // Aircraft message needs to be in ellipsoid
-        writer.write_unchecked(static_cast<uint8_t>(ownship.course / (360.f / 255.f)), 8U);
+        writer.write_unchecked(static_cast<uint8_t>(ownship.track / (360.f / 255.f)), 8U);
         writer.write_unchecked(static_cast<int8_t>(ownship.hTurnRate * 5.0f), 8U);
         writer.write_unchecked(static_cast<uint16_t>(ownship.groundSpeed * 10.f), 16U);
         writer.write_unchecked(static_cast<int16_t>(ownship.verticalSpeed * 100.f), 16U);

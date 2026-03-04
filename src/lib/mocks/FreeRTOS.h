@@ -39,3 +39,4 @@ typedef enum
 
 #define taskENTER_CRITICAL_FROM_ISR() (0)
 #define taskEXIT_CRITICAL_FROM_ISR(saved) ((void)(saved))
+#define portMAX_DELAY              ( TickType_t ) 0xffffffffUL

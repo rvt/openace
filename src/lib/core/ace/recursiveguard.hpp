@@ -31,7 +31,7 @@ public:
         if (_count < C) {
             return true;
         } else {
-            GATAS_LOG(msg_.data());
+            GATAS_INFO("%s", msg_.data());
             return false;
         };
     }

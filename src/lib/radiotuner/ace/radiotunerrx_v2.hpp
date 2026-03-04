@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 #include "ace/constants.hpp"
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 #include "ace/coreutils.hpp"
@@ -37,6 +36,8 @@ public:
     static constexpr uint8_t MAX_EXTRA_SLOTS = 2; // Additional slots allowed for prioritisation
 
 private:
+    using TimeSlotVector = etl::vector<const CountryRegulations::ProtocolRxTimeSlot *, 3 + MAX_EXTRA_SLOTS>;
+
     // Each radio will get one task Context to handle
     struct RadioProtocolCtx
     {
@@ -45,24 +46,13 @@ private:
             uint32_t taskActivity = 0;
         } statistics;
 
-        using OnAirTimings = etl::vector<const CountryRegulations::ProtocolTimeSlot *, (static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS) + MAX_EXTRA_SLOTS)>;
-
-        OnAirTimings protocolTimings;
-        uint8_t protocolTimingIdx = 0; // Index of the current timing in the timings vector
-
-        // Pointers needed to control the radio
         RadioTunerRx *controller;
         uint8_t radioNo;
-
-        etl::pair<uint8_t, CountryRegulations::Channel> lastConfig = etl::make_pair(0, CountryRegulations::Channel::NOOP); // Last configured channel and protocol ID
-
-        // The DataSources this radio will handle
-        etl::vector<GATAS::DataSource, GATAS_MAX_SOURCE_PER_RADIO> dataSources;
-
-        SlotReceive slotReceive = {};
+        TimeSlotVector protocolTimings = {};
+        etl::circular_iterator<TimeSlotVector::const_iterator> protocolIterator;
 
         // Constructor
-        RadioProtocolCtx(RadioTunerRx *controller_, uint8_t radioNo_) : controller(controller_), radioNo(radioNo_)
+        RadioProtocolCtx(RadioTunerRx *controller_, uint8_t radioNo_) : controller(controller_), radioNo(radioNo_), protocolTimings()
         {
         }
 
@@ -76,7 +66,7 @@ private:
             stream << ",\"radio_" << radioNo << "\":[";
             for (auto it = protocolTimings.begin(); it != protocolTimings.end(); ++it)
             {
-                stream << "\"" << GATAS::toString((*it)->radioConfig.dataSource) << "\"";
+                stream << "\"" << GATAS::toString((*it)->radioConfig.dataSource()) << "\"";
                 if (etl::next(it) != protocolTimings.end())
                 {
                     stream << ",";
@@ -85,58 +75,20 @@ private:
             stream << "]";
             stream << ",\"taskActivityRadio_" << radioNo << "\":" << statistics.taskActivity;
         }
-
-        /**
-         * @brief Add all datasources to the timing array, can only be called from the task or when blocked
-         * TODO: handle prioritization of datasources based on slotReceive, for now just everything is added once
-         */
-        void prioritizeDatasources()
-        {
-            CountryRegulations::Zone zone = controller->currentZone.value();
-            protocolTimings.clear();
-
-            auto extraSlotCnt = 0;
-            for (const auto &ds : dataSources)
-            {
-                const auto &slot = CountryRegulations::getSlot(zone, ds);
-                // Don't add datasources that are NONE because do don't transmit anything nor receive
-                if (slot.zone == CountryRegulations::Zone::ZONE0)
-                {
-                    continue;
-                }
-                // Add the slot to the dataSourceTimeSlots
-                if (protocolTimings.full())
-                {
-                    GATAS_LOG("RadioTunerRx: Cannot add more slots for radio %d, max slots reached", radioNo);
-                    continue;
-                }
-                protocolTimings.push_back(&slot);
-
-                // When specific data is received, add it to extra receive slots
-                // If we have just oen slot of just one protocol, it does not really matter if we add it or not
-                if (controller->slotReceive[static_cast<uint8_t>(ds)] > 0 && extraSlotCnt < MAX_EXTRA_SLOTS)
-                {
-                    protocolTimings.push_back(&slot);
-                    extraSlotCnt += 1;
-                }
-                controller->slotReceive[static_cast<uint8_t>(ds)] = 0;
-            }
-
-            protocolTimingIdx = 0;
-        }
     };
 
     // Keep track if there is any traffic on the datasources
     SlotReceive slotReceive;
 
     // Keep track of one task per each radio
-    etl::vector<RadioProtocolCtx, GATAS_MAX_RADIOS> radioCtxList;
+    etl::vector<RadioProtocolCtx, GATAS_MAX_RADIOS> radioCtxList={};
+    // All datasources that needs to be received
+    etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> dataSources={};
 
     enum TaskState : uint32_t
     {
-        EXIT = 1 << 0,
-        BLOCK = 1 << 2,    // Block all processing
-        UNBLOCK = 1 << 3,  // UnBlock all processing
+        BLOCK = 1 << 2,   // Block all processing
+        UNBLOCK = 1 << 3, // UnBlock all processing
     };
 
 private:
@@ -146,7 +98,6 @@ private:
     Property<CountryRegulations::Zone> currentZone;
     EventSync eventSync;
     TaskHandle_t taskHandle;
-    uint8_t numRadios = 0;
 
 private:
     static void radioTuneTask(void *arg);
@@ -164,9 +115,9 @@ public:
     static constexpr const etl::string_view NAME = "RadioTunerRx";
 
     RadioTunerRx(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                         currentZone(CountryRegulations::Zone::ZONE0)
+                                                                        currentZone(CountryRegulations::Zone::ZONE0)
     {
-        (void)config;
+        dataSources = config.gaTasConfig().protocols;
     }
     virtual ~RadioTunerRx() = default;
 
@@ -178,7 +129,14 @@ private:
     /**
      * @brief Assign the datasources to each radio. THis should only be used and called after startup, or when aircraft is changed
      *
-     * @param datasources
      */
-    void assignDataSources(const etl::ivector<GATAS::DataSource> &datasources);
+    void assignDataSources();
+
+    /**
+     * Return true igf for this protocol data was received;
+     */
+    bool hasReceived(GATAS::DataSource ds);
+
+    bool blockTasks();
+    void releaseTasks();
 };

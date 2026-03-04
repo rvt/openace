@@ -7,7 +7,6 @@ set(MODULE_SOURCE_FILES
         ace/src/radiotunerrx_v2.cpp
         ace/src/radiotunertx_v2.cpp
         ace/src/countryregulations_v2.cpp
-        ace/src/rxdataframequeue.cpp
 )
 
 set(PICO_EXTRA_LIBS

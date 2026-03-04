@@ -14,7 +14,6 @@
 
 /* GaTas */
 #include "ace/constants.hpp"
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 #include "ace/cobsstreamhandler.hpp"
@@ -67,8 +66,10 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     CobsStreamHandler cobsStreamHandler;
 
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddresses;
-    GATAS::Config::IpPort gatasServer = {IPADDR_NONE, 0};
+    ip_addr_t gatasServerIPAddress=IPADDR4_INIT(IPADDR_NONE);
+    GATAS::ConfigString gatasServerStr;
     GATAS::OwnshipPositionInfo ownshipPosition;
+
 private:
     virtual GATAS::PostConstruct postConstruct() override;
 
@@ -88,11 +89,14 @@ private:
 
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
-    static void requestTimerCallback(TimerHandle_t xTimer);
+    static void requestTimerCallbackTrampoline(TimerHandle_t xTimer);
+    void requestTimerCallback(TimerHandle_t xTimer);
     static void receiveUdpMessage(void *arg, struct udp_pcb *pcb,
                            struct pbuf *p, const ip_addr_t *addr, u16_t port);
 
     void getConfig(const Configuration &config);
+    bool resolveIP();
+    static void resolveGatasServerCallback(const char *name, const ip_addr_t *ipaddr, void *arg);
 public:
     static constexpr const char *NAME = "GatasConnect";
     GatasConnect(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME),

@@ -5,7 +5,7 @@
 
 #include "pico/binary_info.h"
 
-#include "ace/utils.hpp"
+#include "ace/picopio.hpp"
 
 etl::array<PioSerial*, 4> PioSerial::interruptHandlers;
 
@@ -39,7 +39,7 @@ GATAS::PostConstruct PioSerial::postConstruct()
         return GATAS::PostConstruct::HARDWARE_ERROR;
     }
 
-    GATAS_ASSERT(PIO0_IRQ_1 == PIO0_IRQ_0 + 1 && PIO1_IRQ_1 == PIO1_IRQ_0 + 1, "");
+    GATAS_ASSERT(PIO0_IRQ_1 == PIO0_IRQ_0 + 1 && PIO1_IRQ_1 == PIO1_IRQ_0 + 1, "Incorrect IRQ definitions");
     uint8_t pio_irq = (rxPio == pio0) ? PIO0_IRQ_0 : PIO1_IRQ_0; // pio_irq will become 7,8,9,10
     if (irq_get_exclusive_handler(pio_irq))
     {
@@ -122,14 +122,14 @@ void __isr __time_critical_func(PioSerial::pio_irq_func)(uint8_t irqHandlerIndex
 {
     if (irqHandlerIndex >= interruptHandlers.size())
     {
-        GATAS_LOG("irqHandlerIndex >= numEntries");
+        GATAS_WARN("irqHandlerIndex >= numEntries");
         return;
     }
 
     PioSerial *pioSerial = interruptHandlers[irqHandlerIndex];
     if (pioSerial == nullptr)
     {
-        GATAS_LOG("pioSerial == nullptr");
+        GATAS_WARN("pioSerial == nullptr");
         return;
     }
 
@@ -181,7 +181,7 @@ bool PioSerial::enableTx(uint32_t givenBaudRate)
     {
         if (!add_pio_program(&uart_tx_program, &txPio, &txSmIndx, &txOffset))
         {
-            GATAS_LOG("failed to setup pio for tx");
+            GATAS_WARN("failed to setup pio for tx");
             return false;
         }
     }

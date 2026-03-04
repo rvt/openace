@@ -98,7 +98,7 @@ GDL90::EMITTER Gdl90Service::aircraftTypeToEmitter(GATAS::AircraftCategory categ
     case GATAS::AircraftCategory::HANG_GLIDER:
         return GDL90::EMITTER::GLIDER_SAILPLANE;
     case GATAS::AircraftCategory::PARA_GLIDER:
-        return GDL90::EMITTER::GLIDER_SAILPLANE;
+        return GDL90::EMITTER::ULTRA_LIGHT;
     case GATAS::AircraftCategory::DROP_PLANE:
         return GDL90::EMITTER::LIGHT;
     case GATAS::AircraftCategory::MILITARY:
@@ -182,7 +182,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
     gdl90.altitude_encode(altitude, pos.heightMsl() * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
-    gdl90.track_hdg_encode(track_hdg, pos.course);
+    gdl90.track_hdg_encode(track_hdg, pos.track);
     GDL90::RawBytes unpacked;
 
     // TODO: set UERE based on GPS status, for example when we have SBAS set a lower uere to like 2??

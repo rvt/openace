@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <math.h>
+#include <cmath>
 
 
 // Create abstract class for GeoPositio

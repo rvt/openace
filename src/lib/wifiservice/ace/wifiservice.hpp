@@ -7,7 +7,6 @@
 #include "etl/set.h"
 #include "etl/list.h"
 
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 

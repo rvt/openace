@@ -3,6 +3,7 @@
 #include "pico/time.h"
 #include "etl/string_view.h"
 #include "coreutils.hpp"
+#include "debug.hpp"
 #include <inttypes.h>
 
 #if GATAS_DEBUG == 1
@@ -40,7 +41,7 @@ struct Measure
             const char *file = __FILE__,
             uint32_t line = __LINE__,
             uint32_t alertTimeoutUs = 1000,
-            uint32_t id = 0xFFFFFFFF)
+            uint32_t id = UINT32_MAX)
         : start_(CoreUtils::timeUs32Raw()),
           name_(name),
           alertTimeout_(alertTimeoutUs),
@@ -55,28 +56,15 @@ struct Measure
         uint32_t duration = CoreUtils::timeUs32Raw() - start_;
         if (duration > alertTimeout_)
         {
-            if (id_ == 0xFFFFFFFF)
+            if (id_ == UINT32_MAX)
             {
-                printf("(%s:%" PRIu32 ") %s %" PRIu32 "us\n",
-                       file_, line_, name_.begin(), duration);
+                printf("\033[01;30m (%s:%" PRIu32 ") %s %" PRIu32 "us\n", file_, line_, name_.begin(), duration);
             }
             else
             {
-                printf("(%s:%" PRIu32 ") %s%" PRIu32 " %" PRIu32 "us\n",
-                       file_, line_, name_.begin(), id_, duration);
+                printf("\033[01;30m (%s:%" PRIu32 ") %s%" PRIu32 " %" PRIu32 "us\n", file_, line_, name_.begin(), id_, duration);
             }
         }
-    }
-
-    static constexpr const char *basename(const char *path)
-    {
-        const char *last = path;
-        for (const char *p = path; *p; ++p)
-        {
-            if (*p == '/' || *p == '\\')
-                last = p + 1;
-        }
-        return last;
     }
 
     Measure(const Measure &) = delete;

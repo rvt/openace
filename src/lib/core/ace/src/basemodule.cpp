@@ -51,8 +51,7 @@ BaseModule::BaseModule(etl::imessage_bus &bus_, const etl::string_view name_) : 
     {
         if (BaseModule::moduleLoaderMap.full())
         {
-            printf("WARNING: More than %d modules registered\n", MAX_MODULES);
-            panic("Too many modules");
+            GATAS_WARN("More than %d modules registered\n", MAX_MODULES);
         }
         else
         {
@@ -63,7 +62,8 @@ BaseModule::BaseModule(etl::imessage_bus &bus_, const etl::string_view name_) : 
 
 BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_view requesting)
 {
-    // printf("Looking %s depends on %s\n", that.name(), requesting);
+    (void)that;
+    // GATAS_INFO("Looking %s depends on %s\n", that.name(), requesting);
     // Look for it's direct name ex:AceSpi
     if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::baseMutex))
     {
@@ -79,12 +79,12 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
         // Look for it's provider name eg: _SPI
         for (auto it = BaseModule::moduleLoaderMap.cbegin(); it != BaseModule::moduleLoaderMap.cend(); it++)
         {
-            if (strcmp(it->second.module->name().cbegin(), requesting.cbegin()) == 0)
+            if (it->second.module->name() == requesting)
             {
                 return it->second.module;
             }
         }
-        printf("Module %s requests dependecy on %s but it is not registered ", that.name().cbegin(), requesting.cbegin());
+        GATAS_WARN("Module %s requests dependecy on %s but it is not registered ", that.name().cbegin(), requesting.cbegin());
     }
 
     return nullptr;
@@ -119,14 +119,14 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, TaskHandle_t
 {
     if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::baseMutex))
     {
-        if (pinInterruptHandlers.full())
-        {
-            panic("pinInterruptHandlers is full");
-        }
+        GATAS_ASSERT(!pinInterruptHandlers.full(), "pinInterruptHandlers is full");
         // TODO: https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#group_hardware_gpio_1ga6165f07f4b619dd08ea6dc97d069e78a
         // Might need to change this to gpio_add_raw_irq_handler
-        gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
-        pinInterruptHandlers[pin] = {events, handler, notificationValue};
+        if (!pinInterruptHandlers.full())
+        {
+            gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
+            pinInterruptHandlers[pin] = {events, handler, notificationValue};
+        }
     }
 }
 
@@ -137,13 +137,13 @@ void BaseModule::registerPinInterrupt(uint8_t pin, uint32_t events, pinIntrCallb
 {
     if (auto guard = SemaphoreGuard(portMAX_DELAY, BaseModule::baseMutex))
     {
-        if (pinInterruptHandlers.full())
-        {
-            panic("pinInterruptHandlers is full");
-        }
+        GATAS_ASSERT(!pinInterruptHandlers.full(), "pinInterruptHandlers is full");
         printf("Registering pin %d interrupt", pin);
-        gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
-        pinInterruptHandlers[pin] = {events, callback};
+        if (!pinInterruptHandlers.full())
+        {
+            gpio_set_irq_enabled_with_callback(pin, events, true, gpioInterrupt);
+            pinInterruptHandlers[pin] = {events, callback};
+        }
     }
 }
 
@@ -163,7 +163,6 @@ void BaseModule::enablePinInterrupt(uint8_t pin, uint32_t notificationValue)
     pinInterruptHandlers[pin].notificationValue = notificationValue;
     pinInterruptHandlers[pin].enabled = true;
 }
-
 
 /**
  * Unregister a pin interrupt handler.

@@ -96,16 +96,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     -ffast-math
     -ffunction-sections
     -fdata-sections
+    -fno-exceptions
     )
 else()
   add_compile_options(
-    -g 
+    -g
     -O0
     -Wall
     -fsingle-precision-constant
     -ffast-math
     -ffunction-sections
     -fdata-sections
+    -fno-exceptions
     )
     endif()
 
@@ -142,7 +144,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor vendorLib)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../lib globalLib)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR} 
+  ${CMAKE_CURRENT_LIST_DIR}
   ${CMAKE_CURRENT_LIST_DIR}/../lib/include)
 
 
@@ -165,6 +167,7 @@ target_link_libraries(
           minmea
           etl::etl
           fanet::fanet
+          adsl::adsl
           ArduinoJson
           # /lib
           core
@@ -182,7 +185,7 @@ target_link_libraries(
           acespi
           bmp280
           sx1262
-          adsl
+          adslace
           flarmgatas
           fanetace
           ogn

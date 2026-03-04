@@ -1,0 +1,123 @@
+#pragma once
+
+#include <stdint.h>
+#include "etl/memory.h"
+
+
+// http://stackoverflow.com/questions/109023/how-to-count-the-number-of-set-bits-in-a-32-bit-integer
+inline uint8_t Count1s(uint8_t Byte)
+{
+    return __builtin_popcount(Byte);
+}
+
+inline uint8_t Count1s(uint16_t Word)
+{
+    return __builtin_popcount(Word);
+}
+
+inline uint8_t Count1s(uint32_t LongWord)
+{
+    return __builtin_popcountl(LongWord);
+}
+
+inline uint8_t Count1s(int32_t LongWord)
+{
+    return __builtin_popcountl(LongWord);
+}
+
+inline uint8_t Count1s(uint64_t LongWord)
+{
+    return __builtin_popcountll(LongWord);
+}
+
+inline uint8_t Count1s(int64_t LongWord)
+{
+    return Count1s((uint64_t)LongWord);
+}
+
+int Count1s(const uint8_t *Byte, int Bytes);
+
+
+/**
+ * Shift left a XX number of bits in the Data array
+ */
+template <bool strict = false>
+void bitShift(uint8_t Data[], uint8_t Bytes, uint8_t Shift)
+{
+  if (Shift == 0)
+  {
+    return;
+  }
+
+  uint16_t totalBits = (uint16_t)Bytes * 8;
+  if (Shift >= totalBits)
+  {
+    if (strict)
+    {
+      etl::memory_set(static_cast<volatile char *>(static_cast<void *>(Data)), Bytes, 0);
+    }
+    return;
+  }
+
+  uint8_t ByteOfs = Shift >> 3;
+  uint8_t BitShift = Shift & 7;
+  uint8_t remaining = Bytes - ByteOfs;
+
+  if (BitShift == 0)
+  {
+    etl::mem_move(Data + ByteOfs, Data + ByteOfs + remaining, Data);
+    if (strict)
+    {
+      etl::memory_set(static_cast<volatile char *>(static_cast<void *>(Data + remaining)), Bytes - remaining, 0);
+    }
+    return;
+  }
+
+  uint8_t CmplShift = 8 - BitShift;
+  for (uint8_t i = 0; i < remaining; i++)
+  {
+    uint8_t hi = Data[i + ByteOfs] << BitShift;
+    uint8_t lo = 0;
+    if (i + ByteOfs + 1 < Bytes)
+    {
+      lo = Data[i + ByteOfs + 1] >> CmplShift;
+    }
+    Data[i] = hi | lo;
+  }
+  if (strict)
+  {
+    etl::memory_set(static_cast<volatile char *>(static_cast<void *>(Data + remaining)), Bytes - remaining, 0);
+  }
+  return;
+}
+
+
+template <size_t WordCount>
+uint8_t diffBits(const uint32_t Data[],
+                 const uint32_t Ref[],
+                 const uint32_t Mask[])
+{
+    uint8_t Count = 0;
+
+    for (uint32_t i = 0; i < WordCount; ++i)
+    {
+        uint32_t x = (Data[i] ^ Ref[i]) & Mask[i];
+        Count += Count1s(x);
+    }
+
+    return Count;
+}
+
+template <size_t WordCount>
+uint8_t diffBits(const uint32_t Data[], const uint32_t Ref[])
+{
+    uint8_t Count = 0;
+
+    for (uint32_t Idx = 0; Idx < WordCount; Idx++)
+    {
+        uint32_t Xor = Data[Idx] ^ Ref[Idx];
+        Count += Count1s(Xor);
+    }
+
+    return Count;
+}

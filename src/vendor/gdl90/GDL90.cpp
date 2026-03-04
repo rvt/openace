@@ -30,7 +30,7 @@ bool GDL90::self_test( void )
 
     if ( !unpack( packed, unpacked2 ) ) return error();
     if ( unpacked2.size() != unpacked.size() ) return error();
-    for( size_t i = 0; i < unpacked2.size(); i++ ) 
+    for( size_t i = 0; i < unpacked2.size(); i++ )
     {
         if ( unpacked2[i] != unpacked[i] ) return error();
     }
@@ -42,7 +42,7 @@ bool GDL90::self_test( void )
     uint32_t msg_count_basic_and_long = 1020;
     if ( !heartbeat_encode( unpacked, status, timestamp, msg_count_uplink, msg_count_basic_and_long ) ) return error();
     if ( !pack( packed, unpacked ) ) return error();
-    
+
     if ( !unpack( packed, unpacked ) ) return error();
     if ( !heartbeat_decode( unpacked, status, timestamp, msg_count_uplink, msg_count_basic_and_long ) ) return error();
     if ( status != (HEARTBEAT_STATUS_ALLOWED_MASK & 0xaa55) ) return error();
@@ -81,7 +81,7 @@ bool GDL90::self_test( void )
     if ( !time_of_reception_frac_decode( time_of_reception_frac, time_of_reception_frac_f ) ) return error();
     if ( std::abs( time_of_reception_frac_f - 0.99999992 ) > 0x00000001 ) return error();
     if ( payload.size() != 432 ) return error();
-    for( uint32_t i = 0; i < payload.size(); i++ ) 
+    for( uint32_t i = 0; i < payload.size(); i++ )
     {
         if ( payload[i] != (i & 0xff) ) return error();
     }
@@ -103,7 +103,7 @@ bool GDL90::self_test( void )
     if ( !time_of_reception_frac_decode( time_of_reception_frac, time_of_reception_frac_f ) ) return error();
     if ( std::abs( time_of_reception_frac_f - 0.99999992 ) > 0x00000001 ) return error();
     if ( payload.size() != 18 ) return error();
-    for( uint32_t i = 0; i < payload.size(); i++ ) 
+    for( uint32_t i = 0; i < payload.size(); i++ )
     {
         if ( payload[i] != (i & 0xff) ) return error();
     }
@@ -125,7 +125,7 @@ bool GDL90::self_test( void )
     if ( !time_of_reception_frac_decode( time_of_reception_frac, time_of_reception_frac_f ) ) return error();
     if ( std::abs( time_of_reception_frac_f - 0.99999992 ) > 0x00000001 ) return error();
     if ( payload.size() != 34 ) return error();
-    for( uint32_t i = 0; i < payload.size(); i++ ) 
+    for( uint32_t i = 0; i < payload.size(); i++ )
     {
         if ( payload[i] != (i & 0xff) ) return error();
     }
@@ -136,7 +136,7 @@ bool GDL90::self_test( void )
     ADDR_TYPE      addr_type = ADDR_TYPE::__LAST;
     uint32_t       participant_address = 0xffaa55;
     float         latitude_f = -179.2255;
-    float         longitude_f = +179.4357; 
+    float         longitude_f = +179.4357;
     float         altitude_f = 101349;
     uint32_t       misc = MISC_ALLOWED_MASK;
     NIC            nic = NIC::__LAST;
@@ -159,14 +159,14 @@ bool GDL90::self_test( void )
     if ( !horizontal_velocity_encode( horiz_velocity, horiz_velocity_f ) ) return error();
     if ( !vertical_velocity_encode( vert_velocity, vert_velocity_f ) ) return error();
     if ( !track_hdg_encode( track_hdg, track_hdg_f ) ) return error();
-    if ( !ownership_or_traffic_report_encode( unpacked, is_ownership, alert_status, addr_type, participant_address, 
-                                              latitude, longitude, altitude, misc, nic, nacp, horiz_velocity, vert_velocity, track_hdg, 
+    if ( !ownership_or_traffic_report_encode( unpacked, is_ownership, alert_status, addr_type, participant_address,
+                                              latitude, longitude, altitude, misc, nic, nacp, horiz_velocity, vert_velocity, track_hdg,
                                               emitter, call_sign, emergency_prio_code ) ) return error();
     if ( !pack( packed, unpacked ) ) return error();
 
     if ( !unpack( packed, unpacked ) ) return error();
-    if ( !ownership_or_traffic_report_decode( unpacked, is_ownership, alert_status, addr_type, participant_address, 
-                                              latitude, longitude, altitude, misc, nic, nacp, horiz_velocity, vert_velocity, track_hdg, 
+    if ( !ownership_or_traffic_report_decode( unpacked, is_ownership, alert_status, addr_type, participant_address,
+                                              latitude, longitude, altitude, misc, nic, nacp, horiz_velocity, vert_velocity, track_hdg,
                                               emitter, call_sign, emergency_prio_code ) ) return error();
     if ( !latlon_decode( latitude, latitude_f ) ) return error();
     if ( !latlon_decode( longitude, longitude_f ) ) return error();
@@ -215,8 +215,8 @@ bool GDL90::self_test( void )
     if ( !horizontal_velocity_encode( horiz_velocity, horiz_velocity_f ) ) return error();
     if ( !vertical_velocity_encode( vert_velocity, vert_velocity_f ) ) return error();
     if ( !track_hdg_encode( track_hdg, track_hdg_f ) ) return error();
-    if ( !ownership_or_traffic_report_encode( unpacked, is_ownership, alert_status, addr_type, participant_address, 
-                                              latitude, longitude, altitude, misc, nic, nacp, horiz_velocity, vert_velocity, track_hdg, 
+    if ( !ownership_or_traffic_report_encode( unpacked, is_ownership, alert_status, addr_type, participant_address,
+                                              latitude, longitude, altitude, misc, nic, nacp, horiz_velocity, vert_velocity, track_hdg,
                                               emitter, call_sign, emergency_prio_code ) ) return error();
     if ( unpacked.size() != unpacked_expected.size() ) return error();
     for( size_t i = 0; i < unpacked.size(); i++ )
@@ -444,7 +444,7 @@ bool GDL90::heartbeat_encode( etl::ivector<uint8_t>& unpacked, uint32_t  status,
 bool GDL90::heartbeat_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& status, uint32_t& timestamp, uint32_t& msg_count_uplink, uint32_t& msg_count_basic_and_long )
 {
     if ( unpacked.size() != 7 ) return error();
-    size_t i = 0; 
+    size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::HEARTBEAT) ) return error();
     status = unpacked[i++] << 8;
     status |= unpacked[i++] << 0;
@@ -473,7 +473,7 @@ bool GDL90::initialization_encode( etl::ivector<uint8_t>& unpacked, uint32_t  co
 bool GDL90::initialization_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& config )
 {
     if ( unpacked.size() != 3 ) return error();
-    size_t i = 0; 
+    size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::INITIALIZATION) ) return error();
     config = unpacked[i++] << 8;
     config |= unpacked[i++] << 0;
@@ -481,11 +481,11 @@ bool GDL90::initialization_decode( const etl::ivector<uint8_t>& unpacked, uint32
     return true;
 }
 
-bool GDL90::time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac ) 
+bool GDL90::time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac )
 {
     if ( std::isnan( frac ) ) {
         frac_encoded = TIME_OF_RECEPTION_FRAC_ENCODED_INVALID;
-    } else { 
+    } else {
         if ( frac < 0.0 || frac >= 1.0 ) return error();
         frac_encoded = frac * 1000000000.0/80.0;
     }
@@ -523,7 +523,7 @@ bool GDL90::uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t 
 bool GDL90::uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
 {
     if ( unpacked.size() != 436 ) return error();
-    size_t i = 0; 
+    size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::UPLINK_DATA) ) return error();
     time_of_reception_frac  = unpacked[i++] << 16;
     time_of_reception_frac |= unpacked[i++] << 8;
@@ -555,7 +555,7 @@ bool GDL90::basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint
 bool GDL90::basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
 {
     if ( unpacked.size() != 22 ) return error();
-    size_t i = 0; 
+    size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::BASIC_UAT_REPORT) ) return error();
     time_of_reception_frac  = unpacked[i++] << 16;
     time_of_reception_frac |= unpacked[i++] << 8;
@@ -587,7 +587,7 @@ bool GDL90::long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint3
 bool GDL90::long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
 {
     if ( unpacked.size() != 38 ) return error();
-    size_t i = 0; 
+    size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::LONG_UAT_REPORT) ) return error();
     time_of_reception_frac  = unpacked[i++] << 16;
     time_of_reception_frac |= unpacked[i++] << 8;
@@ -711,7 +711,7 @@ bool GDL90::is_valid_call_sign( const etl::string_view call_sign )
 {
     if ( call_sign.length() > 8 ) return error();
     // bool have_space = false;
-    for( uint32_t i = 0; i < call_sign.length(); i++ ) 
+    for( uint32_t i = 0; i < call_sign.length(); i++ )
     {
         char ch = call_sign[i];
         // SW Mod D allows for space character
@@ -727,9 +727,9 @@ bool GDL90::is_valid_call_sign( const etl::string_view call_sign )
     return true;
 }
 
-bool GDL90::ownership_or_traffic_report_encode( etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS alert_status, ADDR_TYPE addr_type, uint32_t participant_address, 
-                                                        uint32_t latitude, uint32_t longitude, uint32_t altitude, uint32_t misc, 
-                                                        NIC nic, NACP nacp, uint32_t horiz_velocity, uint32_t vert_velocity, uint32_t track_hdg, 
+bool GDL90::ownership_or_traffic_report_encode( etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS alert_status, ADDR_TYPE addr_type, uint32_t participant_address,
+                                                        uint32_t latitude, uint32_t longitude, uint32_t altitude, uint32_t misc,
+                                                        NIC nic, NACP nacp, uint32_t horiz_velocity, uint32_t vert_velocity, uint32_t track_hdg,
                                                         EMITTER emitter, const etl::string_view call_sign, EMERGENCY_PRIO emergency_prio_code )
 {
     unpacked.clear();
@@ -776,9 +776,9 @@ bool GDL90::ownership_or_traffic_report_encode( etl::ivector<uint8_t>& unpacked,
     return true;
 }
 
-bool GDL90::ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS& alert_status, ADDR_TYPE& addr_type, uint32_t& participant_address, 
-                                                                                 uint32_t& latitude, uint32_t& longitude, uint32_t& altitude, uint32_t& misc, 
-                                                                                 NIC& nic, NACP& nacp, uint32_t& horiz_velocity, uint32_t& vert_velocity, uint32_t& track_hdg, 
+bool GDL90::ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS& alert_status, ADDR_TYPE& addr_type, uint32_t& participant_address,
+                                                                                 uint32_t& latitude, uint32_t& longitude, uint32_t& altitude, uint32_t& misc,
+                                                                                 NIC& nic, NACP& nacp, uint32_t& horiz_velocity, uint32_t& vert_velocity, uint32_t& track_hdg,
                                                                                  EMITTER& emitter,  etl::istring & call_sign, EMERGENCY_PRIO& emergency_prio_code )
 {
     if ( unpacked.size() != 28 ) return error();
@@ -859,7 +859,7 @@ bool GDL90::height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, 
 bool GDL90::height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& height )
 {
     if ( unpacked.size() != 3 ) return error();
-    size_t i = 0; 
+    size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::HEIGHT_ABOVE_TERRAIN) ) return error();
     height = unpacked[i++] << 8;
     height |= unpacked[i++];
@@ -868,7 +868,7 @@ bool GDL90::height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, 
 
 bool GDL90::geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude )
 {
-    if ( geo_altitude < (-5.0*32768.0) || geo_altitude > (5.0*32767.0) ) return error(); 
+    if ( geo_altitude < (-5.0*32768.0) || geo_altitude > (5.0*32767.0) ) return error();
     geo_altitude_encoded = geo_altitude / 5.0;
     geo_altitude_encoded &= 0xffff;
     return true;
@@ -891,7 +891,7 @@ bool GDL90::vertical_figure_of_merit_encode( uint32_t& vertical_figure_of_merit_
             vertical_figure_of_merit_encoded = VERTICAL_FIGURE_OF_MERIT_GE_32766;
         } else {
             vertical_figure_of_merit_encoded = vertical_figure_of_merit;
-        }           
+        }
     }
     return true;
 }
@@ -953,12 +953,12 @@ bool GDL90::foreflight_id_encode(       etl::ivector<uint8_t>& unpacked, uint64_
     }
     for( uint32_t c = 0; c < 8; c++ )
     {
-        char ch = (c < device_name.length()) ? device_name[c] : ' '; 
+        char ch = (c < device_name.length()) ? device_name[c] : ' ';
         unpacked.push_back( ch );
     }
     for( uint32_t c = 0; c < 16; c++ )
     {
-        char ch = (c < device_long_name.length()) ? device_long_name[c] : ' '; 
+        char ch = (c < device_long_name.length()) ? device_long_name[c] : ' ';
         unpacked.push_back( ch );
     }
     for( uint32_t b = 0; b < 4; b++ )
@@ -1100,5 +1100,127 @@ bool GDL90::foreflight_ahrs_decode( const etl::ivector<uint8_t>& unpacked, uint3
     ias |= unpacked[i++] << 0;
     tas  = unpacked[i++] << 8;
     tas |= unpacked[i++] << 0;
+    return true;
+}
+
+
+bool GDL90::sx_heartbeat_encode(etl::ivector<uint8_t> &unpacked,
+                                bool gpsValid,
+                                uint8_t gpsFixQuality,   // 0,1,2
+                                bool esEnabled,
+                                bool cpuTempValid,
+                                uint8_t numRadios,
+                                uint8_t satLock, uint8_t satConn,
+                                uint16_t num978, uint16_t num1090,
+                                uint16_t rate978, uint16_t rate1090,
+                                float cpuTemp,
+                                const etl::span<etl::pair<float, float>> &towers)
+{
+
+    unpacked.clear();
+    unpacked.push_back(uint8_t(MESSAGE_ID::HILTON_SX_HEARTBEAT));
+    unpacked.push_back('S');
+    unpacked.push_back('X');
+    unpacked.push_back(1);
+    unpacked.push_back(1);
+
+    // [4]
+    unpacked.push_back(1); // major
+    unpacked.push_back(0); // minor
+    unpacked.push_back(1); // 1=beta 2=release 3=RC
+    unpacked.push_back(1); // build
+
+    // [8]
+    unpacked.push_back(0xff);
+    unpacked.push_back(0xff);
+    unpacked.push_back(0xff);
+    unpacked.push_back(0xff);
+
+    // [12]
+    unpacked.push_back(0); // IMU Sensor
+
+    // Bit 0-1 : GPS Fix Quality
+    //           0 = No fix
+    //           1 = 3D GPS fix
+    //           2 = DGPS / SBAS / WAAS
+    //           3 = Reserved
+
+    // Bit 2   : AHRS data valid
+    // Bit 3   : Pressure altitude valid
+    // Bit 4   : CPU temperature valid
+    // Bit 5   : UAT (978 MHz) enabled/present
+    // Bit 6   : ES (1090 MHz) enabled/present
+    // Bit 7   : GPS enabled
+    uint8_t b13 = 0;
+
+    // Bits 0-1: GPS fix quality
+    // 0 = no fix, 1 = 3D, 2 = DGPS
+    b13 |= (gpsFixQuality & 0x03);
+
+    // Bit 4: CPU temperature valid
+    if (cpuTempValid) {
+        b13 |= (1 << 4);
+    }
+
+    // Bit 6: ES enabled
+    if (esEnabled) {
+        b13 |= (1 << 6);
+    }
+
+    // Bit 7: GPS enabled
+    if (gpsValid) {
+        b13 |= (1 << 7);
+    }
+
+    // [13]
+    unpacked.push_back(b13);
+
+    // [14]
+    unpacked.push_back(0); // No idea what this is
+
+    // [15]
+    unpacked.push_back(0); // IMU Connected
+
+    // [16]
+    unpacked.push_back(satLock);
+    unpacked.push_back(satConn);
+
+    // [18] UAT
+    unpacked.push_back(num978 >> 8);
+    unpacked.push_back(num978 & 0xFF);
+
+    // [20] 1090
+    unpacked.push_back(num1090 >> 8);
+    unpacked.push_back(num1090 & 0xFF);
+
+    // [22] UAT Rate
+    unpacked.push_back(rate978 >> 8);
+    unpacked.push_back(rate978 & 0xFF);
+
+    // [24] 1090 Rate
+    unpacked.push_back(rate1090 >> 8);
+    unpacked.push_back(rate1090 & 0xFF);
+
+    // [26] Temp
+    auto t = uint16_t(10.0f * cpuTemp);
+    unpacked.push_back(t >> 8);
+    unpacked.push_back(t & 0xFF);
+
+    // [28]
+    unpacked.push_back(towers.size());
+    uint32_t latitude;
+    uint32_t longitude;
+    for (const auto &t : towers)
+    {
+        latlon_encode(latitude, t.first);
+        latlon_encode(longitude, t.second);
+        unpacked.push_back((latitude >> 16) & 0xff);
+        unpacked.push_back((latitude >> 8) & 0xff);
+        unpacked.push_back((latitude >> 0) & 0xff);
+        unpacked.push_back((longitude >> 16) & 0xff);
+        unpacked.push_back((longitude >> 8) & 0xff);
+        unpacked.push_back((longitude >> 0) & 0xff);
+    }
+
     return true;
 }

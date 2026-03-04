@@ -75,7 +75,8 @@ private:
     void on_receive(const GATAS::AircraftPositionMsg &msg);
     void on_receive(const GATAS::AircraftPositionsMsg &msg);
     void on_receive(const GATAS::Every5SecMsg &msg);
-    static void aircraftTrackerTask(void *arg);
+    static void aircraftTrackerTrampoline(void *arg);
+     void aircraftTrackerTask(void *arg);
     void handleNew();
     void sendEligibleAircraft();
     void maintenance();

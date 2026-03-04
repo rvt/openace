@@ -11,7 +11,7 @@ GATAS::PostConstruct AircraftTracker::postConstruct()
 
 void AircraftTracker::start()
 {
-    xTaskCreate(aircraftTrackerTask, AircraftTracker::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 6, &taskHandle);
+    xTaskCreate(aircraftTrackerTrampoline, AircraftTracker::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 6, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -54,30 +54,29 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 
 void AircraftTracker::on_receive(const GATAS::AircraftPositionsMsg &msg)
 {
-    bool full = false;
+    // Tell task to process positions if we have less than queue available
+    if (queue.available() < msg.positions.size()) {
+        xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
+        vTaskDelay(TASK_DELAY_MS(25)); 
+    }
+
     for (const auto &aircraft : msg.positions)
     {
+        if (ownshipAddress == aircraft.address)
+        {
+            continue;
+        }
         if (!queue.full())
         {
-            if (ownshipAddress == aircraft.address)
-            {
-                // Ignore ownship so we don't get our own plane on EFB's
-                return;
-            }
             queue.push(aircraft);
         }
         else
         {
-            xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
             statistics.queueFullErr += 1;
-            full = true;
+            break;
         }
     }
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
-    if (full)
-    {
-        vTaskDelay(TASK_DELAY_MS(100));
-    }
 }
 
 void AircraftTracker::on_receive(const GATAS::AircraftPositionMsg &msg)
@@ -102,14 +101,17 @@ void AircraftTracker::on_receive(const GATAS::AircraftPositionMsg &msg)
     {
         statistics.queueFullErr += 1;
     }
-
-    // Always notify
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
+}
+
+void AircraftTracker::aircraftTrackerTrampoline(void *arg)
+{
+    static_cast<AircraftTracker *>(arg)->aircraftTrackerTask(arg);
 }
 
 void AircraftTracker::aircraftTrackerTask(void *arg)
 {
-    AircraftTracker *at = static_cast<AircraftTracker *>(arg);
+    (void)arg;
     while (true)
     {
         uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1000 / TIMESLICES));
@@ -121,20 +123,20 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
         // Handle timers
         if (notifyValue & TaskState::MAINTAIN)
         {
-            at->maintenance();
-            at->getBus().receive(GATAS::AdapativeRadiusMsg(at->trackedAircraft.radius()));
+            maintenance();
+            getBus().receive(GATAS::AdapativeRadiusMsg(trackedAircraft.radius()));
         }
 
         // Handle timers
         if (notifyValue == 0 || notifyValue & TaskState::TIMER)
         {
-           at->sendEligibleAircraft();
+            sendEligibleAircraft();
         }
 
         // Handle new aircraft
         if (notifyValue & TaskState::NEW)
         {
-            at->handleNew();
+            handleNew();
         }
     }
 }

@@ -4,9 +4,9 @@ project(utils VERSION 0.0.0 LANGUAGES CXX)
 set(MSG_PREFIX "${PROJECT_NAME} |")
 
 set(MODULE_SOURCE_FILES
-        ace/src/utils.cpp
+        ace/src/picopio.cpp
         ace/src/ldpc.cpp
-        ace/src/bitcount.cpp
+        ace/src/bitutils.cpp
         ace/src/encryption.cpp
         ace/src/EMA.cpp
         ace/src/ognconv.cpp

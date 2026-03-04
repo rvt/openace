@@ -4,7 +4,7 @@
 #include "../ldpc.hpp"
 
 #ifndef __AVR__
-#include <math.h>
+#include <cmath>
 #endif
 
 #ifdef __AVR__

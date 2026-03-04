@@ -14,7 +14,7 @@
 
 // #include "intmath.h"
 
-#include "ace/bitcount.hpp"
+#include "ace/bitutils.hpp"
 #include "ace/encryption.hpp"
 #include "etl/absolute.h"
 // #include "nmea.h"

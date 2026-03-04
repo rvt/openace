@@ -3,6 +3,8 @@
 #include "constants.hpp"
 #include "models.hpp"
 #include "semaphoreguard.hpp"
+#include "poolallocator.hpp"
+#include "constants.hpp"
 
 #include "pico.h"
 
@@ -12,6 +14,7 @@
 #include "semphr.h"
 
 /* Vendor. */
+#include "etl/unordered_map.h"
 #include "etl/map.h"
 #include "etl/array.h"
 #include "etl/string.h"
@@ -30,7 +33,8 @@ class BaseModule
 {
     static constexpr uint8_t MAX_MODULES = 40;
     // Mutex to be used during load/unloading and changes in interrupts
-    inline static SemaphoreHandle_t baseMutex=nullptr;
+    inline static SemaphoreHandle_t baseMutex = nullptr;
+    inline static GATAS::GlobalPoolConfiguration globalPool;
 
 public:
     static void initBase()
@@ -61,7 +65,7 @@ private:
         pinInterruptHandler(uint32_t _event, pinIntrCallback_t _callback) : event(_event), handler(nullptr), callback(_callback), notificationValue(0x00), enabled(true) {}
         pinInterruptHandler() : event(0x00), handler(nullptr), callback(nullptr), notificationValue(0x00), enabled(true) {}
     };
-    inline static etl::map<uint8_t, BaseModule::pinInterruptHandler, 8> pinInterruptHandlers;
+    inline static etl::unordered_map<uint8_t, BaseModule::pinInterruptHandler, 8> pinInterruptHandlers;
 
     using ModuleLoadMap = etl::map<const etl::string_view, ModuleStatus, MAX_MODULES /*, CharPtrComparator*/>;
     inline static ModuleLoadMap moduleLoaderMap;
@@ -82,6 +86,11 @@ public:
     static void registerModule(const etl::string_view name, bool hwCheck)
     {
         moduleLoaderMap[name] = {GATAS::PostConstruct::NA, hwCheck, nullptr};
+    }
+
+    static GATAS::GlobalPoolConfiguration &getGlobalPool()
+    {
+        return globalPool;
     }
 
     /**
@@ -182,17 +191,6 @@ public:
 };
 
 /**
- * Object can handle NMEA strings
- */
-class StringHandler
-{
-    friend class StringProvider;
-
-protected:
-    virtual void handle(const GATAS::NMEAString &message) = 0;
-};
-
-/**
  * Object that can provide NMEA Strings.
  * You can use this to make a TCP socket or Serial provider that just passes them into a StringHandler
  */
@@ -252,66 +250,9 @@ public:
     {
     }
 
-    struct ProtocolConfig
-    {
-        uint8_t pcId;                 // Internally used to opnise tranceiver state
-        GATAS::Modulation mode;       // Mode of the radio
-        GATAS::DataSource dataSource; // Data source
-        uint8_t packetLength;         // Total packet length including CRC
-        uint8_t txPreambleLength;     // Preamble length in bits during transmission
-        uint8_t syncLength;
-        etl::array<uint8_t, 10> syncWord; // Sync word
-    };
-
-    struct RadioParameters
-    {
-        const Radio::ProtocolConfig *config;
-        uint32_t frequency;
-        int8_t powerdBm;
-        uint8_t codingRate = 8; // Coding rate for LORA packages
-
-        constexpr RadioParameters(const Radio::ProtocolConfig *config_, uint32_t frequency_, int8_t powerdBm_, uint8_t codingRate_) : config(config_), frequency(frequency_), powerdBm(powerdBm_), codingRate(codingRate_) {}
-        constexpr RadioParameters(const Radio::ProtocolConfig *config_, uint32_t frequency_, int8_t powerdBm_) : config(config_), frequency(frequency_), powerdBm(powerdBm_) {}
-        constexpr RadioParameters(const Radio::RadioParameters &params) : config(params.config), frequency(params.frequency), powerdBm(params.powerdBm), codingRate(params.codingRate) {}
-        RadioParameters() = default;
-        RadioParameters &operator=(const RadioParameters &other) = default;
-    };
-
-    struct TxPacket
-    {
-        RadioParameters radioParameters;
-        uint8_t length; // In bytes
-        union
-        {
-            GATAS::TxPacketType data;
-            GATAS::TxPacketType32 data32;
-        };
-
-        TxPacket() = default;
-        TxPacket(const RadioParameters &radioParameters_, etl::span<const uint8_t> dataSpan)
-            : radioParameters(radioParameters_), length(static_cast<uint8_t>(dataSpan.size()))
-        {
-            // Default to writing into .data (assumed default member)
-            if (dataSpan.size() > sizeof(data))
-            {
-                GATAS_LOG("TxPacket: Frame length too large for this packet, clearing out");
-                memset(&data, 0, sizeof(data));
-            }
-            else
-            {
-                memcpy(&data, dataSpan.data(), dataSpan.size());
-            }
-        }
-
-        TxPacket(const RadioParameters &radioParameters_, uint8_t length_, const void *data_)
-            : TxPacket(radioParameters_, etl::span<const uint8_t>(static_cast<const uint8_t *>(data_), length_))
-        {
-        }
-    };
-
     struct RxMode
     {
-        const RadioParameters radioParameters;
+        const GATAS::RadioParameters radioParameters;
     };
 
     virtual ~Radio() = default;

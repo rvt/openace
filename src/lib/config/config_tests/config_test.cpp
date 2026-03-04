@@ -50,12 +50,7 @@ TEST_CASE("Fully Configured", "[single-file]")
     Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
     config.postConstruct();
 
-    SECTION("IPv4", "[single-file]")
-    {
-        REQUIRE(1689430208 == config.parseIpv4String("192.168.178.100", 0xffffffffUL));
-        REQUIRE(0xffffffff == config.parseIpv4String("300", 0xffffffffUL));
-        REQUIRE(43200 == config.parseIpv4String("192.168", 0xffffffffUL));
-    }
+
 
     SECTION("AircraftHwConfig")
     {
@@ -64,10 +59,11 @@ TEST_CASE("Fully Configured", "[single-file]")
         REQUIRE(GATAS::AddressType::OGN == hwConfig.conspicuity.addressType);
         REQUIRE(GATAS::AircraftCategory::SMALL == hwConfig.conspicuity.category);
         //        REQUIRE ( (hwConfig.privacy == 0) );
-        REQUIRE(3 == hwConfig.protocols.size());
+        REQUIRE(4 == hwConfig.protocols.size());
         REQUIRE(GATAS::DataSource::OGN1 == hwConfig.protocols[0]);
-        REQUIRE(GATAS::DataSource::ADSL == hwConfig.protocols[1]);
-        REQUIRE(GATAS::DataSource::FLARM == hwConfig.protocols[2]);
+        REQUIRE(GATAS::DataSource::ADSLM == hwConfig.protocols[1]);
+        REQUIRE(GATAS::DataSource::ADSLO_HDR == hwConfig.protocols[2]);
+        REQUIRE(GATAS::DataSource::FLARM == hwConfig.protocols[3]);
     }
 
     SECTION("Arrays")

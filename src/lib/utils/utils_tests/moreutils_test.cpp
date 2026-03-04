@@ -40,12 +40,21 @@ TEST_CASE("Every", "[single-file]")
 
     SECTION("when wraps", "[single-file]")
     {
-        Every<uint32_t, 100'000, 1'000'000> every{UINT32_MAX-4'099'999};
-        REQUIRE(every.isItTime(UINT32_MAX-4'100'000) == false); // Due to wrap around
-        REQUIRE(every.isItTime(UINT32_MAX-3'100'000) == true); // Due to wrap around
-        REQUIRE(every.isItTime(UINT32_MAX-500'00) == true);
+        Every<uint32_t, 100'000, 1'000'000> every{UINT32_MAX - 4'099'999};
+        REQUIRE(every.isItTime(UINT32_MAX - 4'100'000) == false); // Due to wrap around
+        REQUIRE(every.isItTime(UINT32_MAX - 3'100'000) == true);  // Due to wrap around
+        REQUIRE(every.isItTime(UINT32_MAX - 500'00) == true);
         REQUIRE(every.isItTime(132704) == true); // Due to wrap around we will see a one time jitter. THis should be fixed one day
-        REQUIRE(every.isItTime(232704) == false); 
+        REQUIRE(every.isItTime(232704) == false);
         REQUIRE(every.isItTime(1'100'000) == true);
     }
+}
+
+TEST_CASE("parseIpv4String", "[single-file]")
+{
+    REQUIRE(1689430208 == parseIpv4String("192.168.178.100", 0xffffffffUL));
+    REQUIRE(43200 == parseIpv4String("192.168", 0xffffffffUL));
+
+    REQUIRE(0xffffffff == parseIpv4String("300", 0xffffffffUL));
+    REQUIRE(0xffffffff  == parseIpv4String("foo.bar.com", 0xffffffffUL));
 }

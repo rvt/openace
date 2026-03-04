@@ -18,27 +18,26 @@
 #include "etl/map.h"
 #include "etl/message_bus.h"
 #include "etl/string.h"
-#include "etl/bitset.h"
 
 /* GATAS. */
 #include "ace/constants.hpp"
-#include "ace/messagerouter.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
-#include "ace/utils.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/basemodule.hpp"
+#include "ace/datasourcetimestatstable.hpp"
+
 
 /* Utils. */
 #include "ace/ldpc.hpp"
 
 #include "ognpacket.hpp"
 
-class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxGfskMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
+class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
 {
 public:
     static constexpr uint8_t OGN_PACKET_LENGTH = 20;
-    static constexpr uint8_t OGN_PACKET_LENGTH_FEC = 26;
+    static constexpr size_t OGN_PACKET_LENGTH_FEC = 26;
 
 private:
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
@@ -98,12 +97,7 @@ private:
         uint32_t relay[4] = {};
     } statistics;
 
-    struct DataSourceTimeStats
-    {
-        etl::bitset<100> timeTenthMs;
-        uint32_t frequency;
-    };
-    etl::vector<DataSourceTimeStats, 2> dataSourceTimeStats; // Two frequencies (Europe)
+    GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
 
     GATAS::OwnshipPositionInfo ownshipPosition;
     GATAS::BarometricPressureMsg lastBarometricPressureMsg;
@@ -115,7 +109,7 @@ public:
     static constexpr const etl::string_view NAME = "Ogn1";
     Ogn1(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                 ownshipPosition{},
-                                                                lastBarometricPressureMsg{},
+                                                                lastBarometricPressureMsg{0,0},
                                                                 gpsStats{}
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Ogn1", "distanceIgnore");
@@ -129,7 +123,7 @@ public:
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
 private:
-    void on_receive(const GATAS::RadioRxGfskMsg &msg);
+    void on_receive(const GATAS::RadioRxManchesterMsg &msg);
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::BarometricPressureMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
@@ -142,11 +136,6 @@ private:
     uint8_t addressTypeToOgn(GATAS::AddressType addressType) const;
     GATAS::AircraftCategory ognToGatas(Ogn1::OGNAircraftType o) const;
     Ogn1::OGNAircraftType gatasToOgn(GATAS::AircraftCategory c) const;
-
-    /**
-     * Keep track of what timestamp (roughly) we receive Ogn frames
-     */
-    void addReceiveStat(uint32_t frequency);
 
     int8_t parseFrame(OGN1_Packet &packet, int16_t rssiDbm);
 

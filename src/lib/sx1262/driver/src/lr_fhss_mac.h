@@ -143,7 +143,7 @@ void lr_fhss_process_parameters( const lr_fhss_v1_params_t* params, uint16_t pay
  * @returns Operation status
  */
 lr_fhss_status_t lr_fhss_get_hop_params( const lr_fhss_v1_params_t* params, lr_fhss_hop_params_t* hop_params,
-    uint16_t* initial_state, uint16_t hop_sequence_id );
+                                         uint16_t* initial_state, uint16_t hop_sequence_id );
 
 /**
  * @brief Update the LFSR state by performing a hop, and return the hop grid position

@@ -21,7 +21,7 @@ GATAS::PostConstruct AceSpi::postConstruct()
 
     // Reset ALL devices
     resetDevices();
-    GATAS_LOG("Initialised on miso:%d mosi:%d clk:%d  rst:%d spi:%d -> (devices reset)", miso, mosi, clk, rst, spi);
+    GATAS_INFO("Initialised on miso:%d mosi:%d clk:%d  rst:%d spi:%d -> (devices reset)", miso, mosi, clk, rst, spi);
 
     // Make the SPI pins available to picotool
     bi_decl(bi_3pins_with_func(static_cast<uint32_t>(miso), static_cast<uint32_t>(mosi), static_cast<uint32_t>(clk), GPIO_FUNC_SPI));
@@ -90,12 +90,7 @@ void AceSpi::resetDevices() const
     gpio_put(rst, 1);
 }
 
-SpiGuard AceSpi::getLock(bool &locked){
-    // if (lastBusFrequency != busFrequencyMhz)
-    // {
-    //     lastBusFrequency = busFrequencyMhz;
-    //     spi_init(spi?spi1:spi0, lastBusFrequency * 1'000'000);
-    // }
+SpiGuard AceSpi::getLock(bool &locked) {
     return SpiGuard(mutex, locked);
 };
 

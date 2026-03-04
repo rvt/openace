@@ -47,7 +47,7 @@
 #include "ace/radiotunertx_v2.hpp"
 #include "ace/flarm2024.hpp"
 #include "ace/ogn1.hpp"
-#include "ace/adsl.hpp"
+#include "ace/adslace.hpp"
 #include "ace/gdl90service.hpp"
 #include "ace/gdloverudp.hpp"
 #include "ace/dataport.hpp"
@@ -56,6 +56,7 @@
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
 #include "ace/idle.hpp"
+#include "ace/manchester.hpp"
 
 const char *GATAS_BUILD_TIMESTAMP = BUILD_TIMESTAMP;
 const char *GATAS_BUILD_GIT_TAG = BUILD_GIT_TAG;
@@ -95,7 +96,7 @@ void registerModules()
     BaseModule::registerModule(ADSBDecoder::NAME, false);
     BaseModule::registerModule(Flarm2024::NAME, false);
     BaseModule::registerModule(Ogn1::NAME, false);
-    BaseModule::registerModule(ADSL::NAME, false);
+    BaseModule::registerModule(ADSLAce::NAME, false);
     BaseModule::registerModule(GDLoverUDP::NAME, false);
     BaseModule::registerModule(GpsDecoder::NAME, false);
     BaseModule::registerModule(UbloxM8N::NAME, true);
@@ -117,11 +118,18 @@ void registerModules()
 }
 
 __scratch_y("aceSpi_Mem") static uint8_t aceSpi_Mem[sizeof(AceSpi)];
-__scratch_y("sx1262_1_Mem") static uint8_t sx1262_1_Mem[sizeof(Sx1262)];
-__scratch_y("sx1262_2_Mem") static uint8_t sx1262_2_Mem[sizeof(Sx1262)];
+static uint8_t sx1262_1_Mem[sizeof(Sx1262)];
+static uint8_t sx1262_2_Mem[sizeof(Sx1262)];
 __scratch_y("GpsDecoder_Mem") static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
 __scratch_y("GPS_Mem") static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B))];
 __scratch_y("DataPort_Mem") static uint8_t DataPort_Mem[sizeof(DataPort)];
+
+using MultiPool = MultiPoolAllocator<
+    PoolSpec<32, 16>,
+    PoolSpec<64, 8>,
+    PoolSpec<160, 4>>;
+
+MultiPool pool;
 
 BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configuration &config)
 {
@@ -130,8 +138,8 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
         return new Ogn1(bus, config);
     if (name == FanetAce::NAME)
         return new FanetAce(bus, config);
-    if (name == ADSL::NAME)
-        return new ADSL(bus, config);
+    if (name == ADSLAce::NAME)
+        return new ADSLAce(bus, config);
     if (name == Flarm2024::NAME)
         return new Flarm2024(bus, config);
     if (name == AirConnect::NAME)
@@ -206,7 +214,9 @@ constexpr size_t BINSTORE_NUM_SECTORS = (sizeof(GATAS::BinaryStore) + FLASH_SECT
 static FlashStore permanentStore{PERMSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 3}; // FLASH_SECTOR_SIZE => 4096 on the PICO
 // Used to store runtime information not stored in permanent store, counters, id's etc...
 static FlashStore binaryStore{BINSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 4};
-__scratch_y("GatasMem_Bus") static GATAS::ThreadSafeBus<25> bus;
+
+__scratch_y("GatasMem_Bus") static GATAS::ThreadSafeBus<24> bus;
+
 static Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
 volatile static bool loadIndicator = false;
 volatile static int8_t ledStatusIndicatorPin = -1;
@@ -277,6 +287,9 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
 static void loadModules(void *arg)
 {
     (void)arg;
+    
+    bus.setPool(&BaseModule::getGlobalPool()); // Hack to set the pool into the messagebus
+
     CoreUtils::init();
     config.postConstruct();
     config.start();
@@ -307,6 +320,7 @@ static void loadModules(void *arg)
     load(GatasConnect::NAME, bus, config);
     load(Bmp280::NAME, bus, config);
 
+    load(RxDataFrameQueue::NAME, bus, config, true);
     for (uint8_t i = 0; i < GATAS_MAX_RADIOS; i++)
     {
         load(Sx1262::NAMES[i], bus, config);
@@ -316,11 +330,10 @@ static void loadModules(void *arg)
     // Data sources
     load(RadioTunerTx::NAME, bus, config);
     load(RadioTunerRx::NAME, bus, config);
-    load(RxDataFrameQueue::NAME, bus, config, true);
     load(ADSBDecoder::NAME, bus, config);
 
     // Protocols
-    load(ADSL::NAME, bus, config);
+    load(ADSLAce::NAME, bus, config);
     load(FanetAce::NAME, bus, config);
     load(Flarm2024::NAME, bus, config);
     load(Ogn1::NAME, bus, config);
@@ -435,7 +448,7 @@ void vLaunch(void)
     // Bootstrap
     BaseModule::initBase();
     registerModules();
-//    BaseModule::setModuleStatus(Configuration::NAME, &config);
+    //    BaseModule::setModuleStatus(Configuration::NAME, &config);
     BaseModule::setModuleStatus(Config::NAME, &config);
 
     // Load all the modules

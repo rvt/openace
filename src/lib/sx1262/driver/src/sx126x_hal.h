@@ -132,9 +132,6 @@ sx126x_hal_status_t sx126x_hal_reset( const void* context );
  */
 sx126x_hal_status_t sx126x_hal_wakeup( const void* context );
 
-
-uint8_t sx126x_buzy_wait(uint8_t busyPin);
-
 #ifdef __cplusplus
 }
 #endif

@@ -140,6 +140,16 @@ TEST_CASE( "distanceFast", "[single-file]" )
     }
 }
 
+TEST_CASE("withinDistance: dateline crossing", "[geo]")
+{
+    float lat = 0.0f;
+    float lon1 = 179.999f;
+    float lon2 = -179.999f;
+
+    // ~224 meters apart
+    REQUIRE(CoreUtils::distanceFast(lat, lon1, lat, lon2) == Catch::Approx(224).margin(1));
+}
+
 TEST_CASE( "bearingFromInRad", "[single-file]" )
 {
     using namespace Catch::literals;

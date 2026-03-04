@@ -37,6 +37,17 @@ export const ipValidation = [
   },
 ];
 
+export const configStringLengthValidator = [
+  {
+    rule: "minLength",
+    value: 0,
+  },
+  {
+    rule: "maxLength",
+    value: 62,
+  },
+];
+
 export const ssidValidation = [
   {
     rule: "minLength",

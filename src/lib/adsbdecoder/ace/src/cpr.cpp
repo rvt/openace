@@ -33,7 +33,7 @@
 
 
 #include "../cpr.hpp"
-#include <math.h>
+#include <cmath>
 
 int16_t  cprModint (int16_t  a, int16_t  b)
 {

@@ -49,7 +49,7 @@ sx126x_hal_status_t sx126x_hal_write(const void *context, const uint8_t *command
     sx126x_hal_status_t ret = SX126X_HAL_STATUS_OK;
     if (sx126x_buzy_wait(sx1262->busy()))
     {
-        GATAS_LOG("hal write, Wait busy timeout");
+        GATAS_WARN("hal write, Wait busy timeout");
         ret = SX126X_HAL_STATUS_ERROR;
     }
     else
@@ -74,7 +74,7 @@ sx126x_hal_status_t sx126x_hal_read(const void *context, const uint8_t *command,
     sx126x_hal_status_t ret = SX126X_HAL_STATUS_OK;
     if (sx126x_buzy_wait(sx1262->busy()))
     {
-        GATAS_LOG("hal read, Wait busy timeout");
+        GATAS_WARN("hal read, Wait busy timeout");
         ret = SX126X_HAL_STATUS_ERROR;
     }
     else
@@ -83,7 +83,7 @@ sx126x_hal_status_t sx126x_hal_read(const void *context, const uint8_t *command,
         int length = spi_write_blocking(spi->spiNum() ? spi1 : spi0, command, command_length);
         if (length != command_length)
         {
-            GATAS_LOG("sx126x_hal_read write error");
+            GATAS_WARN("sx126x_hal_read write error");
             ret = SX126X_HAL_STATUS_ERROR;
         }
         else
@@ -91,7 +91,7 @@ sx126x_hal_status_t sx126x_hal_read(const void *context, const uint8_t *command,
             length = spi_read_blocking(spi->spiNum() ? spi1 : spi0, 0, data, data_length);
             if (length != data_length)
             {
-                GATAS_LOG("sx126x_hal_read read error");
+                GATAS_WARN("sx126x_hal_read read error");
                 ret = SX126X_HAL_STATUS_ERROR;
             }
         }
@@ -104,13 +104,13 @@ sx126x_hal_status_t sx126x_hal_reset(const void *context)
 {
     // Reset is already given once when the SPI starts up
     (void)context;
-    GATAS_LOG("SX1262 Reset called");
+    GATAS_INFO("SX1262 Reset called");
     return SX126X_HAL_STATUS_OK;
 }
 
 sx126x_hal_status_t sx126x_hal_wakeup(const void *context)
 {
     (void)context;
-    GATAS_LOG("SX1262 wakeup called");
+    GATAS_INFO("SX1262 wakeup called");
     return SX126X_HAL_STATUS_OK;
 }

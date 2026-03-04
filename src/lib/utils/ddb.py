@@ -193,3 +193,6 @@ if __name__ == "__main__":
 
     cpp = gen_cpp(merged_data)
     sys.stdout.write(cpp)
+
+    buckets = Counter((int(hexcode,16) >> 16) & 0xFF for hexcode,_,_ in merged_data)
+    print("// ", max(buckets.values()), sum(buckets.values()) / 256)
