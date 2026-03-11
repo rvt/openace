@@ -92,20 +92,20 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << "{";
     stream << "\"deviceErrors\":" << statistics.deviceErrors;
     stream << ",\"spiNo\":" << spiHall->spiNum();
-    stream << ",\"queueMissedErr\":" << statistics.queueMissedErr;
-    stream << ",\"receivedPackets\":" << statistics.receivedPackets;
-    stream << ",\"transmittedPackets\":" << statistics.transmittedPackets;
-    stream << ",\"buzyWaitsTimeout\":" << statistics.buzyWaitsTimeout;
-    stream << ",\"txQueueFull\":" << statistics.queueFull;
-    stream << ",\"txQueueSize\":" << txQueue.size();
+    stream << ",\"queueMissed:err\":" << statistics.queueMissedErr;
+    stream << ",\"receivedPackets:k\":" << statistics.receivedPackets;
+    stream << ",\"transmittedPackets:k\":" << statistics.transmittedPackets;
+    stream << ",\"buzyWaitsTimeout:err\":" << statistics.buzyWaitsTimeout;
+    stream << ",\"txQueueFull:err\":" << statistics.queueFull;
+    stream << ",\"txQueueSize:k\":" << txQueue.size();
     stream << ",\"mode\":" << "\"" << GATAS::modulationToString(rxRadioParameters.frequency->mode) << "\"";
     stream << ",\"dataSource\":" << "\"" << GATAS::toString(rxRadioParameters.config->dataSource()) << "\"";
-    stream << ",\"frequency\":" << rxRadioParameters.hopFrequency;
-    stream << ",\"powerdBm\":" << rxRadioParameters.frequency->powerdBm;
+    stream << ",\"frequency:hz\":" << rxRadioParameters.hopFrequency;
+    stream << ",\"powerdBm:dbm\":" << rxRadioParameters.frequency->powerdBm;
     stream << ",\"radio\":" << radioNo;
-    stream << ",\"txEnabled\":" << txEnabled;
-    stream << ",\"hasGpsFix\":" << hasGpsFix;
-    stream << ",\"isTransmitting\":" << (hasGpsFix && txEnabled);
+    stream << ",\"txEnabled:b\":" << txEnabled;
+    stream << ",\"hasGpsFix:b\":" << hasGpsFix;
+    stream << ",\"isTransmitting:b\":" << (hasGpsFix && txEnabled);
     stream << "}";
 }
 

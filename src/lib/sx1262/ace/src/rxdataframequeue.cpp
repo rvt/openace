@@ -36,8 +36,8 @@ void RxDataFrameQueue::getData(etl::string_stream &stream, const etl::string_vie
 {
     (void)path;
     stream << "{";
-    stream << ",\"totalIncoming\":\"" << statistics.totalIncoming << "\"";
-    stream << ",\"totalOutgoing\":\"" << statistics.totalOutgoing << "\"";
+    stream << ",\"totalIncoming:k\":\"" << statistics.totalIncoming << "\"";
+    stream << ",\"totalOutgoing:k\":\"" << statistics.totalOutgoing << "\"";
     stream << "}";
 }
 

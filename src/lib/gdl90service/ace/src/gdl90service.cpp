@@ -21,12 +21,12 @@ void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view pa
 {
     (void)path;
     stream << "{";
-    stream << "\"heartbeatTx\":" << statistics.heartbeatTx;
-    stream << ",\"ownshipPosTx\":" << statistics.ownshipPosTx;
-    stream << ",\"trackingAircraftPosTx\":" << statistics.trackingAircraftPosTx;
-    stream << ",\"trackingFailureErr\":" << statistics.trackingFailureErr;
-    stream << ",\"ownEncodingFailureErr\":" << statistics.ownEncodingFailureErr;
-    stream << ",\"heartBeatEncodingFailureErr\":" << statistics.heartBeatEncodingFailureErr;
+    stream << "\"heartbeatTx:k\":" << statistics.heartbeatTx;
+    stream << ",\"ownshipPosTx:k\":" << statistics.ownshipPosTx;
+    stream << ",\"trackingAircraftPosTx:k\":" << statistics.trackingAircraftPosTx;
+    stream << ",\"trackingFailure:err\":" << statistics.trackingFailureErr;
+    stream << ",\"ownEncodingFailure:err\":" << statistics.ownEncodingFailureErr;
+    stream << ",\"heartBeatEncodingFailure:err\":" << statistics.heartBeatEncodingFailureErr;
     stream << "}";
 }
 

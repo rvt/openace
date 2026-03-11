@@ -19,7 +19,7 @@ void Bmp280::getData(etl::string_stream &stream, const etl::string_view path) co
 {
     (void)path;
     stream << "{";
-    stream << "\"lastPressurehPa\":" << etl::format_spec{}.precision(1) << statistics.lastPressurehPa << GATAS::RESET_FORMAT;
+    stream << "\"lastPressurehPa:hpa\":" << etl::format_spec{}.precision(1) << statistics.lastPressurehPa << GATAS::RESET_FORMAT;
     stream << ",\"compensation\":" << compensation;
     stream << "}";
 }

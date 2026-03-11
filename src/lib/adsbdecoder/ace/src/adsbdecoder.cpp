@@ -239,10 +239,10 @@ void ADSBDecoder::getData(etl::string_stream &stream, const etl::string_view pat
     stream << ",\"adsbDataCollectorFull\":" << statistics.knownAircraftFull;
     stream << ",\"ignoredAircraftSize\":" << ignoredAirplanes.size();
     stream << ",\"ignoredAircraftFull\":" << statistics.ignoredAircraftFull;
-    stream << ",\"totalMsgReceived\":" << statistics.totalMsgReceived;
-    stream << ",\"totalMsgIgnored\":" << statistics.totalMsgIgnored;
-    stream << ",\"msgMissed\":" << statistics.msgMissed;
-    stream << ",\"filterRadius\":" << filterRadius;
+    stream << ",\"totalMsgReceived:k\":" << statistics.totalMsgReceived;
+    stream << ",\"totalMsgIgnored:k\":" << statistics.totalMsgIgnored;
+    stream << ",\"msgMissed:k\":" << statistics.msgMissed;
+    stream << ",\"filterRadius:mi\":" << filterRadius;
     stream << "}";
 }
 

@@ -41,14 +41,14 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     stream << "{";
     for (uint8_t i = 0; i < static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS); i++)
     {
-        stream << "\"" << GATAS::dataSourceIntToString(i) << "\":";
+        stream << "\"" << GATAS::dataSourceIntToString(i) << "_AntPolar\":";
         antennaRadiationPattern[i].serialize(stream);
         stream << ",";
     }
-    stream << "\"queueFullErr\":" << statistics.queueFullErr;
+    stream << "\"queueFull:err\":" << statistics.queueFullErr;
     stream << ",\"numberOfObjectsTracking\":" << trackedAircraft.size();
-    stream << ",\"positionsProcessed\":" << statistics.positionsProcessed;
-    stream << ",\"adaptiveRadius\":" << trackedAircraft.radius();
+    stream << ",\"positionsProcessed:k\":" << statistics.positionsProcessed;
+    stream << ",\"adaptiveRadius:m\":" << trackedAircraft.radius();
     stream << "}";
 }
 

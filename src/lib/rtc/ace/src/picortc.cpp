@@ -4,9 +4,9 @@ void PicoRtc::getData(etl::string_stream &stream, const etl::string_view path) c
 {
     (void)path;
     stream << "{";
-    stream << "\"epochSet\":" << statistics.epochSet;
-    stream << ",\"delayMs\":" << statistics.delayMs;
-    stream << ",\"highElapseTimeErr\":" << statistics.highElapseTimeErr;
+    stream << "\"epochSet:k\":" << statistics.epochSet;
+    stream << ",\"delay:msec\":" << statistics.delayMs;
+    stream << ",\"highElapseTime:err\":" << statistics.highElapseTimeErr;
     stream << ",\"timeUs32\":" << CoreUtils::timeUs32();
     stream << ",\"secondsSinceEpoch\":" << CoreUtils::secondsSinceEpoch();
     stream << "}";

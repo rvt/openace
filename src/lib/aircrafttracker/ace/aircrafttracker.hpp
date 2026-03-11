@@ -59,6 +59,7 @@ private:
 
     // Producer Consumer queue to handle data between this task and the send task
     etl::queue_spsc_atomic<GATAS::AircraftPositionInfo, 16, etl::memory_model::MEMORY_MODEL_SMALL> queue;
+
     using ProtocolRadPattern = GATAS::AntennaRadiationPattern<GATAS_STATSCOLLECTOR_NUM_RADIALS>;
     etl::array<ProtocolRadPattern, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> antennaRadiationPattern;
 
