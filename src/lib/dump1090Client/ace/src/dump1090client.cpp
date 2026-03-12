@@ -53,7 +53,7 @@ void Dump1090Client::getData(etl::string_stream &stream, const etl::string_view 
 {
     (void)path;
     stream << "{";
-    stream << "\"totalReceived\":" << statistics.totalReceived;
+    stream << "\"totalReceived:k\":" << statistics.totalReceived;
     stream << ",\"reConnects\":" << statistics.reConnects;
     stream << "}";
 }

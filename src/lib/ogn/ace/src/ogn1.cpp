@@ -47,12 +47,12 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
     }
     stream << "],";
 
-    stream << "\"receivedAircraftPositions\":" << statistics.receivedAircraftPositions;
-    stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
-    stream << ",\"fecErr\":" << statistics.fecErr;
-    stream << ",\"outOfDistance\":" << statistics.outOfDistance;
-    stream << ",\"encrypted\":" << statistics.encrypted;
-    stream << ",\"nonPositional\":" << statistics.nonPositional;
+    stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
+    stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
+    stream << ",\"fec:err\":" << statistics.fecErr;
+    stream << ",\"outOfDistance:k\":" << statistics.outOfDistance;
+    stream << ",\"encrypted:k\":" << statistics.encrypted;
+    stream << ",\"nonPositional:k\":" << statistics.nonPositional;
     stream << "}";
 }
 

@@ -293,7 +293,7 @@ void Webserver::getData(etl::string_stream &stream, const etl::string_view path)
         }
     }
     stream << "}";
-    stream << ",\"memAllocErr\":" << statistics.memAllocErr;
+    stream << ",\"memAlloc:err\":" << statistics.memAllocErr;
     stream << "}";
 }
 

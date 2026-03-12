@@ -23,9 +23,9 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
     {
         stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",";
     }
-    stream << "\"receivedAircraftPositions\":" << statistics.receivedAircraftPositions;
-    stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
-    stream << ",\"crcErr\":" << statistics.crcErr;
+    stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
+    stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
+    stream << ",\"crc:err\":" << statistics.crcErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"messageTypeNot0x02\":" << statistics.messageTypeNot0x02;
     stream << "}";

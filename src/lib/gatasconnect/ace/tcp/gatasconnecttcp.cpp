@@ -37,12 +37,12 @@ void GatasConnect::getData(etl::string_stream &stream, const etl::string_view pa
 {
     (void)path;
     stream << "{";
-    stream << "\"bytesReceived\":" << statistics.bytesReceived;
-    stream << ",\"bytesSend\":" << statistics.bytesSend;
-    stream << ",\"pkgReceived\":" << statistics.pkgReceived;
-    stream << ",\"pkgSend\":" << statistics.pkgSend;
-    stream << ",\"msgSendFailed\":" << statistics.msgSendFailed;
-    stream << ",\"hasConnection\":" << statistics.hasConnection;
+    stream << "\"bytesReceived:kb\":" << statistics.bytesReceived;
+    stream << ",\"bytesSend:kb\":" << statistics.bytesSend;
+    stream << ",\"pkgReceived:k\":" << statistics.pkgReceived;
+    stream << ",\"pkgSend:k\":" << statistics.pkgSend;
+    stream << ",\"msgSendFailed:err\":" << statistics.msgSendFailed;
+    stream << ",\"hasConnection:b\":" << statistics.hasConnection;
     stream << "}";
 }
 

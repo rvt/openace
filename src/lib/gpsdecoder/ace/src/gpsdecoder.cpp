@@ -38,27 +38,27 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << "{";
     stream << "\"GATAS_BUILD_TIMESTAMP\": \"" << GATAS_BUILD_TIMESTAMP << "\"";
     stream << ",\"GATAS_BUILD_GIT_TAG\": \"" << GATAS_BUILD_GIT_TAG << "\"";
-    stream << ",\"receivedGGA\":" << statistics.receivedGGA;
-    stream << ",\"receivedRMC\":" << statistics.receivedRMC;
-    stream << ",\"receivedGSA\":" << statistics.receivedGSA;
-    stream << ",\"receivedGSV\":" << statistics.receivedGSV;
-    stream << ",\"receivedOther\":" << statistics.receivedOther;
+    stream << ",\"receivedGGA:k\":" << statistics.receivedGGA;
+    stream << ",\"receivedRMC:k\":" << statistics.receivedRMC;
+    stream << ",\"receivedGSA:k\":" << statistics.receivedGSA;
+    stream << ",\"receivedGSV:k\":" << statistics.receivedGSV;
+    stream << ",\"receivedOther:k\":" << statistics.receivedOther;
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude;
     stream << ",\"longitude\":" << longitude << etl::format_spec{}.precision(1);
-    stream << ",\"altitudeGeoid\":" << altitudeGeoid();
-    stream << ",\"geoidSeparation\":" << geoidSeparation;
-    stream << ",\"groundspeed\":" << groundSpeed;
-    stream << ",\"track\":" << course();
+    stream << ",\"altitudeGeoid:ft\":" << altitudeGeoid();
+    stream << ",\"geoidSeparation:ft\":" << geoidSeparation;
+    stream << ",\"groundspeed:kt\":" << groundSpeed;
+    stream << ",\"track:deg\":" << course();
     stream << ",\"pDop\":" << pDop;
     stream << ",\"hDop\":" << hDop << GATAS::RESET_FORMAT;
     stream << ",\"dopValue\":\"" << dopValue << "\"";
-    stream << ",\"gpsRatePerSec\":" << getGpsRate();
+    stream << ",\"gpsRate:psec\":" << getGpsRate();
     stream << ",\"fixQuality\":" << fixQuality;
     stream << ",\"gpsFixType\":\"" << fixType.c_str() << "\"";
     stream << ",\"satsUsedForFix\":" << satsUsedForFix;
     stream << ",\"epoch\":" << CoreUtils::secondsSinceEpoch();
     stream << ",\"satsInView\":" << satViewStats.bds + satViewStats.gal + satViewStats.glo + satViewStats.gps;
-    stream << ",\"upTime\":" << (CoreUtils::timeS32() - statistics.startTime),
+    stream << ",\"upTime:el\":" << (CoreUtils::timeS32() - statistics.startTime),
         stream << ",\"UtcTimeMsg\":" << "\""
                << width2fill0 << lastGGATimestamp.hours << GATAS::RESET_FORMAT << ":"
                << width2fill0 << lastGGATimestamp.minutes << GATAS::RESET_FORMAT << ":"
@@ -168,7 +168,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
                 latitude = (minmea_tocoord(&frame.latitude));
                 longitude = (minmea_tocoord(&frame.longitude));
 
-                // TODO: Perhaps use Speed over ground/cours over ground?
+                // TODO: Perhaps use Speed over ground/course over ground?
                 auto const relNorthrelEast = CoreUtils::northEastDistance(prevLatitude, prevLongitude, latitude, longitude);
                 velocityNorth = relNorthrelEast.north;
                 velocityEast = relNorthrelEast.east;

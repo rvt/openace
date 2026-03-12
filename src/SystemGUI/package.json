@@ -12,8 +12,8 @@
     "@parcel/compressor-gzip": "2.16.4",
     "@parcel/optimizer-terser": "2.16.4",
     "@parcel/transformer-sass": "2.16.4",
-    "parcel": "2.16.4",
     "http-proxy-middleware": "3.0.0",
+    "parcel": "2.16.4",
     "prettier": "3.2.5"
   },
   "dependencies": {

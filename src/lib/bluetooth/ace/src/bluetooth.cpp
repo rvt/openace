@@ -99,9 +99,9 @@ void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path)
         (void)path;
         stream << "{";
         stream << "\"connections\":" << connections.size();
-        stream << ",\"dataPortMsgMissedErr\":" << statistics.dataPortMsgMissedErr;
-        stream << ",\"cobsErr\":" << statistics.cobsErr;
-        stream << ",\"ctxBufferOverrunErr\":[";
+        stream << ",\"dataPortMsgMissed:err\":" << statistics.dataPortMsgMissedErr;
+        stream << ",\"cobs:err\":" << statistics.cobsErr;
+        stream << ",\"ctxBufferOverrun\":[";
         for (auto &it : instance->connections)
         {
             stream << it.bufferOverrunErr << ",";

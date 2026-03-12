@@ -203,9 +203,9 @@ bool GDL90::self_test( void )
     misc = MISC_TT_TRUE_TRACK_ANGLE_MASK | MISC_AIRBORNE_MASK;
     nic = NIC::HPL_LT_25_VPL_LT_37_5;
     nacp = NACP::HFOM_LT_30_VFOM_LT_45;
-    horiz_velocity_f = 123.0;
-    vert_velocity_f = 64.0;
-    track_hdg_f = 45.0;
+    horiz_velocity_f = 123.f;
+    vert_velocity_f = 64.f;
+    track_hdg_f = 45.f;
     emitter = EMITTER::LIGHT;
     call_sign = "N825V";
     emergency_prio_code = EMERGENCY_PRIO::NO_EMERGENCY;
@@ -225,7 +225,7 @@ bool GDL90::self_test( void )
     }
 
     // HEIGHT_ABOVE_TERRAIN
-    float height_f = -32767.0;
+    float height_f = -32767.f;
     uint32_t height = 0xffffffff;
     if ( !height_encode( height, height_f ) ) return error();
     if ( !height_above_terrain_encode( unpacked, height ) ) return error();
@@ -271,8 +271,8 @@ bool GDL90::self_test( void )
 
     // FOREFLIGHT AHRS
     float roll_f = -179.6;
-    float pitch_f = 179.72;    // RVT due to usage of float, added 0.02 to ensure float checks are ok
-    float heading_f = -359.95; // RVT due to usage of float, added 0.05 to ensure float checks are ok
+    float pitch_f = 179.72;    // RVT due to usage of float, added 0.f2 to ensure float checks are ok
+    float heading_f = -359.95; // RVT due to usage of float, added 0.f5 to ensure float checks are ok
     bool is_magnetic = true;
     uint32_t roll;
     uint32_t pitch;
@@ -486,8 +486,8 @@ bool GDL90::time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac )
     if ( std::isnan( frac ) ) {
         frac_encoded = TIME_OF_RECEPTION_FRAC_ENCODED_INVALID;
     } else {
-        if ( frac < 0.0 || frac >= 1.0 ) return error();
-        frac_encoded = frac * 1000000000.0/80.0;
+        if ( frac < 0.f || frac >= 1.0 ) return error();
+        frac_encoded = frac * 1000000000.f/80.f;
     }
     return true;
 }
@@ -498,7 +498,7 @@ bool GDL90::time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac )
     if ( frac_encoded == TIME_OF_RECEPTION_FRAC_ENCODED_INVALID ) {
         frac = std::nanf("0");
     } else {
-        frac = float(frac_encoded) * 80.0/1000000000.0;
+        frac = float(frac_encoded) * 80.f/1000000000.f;
         if ( frac >= 1.0 ) return error();
     }
     return true;
@@ -600,24 +600,26 @@ bool GDL90::long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint3
     return true;
 }
 
+constexpr float GDL90_DEGREES_TO_COUNTS = float(1 << 23) / 180.f;
 bool GDL90::latlon_encode( uint32_t& latlon_encoded, float  latlon )
 {
-    constexpr float GDL90_DEGREES_TO_COUNTS      = float( 1 << 23 )/180.0;
+    if (std::fabs(latlon) >= 180.f) {
+        return error();
+    }
 
-    if ( latlon < -180.0 || latlon >= 180.0 ) return error();
-    latlon_encoded = latlon*GDL90_DEGREES_TO_COUNTS;
-    latlon_encoded &= 0xffffff;
-    if ( latlon >= 0.0 && latlon_encoded >= 0x800000 ) return error();
-    if ( latlon <  0.0 && latlon_encoded <  0x800000 ) return error();
+    int32_t value = static_cast<int32_t>(lrintf(latlon * GDL90_DEGREES_TO_COUNTS));
+
+    latlon_encoded = static_cast<uint32_t>(value) & 0xFFFFFF;
     return true;
 }
 
 bool GDL90::latlon_decode( uint32_t latlon_encoded, float& latlon )
 {
-    constexpr float GDL90_DEGREES_TO_COUNTS      = float( 1 << 23 )/180.0;
+    constexpr float GDL90_DEGREES_TO_COUNTS      = float( 1 << 23 )/180.f;
 
-    int32_t latlon_encoded_s = latlon_encoded | ((latlon_encoded >= 0x800000) ? 0xff000000 : 0x00000000);
-    latlon = float(latlon_encoded_s) / GDL90_DEGREES_TO_COUNTS;
+    latlon_encoded &= 0xFFFFFF;
+    int32_t value = static_cast<int32_t>(latlon_encoded << 8) >> 8;
+    latlon = float(value) / GDL90_DEGREES_TO_COUNTS;
     return true;
 }
 
@@ -626,8 +628,8 @@ bool GDL90::altitude_encode( uint32_t& altitude_encoded, float altitude )
     if ( std::isnan( altitude ) ) {
         altitude_encoded = ALTITUDE_ENCODED_INVALID;
     } else {
-        if ( altitude < -1000.0 || altitude > 101350.0 ) return error();
-        altitude_encoded = (altitude + 1000.0) / 25.0;
+        if ( altitude < -1000.f || altitude > 101350.f ) return error();
+        altitude_encoded = (altitude + 1000.f) / 25.f;
         if ( altitude_encoded == ALTITUDE_ENCODED_INVALID ) return error();
     }
     return true;
@@ -639,7 +641,7 @@ bool GDL90::altitude_decode( uint32_t  altitude_encoded, float& altitude )
     if ( altitude_encoded == ALTITUDE_ENCODED_INVALID ) {
         altitude = std::nanf("1");
     } else {
-        altitude = altitude_encoded*25.0 - 1000.0;
+        altitude = altitude_encoded*25.f - 1000.f;
     }
     return true;
 }
@@ -649,8 +651,8 @@ bool GDL90::horizontal_velocity_encode( uint32_t& velocity_encoded, float  veloc
     if ( std::isnan( velocity ) ) {
         velocity_encoded = HORIZONTAL_VELOCITY_ENCODED_INVALID;
     } else {
-        if ( velocity < 0.0 ) return error();
-        if ( velocity >= 4094.0 ) velocity = 4094.0;
+        if ( velocity < 0.f ) return error();
+        if ( velocity >= 4094.f ) velocity = 4094.f;
         velocity_encoded = velocity;
         if ( velocity_encoded == HORIZONTAL_VELOCITY_ENCODED_INVALID ) return error();
     }
@@ -667,17 +669,20 @@ bool GDL90::horizontal_velocity_decode( uint32_t velocity_encoded, float& veloci
     return true;
 }
 
-bool GDL90::vertical_velocity_encode( uint32_t& velocity_encoded, float  velocity )
+bool GDL90::vertical_velocity_encode(uint32_t& velocity_encoded, float velocity)
 {
-    if ( std::isnan( velocity ) ) {
+    if (std::isnan(velocity)) {
         velocity_encoded = VERTICAL_VELOCITY_ENCODED_INVALID;
-    } else {
-        if ( velocity <= -32640.0 ) velocity = -32640.0;
-        if ( velocity >=  32640.0 ) velocity =  32640.0;
-        velocity_encoded = velocity / 64.0;
-        velocity_encoded &= 0xfff;
-        if ( (velocity_encoded >= 0x1ff && velocity_encoded <= 0x7ff) || (velocity_encoded >= 0x800 && velocity_encoded <= 0xe01) ) return error();
+        return true;
     }
+
+    if (velocity < -32640.f) { velocity = -32640.f; }
+    if (velocity >  32640.f) { velocity =  32640.f; }
+
+    int32_t value = static_cast<int32_t>(lrintf(velocity / 64.f));
+
+    velocity_encoded = static_cast<uint32_t>(value) & 0x0FFF;
+
     return true;
 }
 
@@ -688,22 +693,22 @@ bool GDL90::vertical_velocity_decode( uint32_t velocity_encoded, float& velocity
     } else {
         if ( (velocity_encoded >= 0x1ff && velocity_encoded <= 0x7ff) || (velocity_encoded >= 0x801 && velocity_encoded <= 0xe01) ) return error();
         int32_t velocity_encoded_s = velocity_encoded | ((velocity_encoded >= 0x801) ? 0xfffff000 : 0x00000000);
-        velocity = float(velocity_encoded_s) * 64.0;
+        velocity = float(velocity_encoded_s) * 64.f;
     }
     return true;
 }
 
 bool GDL90::track_hdg_encode( uint32_t& track_hdg_encoded, float  track_hdg )
 {
-    if ( track_hdg < 0.0 || track_hdg > 360.0 ) return error();
-    track_hdg_encoded = track_hdg * 256.0/360.0;
+    if ( track_hdg < 0.f || track_hdg > 360.f ) return error();
+    track_hdg_encoded = track_hdg * 256.0/360.f;
     if ( track_hdg_encoded == 0x100 ) track_hdg_encoded = 0x00;
     return true;
 }
 
 bool GDL90::track_hdg_decode( uint32_t  track_hdg_encoded, float& track_hdg )
 {
-    track_hdg = float(track_hdg_encoded) * 360.0 / 256.0;
+    track_hdg = float(track_hdg_encoded) * 360.f / 256.f;
     return true;
 }
 
@@ -812,12 +817,36 @@ bool GDL90::ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unp
     vert_velocity |= unpacked[i++];
     track_hdg = unpacked[i++];
     emitter = EMITTER( unpacked[i++] );
-    call_sign = "";
-    for( uint32_t c = 0; c < 8; c++ )
-    {
+    call_sign.clear();
+
+    uint32_t pending_spaces = 0;
+    for (uint32_t c = 0; c < 8; c++) {
         char ch = unpacked[i++];
-        call_sign += ch; // etl::istring( 1, ch );
+
+        bool valid_char = ((ch >= '0' && ch <= '9') ||
+                        (ch >= 'A' && ch <= 'Z') ||
+                        (ch == '-'));
+
+        if (ch == ' ') {
+            if (!call_sign.empty()) {
+                pending_spaces++;
+            }
+            continue;
+        }
+
+        if (!valid_char) {
+            continue;
+        }
+
+        // commit any spaces that were between valid characters
+        while (pending_spaces > 0) {
+            call_sign += ' ';
+            pending_spaces--;
+        }
+
+        call_sign += ch;
     }
+
     byte = unpacked[i++];
     emergency_prio_code = EMERGENCY_PRIO( (byte >> 4) & 0xf );
     return true;
@@ -869,7 +898,7 @@ bool GDL90::height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, 
 bool GDL90::geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude )
 {
     if ( geo_altitude < (-5.0*32768.0) || geo_altitude > (5.0*32767.0) ) return error();
-    geo_altitude_encoded = geo_altitude / 5.0;
+    geo_altitude_encoded = geo_altitude / 5.f;
     geo_altitude_encoded &= 0xffff;
     return true;
 }
@@ -877,7 +906,7 @@ bool GDL90::geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_alti
 bool GDL90::geo_altitude_decode( uint32_t  geo_altitude_encoded, float& geo_altitude )
 {
     int32_t geo_altitude_encoded_s = geo_altitude_encoded | ((geo_altitude_encoded >= 0x8000) ? 0xffff0000 : 0x00000000);
-    geo_altitude = float(geo_altitude_encoded_s) * 5.0;
+    geo_altitude = float(geo_altitude_encoded_s) * 5.f;
     return true;
 }
 
@@ -886,7 +915,7 @@ bool GDL90::vertical_figure_of_merit_encode( uint32_t& vertical_figure_of_merit_
     if ( std::isnan( vertical_figure_of_merit ) ) {
         vertical_figure_of_merit_encoded = VERTICAL_FIGURE_OF_MERIT_NOT_AVAIL;
     } else {
-        if ( vertical_figure_of_merit < 0.0 ) return error();
+        if ( vertical_figure_of_merit < 0.f ) return error();
         if ( vertical_figure_of_merit >= 32766.0 ) {
             vertical_figure_of_merit_encoded = VERTICAL_FIGURE_OF_MERIT_GE_32766;
         } else {
@@ -1008,8 +1037,8 @@ bool GDL90::foreflight_roll_pitch_encode( uint32_t& roll_pitch_encoded, float  r
     if ( std::isnan( roll_pitch ) ) {
         roll_pitch_encoded = FOREFLIGHT_ROLL_PITCH_INVALID;
     } else {
-        if ( roll_pitch < -180.0 || roll_pitch > 180.0 ) return error();
-        roll_pitch_encoded = roll_pitch * 10.0;
+        if ( roll_pitch < -180.f || roll_pitch > 180.f ) return error();
+        roll_pitch_encoded = roll_pitch * 10.f;
         roll_pitch_encoded &= 0xffff;
     }
     return true;
@@ -1022,8 +1051,8 @@ bool GDL90::foreflight_roll_pitch_decode( uint32_t  roll_pitch_encoded, float& r
     } else {
         if ( roll_pitch_encoded > 0xffff ) return error();
         int32_t roll_pitch_encoded_s = roll_pitch_encoded | ((roll_pitch_encoded >= 0x8000) ? 0xffff0000 : 0x00000000);
-        roll_pitch = float(roll_pitch_encoded_s) / 10.0;
-        if ( roll_pitch < -180.0 || roll_pitch > 180.0 ) return error();
+        roll_pitch = float(roll_pitch_encoded_s) / 10.f;
+        if ( roll_pitch < -180.f || roll_pitch > 180.f ) return error();
     }
     return true;
 }
@@ -1033,8 +1062,8 @@ bool GDL90::foreflight_heading_encode( uint32_t& heading_encoded, float  heading
     if ( std::isnan( heading ) ) {
         heading_encoded = FOREFLIGHT_HEADING_INVALID;
     } else {
-        if ( heading < -360.0 || heading > 360.0 ) return error();
-        heading_encoded = heading * 10.0;
+        if ( heading < -360.f || heading > 360.f ) return error();
+        heading_encoded = heading * 10.f;
         heading_encoded &= 0x7fff;
         heading_encoded |= is_magnetic << 15;
     }
@@ -1051,8 +1080,8 @@ bool GDL90::foreflight_heading_decode( uint32_t  heading_encoded, float& heading
         is_magnetic = (heading_encoded >> 15) & 1;
         heading_encoded &= 0x7fff;
         int32_t heading_encoded_s = heading_encoded | ((heading_encoded >= 0x4000) ? 0xffff8000 : 0x00000000);
-        heading = float(heading_encoded_s) / 10.0;
-        if ( heading < -360.0 || heading > 360.0 ) return error();
+        heading = float(heading_encoded_s) / 10.f;
+        if ( heading < -360.f || heading > 360.f ) return error();
     }
     return true;
 }
@@ -1202,7 +1231,7 @@ bool GDL90::sx_heartbeat_encode(etl::ivector<uint8_t> &unpacked,
     unpacked.push_back(rate1090 & 0xFF);
 
     // [26] Temp
-    auto t = uint16_t(10.0f * cpuTemp);
+    auto t = uint16_t(10.f * cpuTemp);
     unpacked.push_back(t >> 8);
     unpacked.push_back(t & 0xFF);
 

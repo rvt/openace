@@ -117,8 +117,8 @@ void AbstractGnss::getData(etl::string_stream &stream, const etl::string_view pa
 {
     (void)path;
     stream << "{";
-    stream << "\"totalReceived\":" << statistics.totalReceived;
-    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
+    stream << "\"totalReceived:k\":" << statistics.totalReceived;
+    stream << ",\"queueFull:err\":" << statistics.queueFullErr;
     stream << ",\"status\":\"" << statistics.status << "\"";
     stream << ",\"baudrate\":" << statistics.baudrate;
 #if ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG == 1

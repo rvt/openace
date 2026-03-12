@@ -34,15 +34,15 @@ void ADSLAce::getData(etl::string_stream &stream, const etl::string_view path) c
     {
         stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",\n";
     }
-    stream << "\"receivedAircraftPositions\":" << statistics.receivedAircraftPositions;
-    stream << ",\"transmittedAircraftPositions\":" << statistics.transmittedAircraftPositions;
-    stream << ",\"fecErr\":" << statistics.fecErr;
+    stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
+    stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
+    stream << ",\"fec:err\":" << statistics.fecErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"encrypted\":" << statistics.encrypted;
-    stream << ",\"protocolVersionErr\":" << statistics.protocolVersionErr;
-    stream << ",\"decryptionKeyErr\":" << statistics.decryptionKeyErr;
-    stream << ",\"payloadUnSupportedErr\":" << statistics.payloadUnSupportedErr;
-    stream << ",\"unknownErr\":" << statistics.unknownErr;
+    stream << ",\"protocolVersion:err\":" << statistics.protocolVersionErr;
+    stream << ",\"decryptionKey:err\":" << statistics.decryptionKeyErr;
+    stream << ",\"payloadUnSupported:err\":" << statistics.payloadUnSupportedErr;
+    stream << ",\"unknown:err\":" << statistics.unknownErr;
     stream << ",\"unsupportedFec\":" << statistics.encrypted;
     stream << ",\"TXProtocolVersion\":" << protocol.lowestDominotorProtocolVersion();
     stream << ",\"numberOfNeighbours\":" << protocol.numberOfNeighbours();

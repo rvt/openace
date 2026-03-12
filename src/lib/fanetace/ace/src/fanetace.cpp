@@ -250,12 +250,12 @@ void FanetAce::getData(etl::string_stream &stream, const etl::string_view path) 
 {
     (void)path;
     stream << "{";
-    stream << "\"received\":" << statistics.received;
-    stream << ",\"send\":" << statistics.send;
+    stream << "\"received:k\":" << statistics.received;
+    stream << ",\"send:k\":" << statistics.send;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"neighbors\":" << protocol.neighborTable().size();
     stream << ",\"Pool Size\":" << protocol.pool().getAllocatedBlocks().size();
-    stream << ",\"Airtime\":" << protocol.airTime();
+    stream << ",\"Airtime:msec\":" << protocol.airTime();
     stream << "}";
 }
 

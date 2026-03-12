@@ -8,8 +8,8 @@ namespace GATAS
 {
     /**
      * @brief Helper class to store antenna radiation pattern measurements.
-     * 
-     * @tparam NUM_RADIALS 
+     *
+     * @tparam NUM_RADIALS
      */
     template<size_t NUM_RADIALS = 8>
     class AntennaRadiationPattern
@@ -52,22 +52,23 @@ namespace GATAS
         }
 
         void serialize(etl::string_stream &stream) const {
-            stream << "["; 
-            
+            stream << "[";
+
+            // [ [avgRssiDbm, maxRssiDbm, avgDistance, maxDistance], [avgRssiDbm, maxRssiDbm, avgDistance, maxDistance], ....]
             for (size_t i = 0; i < NUM_RADIALS; ++i) {
                 const Measurement &m = radiationPattern[i];
-        
-                stream << "[" << m.avgRssiDbm << "," 
-                << m.maxRssiDbm << "," 
-                << m.avgDistance << "," 
+
+                stream << "[" << m.avgRssiDbm << ","
+                << m.maxRssiDbm << ","
+                << m.avgDistance << ","
                 << m.maxDistance << "]";
-        
+
                 if (i < NUM_RADIALS - 1) {
                     stream << ",";
                 }
             }
-        
-            stream << "]"; 
+
+            stream << "]";
         }
 
     };

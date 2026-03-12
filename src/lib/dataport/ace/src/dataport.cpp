@@ -431,7 +431,7 @@ void DataPort::getData(etl::string_stream &stream, const etl::string_view path) 
 {
     (void)path;
     stream << "{";
-    stream << "\"messages\":" << statistics.messages;
+    stream << "\"messages:k\":" << statistics.messages;
     stream << "}";
 }
 

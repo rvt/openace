@@ -6,6 +6,7 @@ class MockConfig : public Configuration
 {
 
 public:
+    uint32_t ownIcao=0xACEACE;
     MockConfig(etl::imessage_bus &bus) : Configuration(bus)
     {
     }
@@ -22,7 +23,7 @@ public:
     virtual const GATAS::Config::GaTasConfiguration gaTasConfig() const override
     {
         return GATAS::Config::GaTasConfiguration{
-            {0x000000,
+            {ownIcao,
              GATAS::AircraftCategory::LIGHT,
              GATAS::AddressType::ICAO,
              false,
@@ -86,8 +87,15 @@ public:
     {
     }
 
-    virtual GATAS::CallSign getCallSignFromHex(uint32_t) const override
+    virtual GATAS::CallSign getCallSignFromHex(uint32_t code) const override
     {
+        switch (code) {
+            case 0xFF0001: return "PH-ABC";
+            case 0xFF0002: return "";
+            case 0xFF0003: return "1234 567";
+            case 0xFF0004: return "abcdefghijkl";
+            case 0xACEACE: return "PH-ACE";
+        }
         return "PH-XXX";
     }
 

@@ -73,7 +73,7 @@ private:
                 }
             }
             stream << "]";
-            stream << ",\"taskActivityRadio_" << radioNo << "\":" << statistics.taskActivity;
+            stream << ",\"taskActivityRadio_" << radioNo << ":k\":" << statistics.taskActivity;
         }
     };
 

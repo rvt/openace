@@ -50,8 +50,8 @@ void SerialADSB::getData(etl::string_stream &stream, const etl::string_view path
 {
     (void)path;
     stream << "{";
-    stream << "\"totalReceived\":" << statistics.totalReceived;
-    stream << ",\"queueFullErr\":" << statistics.queueFullErr;
+    stream << "\"totalReceived:k\":" << statistics.totalReceived;
+    stream << ",\"queueFull:err\":" << statistics.queueFullErr;
     stream << "}";
 }
 
