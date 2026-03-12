@@ -168,7 +168,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
                 latitude = (minmea_tocoord(&frame.latitude));
                 longitude = (minmea_tocoord(&frame.longitude));
 
-                // TODO: Perhaps use Speed over ground/cours over ground?
+                // TODO: Perhaps use Speed over ground/course over ground?
                 auto const relNorthrelEast = CoreUtils::northEastDistance(prevLatitude, prevLongitude, latitude, longitude);
                 velocityNorth = relNorthrelEast.north;
                 velocityEast = relNorthrelEast.east;

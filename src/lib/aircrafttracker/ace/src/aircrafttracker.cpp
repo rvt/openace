@@ -41,7 +41,7 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     stream << "{";
     for (uint8_t i = 0; i < static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS); i++)
     {
-        stream << "\"" << GATAS::dataSourceIntToString(i) << "_AntPolar\":";
+        stream << "\"" << GATAS::dataSourceIntToString(i) << ":AntPolar\":";
         antennaRadiationPattern[i].serialize(stream);
         stream << ",";
     }
