@@ -42,6 +42,18 @@ seen by transmitting different protocols and be able to see them.
 > car
 > for better air-2-air visibility.
 
+## ADS-L Issue 2 — Ground Station Mode & Traffic Uplink
+
+GA/TAS supports **ADS-L Issue 2** including ground station mode and traffic uplink. In ground
+station mode the device not only transmits its own position but also re-broadcasts received traffic
+back into the ADS-L network as uplink frames, making nearby traffic visible to other ADS-L
+participants that would otherwise be out of range. This includes any traffic received via Gatas Connect and thus showing additional MLAT traffic.
+This is ideal if you have glider fields and want to inform nearby traffic that a fields is active.
+A maximum of 10 aircraft closest to the groundstation will be relayed.
+
+<img src="doc/img/groundstation.png" width="600">
+Base station mode is active and relaying additional traffic.
+
 ## Radio Protocol Support
 
 Radio Protocol is the method used to communicate with other conspicuity devices

@@ -37,7 +37,7 @@ namespace GATAS
         AntennaRadiationPattern() : radiationPattern() {};
 
 
-        void put(const GATAS::AircraftPositionMsg &msg) {
+        void put(const GATAS::IngressAircraftPositionMsg &msg) {
             auto &position = msg.position;
             uint8_t positionInRadial = CoreUtils::getRadialSection<NUM_RADIALS>(CoreUtils::bearingFromInDegShort(position.relEastFromOwn, position.relNorthFromOwn));
             Measurement &measurement = radiationPattern[positionInRadial];

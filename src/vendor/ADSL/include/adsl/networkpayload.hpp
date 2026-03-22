@@ -19,7 +19,8 @@ namespace ADSL
   class NetworkPayload final
   {
   public:
-    static constexpr uint8_t TotalHeaderBits = 8; // Total bits in the network header
+    static constexpr size_t LENGTH = 1; // Total bytes
+    static constexpr size_t LENGTH_CRC = 3; // Total  bytes CRC
     struct ProtocolVersion
     {
       enum enum_type : uint8_t
@@ -106,19 +107,6 @@ namespace ADSL
     ErrorControlMode errorControlMode() const { return errorControlMode_; }
 
     /**
-     * @brief Serialize the Network Header to a bit stream. v1/v2 are the same
-     * Total width: 8 bits (1 byte)
-     * @param writer The bit stream writer.
-     */
-    void serialize_issue1(etl::bit_stream_writer &writer) const
-    {
-      writer.write_unchecked(static_cast<uint8_t>(protocolVersion_), 4U);
-      writer.write_unchecked(secureSignatureFlag_);
-      writer.write_unchecked(keyIndex_, 2U);
-      writer.write_unchecked(static_cast<uint8_t>(errorControlMode_), 1U);
-    }
-
-    /**
      * @brief Get the serialized Network Header as a uint8_t.
      * Note: Ensure this works on your platform! The serialise function is preferred as they are platform independent
      * @return The serialized Network Header.
@@ -148,6 +136,20 @@ namespace ADSL
           (value & 0x10) != 0,
           static_cast<uint8_t>((value >> 5) & 0x03),
           static_cast<ErrorControlMode>((value >> 7) & 0x01)};
+    }
+
+    /**
+     * @brief Serialize the Network Header to a bit stream. v1/v2 are the same
+     * Total width: 8 bits (1 byte)
+     * @param writer The bit stream writer.
+     */
+    size_t serialize_issue1(etl::bit_stream_writer &writer) const
+    {
+      writer.write_unchecked(static_cast<uint8_t>(protocolVersion_), 4U);
+      writer.write_unchecked(secureSignatureFlag_);
+      writer.write_unchecked(keyIndex_, 2U);
+      writer.write_unchecked(static_cast<uint8_t>(errorControlMode_), 1U);
+      return NetworkPayload::LENGTH;
     }
 
     /**

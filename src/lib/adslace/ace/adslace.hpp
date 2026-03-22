@@ -33,10 +33,10 @@
 // #include "ace/ldpc.hpp"
 // #include "adsl_packet.hpp"
 
-class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<ADSLAce, GATAS::RadioRxManchesterMsg, GATAS::RadioRxMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::GpsStatsMsg>
+class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<ADSLAce, GATAS::RadioRxManchesterMsg, GATAS::RadioRxMsg, GATAS::OwnshipPositionMsg, GATAS::EgressAircraftPositionsMsg, GATAS::RadioTxPositionRequestMsg, GATAS::GpsStatsMsg>
 {
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr int MAX_IGNORE_DISTANCE = 50000;
+    static constexpr int MAX_IGNORE_DISTANCE = 100000;
 
     friend class message_router;
     mutable struct
@@ -54,13 +54,13 @@ class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<A
     } statistics;
 
     ADSL::Protocol protocol;
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    GATAS::OwnshipPositionInfo ownshipPosition{};
 
     GATAS::DataSourceTimeStatsTable<3> datasourceTimeStats;
 
-    GATAS::GpsStatsMsg gpsStats;
-    uint16_t distanceIgnore;
-    SemaphoreHandle_t rxMutex;
+    GATAS::GpsStats gpsStats;
+    uint32_t distanceIgnore = MAX_IGNORE_DISTANCE;
+    SemaphoreHandle_t protocolMutex;
     struct Tx_Struct
     {
         GATAS::RadioParameters radioParameters;
@@ -72,13 +72,11 @@ class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<A
 public:
     static constexpr const etl::string_view NAME = "ADSL";
     ADSLAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                   protocol(this),
-                                                                   ownshipPosition{}
+                                                                   protocol(this)
     {
-        auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "ADSL", "distanceIgnore");
-        distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
+        (void) config;
         protocol.init();
-        protocol.addPayloadLength = true;
+        protocol.crcCheckOnReceive = false;
     }
 
     virtual ~ADSLAce() = default;
@@ -98,6 +96,7 @@ private:
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
+    void on_receive(const GATAS::EgressAircraftPositionsMsg &msg);
     void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
@@ -119,13 +118,19 @@ private:
     virtual bool adsl_sendFrame(const void *ctx, const uint8_t *data, size_t lengthBytes) override;
 
     // Called when a payload/header/status is received by the protocol layer
-    virtual void adsl_receivedTraffic(const ADSL::Header &header, const ADSL::TrafficPayload &tp);
-    virtual void adsl_receivedStatus(const ADSL::Header &header, const ADSL::StatusPayload &tp);
+    virtual void adsl_receivedTraffic(const ADSL::Header &header, const ADSL::TrafficPayload &tp) override;
+    virtual void adsl_receivedStatus(const ADSL::Header &header, const ADSL::StatusPayload &tp) override;
+    virtual void adsl_receivedUplinkTraffic(const ADSL::Header &header, etl::span<const ADSL::UplinkEntry> entries) override;
+    virtual void adsl_buildStatusPayload(const void *ctx, ADSL::StatusPayload &sp) override;
 
-    virtual void adsl_buildTraffic(const void *ctx, ADSL::TrafficPayload &tp);
-    virtual void adsl_buildStatusPayload(const void *ctx, ADSL::StatusPayload &sp);
     virtual uint8_t *adsl_alloc(const void *ctx, size_t sizeBytes);
 
+    virtual void adsl_lock() override;
+    virtual void adsl_unlock() override;
+
+    ADSL::TrafficPayload buildOwnshipTrafficPayload(const GATAS::OwnshipPositionInfo &ownship);
+    ADSL::TrafficPayload buildTrafficPayload(const GATAS::AircraftPositionInfo &traffic);
+    ADSL::StatusPayload buildOwnshipStatusPayload();
     ADSL::TrafficPayload::HorizontalPositionAccuracy mapHFOM(float hfomMeters);
     ADSL::TrafficPayload::NavigationIntegrity mapHPL(float hplMeters);
     ADSL::TrafficPayload::VerticalPositionAccuracy mapVFOM(float vfomMeters);

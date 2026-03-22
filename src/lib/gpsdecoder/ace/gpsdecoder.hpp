@@ -65,7 +65,8 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
     uint8_t fixQuality;
     GATAS::GpsFixType fixType;
     GATAS::Config::Conspicuity conspicuity;
-
+    int16_t heightAboveGps = 0;
+    bool groundStation = false;
 private:
     void on_receive(const GATAS::GPSSentenceMsg &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
@@ -112,6 +113,8 @@ public:
                                                                       fixType(GATAS::GpsFixType::NO_FIX)
     {
         conspicuity = config.gaTasConfig().conspicuity;
+        heightAboveGps = conspicuity.heightAboveGps;
+        groundStation = conspicuity.groundStation;
     }
 
     virtual ~GpsDecoder() = default;

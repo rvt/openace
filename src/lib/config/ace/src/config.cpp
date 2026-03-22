@@ -360,7 +360,9 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
                 .category = GATAS::AircraftCategory::LIGHT,
                 .addressType = GATAS::AddressType::ADSL,
                 .stealth = false,
-                .noTrack = false},
+                .noTrack = false,
+                .groundStation = false,
+                .heightAboveGps = 0},
             .protocols = protocols,
             .allIcaoAddresses = {}};
     }
@@ -370,11 +372,13 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
         if (!protocols.full())
         {
             auto dataSource = GATAS::stringToDataSource(protocol.as<const char *>());
-            if (dataSource != GATAS::DataSource::NONE) {
-                protocols.push_back(dataSource);            
+            if (dataSource != GATAS::DataSource::NONE)
+            {
+                protocols.push_back(dataSource);
                 // ADSLM implies ADSLO_HDR
-                if (dataSource == GATAS::DataSource::ADSLM) {
-                    protocols.push_back(GATAS::DataSource::ADSLO_HDR);                            
+                if (dataSource == GATAS::DataSource::ADSLM)
+                {
+                    protocols.push_back(GATAS::DataSource::ADSLO_HDR);
                 }
             }
         }
@@ -391,6 +395,8 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
         }
     }
 
+    bool groundStation = aircraftConfig["groundStation"];
+    int16_t hag = etl::clamp(static_cast<int16_t>(aircraftConfig["heightAboveGps"]), static_cast<int16_t>(0), static_cast<int16_t>(1500));
     return {
         .conspicuity = {
             .icaoAddress = aircraftConfig["address"],
@@ -398,6 +404,8 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
             .addressType = GATAS::stringToAddressType((ccharptr)aircraftConfig["addressType"]),
             .stealth = aircraftConfig["stealth"],
             .noTrack = aircraftConfig["noTrack"],
+            .groundStation = groundStation,
+            .heightAboveGps = groundStation ? hag : static_cast<int16_t>(0),
         },
         .protocols = protocols,
         .allIcaoAddresses = allIcaoAddresses};

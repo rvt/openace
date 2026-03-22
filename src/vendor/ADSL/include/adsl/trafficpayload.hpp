@@ -16,6 +16,8 @@ namespace ADSL
   class TrafficPayload final
   {
   public:
+    static constexpr size_t LENGTH = 15;
+
     // Enums for encoded fields
     struct FlightState
     {
@@ -56,8 +58,9 @@ namespace ADSL
         MODEL_PLANE = 14,
         HEAVY_ROTORCRAFT = 15,
         HANGGLIDER = 16,
-        PARAMOTOR = 17
+        PARAMOTOR = 17,
         // 18-31: Reserved
+        STATIC_OBJECT = 31 // Not official, but needed a place for a static object
       };
 
       ETL_DECLARE_ENUM_TYPE(AircraftCategory, uint8_t)
@@ -79,6 +82,7 @@ namespace ADSL
       ETL_ENUM_TYPE(HEAVY_ROTORCRAFT, "HEAVY_ROTORCRAFT")
       ETL_ENUM_TYPE(HANGGLIDER, "HANGGLIDER")
       ETL_ENUM_TYPE(PARAMOTOR, "PARAMOTOR")
+      ETL_ENUM_TYPE(STATIC_OBJECT, "STATIC_OBJECT")
       ETL_END_ENUM_TYPE
     };
 
@@ -509,7 +513,7 @@ namespace ADSL
       writer.write_unchecked(static_cast<uint8_t>(verticalPositionAccuracy_), 2);
       writer.write_unchecked(static_cast<uint8_t>(velocityAccuracy_), 2);
       writer.write_unchecked(0, 1);
-      return 15;
+      return TrafficPayload::LENGTH;
     }
 
     /**

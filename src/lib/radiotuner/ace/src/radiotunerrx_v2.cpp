@@ -122,10 +122,24 @@ void RadioTunerRx::radioTuneTask(void *arg)
                 continue;
             }
 
-            auto frequency = CountryRegulations::getFrequency(timeSlot->frequency, timingPtr->channel);
+            auto frequency = CountryRegulations::getFrequency(timeSlot->rfConfig, timingPtr->channel);
+            auto dataSource = timeSlot->radioConfig.dataSource();
 
-            // Note to self, the tranceiver itself will decide if to reconfigure or not
-            radioTunerRx->getBus().receive(GATAS::RadioControlMsg{GATAS::RadioParameters(&timeSlot->radioConfig, &timeSlot->frequency, frequency, 0), ref.radioNo});
+
+            // Skip sending if the same datasource+frequency was already sent within the last 5 seconds
+            auto timeUs32Raw = CoreUtils::timeUs32Raw();
+            bool sameConfig = (ref.lastDataSource == dataSource && ref.lastFrequency == frequency);
+            bool withinTimeout = (timeUs32Raw - ref.lastSendUsRaw) < 2'500'000;
+            if (sameConfig && withinTimeout)
+            {
+                continue;
+            }
+
+            // GATAS_INFO("RX: DS:%s Freq:%lu Radio:%u, ms:%u", GATAS::toString(timeSlot->radioConfig.dataSource()), frequency, ref.radioNo, CoreUtils::msInSecond());
+            radioTunerRx->getBus().receive(GATAS::RadioControlMsg{GATAS::RadioParameters(&timeSlot->radioConfig, &timeSlot->rfConfig, frequency, 0), ref.radioNo});
+            ref.lastDataSource = dataSource;
+            ref.lastFrequency = frequency;
+            ref.lastSendUsRaw = timeUs32Raw;
             ref.statistics.taskActivity += 1;
         }
 
@@ -155,7 +169,7 @@ void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
     }
 }
 
-void RadioTunerRx::on_receive(const GATAS::AircraftPositionMsg &msg)
+void RadioTunerRx::on_receive(const GATAS::IngressAircraftPositionMsg &msg)
 {
     GATAS_ASSERT(msg.position.dataSource < GATAS::DataSource::_TRANSPROTOCOLS, "Invalid datasource");
     slotReceive[(uint8_t)msg.position.dataSource] += 1;

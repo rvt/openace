@@ -15,9 +15,8 @@
 class CoreUtils
 {
 
-    inline static __scratch_y("GatasMem_offsetTimeToAbsolute") uint64_t CoreUtils_offsetTimeToAbsolute = 0;
-    inline static __scratch_y("GatasMem_timeUs32PpsOffset") uint32_t CoreUtils_timeUs32PpsOffset = 0;
-    
+    inline static uint64_t CoreUtils_offsetTimeToAbsolute = 0;
+    inline static uint32_t CoreUtils_timeUs32PpsOffset = 0;
     inline static int spinLock;
 
 public:
@@ -191,7 +190,8 @@ public:
      */
     static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
     {
-        CoreUtils_offsetTimeToAbsolute = msSinceEpoch - time_us_64() / 1'000;
+        const uint64_t nowUs = time_us_64();
+        CoreUtils_offsetTimeToAbsolute = msSinceEpoch - nowUs / 1'000;
     }
 
     /**
@@ -208,6 +208,15 @@ public:
     static uint32_t secondsSinceEpoch()
     {
         return msSinceEpoch() / 1000;
+    }
+
+    /**
+     * Seconds since midnight UTC (0–86399).
+     * Uses a dedicated 32-bit offset captured in setOffsetMsSinceEpoch; returns 0 until that is called.
+     */
+    static uint32_t secondsSinceMidnight()
+    {
+        return secondsSinceEpoch() % 86'400;
     }
 
     static tm localTime()
@@ -278,8 +287,7 @@ public:
         return dLon;
     }
 
-    static auto northEastDistance(float fromLat, float fromLon, float toLat,
-                                  float toLon)
+    static auto northEastDistance(float fromLat, float fromLon, float toLat, float toLon)
     {
         struct RelNorthRelEast
         {
@@ -311,7 +319,7 @@ public:
 
     /**
      * Calculate the bearing between two points on earth
-     * returns bearing in degrees 0≤x<360
+     * returns bearing in radians 0≤x<2π
      * For short distances you can also use bearingFromInDegShort
      * https://www.movable-type.co.uk/scripts/latlong.html
      */
@@ -343,8 +351,9 @@ public:
     {
         float theta = atan2f(east, north);
         float deg = theta * 180.f / M_PI;
-        if (deg < 0.f)
+        if (deg < 0.f) {
             deg += 360.f;
+        }
         return deg;
     }
 
@@ -371,8 +380,8 @@ public:
             }
             return bearing;
         }
-        //        int16_t bearing;
     };
+
     struct distanceRelNorthRelEastFloat
     {
         float distance;
@@ -382,8 +391,6 @@ public:
         {
             return bearingFromInDegShort(relEastMeter, relNorthMeter);
         }
-
-        //        float bearing;
     };
 
     static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const GATAS::AircraftPositionInfo &from, const GATAS::AircraftPositionInfo &to)
@@ -402,11 +409,13 @@ public:
     template <typename T>
     constexpr static T toBearing(T angle)
     {
-        while (angle < static_cast<T>(0))
+        while (angle < static_cast<T>(0)) {
             angle += static_cast<T>(360);
+        }
 
-        while (angle >= static_cast<T>(360))
+        while (angle >= static_cast<T>(360)) {
             angle -= static_cast<T>(360);
+        }
 
         return angle;
     }
@@ -419,12 +428,6 @@ public:
     static distanceRelNorthRelEastInt __time_critical_func(getDistanceRelNorthRelEastInt)(float fromLat, float fromLon, float toLat, float toLon)
     {
         auto drne = getDistanceRelNorthRelEastFloat(fromLat, fromLon, toLat, toLon);
-
-        // int16_t bearing = drne.bearing + 0.5f;
-        // if (bearing >= 360)
-        // {
-        //     bearing = 0;
-        // }
         return {
             static_cast<uint32_t>(drne.distance + 0.5f),
             static_cast<int32_t>(drne.relNorthMeter + 0.5f),
@@ -480,7 +483,6 @@ public:
     static uint8_t calculateNMEAChecksum(const etl::istring &nmea)
     {
         uint8_t chk = 0;
-
         // NMEA checksum starts after '$'
         for (size_t i = 1; i < nmea.size() && nmea[i] != '*'; ++i)
         {

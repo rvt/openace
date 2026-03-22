@@ -34,7 +34,7 @@ void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
     // }
 }
 
-void DataPort::on_receive(const GATAS::TrackedAircraftPositionMsg &msg)
+void DataPort::on_receive(const GATAS::EgressAircraftPositionMsg &msg)
 {
     sendPFLAA(msg.position);
 }
@@ -88,7 +88,7 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
            << getPFLAAAddressType(position.addressType) << CO;               // ID Type
     CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);
     stream << CO                                       // HEXCode example 484FB3!PH-DHA
-           << position.course << CO                    // Track
+           << position.track << CO                    // Track
            << CO                                       // TurnRate kept empty
            << groundSpeed << CO                        // Ground Speed
            << climbRate << CO                          // Climb Rate

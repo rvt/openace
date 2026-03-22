@@ -138,12 +138,13 @@ void Sx1262::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     {
         txEnabled = msg.config.valueByPath(true, Sx1262::NAMES[radioNo], "txEnabled");
         offsetHz = msg.config.valueByPath(true, Sx1262::NAMES[radioNo], "offset");
+        groundStation = msg.config.gaTasConfig().conspicuity.groundStation;
     }
 }
 
 void Sx1262::on_receive(const GATAS::GpsStatsMsg &msg)
 {
-    hasGpsFix = msg.gpsFix.hasFix;
+    hasGpsFix = msg.gpsStats.gpsFix.hasFix;
 }
 
 void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)
@@ -197,7 +198,7 @@ void Sx1262::radioInit()
     sx126x_write_register(this, 0x08D8, &clamp, 1);
 
     // TX Base at 0x00  RX Base at 0x80
-    sx126x_set_buffer_base_address(this, 0x00, 0x80);
+    sx126x_set_buffer_base_address(this, 0x00, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE);
 
     sx126x_set_rx_tx_fallback_mode(this, SX126X_FALLBACK_STDBY_XOSC);
     sx126x_set_cad_params(this, &DEFAULT_CAD_PARAMS);
@@ -210,6 +211,9 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
 {
     // 9.8 Transceiver Circuit Modes Graphical Illustration
     standBy();
+
+    // TX Base at 0x00  RX Base at 0x80
+    sx126x_set_buffer_base_address(this, 0x00, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE);
 
     if (newParameters.config->pcId != rxRadioParameters.config->pcId || true)
     {
@@ -255,13 +259,14 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
             uint8_t syncLengthBits;
             const uint8_t *syncData;
 
+            // payloadLength will be !=0 to indicate actual data needs to be send
             if (payloadLength)
             {
                 // TX Config
                 syncLengthBits = newParameters.config->syncLength;
                 syncData = newParameters.config->syncWord.data();
                 pkt_params_gfsk.pld_len_in_bytes = payloadLength * (newParameters.config->manchester ? 2 : 1);
-                if (newParameters.config->packetLength == 0)
+                if (newParameters.config->packetLength == 0) // When newParameters.config->packetLength == 0, this means variable payload
                 {
                     pkt_params_gfsk.header_type = SX126X_GFSK_PKT_VAR_LEN;
                 }
@@ -274,7 +279,8 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
                 if (newParameters.config->packetLength == 0)
                 {
                     pkt_params_gfsk.header_type = SX126X_GFSK_PKT_VAR_LEN;
-                    pkt_params_gfsk.pld_len_in_bytes = 254 - 26; // 200byte Loosly based on ADS-L.4.SRD860.G.3 - Traffic Uplink Payload
+                    // Apparently this value must be set, even in variable packet length mode
+                    pkt_params_gfsk.pld_len_in_bytes = GROUNDSTATION_RX_BASE; 
                 }
                 else
                 {
@@ -380,26 +386,11 @@ void Sx1262::sendLORAPacket(const GATAS::RadioParameters &parameters, const uint
     sx126x_set_tx_params(this, parameters.frequency->powerdBm, SX126X_RAMP_200_US);
 
     // Wait until CAD done
-    // uint32_t start = CoreUtils::timeUs32Raw();
     // disablePinInterrupt(dio1Pin); // We are just waiting for CAD
     // Might be here a solution?? https://github.com/antirez/freakwan/tree/main/techo-port
     sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
     enablePinInterrupt(dio1Pin, DIO1_TX_DONE); // Disable interrupt because sending is aSync
-
-    // sx126x_set_cad(this);
-    // while (!gpio_get(dio1Pin))
-    // {
-    //     tight_loop_contents();
-    // }
-
-    // auto irqStatus = getIrqStatus();
-    // if (irqStatus & SX126X_IRQ_CAD_DETECTED)
-    // {
-    //     // CAD detected, bail out
-    //     GATAS_INFO("CAD detected, aborting TX took: %ld", CoreUtils::timeUs32Raw() - start);
-    //     return;
-    // }
 
     // 13.1.14 SetTx
     sx126x_write_buffer(this, 0x00, data, length);
@@ -416,24 +407,27 @@ void Sx1262::receiveGFSKPacket()
         statistics.receivedPackets += 1;
         uint8_t receivedFrameLength = receivedPacketLength();
 
-        if (receivedFrameLength >= 4 && receivedFrameLength <= getGlobalPool().maxPoolSize())
+        if (receivedFrameLength >= 4)
         {
-            GATAS::DataFrame frame{
-                .epochSeconds = CoreUtils::secondsSinceEpoch(),
-                .frequency = rxRadioParameters.hopFrequency,
-                .config = rxRadioParameters.config,
-                .frame = static_cast<uint8_t *>(getGlobalPool().alloc(receivedFrameLength)),
-                .length = receivedFrameLength,
-                .rssidBm = pkt_status.rssi_avg};
-
-            if (frame.frame == nullptr) {
+            auto frameData = static_cast<uint8_t *>(getGlobalPool().alloc(receivedFrameLength));
+            if (frameData == nullptr)
+            {
                 return;
             }
 
-            sx126x_read_buffer(this, 0x80, frame.frame, receivedFrameLength);
-            if (xQueueSendToBack(rxDataFrameQueue->queue(), &frame, TASK_DELAY_MS(10)) != pdPASS)
+            GATAS::DataFrame rxFrame{
+                .epochSeconds = CoreUtils::secondsSinceEpoch(),
+                .frequency = rxRadioParameters.hopFrequency,
+                .config = rxRadioParameters.config,
+                .frame = frameData,
+                .length = receivedFrameLength,
+                .rssidBm = pkt_status.rssi_avg,
+            };
+
+            sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
+            if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(10)) != pdPASS)
             {
-                getGlobalPool().release(frame.frame);
+                getGlobalPool().release(rxFrame.frame);
                 statistics.queueMissedErr += 1;
             }
         }
@@ -465,22 +459,25 @@ void Sx1262::receiveLORAPacket()
 
         statistics.receivedPackets += 1;
         uint8_t receivedFrameLength = receivedPacketLength();
+
         if (receivedFrameLength >= 4)
         {
+            auto frameData = static_cast<uint8_t *>(getGlobalPool().alloc(receivedFrameLength));
+            if (frameData == nullptr)
+            {
+                return;
+            }
+
             GATAS::DataFrame rxFrame{
                 .epochSeconds = CoreUtils::secondsSinceEpoch(),
                 .frequency = rxRadioParameters.hopFrequency,
                 .config = rxRadioParameters.config,
-                .frame = static_cast<uint8_t *>(getGlobalPool().alloc(receivedFrameLength)),
+                .frame = frameData,
                 .length = receivedFrameLength,
                 .rssidBm = pkt_status.signal_rssi_pkt_in_dbm,
             };
-            if (rxFrame.frame == nullptr)
-            {
-                return;
-            }
-            sx126x_read_buffer(this, 0x80, rxFrame.frame, receivedFrameLength);
 
+            sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
             if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(10)) != pdPASS)
             {
                 getGlobalPool().release(rxFrame.frame);

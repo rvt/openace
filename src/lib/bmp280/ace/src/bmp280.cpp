@@ -131,7 +131,8 @@ void Bmp280::on_receive(const GATAS::Every30SecMsg &msg)
 
     bool sendData;
     uint8_t buffer[8]; // I think this can be buffer[6] (No humidity needed)
-    if (auto guard = aceSpi->getLock(sendData)) {
+    if (auto guard = aceSpi->getLock(sendData))
+    {
         aceSpi->read_registers_select(cs, 0xF7);
         aceSpi->read_registers_read(cs, buffer, sizeof(buffer));
     }
@@ -145,7 +146,8 @@ void Bmp280::on_receive(const GATAS::Every30SecMsg &msg)
         pressure = compensate_pressure(pressure);
 
         statistics.lastPressurehPa = (pressure + compensation) / 100.0f;
-        getBus().receive(GATAS::BarometricPressureMsg{statistics.lastPressurehPa, CoreUtils::timeUs32()});
+        getBus().receive(GATAS::BarometricPressureMsg(
+            GATAS::BarometricPressure(
+                statistics.lastPressurehPa, CoreUtils::timeUs32Raw())));
     }
-
 }

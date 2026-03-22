@@ -45,7 +45,7 @@ public:
                 auto aircraftPosition = BinaryMessages::deserializeAircraftPositionV1(ownShipLat, ownShipLon, reader);
                 if (positionMessages.full())
                 {
-                    bus.receive(GATAS::AircraftPositionsMsg(positionMessages));
+                    bus.receive(GATAS::IngressAircraftPositionsMsg(positionMessages));
                     positionMessages.clear();
                 }
                 positionMessages.push_back(aircraftPosition);
@@ -79,7 +79,7 @@ public:
         // Send the left over if any
         if (!positionMessages.empty())
         {
-            bus.receive(GATAS::AircraftPositionsMsg(positionMessages));
+            bus.receive(GATAS::IngressAircraftPositionsMsg(positionMessages));
         }
     }
 };

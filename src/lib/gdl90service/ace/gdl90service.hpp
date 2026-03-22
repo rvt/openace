@@ -22,7 +22,7 @@
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
  * TODO: de-Couple UDP from the GDL90 so this service send GDL Message over the messagebus which can then be send over UDP or Serial or BlueToolh
  */
-class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GpsStatsMsg, GATAS::ConfigUpdatedMsg>
+class Gdl90Service : public BaseModule, public etl::message_router<Gdl90Service, GATAS::EgressAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GpsStatsMsg, GATAS::ConfigUpdatedMsg>
 {
     friend class message_router;
 
@@ -44,20 +44,18 @@ private:
         SHUTDOWN = 2,
     };
 
-    TaskHandle_t taskHandle;
+    TaskHandle_t taskHandle = nullptr;
     GDL90 gdl90;
 
     GDL90::ADDR_TYPE type;
     int16_t ownshipGeoidSeparation = 0;
-    float hDop = 0.0f;
-    float pDop = 0.0f;
-    GATAS::GpsFix gpsFix;
+    GATAS::GpsStats gpsStats;
     GATAS::CallSign ownshipCallsign;
 
 private:
     static void gdl90ServiceTask(void *arg);
 
-    void on_receive(const GATAS::TrackedAircraftPositionMsg &msg);
+    void on_receive(const GATAS::EgressAircraftPositionMsg &msg);
 
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
@@ -82,7 +80,7 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "Gdl90Service";
-    Gdl90Service(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr)
+    Gdl90Service(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
         (void)config;
         on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::NAME});

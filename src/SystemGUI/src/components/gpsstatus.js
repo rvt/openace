@@ -51,6 +51,8 @@ class GpsStatus extends El {
     const altitudeGeoid = formatUnit(this.state.data['altitudeGeoid:ft'], "ft");
     const track = formatUnit(this.state.data['track:deg'], "deg");
     const receivedGGA = formatUnit(this.state.data['receivedGGA:k'], "k");
+    const groundStation = formatUnit(this.state.data['groundStation:b'], "b");
+    const heightAboveGps = formatUnit(this.state.data['heightAboveGps:m'], "m");
 
     return html`
       <div class="section">
@@ -65,6 +67,9 @@ class GpsStatus extends El {
             ${this._row(html, "WGS84 Ellipsoid", altitudeGeoid)}
             ${this._row(html, "Groundspeed", groundspeed)}
             ${this._row(html, "Track", track)}
+            ${this._row(html, "pDOP", this.state.data?.pDop + " / " + this.state.data?.dopValue)} 
+            ${this._row(html, "Ground Station Mode", groundStation)}
+            ${this._row(html, "Height Above Ground Station", heightAboveGps)} 
             ${this._row(html, "pDOP", this.state.data?.pDop + " / " + this.state.data?.dopValue)} 
             ${this._row(html, "Fix Quality", this.state.data?.fixQuality)}
             ${this._row(html, "Fix Type", this.state.data?.gpsFixType)}

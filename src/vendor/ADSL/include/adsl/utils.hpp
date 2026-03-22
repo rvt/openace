@@ -277,7 +277,7 @@ namespace ADSL
     return __builtin_popcount(Byte);
   }
 
-    inline uint8_t FindLowestSetBit(uint8_t val)
+  inline uint8_t FindLowestSetBit(uint8_t val)
   {
     return __builtin_ctz(val);
   }
@@ -377,8 +377,9 @@ namespace ADSL
     return 0xFF;
   }
 
-  inline int Correct(etl::span<uint8_t> PktData, etl::span<const uint8_t> PktErr, uint32_t MaxBadBits = 6)
+  inline int Correct(etl::span<uint8_t> PktData, etl::span<const uint8_t> PktErr)
   {
+    constexpr size_t MAX_BAD_BITS = 6;
     const uint32_t pktSize = PktData.size();
 
     uint32_t CRC = checkPI(PktData);
@@ -394,9 +395,9 @@ namespace ADSL
       return 1;
     }
 
-    uint8_t BadBitIdx[MaxBadBits];
-    uint8_t BadBitMask[MaxBadBits];
-    uint32_t Syndrome[MaxBadBits];
+    uint8_t BadBitIdx[MAX_BAD_BITS];
+    uint8_t BadBitMask[MAX_BAD_BITS];
+    uint32_t Syndrome[MAX_BAD_BITS];
     uint32_t BadBits = 0;
 
     for (uint8_t ByteIdx = 0; ByteIdx < pktSize; ByteIdx++)
@@ -409,20 +410,20 @@ namespace ADSL
       {
         if (Byte & (0x80u >> BitIdx))
         {
-          if (BadBits < MaxBadBits)
+          if (BadBits < MAX_BAD_BITS)
           {
             BadBitIdx[BadBits] = ByteIdx;
             BadBitMask[BadBits] = 0x80u >> BitIdx;
             Syndrome[BadBits] = CRCsyndrome(ByteIdx * 8 + BitIdx, pktSize);
           }
-          if (++BadBits > MaxBadBits)
+          if (++BadBits > MAX_BAD_BITS)
             goto search_done;
         }
       }
     }
 
   search_done:
-    if (BadBits > MaxBadBits)
+    if (BadBits > MAX_BAD_BITS)
       return -1;
 
     const uint32_t Loops = 1u << BadBits;
@@ -451,6 +452,27 @@ namespace ADSL
       PrevGrayIdx = GrayIdx;
     }
     return -1;
+  }
+
+  template <typename T>
+  inline void printBufferHex(etl::span<T> buffer)
+  {
+
+    printf("Length(%d) ", static_cast<int>(buffer.size()));
+
+    for (size_t i = 0; i < buffer.size(); ++i)
+    {
+      if constexpr (sizeof(T) == 1)
+        printf("0x%02" PRIX8, static_cast<uint8_t>(buffer[i]));
+      else if constexpr (sizeof(T) == 2)
+        printf("0x%04" PRIX16, static_cast<uint16_t>(buffer[i]));
+      else if constexpr (sizeof(T) == 4)
+        printf("0x%08" PRIX32, static_cast<uint32_t>(buffer[i]));
+      else
+        printf("0x%X", static_cast<unsigned int>(buffer[i])); // fallback
+      if (i + 1 < buffer.size())
+        printf(", ");
+    }
   }
 
 } // namespace ADSL

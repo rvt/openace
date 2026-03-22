@@ -47,10 +47,15 @@ namespace GATAS
     using GDLData = etl::vector<uint8_t, 52>; // GDLXX Message
     using AircraftAddress = uint32_t;         // ICAO code, FLARM ID or OGN ID
     using SsidOrPasswdStr = etl::string<32>;
+
+    class AircraftPositionInfo;
+    using AdslObandUplinkAircraft = etl::vector<GATAS::AircraftPositionInfo, 10>;
+
     // 32 Byte is a decoded manchester frame
     // 64 is an manchester frame
-    // 160 byte are LORA ADSL-H Frames
-    using GlobalPoolConfiguration = MultiPoolAllocator<PoolSpec<32, 8>, PoolSpec<64, 4>, PoolSpec<160, 4>>;
+    // 216 byte are LORA ADSL-H Frames
+    // Maximum size should be 0xC8 (200 bytes) which is ADSL TrafficUplink + 4 byte because we shift a byte 
+    using GlobalPoolConfiguration = MultiPoolAllocator<PoolSpec<32, 8>, PoolSpec<64, 4>, PoolSpec<0xD0 + 4, 4>>;
 
     enum class PinType : uint8_t;
     using PinTypeMap = etl::flat_map<PinType, int8_t, 8>;

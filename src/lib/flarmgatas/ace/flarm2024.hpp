@@ -1,14 +1,14 @@
 #pragma once
 
-//#include "flarm_common.hpp"
+// #include "flarm_common.hpp"
 
 /* System. */
 #include <stdint.h>
 #include <algorithm>
 
 ///* PICO. */
-//#include "pico/stdlib.h"
-//#include "pico/binary_info.h"
+// #include "pico/stdlib.h"
+// #include "pico/binary_info.h"
 
 /* Vendor. */
 #include "etl/message_bus.h"
@@ -22,13 +22,12 @@
 #include "ace/coreutils.hpp"
 #include "ace/datasourcetimestatstable.hpp"
 
-
-class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024,
-GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
+class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
 {
     friend class message_router;
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr int MAX_IGNORE_DISTANCE = 50000;
+    static constexpr int MAX_IGNORE_DISTANCE = 100000;
+
 private:
     struct
     {
@@ -41,14 +40,13 @@ private:
 
     GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
 
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    GATAS::OwnshipPositionInfo ownshipPosition{};
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
-    uint16_t distanceIgnore;
+    uint32_t distanceIgnore;
+
 public:
     static constexpr const etl::string_view NAME = "Flarm";
-    Flarm2024(etl::imessage_bus& bus, const Configuration &config) :
-        BaseModule(bus, NAME),
-        ownshipPosition{}
+    Flarm2024(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Flarm", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
@@ -60,18 +58,17 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
     virtual void start() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
+
 private:
-
-
     /**
      * Send a FreeRTOS message when a FlarmFrame is received
      * This will release the sender from the task and allow it to continue in a seperate thread
-    */
+     */
     void on_receive(const GATAS::RadioRxManchesterMsg &msg);
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
 
-    void on_receive_unknown(const etl::imessage& msg)
+    void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
     }
@@ -83,7 +80,4 @@ private:
 
     GATAS::AircraftCategory toAircraftCategory(uint8_t flarmCode) const;
     uint8_t fromAircraftCategory(GATAS::AircraftCategory category) const;
-
 };
-
-

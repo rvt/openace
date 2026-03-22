@@ -23,6 +23,8 @@
  */
 class RadioTunerTx : public BaseModule, public etl::message_router<RadioTunerTx, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::RadioControlMsg>
 {
+    static constexpr uint32_t MAX_COMBINED_TIMINGS = CountryRegulations::MAX_COMBINED_TIMINGS;
+
     struct DataSourceTxEvent
     {
         GATAS::DataSource dataSource;
@@ -54,7 +56,7 @@ private:
     friend class message_router;
 
     // Current zone we are flying in
-    CountryRegulations::Zone currentZone;
+    CountryRegulations::Zone currentZone = CountryRegulations::Zone::ZONE0;
     etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> dataSourceToRadio = {};
     static constexpr size_t MaxQueueSize = static_cast<size_t>(GATAS::DataSource::_TRANSPROTOCOLS);
     etl::vector<DataSourceTxEvent, MaxQueueSize> dataSources;
@@ -78,8 +80,7 @@ private:
 public:
     static constexpr const etl::string_view NAME = "RadioTunerTx";
 
-    RadioTunerTx(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                        currentZone(CountryRegulations::Zone::ZONE0)
+    RadioTunerTx(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
         (void)config;
     }

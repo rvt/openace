@@ -77,26 +77,34 @@ void RadioTunerTx::radioTuneTask()
             {
                 if (CoreUtils::isUsReached(ds.atTime))
                 {
-                    const auto &timing = CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, ds.dataSource);
-                    if (timing.radioConfig.dataSource() != GATAS::DataSource::NONE)
+                    const auto timing = CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, ds.dataSource);
+                    if (!timing.empty())
                     {
                         auto dsId = static_cast<uint8_t>(ds.dataSource);
-                        auto timeSlot = CountryRegulations::findFittingTiming(CoreUtils::msInSecond(), timing.timeSlots);
+
+                        etl::vector<CountryRegulations::ChannelTiming, MAX_COMBINED_TIMINGS> combinedSlots{};
+                        for (const auto &entry : timing)
+                        {
+                            if (entry.timeSlots.size() <= combinedSlots.available())
+                            {
+                                combinedSlots.insert(combinedSlots.end(), entry.timeSlots.begin(), entry.timeSlots.end());
+                            }
+                        }
+                        auto timeSlot = CountryRegulations::findFittingTiming(CoreUtils::msInSecond(), combinedSlots);
+
                         if (timeSlot != nullptr)
                         {
-                            auto frequency = CountryRegulations::getFrequency(timing.frequency, timeSlot->channel);
- 
-                            (void)frequency;
-                            (void)dsId;
+                            auto frequency = CountryRegulations::getFrequency(timing[0].rfConfig, timeSlot->channel);
 
-                            // GATAS_INFO("DS: %s radio:%d", GATAS::toString(ds.dataSource), dataSourceToRadio[dsId]);
+                            // GATAS_INFO("TX: DS: %s Freq:%lu radio:%d id:%u ms:%u", GATAS::toString(ds.dataSource), frequency, dataSourceToRadio[dsId], timeSlot->id,  CoreUtils::msInSecond());
                             GATAS_MEASURE("Request TX", 2000);
                             getBus().receive(
                                 GATAS::RadioTxPositionRequestMsg{
                                     GATAS::RadioParameters{
-                                        &timing.radioConfig,
-                                        &timing.frequency,
-                                        frequency},
+                                        &timing[0].radioConfig,
+                                        &timing[0].rfConfig,
+                                        frequency,
+                                        timeSlot->id},
                                     dataSourceToRadio[dsId]});
                         }
                         else
@@ -140,7 +148,7 @@ void RadioTunerTx::radioTuneTask()
             {
                 nextUpIn = 1000;
             }
-            // clap to max 1 second incase datasources was empty
+            // clamp to max 1 second in case datasources was empty
             nextDelayMs = nextUpIn / 1000;
         }
     }

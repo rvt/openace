@@ -6,6 +6,7 @@
 #include "networkpayload.hpp"
 #include "statuspayload.hpp"
 #include "trafficpayload.hpp"
+#include "uplinkentry.hpp"
 #include "utils.hpp"
 #include "print.hpp"
 #include "framebuffer.hpp"
@@ -20,7 +21,7 @@
 
 namespace ADSL
 {
-  using PayloadSerializer = size_t (*)(const void *, Connector *, etl::bit_stream_writer &);
+  using PayloadSerializer = void (*)(const void *payloadCtx, const void *ctx, Connector *, etl::bit_stream_writer &);
 
   /**
    * @brief Protocol class for handling ADSL communication.
@@ -31,7 +32,10 @@ namespace ADSL
   class Protocol
   {
     static constexpr uint8_t MAX_NEIGHBORS = 16;
-    // based on recoomendations of 20s Status Payloads, to short and we expire to quickly..
+
+  public:
+    static constexpr uint8_t MAX_UPLINK_TARGETS = 10;
+    // based on recomendations of 20s Status Payloads, to short and we expire to quickly..
     // to long and we migh send longer on a lower issue version
     static constexpr uint32_t NEIGHBOR_EXPIRE_US = 30'000'000;
     static constexpr float MAX_VERTICAL_DISTANCE = 800.f;
@@ -45,7 +49,7 @@ namespace ADSL
         OK = 0,
         CRC_FAILED,
         UNSUPORTED_DECRYPTION_KEY,
-        UNEXEPCTED_BUFFER_SIZE,
+        UNEXPECTED_BUFFER_SIZE,
         UNSUPORTED_PROTOCOL_VERSION,
         UNSUPORTED_ERROR_CONTROL_FEC,
         UNSUPPORTED_PAYLOAD,
@@ -56,7 +60,7 @@ namespace ADSL
       ETL_ENUM_TYPE(OK, "Ok")
       ETL_ENUM_TYPE(CRC_FAILED, "CRC Failed")
       ETL_ENUM_TYPE(UNSUPORTED_DECRYPTION_KEY, "Encryption Key Index")
-      ETL_ENUM_TYPE(UNEXEPCTED_BUFFER_SIZE, "Unexpected buffer size")
+      ETL_ENUM_TYPE(UNEXPECTED_BUFFER_SIZE, "Unexpected buffer size")
       ETL_ENUM_TYPE(UNSUPORTED_PROTOCOL_VERSION, "Unsupported protocol version")
       ETL_ENUM_TYPE(UNSUPORTED_ERROR_CONTROL_FEC, "Unsupported error controle method")
       ETL_ENUM_TYPE(UNSUPPORTED_PAYLOAD, "Unsuported payload")
@@ -76,15 +80,13 @@ namespace ADSL
     // Do a CRC Check when receiving the data
     bool crcCheckOnReceive = false;
 
-    // Include payload length as first byte
-    bool addPayloadLength = false;
-
     /**
      * Find the lowest protocol version that we support over all Neigbors,
      * never higher than we can support ourselve
      */
     uint8_t lowestDominotorProtocolVersion() const
     {
+      LockGuard guard(connector);
       uint8_t protocolVersion = static_cast<uint8_t>(NetworkPayload::ProtocolVersion::LATEST);
       for (auto it = neighboursProtocolVersion.begin(); it != neighboursProtocolVersion.end(); it++)
       {
@@ -98,7 +100,8 @@ namespace ADSL
 
     uint8_t numberOfNeighbours() const
     {
-      return neighboursProtocolVersion.size();
+      LockGuard guard(connector);
+      return static_cast<uint8_t>(neighboursProtocolVersion.size());
     }
 
   protected:
@@ -118,6 +121,13 @@ namespace ADSL
 
     etl::map<uint32_t, Neighbour, MAX_NEIGHBORS> neighboursProtocolVersion;
 
+    struct LockGuard
+    {
+      Connector *conn;
+      LockGuard(Connector *c) : conn(c) { conn->adsl_lock(); }
+      ~LockGuard() { conn->adsl_unlock(); }
+    };
+
     // Connector for the application, e.g., the interface between the ADSL
     // protocol and the application
     Connector *connector;
@@ -127,18 +137,6 @@ namespace ADSL
     // Track when we need to send a Status package
     uint32_t nextStatusSent = 0;
     bool doSendStatus = false;
-
-    bool hasProtocolVersion(uint8_t hasProtocolVersion)
-    {
-      for (auto it = neighboursProtocolVersion.begin(); it != neighboursProtocolVersion.end(); it++)
-      {
-        if (it->second.protocolVersion == hasProtocolVersion)
-        {
-          return true;
-        }
-      }
-      return false;
-    }
 
     bool decideRequireTrackingOfVersion(const NetworkPayload &tNetworkPayload, const StatusPayload &statusPayload)
     {
@@ -193,12 +191,26 @@ namespace ADSL
       return false;
     }
 
+    bool hasProtocolVersion(uint8_t hasProtocolVersion)
+    {
+      LockGuard guard(connector);
+      for (auto it = neighboursProtocolVersion.begin(); it != neighboursProtocolVersion.end(); it++)
+      {
+        if (it->second.protocolVersion == hasProtocolVersion)
+        {
+          return true;
+        }
+      }
+      return false;
+    }
+
     /**
      * When the given protocolVersion is higher than recorded, take the higher version.
      */
     void trackNeighbourProtocol(uint32_t address, uint8_t maxProtocolVersion)
     {
       auto tickExpire = connector->adsl_getTick() + NEIGHBOR_EXPIRE_US;
+      LockGuard guard(connector);
       auto it = neighboursProtocolVersion.find(address);
 
       if (it != neighboursProtocolVersion.end())
@@ -224,6 +236,7 @@ namespace ADSL
     {
       // remove all neighbors we have not seen for a while
       auto tick = connector->adsl_getTick();
+      LockGuard guard(connector);
       for (auto it = neighboursProtocolVersion.begin(); it != neighboursProtocolVersion.end(); it++)
       {
         if (isUsReached(it->second.tickExpire, tick))
@@ -235,51 +248,57 @@ namespace ADSL
 
     /**
      * @brief Send a generic payload using the specified serializer.
-     * When addPayloadLength is set to trye, teh first byte will contain the length of the payload
      * For performance reasons added here.
      * @param type The payload type identifier.
      * @param serializer The function to serialize the payload.
      * @param connector The connector interface for sending the frame.
      */
     void sendGenericPayload(
+        const void *payloadCtx,
         const void *ctx,
+        bool addPayloadLength,
+        NetworkPayload networkPayload,
         Header::PayloadTypeIdentifier type,
         PayloadSerializer serializer,
-        Connector *connector) // Pass connector
+        Connector *connector,
+        size_t sizeBytes)
     {
-      constexpr size_t CRC_LENGTH = 3;
-      constexpr size_t HEADER_LENGTH = 5;
-      constexpr size_t NETWORK_LENGTH = 1;
+#ifndef NDEBUG
+      if ((sizeBytes % 4) != 0)
+      {
+        puts("WARNING: Payload not divisible by 4");
+      }
+#endif
 
-      auto ptrMemory = connector->adsl_alloc(ctx, 28);
+      auto wordSize = (sizeBytes + 3) / 4; // request at least for the full word, then add 1 because of the shift
+      auto ptrMemory = connector->adsl_alloc(ctx, (wordSize + 1) * 4);
       if (!ptrMemory)
       {
-        printf("Failed to allocate memory for sending frame\n");
+        puts("WARNING: Failed to allocate memory for sending frame");
         return;
       }
 
-      FrameBuffer frame{etl::span<uint32_t>(reinterpret_cast<uint32_t *>(ptrMemory), 8)};
+      FrameBuffer frame{etl::span<uint32_t>(reinterpret_cast<uint32_t *>(ptrMemory), wordSize)};
       etl::bit_stream_writer writer(frame.fullSpan(), etl::endian::little);
 
       // Serialize Header
-      header.type(type); // Set this after the user's any additional header data to ensure we do the right thing
-      header.serialize(writer);
+      Header lCopy = header;
+      lCopy.type(type); // Set this after the user's any additional header data to ensure we do the right thing
+      lCopy.serialize(writer);
 
       // Serialize Payload
-      auto payloadLength = serializer(ctx, connector, writer);
+      serializer(payloadCtx, ctx, connector, writer);
       frame.used_bytes = writer.size_bytes();
 
       // Flip bytes to match memory layout
       frame.reverseBits();
 
-      auto headerAndPayload = payloadLength + HEADER_LENGTH;
-
-      // Encrypt header + payload that is now byte aligned
+      // Encrypt header + payload that is now byte aligned (Payload + header is always devisable by 4)
       auto keyIdx = networkPayload.keyIndex();
       // ADS-L.4.SRD860.E.1.3
       if (keyIdx < 3)
       {
-        XXTEA_Encrypt_Key0(frame.words(), headerAndPayload / 4, 6);
+        XXTEA_Encrypt_Key0(frame.words(), wordSize - ((NetworkPayload::LENGTH + NetworkPayload::LENGTH_CRC) / 4), 6);
       }
 
       // Shift one whole word to to optionally make place for a network header and to make the payload start at the same place as the received payload for easier CRC calculation
@@ -287,40 +306,56 @@ namespace ADSL
 
       // Add the network header at the beginning, not part of encryption
       // it's not part of scramble, but part of the CRC but scramble needs to be 32bit aligned
-      frame[3] = etl::reverse_bits(networkPayload.asUint8()) >> 8;
+      frame[3] = etl::reverse_bits<uint8_t>(networkPayload.asUint8());
 
-      // Finally calculate the CRC
-      uint32_t crc = ADSL::calcPI(frame.fullSpan().subspan(3, NETWORK_LENGTH + headerAndPayload)) & 0xFFFFFF;
+      // Finally calculate the CRC of the complete packeted, stoarring at offset. 3, effectivly starting at position 3
+      uint32_t crc = ADSL::calcPI(frame.fullSpan().subspan(3, sizeBytes - 3)) & 0xFFFFFF;
 
       // Add CRC
-      auto wordOffset = (headerAndPayload) / 4 + 1;
-      frame.fullSpan32()[wordOffset] = (crc << 16) | (crc & 0x00FF00) | (crc >> 16);
+      frame.fullSpan32()[wordSize] = (crc << 16) | (crc & 0x0000FF00) | (crc >> 16);
+
 
       if (addPayloadLength)
       {
-        frame[2] = static_cast<uint8_t>(headerAndPayload + CRC_LENGTH + NETWORK_LENGTH);
-        connector->adsl_sendFrame(ctx, static_cast<const uint8_t *>(ptrMemory) + 2, 1 + NETWORK_LENGTH + headerAndPayload + CRC_LENGTH);
+        frame[2] = static_cast<uint8_t>(sizeBytes);
+        connector->adsl_sendFrame(ctx, static_cast<const uint8_t *>(ptrMemory) + 2, sizeBytes + 1);
       }
       else
       {
-        connector->adsl_sendFrame(ctx, static_cast<const uint8_t *>(ptrMemory) + 3, NETWORK_LENGTH + headerAndPayload + CRC_LENGTH);
+        connector->adsl_sendFrame(ctx, static_cast<const uint8_t *>(ptrMemory) + 3, sizeBytes);
       }
+
     }
 
-    // Free functions for each payload type
     // Static serializer functions
-    static size_t serializeTrafficPayload(const void *ctx, Connector *connector, etl::bit_stream_writer &writer)
+    static void serializeTrafficPayload(const void *payloadCtx, const void *ctx, Connector *connector, etl::bit_stream_writer &writer)
     {
-      TrafficPayload payload;
-      connector->adsl_buildTraffic(ctx, payload);
-      return payload.serialize_issue1(writer);
+      const auto &tp = *static_cast<const TrafficPayload *>(payloadCtx);
+      tp.serialize_issue1(writer);
     }
 
-    static size_t serializeStatusPayload(const void *ctx, Connector *connector, etl::bit_stream_writer &writer)
+    static void serializeStatusPayload(const void *payloadCtx, const void *ctx, Connector *connector, etl::bit_stream_writer &writer)
     {
-      StatusPayload payload;
-      connector->adsl_buildStatusPayload(ctx, payload);
-      return payload.serialize_issue2(writer);
+
+      const auto &tp = *static_cast<const StatusPayload *>(payloadCtx);
+      tp.serialize_issue2(writer);
+    }
+
+    static void serializeUplinkPayload(const void *payloadCtx, const void *ctx, Connector *connector, etl::bit_stream_writer &writer)
+    {
+      const auto &entries = *static_cast<const etl::span<const UplinkEntry> *>(payloadCtx);
+      size_t totalBytes = 0;
+      for (const auto &entry : entries)
+      {
+        totalBytes += entry.serialize(writer);
+      }
+
+      // Pad so that Header::LENGTH + total is divisible by 4 (0–3 bytes)
+      const size_t padBytes = (NetworkPayload::LENGTH_CRC - totalBytes) & 0x3; // 3 is length of the CRC
+      if (padBytes)
+      {
+        writer.write_unchecked(0U, 8U * padBytes);
+      }
     }
 
     /**
@@ -350,8 +385,8 @@ namespace ADSL
         return RxStatudeCode::UNSUPORTED_DECRYPTION_KEY;
       }
 
-      // When the manchehester has been corrected asnd validate, there is no need to re-vaslidate the CRC
-      // So by default CRC check is disabled
+      // When the manchehester has been corrected and validate, there is no need to re-validate the CRC
+      // So by default CRC check is disabled. For OBand this is still required because of the lack of manchester
       if (crcCheckOnReceive && ADSL::checkPI(etl::span(buffer.data(), buffer.size())) != 0)
       {
         return RxStatudeCode::CRC_FAILED;
@@ -388,38 +423,69 @@ namespace ADSL
       etl::copy_n(k.begin(), etl::min(k.size(), keys.size()), keys.begin());
     }
 
-    void rqSendTrafficPayload(const void *ctx)
+    /**
+     * @brief Send a Traffic Uplink payload (ADS-L.4.SRD860.G.3) containing up to 10 targets.
+     *
+     * Targets may originate from ADS-B, Mode-S, ADS-L, RemoteID, or other e-Conspicuity systems.
+     * Must be transmitted on the O-Band HDR channel in the Uplink time slot.
+     * The age of each target's timestamp may not exceed 10 seconds.
+     *
+     * @param ctx    Caller-supplied context forwarded verbatim to adsl_alloc and adsl_sendFrame.
+     * @param targets Span of TrafficPayload entries (1–MAX_UPLINK_TARGETS).
+     */
+    void rqSendUplinkPayload(const void *ctx, bool addPayloadLength, const etl::span<const UplinkEntry> entries)
     {
-      // TODO: Change this for a better way
+      if (entries.empty() || entries.size() > MAX_UPLINK_TARGETS)
+      {
+        return;
+      }
+
+      auto nPayload = networkPayload;
+      nPayload.protocolVersion(NetworkPayload::ProtocolVersion::ISSUE_2);
+      const size_t sizeBytes = NetworkPayload::LENGTH + Header::LENGTH + UplinkEntry::calculateSizeWithPadding(entries.size()) + NetworkPayload::LENGTH_CRC;
+      sendGenericPayload(&entries, ctx, addPayloadLength, nPayload, Header::PayloadTypeIdentifier::TRAFFICUPLINK, serializeUplinkPayload, connector, sizeBytes);
+    }
+
+
+    /**
+     * @brief Request transmission of ownship traffic or a pending status payload.
+     *
+     * Called periodically by the application to send the current ownship position.
+     * If a status transmission is due (doSendStatus == true), a STATUS frame is sent
+     * instead and the traffic payload is dropped for this cycle. This ensures the
+     * status is sent at least once before the next traffic frame.
+     *
+     * The protocol version used for TRAFFIC is determined by lowestDominatorProtocolVersion(),
+     * which downgrades to ISSUE_1 when a close neighbour that only supports ISSUE_1 is tracked.
+     * STATUS frames are always sent at ISSUE_2 regardless of neighbours.
+     *
+     * @param ctx          Opaque caller context passed through to adsl_sendFrame.
+     * @param addPayloadLength  When true, prepends a 1-byte length field before the
+     *                     payload required for ADSL on M band only.
+     * @param tp           Ownship traffic payload to transmit. Ignored when a STATUS
+     *                     frame is sent instead.
+     */
+    void rqSendTrafficPayload(const void *ctx, bool addPayloadLength, const TrafficPayload &tp)
+    {
+      auto nPayload = networkPayload;
       if (doSendStatus)
       {
-        sendGenericPayload(ctx, Header::PayloadTypeIdentifier::STATUS, serializeStatusPayload, this->connector);
+        // A status transmission is pending — send STATUS this cycle instead of TRAFFIC.
+        // STATUS always uses ISSUE_2 regardless of neighbour protocol versions.
         doSendStatus = false;
+        nPayload.protocolVersion(NetworkPayload::ProtocolVersion::ISSUE_2);
+        StatusPayload sp;
+        connector->adsl_buildStatusPayload(ctx, sp);
+        constexpr size_t totalSize = NetworkPayload::LENGTH + Header::LENGTH + StatusPayload::LENGTH + NetworkPayload::LENGTH_CRC;
+        sendGenericPayload(&sp, ctx,addPayloadLength, nPayload, Header::PayloadTypeIdentifier::STATUS, serializeStatusPayload, this->connector, totalSize);
       }
       else
       {
-        sendGenericPayload(ctx, Header::PayloadTypeIdentifier::TRAFFIC, serializeTrafficPayload, this->connector);
-      }
-    }
-
-    template <typename T>
-    inline void printBufferHex(etl::span<T> buffer)
-    {
-
-      printf("Length(%d) ", static_cast<int>(buffer.size()));
-
-      for (size_t i = 0; i < buffer.size(); ++i)
-      {
-        if constexpr (sizeof(T) == 1)
-          printf("0x%02" PRIX8, static_cast<uint8_t>(buffer[i]));
-        else if constexpr (sizeof(T) == 2)
-          printf("0x%04" PRIX16, static_cast<uint16_t>(buffer[i]));
-        else if constexpr (sizeof(T) == 4)
-          printf("0x%08" PRIX32, static_cast<uint32_t>(buffer[i]));
-        else
-          printf("0x%X", static_cast<unsigned int>(buffer[i])); // fallback
-        if (i + 1 < buffer.size())
-          printf(", ");
+        // Send TRAFFIC at the lowest protocol version supported by all tracked neighbours.
+        // Downgrades to ISSUE_1 when any close neighbour only supports ISSUE_1.
+        nPayload.protocolVersion(static_cast<NetworkPayload::ProtocolVersion>(lowestDominotorProtocolVersion()));
+        constexpr size_t totalSize = NetworkPayload::LENGTH + Header::LENGTH + TrafficPayload::LENGTH + NetworkPayload::LENGTH_CRC;
+        sendGenericPayload(&tp, ctx, addPayloadLength, nPayload, Header::PayloadTypeIdentifier::TRAFFIC, serializeTrafficPayload, this->connector, totalSize);
       }
     }
 
@@ -434,7 +500,7 @@ namespace ADSL
     RxStatudeCode handleRx(int16_t rssddBm, etl::span<uint32_t> wordBuffer)
     {
 
-      //      printf("Received packet size: %d, RSSI: %d dBm\n", wordBuffer.size(), rssddBm);
+      // printf("Received packet size: %d, RSSI: %d dBm\n", wordBuffer.size() * sizeof(uint32_t), rssddBm);
       //      printBufferHex(wordBuffer);
       // Create a view into the word buffer as bytes
       auto buffer = etl::span<uint8_t>(reinterpret_cast<uint8_t *>(wordBuffer.data()), wordBuffer.size() * sizeof(uint32_t));
@@ -489,7 +555,7 @@ namespace ADSL
           }
           else
           {
-            accepted = RxStatudeCode::UNEXEPCTED_BUFFER_SIZE;
+            accepted = RxStatudeCode::UNEXPECTED_BUFFER_SIZE;
           }
         }
         break;
@@ -513,7 +579,7 @@ namespace ADSL
           }
           else
           {
-            accepted = RxStatudeCode::UNEXEPCTED_BUFFER_SIZE;
+            accepted = RxStatudeCode::UNEXPECTED_BUFFER_SIZE;
           }
         }
         break;
@@ -527,8 +593,30 @@ namespace ADSL
         accepted = RxStatudeCode::UNSUPPORTED_PAYLOAD;
         break;
       case Header::PayloadTypeIdentifier::TRAFFICUPLINK:
-        accepted = RxStatudeCode::UNSUPPORTED_PAYLOAD;
+      {
+        const size_t payloadBytes = wordBuffer.size() * sizeof(uint32_t) - NetworkPayload::LENGTH - Header::LENGTH - NetworkPayload::LENGTH_CRC;
+        const size_t numEntries = payloadBytes / UplinkEntry::LENGTH;
+        const size_t remainder = payloadBytes % UplinkEntry::LENGTH;
+        if (numEntries >= 1 && numEntries <= MAX_UPLINK_TARGETS)
+        {
+          etl::vector<UplinkEntry, MAX_UPLINK_TARGETS> entries;
+          for (size_t i = 0; i < numEntries; ++i)
+          {
+            entries.push_back(UplinkEntry::deserialize(reader));
+          }
+          if (remainder)
+          {
+            reader.skip(remainder * 8);
+          }
+          connector->adsl_receivedUplinkTraffic(header, etl::span<const UplinkEntry>(entries.data(), entries.size()));
+          accepted = RxStatudeCode::OK;
+        }
+        else
+        {
+          accepted = RxStatudeCode::UNEXPECTED_BUFFER_SIZE;
+        }
         break;
+      }
       case Header::PayloadTypeIdentifier::FISBUPLINK:
         accepted = RxStatudeCode::UNSUPPORTED_PAYLOAD;
         break;

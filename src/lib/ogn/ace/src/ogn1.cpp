@@ -158,7 +158,7 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
     int16_t speed0d1ms = packet.DecodeSpeed();
     auto aircrftCat = ognToGatas(static_cast<Ogn1::OGNAircraftType>(packet.Position.AcftType));
     auto groundSpeed = speed0d1ms * .1f;
-    GATAS::AircraftPositionMsg aircraftPosition{
+    GATAS::IngressAircraftPositionMsg aircraftPosition{
         GATAS::AircraftPositionInfo{
             timeUs32,
             "",
@@ -323,12 +323,12 @@ void Ogn1::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
 void Ogn1::on_receive(const GATAS::BarometricPressureMsg &msg)
 {
-    lastBarometricPressureMsg = msg;
+    lastBarometricPressure = msg.barometricPressure;
 }
 
 void Ogn1::on_receive(const GATAS::GpsStatsMsg &msg)
 {
-    gpsStats = msg;
+    gpsStats = msg.gpsStats;
 }
 
 void Ogn1::on_receive_unknown(const etl::imessage &msg)

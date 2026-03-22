@@ -14,8 +14,7 @@ template <typename Pool, typename T>
 class PoolReleaseGuard
 {
 public:
-    PoolReleaseGuard(Pool &pool, T *&ptr)
-        : pool_(&pool), ptr_(&ptr)
+    PoolReleaseGuard(Pool &pool, T *&ptr) : pool_(&pool), ptr_(&ptr)
     {
     }
 
@@ -133,11 +132,13 @@ public:
 
     void release(const void *ptr)
     {
+// Added to enable testing of the class         
 #if UINTPTR_MAX == 0xFFFFFFFF
         auto masked_ptr = reinterpret_cast<void *>(reinterpret_cast<const uintptr_t>(ptr) & ~0x3U);
 #else
         auto masked_ptr = ptr;
 #endif
+        SemaphoreGuard lock(portMAX_DELAY, mutex);
         release_impl<0>(masked_ptr);
     }
 
@@ -276,7 +277,7 @@ private:
     {
         if constexpr (I >= sizeof...(Pools))
         {
-            GATAS_WARN("Alloc to large");
+            GATAS_WARN("Alloc to large %u bytes requested", size);
             return nullptr;
         }
         else

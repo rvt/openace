@@ -37,13 +37,17 @@ TEST_CASE("getFrequency", "[single-file]")
 
 TEST_CASE("getSlot", "[single-file]")
 {
-    REQUIRE(4 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::ADSLM).radioConfig.pcId);
-    REQUIRE(2 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM).radioConfig.pcId);
-    REQUIRE(2 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM).radioConfig.pcId);
-    REQUIRE(3 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE2, GATAS::DataSource::OGN1).radioConfig.pcId);
+    // PROTOCOL_ADSL uses DataSource::ADSLM and is in the TX table (M-band ADSL)
+    REQUIRE(1 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::ADSLM).size());
+    REQUIRE(2 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM)[0].radioConfig.pcId);
+    REQUIRE(2 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM)[0].radioConfig.pcId);
+    REQUIRE(3 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE2, GATAS::DataSource::OGN1)[0].radioConfig.pcId);
 
-    // Not Configured so 0
-    REQUIRE(0 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE6, GATAS::DataSource::PAW).radioConfig.pcId);
+    // ADSLO_HDR has 2 TX entries for ZONE1: one for TRAFFIC and one for UPLINK
+    REQUIRE(2 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::ADSLO_HDR).size());
+
+    // Not configured: empty span
+    REQUIRE(CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE6, GATAS::DataSource::PAW).empty());
 }
 
 TEST_CASE("isInTiming normal window", "[timing]")
@@ -100,15 +104,14 @@ TEST_CASE("getProtocolRxTimingsForZone - returns all ZONE1 slots when all source
     etl::array sources = {
         GATAS::DataSource::FLARM,
         GATAS::DataSource::OGN1,
-        GATAS::DataSource::ADSLM,
         GATAS::DataSource::ADSLO_HDR,
         GATAS::DataSource::FANET};
     auto result = CountryRegulations::getProtocolRxTimingsForZone(
         CountryRegulations::Zone::enum_type::ZONE1,
         etl::span<const GATAS::DataSource>(sources.data(), sources.size()));
 
-    // All 5 ZONE1 entries in protocolRxTimimgs should be returned
-    REQUIRE(result.size() == 5);
+    // 4 ZONE1 RX entries (ADSLM removed from table)
+    REQUIRE(result.size() == 4);
     for (auto *slot : result)
     {
         REQUIRE(slot->zone == CountryRegulations::Zone::enum_type::ZONE1);
@@ -227,7 +230,7 @@ TEST_CASE("nextRandomTxTime - result falls within txMin..txMax + tolerance", "[C
     // Set time so msInSecond() returns something mid-second (e.g. 100ms)
     setTime(1700000000100ULL);
 
-    const auto &pts = CountryRegulations::getProtocolTxTimings(
+    const auto pts = CountryRegulations::getProtocolTxTimings(
         CountryRegulations::Zone::enum_type::ZONE1, GATAS::DataSource::FLARM);
 
     // Run several times since it's random
@@ -238,7 +241,7 @@ TEST_CASE("nextRandomTxTime - result falls within txMin..txMax + tolerance", "[C
         if (delay != UINT32_MAX)
         {
             // Delay should be >= txMinTime and reasonably bounded
-            REQUIRE(delay >= pts.txMinTime);
+            REQUIRE(delay >= pts[0].txMinTime);
             ++successCount;
         }
     }
@@ -248,7 +251,7 @@ TEST_CASE("nextRandomTxTime - result falls within txMin..txMax + tolerance", "[C
 
 TEST_CASE("nextRandomTxTime - result lands within a valid EU_FLARMT timing window", "[CountryRegulations][txTime]")
 {
-    const auto &pts = CountryRegulations::getProtocolTxTimings(
+    const auto pts = CountryRegulations::getProtocolTxTimings(
         CountryRegulations::Zone::enum_type::ZONE1, GATAS::DataSource::FLARM);
 
     // Run from several different starting positions within the second
@@ -289,7 +292,7 @@ TEST_CASE("nextRandomTxTime - delay is at least txMinTime", "[CountryRegulations
 {
     setTime(1700000000100ULL);
 
-    const auto &pts = CountryRegulations::getProtocolTxTimings(
+    const auto pts = CountryRegulations::getProtocolTxTimings(
         CountryRegulations::Zone::enum_type::ZONE1, GATAS::DataSource::FLARM);
 
     for (int i = 0; i < 20; ++i)
@@ -297,9 +300,60 @@ TEST_CASE("nextRandomTxTime - delay is at least txMinTime", "[CountryRegulations
         uint32_t delay = CountryRegulations::nextRandomTxTime(pts);
         if (delay != UINT32_MAX)
         {
-            REQUIRE(delay >= pts.txMinTime);
+            REQUIRE(delay >= pts[0].txMinTime);
         }
     }
+}
+
+TEST_CASE("nextRandomTxTime - multi-slot: both TRAFFIC and UPLINK windows are reachable", "[CountryRegulations][txTime]")
+{
+    // ADSLO_HDR has two entries: TRAFFIC (450-1000ms) and UPLINK (200-450ms).
+    // nextRandomTxTime must schedule into either window, not just the first one.
+    const auto pts = CountryRegulations::getProtocolTxTimings(
+        CountryRegulations::Zone::enum_type::ZONE1, GATAS::DataSource::ADSLO_HDR);
+    REQUIRE(pts.size() == 2);
+
+    // EU_ADSLO_HDRT_TRAFFIC: CH00 450..1000 (id=0) — effective [450, 990)
+    // EU_ADSLO_HDRT_UPLINK:  CH00 200..450  (id=1) — effective [200, 440)
+    constexpr uint32_t TRAFFIC_START = 450;
+    constexpr uint32_t TRAFFIC_END   = 990; // 1000 - REDUCE_ENDTIME_MS=10
+    constexpr uint32_t UPLINK_START  = 200;
+    constexpr uint32_t UPLINK_END    = 440; // 450 - REDUCE_ENDTIME_MS=10
+
+    int trafficHits = 0;
+    int uplinkHits  = 0;
+
+    // startMs=0:   delay=600 → futureMs=600 → TRAFFIC [450,990) ✓
+    // startMs=600: delay=600 → futureMs=200 → UPLINK  [200,440) ✓
+    // Use get_rand_64_SET(i) to vary the random seed each iteration.
+    for (uint32_t startMs : {0u, 600u})
+    {
+        setTime(1700000000000ULL + startMs);
+
+        for (int i = 0; i < 50; ++i)
+        {
+            get_rand_64_SET(i);
+            uint32_t delay = CountryRegulations::nextRandomTxTime(pts);
+            if (delay == UINT32_MAX)
+            {
+                continue;
+            }
+
+            uint32_t futureMs = (startMs + delay) % 1000;
+            bool inTraffic = (futureMs >= TRAFFIC_START && futureMs < TRAFFIC_END);
+            bool inUplink  = (futureMs >= UPLINK_START  && futureMs < UPLINK_END);
+
+            INFO("startMs=" << startMs << " delay=" << delay << " futureMs=" << futureMs << " i=" << i);
+            REQUIRE((inTraffic || inUplink));
+
+            if (inTraffic) { ++trafficHits; }
+            if (inUplink)  { ++uplinkHits;  }
+        }
+    }
+
+    // Both windows must be hit across 100 iterations — neither should be starved
+    REQUIRE(trafficHits > 0);
+    REQUIRE(uplinkHits  > 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

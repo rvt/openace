@@ -19,7 +19,6 @@ private:
     friend class message_router;
         enum TaskState : uint32_t
     {
-        EXIT = 1 << 0,
         NEW = 1 << 2,
     };
     struct
@@ -38,14 +37,13 @@ private:
     static constexpr uint32_t SERIAL_BAUDRATE = 115200;
 
     PioSerial pioSerial;
-    TaskHandle_t taskHandle;
+    TaskHandle_t taskHandle = nullptr;
     etl::queue_spsc_atomic<GATAS::ADSBString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
 
 public:
     static constexpr const etl::string_view NAME = "SerialADSB";
     SerialADSB(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins) : BaseModule(bus, NAME),
-                                                                          pioSerial{pins, SERIAL_BAUDRATE, PioSerial::CallBackFunction::create<SerialADSB, &SerialADSB::processNewSentence>(*this)},
-                                                                          taskHandle(nullptr)
+                                                                          pioSerial{pins, SERIAL_BAUDRATE, PioSerial::CallBackFunction::create<SerialADSB, &SerialADSB::processNewSentence>(*this)}
     {
     }
 

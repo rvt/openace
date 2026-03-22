@@ -18,7 +18,7 @@ GATAS::PostConstruct RxDataFrameQueue::postConstruct()
     }
 
     // Task must be lower compared to any SX1262 task
-    if (xTaskCreate(radioQueueTaskTrampoline, RxDataFrameQueue::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 2, &taskHandle) != pdPASS)
+    if (xTaskCreate(radioQueueTaskTrampoline, RxDataFrameQueue::NAME.cbegin(), configMINIMAL_STACK_SIZE + 1024, this, tskIDLE_PRIORITY + 2, &taskHandle) != pdPASS)
     {
         vQueueDelete(dataQueue);
         return GATAS::PostConstruct::TASK_ERROR;
@@ -72,7 +72,7 @@ void RxDataFrameQueue::radioQueueTask(void *arg)
                 {
                     continue;
                 }
-
+                guard.disarm();
                 auto msg = GATAS::RadioRxManchesterMsg{
                     rxFrame.frame,
                     error,
@@ -102,7 +102,6 @@ void RxDataFrameQueue::radioQueueTask(void *arg)
                 //     msg.dataSource = ds.dataSource;
                 // }
 
-                guard.disarm();
                 getBus().receive(msg);
             }
             else

@@ -79,7 +79,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
 
         auto aircraftCat = toAircraftCategory(packet.aircraftType());
 
-        GATAS::AircraftPositionMsg aircraftPosition{
+        GATAS::IngressAircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
                 "",

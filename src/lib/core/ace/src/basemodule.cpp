@@ -100,7 +100,7 @@ void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t ev
         pinInterruptHandler &iHandler = pinInterruptHandlers[pin];
         if ((iHandler.event & event) == iHandler.event)
         {
-            if (iHandler.callback != nullptr)
+            if (iHandler.callback.is_valid())
             {
                 iHandler.callback(event);
             }

@@ -6,24 +6,27 @@ class AircraftConfig extends El {
   created() {
     this.types = [
       "Light",
+      "Small",
+      "Large",
       "Aerobatic",
       "Helicopter",
       "Glider",
+      "Balloon",
+      "Sky Diver",
+      "Ultra Light",
+      "Unmanned aerial vehicle",
+      "Surface Emergency Vehicle",
+      "Surface Vehicle",
+      "Point Obstacle",
+      "Gyrocopter",
       "Hang Glider",
       "Para Glider",
-      "Sky Diver",
-      "Balloon",
-      "Airship",
-      "Ultralight",
-      "Gyrocopter",
-      "Drop Plane",
-      "Unmanned aerial vehicle",
-      "StaticObstacle"
-    ];
+      "Drop Plane"];
+
     this.transponderTypes = ["ICAO", "FLARM", "OGN", "ADSL"];
     this.protocolTypes = ["FLARM", "OGN", "ADSL", "FANET"];
 
-    this.state = this.$observable({ showHelp: false, aircraft: {} });
+    this.state = this.$observable({ showHelp: false, aircraft: {}, groundStation: false });
     this.copyOfAircraft = {};
     this._fetchData().then((data) => {
       Object.assign(this.state.aircraft, data);
@@ -70,6 +73,16 @@ class AircraftConfig extends El {
           value: 6,
         },
       ])
+      .addField(this.$refs.heightAboveGps, [
+        {
+          rule: "minNumber",
+          value: 0,
+        },
+        {
+          rule: "maxNumber",
+          value: 1500,
+        },
+      ])
       .onSuccess((event) => {
         const aircraft = this._getFormData();
         this._updateData(aircraft).then(() => {
@@ -85,6 +98,17 @@ class AircraftConfig extends El {
     return number !== undefined ? number.toString(16).toUpperCase().padStart(6, "0") : "000000";
   }
 
+  _onGroundStationChange(e) {
+    this._updateGroundStationState(e.target.checked);
+  }
+
+  _updateGroundStationState(enabled) {
+    this.state.groundStation = enabled;
+    if (enabled) {
+      this.$refs.category.value = "Point Obstacle";
+    }
+  }
+
   _resetForm() {
     Object.assign(this.state.aircraft, this.copyOfAircraft);
     this._setFormData(this.state.aircraft);
@@ -96,8 +120,11 @@ class AircraftConfig extends El {
     this.$refs[`transponderType${aircraft.addressType?.toUpperCase()}`].selected = true;
     this.$refs.address.value = this._addressFormat(aircraft.address).toUpperCase();
     this.$refs.noTrack.checked = aircraft.noTrack;
-//    this.$refs.autoConf.checked = aircraft.autoConf;
-//    this.$refs.privacy.checked = aircraft.privacy;
+    this.$refs.groundStation.checked = aircraft.groundStation;
+    this._updateGroundStationState(!!aircraft.groundStation);
+    this.$refs.heightAboveGps.value = aircraft.heightAboveGps ?? 0;
+    //    this.$refs.autoConf.checked = aircraft.autoConf;
+    //    this.$refs.privacy.checked = aircraft.privacy;
     for (let i of this.protocolTypes) {
       this.$refs[`protocol${i.toUpperCase()}`].checked = aircraft.protocols.includes(i);
     }
@@ -110,9 +137,11 @@ class AircraftConfig extends El {
     aircraft.addressType = this.$refs.transponder.value;
     aircraft.address = Number("0x" + this.$refs.address.value);
     aircraft.noTrack = this.$refs.noTrack.checked;
-//    aircraft.autoConf = this.$refs.autoConf.checked;
+    aircraft.groundStation = this.$refs.groundStation.checked;
+    aircraft.heightAboveGps = aircraft.groundStation ? (Number(this.$refs.heightAboveGps.value) || 0) : 0;
+    //    aircraft.autoConf = this.$refs.autoConf.checked;
 
-//    aircraft.privacy = this.$refs.privacy.checked;
+    //    aircraft.privacy = this.$refs.privacy.checked;
     aircraft.protocols = [];
     for (let i of this.protocolTypes) {
       if (this.$refs[`protocol${i.toUpperCase()}`].checked) {
@@ -153,7 +182,7 @@ class AircraftConfig extends El {
         </label>
         <label>
           Aircraft Type:
-          <select ref="category" required>
+          <select ref="category" required ${this.state.groundStation ? "disabled" : ""}>
           ${this.types.map((item) => html` <option ref="category${item.toUpperCase()}">${item}</option>`)}
           </select>
         </label>
@@ -201,7 +230,21 @@ class AircraftConfig extends El {
           <label for="noTrack">
             <input type="checkbox" id="noTrack" ref="noTrack" />No Track
           </label>
-            <small>GaTas will indicate to other receivers that you don't want to be tracked.</small>
+          <small>GaTas will indicate to other receivers that you don't want to be tracked.</small>
+        </div>
+      </div>
+      <hr />
+      <div>
+        <label for="groundStation">
+        <input type="checkbox" id="groundStation" ref="groundStation" onchange=${this._onGroundStationChange} />Ground Station
+        </label>
+        <small>When enabled, this devices acts as a ground station.<br /> Most importantly, it will send additional traffic using ADSL Uplink to other aircraft.</small>
+        <div style="display: ${this.state.groundStation ? 'block' : 'none'}">
+          <label for="heightAboveGps">
+            Height above GaTas (m):
+            <input type="number" id="heightAboveGps" ref="heightAboveGps" placeholder="0" />
+          </label>
+          <small>Height of the static object above the GaTas device in meters.</small>
         </div>
       </div>
 
@@ -241,6 +284,15 @@ class AircraftConfig extends El {
             <p>
             <b>Protocols to Enable</b><br />
             Enable the protocols that are used to send/receive aircraft information on. To enable ADS-B use the correct module under 'Modules'.
+            </p>
+
+            <p>
+              <b>Ground station:</b><br />
+              <ul>
+                <li> it transmits the closest 10 aircraft pver ADS-L O-band
+                <li> Allows you to set a altitde of the static object, this indicating surrounding traffic something is here. Ideal for (hang) glider fields
+                <li> Transponder will be forced to be ADS-L
+              </ul>
             </p>
           </div>
           <footer class="px-2 jc-end">

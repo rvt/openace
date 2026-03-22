@@ -43,11 +43,6 @@ void FanetAce::FanetAceTask(void *arg)
         {
             (void)notifyValue;
 
-            if (notifyValue & TaskState::EXIT)
-            {
-                vTaskDelete(nullptr);
-                return;
-            }
         }
         if (auto guard = SemaphoreGuard(100, fanetAce->mutex))
         {
@@ -171,7 +166,7 @@ void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
         auto aircraftCat = mapAircraftCategory(tp.aircraftType());
         auto groundSpeed = tp.speed() * KPH_TO_MS;
 
-        GATAS::AircraftPositionMsg aircraftPosition{
+        GATAS::IngressAircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
                 "",
@@ -207,7 +202,7 @@ void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
             return;
         }
 
-        GATAS::AircraftPositionMsg aircraftPosition{
+        GATAS::IngressAircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
                 "",

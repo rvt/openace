@@ -20,11 +20,10 @@ class FanetAce : public BaseModule, public FANET::Connector, public etl::message
 private:
     friend class message_router;
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr int MAX_IGNORE_DISTANCE = 50000;
+    static constexpr int MAX_IGNORE_DISTANCE = 100000;
 
     enum TaskState : uint32_t
     {
-        EXIT = 1 << 0,
         HANDLETX = 1 << 2,
     };
     struct
@@ -50,12 +49,12 @@ private:
     virtual bool fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data) override;
     virtual void fanet_ackReceived(uint16_t id) override;
 
-    TaskHandle_t taskHandle;
+    TaskHandle_t taskHandle = nullptr;
     FANET::Protocol protocol;
-    SemaphoreHandle_t mutex;
+    SemaphoreHandle_t mutex = nullptr;
 
-    uint8_t radioNo;
-    uint16_t distanceIgnore;
+    uint8_t radioNo = 0;
+    uint32_t distanceIgnore;
 
     GATAS::OwnshipPositionInfo ownshipPosition;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
@@ -67,7 +66,7 @@ private:
 public:
     static constexpr const etl::string_view NAME = "Fanet";
 
-    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), protocol(this), mutex(nullptr), radioNo(0), distanceIgnore(DEFAULT_IGNORE_DISTANCE), ownshipPosition{}, gaTasConfiguration(config.gaTasConfig())
+    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), protocol(this), distanceIgnore(DEFAULT_IGNORE_DISTANCE), ownshipPosition{}, gaTasConfiguration(config.gaTasConfig())
     {
         protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.icaoAddress});
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Fanet", "distanceIgnore");

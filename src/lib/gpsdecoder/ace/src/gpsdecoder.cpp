@@ -2,6 +2,7 @@
 
 #include "../gpsdecoder.hpp"
 #include "ace/moreutils.hpp"
+#include "etl/algorithm.h"
 
 extern const char *GATAS_BUILD_TIMESTAMP;
 extern const char *GATAS_BUILD_GIT_TAG;
@@ -50,6 +51,8 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"groundspeed:kt\":" << groundSpeed;
     stream << ",\"track:deg\":" << course();
     stream << ",\"pDop\":" << pDop;
+    stream << ",\"heightAboveGps:m\":" << heightAboveGps;
+    stream << ",\"groundStation:b\":" << groundStation;
     stream << ",\"hDop\":" << hDop << GATAS::RESET_FORMAT;
     stream << ",\"dopValue\":\"" << dopValue << "\"";
     stream << ",\"gpsRate:psec\":" << getGpsRate();
@@ -71,6 +74,8 @@ void GpsDecoder::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     if (msg.moduleName == Configuration::NAME)
     {
         conspicuity = msg.config.gaTasConfig().conspicuity;
+        heightAboveGps = etl::clamp(conspicuity.heightAboveGps, static_cast<int16_t>(0), static_cast<int16_t>(1500));
+        groundStation = conspicuity.groundStation;
     }
 }
 
@@ -132,8 +137,8 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             {
 
                 GATAS_WARN("RMC and Local time don't match %02d:%02d:%02d.%03ld RMC:%02d:%02d:%02d.%03d",
-                       timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, msSinceEpoch,
-                       frame.time.hours, frame.time.minutes, frame.time.seconds, msInSecond);
+                           timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, msSinceEpoch,
+                           frame.time.hours, frame.time.minutes, frame.time.seconds, msInSecond);
             }
 #endif
 
@@ -248,13 +253,12 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
                 }
 
                 getBus().receive(
-                    GATAS::GpsStatsMsg{
+                    GATAS::GpsStatsMsg{GATAS::GpsStats{
                         GATAS::GpsFix{fixType},
                         satsUsedForFix,
                         pDop,
                         hDop,
-                        vDop,
-                        GATAS::floatToDOPInterpretation(pDop)});
+                        vDop}});
             }
         }
     }
@@ -312,7 +316,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .timestamp = CoreUtils::timeUs32(),
                     .lat = latitude,
                     .lon = longitude,
-                    .ellipseHeight = static_cast<int16_t>(altGeoid + geoidSeparation),
+                    .ellipseHeight = static_cast<int16_t>(altGeoid + geoidSeparation + heightAboveGps),
                     .verticalSpeed = altitudeGeoid.perSecond(), // vertical speed
                     .groundSpeed = groundSpeed,                 // Ground Speed
                     .track = course(),

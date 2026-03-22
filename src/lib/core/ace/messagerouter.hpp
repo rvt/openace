@@ -13,7 +13,8 @@
 #include "etl/vector.h"
 
 // The successor functionality is to allow routers to be chained together, so that if a message is not handled by the current router, then it will be passed on to the next.
-// Should we use a queue ?? QueuedMessageRouter.cpp
+// Note to self: We can never queue messages here and we always must pass them without making a copy since we use messages that references local data structures.
+// As long as we stick to that rule, we should never have dangling references
 namespace GATAS
 {
     template <uint_least8_t MAX_ROUTERS_>

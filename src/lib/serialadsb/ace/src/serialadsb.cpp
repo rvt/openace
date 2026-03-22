@@ -27,19 +27,13 @@ void SerialADSB::serialADSBTask(void *arg)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
         {
-            if (notifyValue & TaskState::EXIT)
-            {
-                vTaskDelete(nullptr);
-                return;
-            }
-
             if (notifyValue & TaskState::NEW)
             {
                 while (serialAdsb->queue.pop(sentence))
                 {
                     serialAdsb->statistics.totalReceived += 1;
                     // Finalise implementation to create the binary message here and send
-//                    serialAdsb->getBus().receive(GATAS::ADSBMessageBin{sentence});
+//                    serialAdsb->getBus().receive(GATAS::ADSBMessageBinMsg{sentence});
                 }
             }
         }

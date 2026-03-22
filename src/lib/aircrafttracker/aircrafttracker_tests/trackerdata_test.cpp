@@ -58,36 +58,33 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
     {
         TestHandler testHandler;
         time_us_Value = 120'000;
-        auto delay = trackedAircraft.next(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
+        trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
 
         REQUIRE(testHandler.nextCalled);
 
         time_us_Value = 920'000;
         testHandler.nextCalled = false;
-        delay = trackedAircraft.next(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
+        trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
         REQUIRE_FALSE(testHandler.nextCalled);
 
-        REQUIRE(delay == 500);
     }
 
     SECTION("next called with timeslice")
     {
         time_us_Value = 900'000;
         TestHandler testHandler;
-        auto delay = trackedAircraft.next(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
+        trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
 
         REQUIRE(testHandler.nextCalled);
-        REQUIRE(delay == 500);
 
         // Would not call again with the same time as send time is updated
         testHandler.nextCalled = false;
-        delay = trackedAircraft.next(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
+        trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
 
         time_us_Value = time_us_Value + 250'000;
-        delay = trackedAircraft.next(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
-
-        REQUIRE(delay == 500);
+        trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
     }
+
 
     SECTION("next called runs stale")
     {
@@ -125,8 +122,8 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
         int callBacks = 0;
         time_us_Value = 1'500'000;
         TestHandler testHandler;
-        auto delay = trackedAircraft.next(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
-        REQUIRE(testHandler.callBacks == 2);
+        trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
+        REQUIRE(testHandler.callBacks == 1);
     }
 }
 
@@ -183,12 +180,44 @@ TEST_CASE("TrackerData Insert many and re-calculate adaptiveRadius ", "[single-f
     }
 }
 
-TEST_CASE("Next should handle correct delay 4 slices", "[single-file]")
+TEST_CASE("sendScheduled distributes 4 aircraft across 2 timeslices", "[single-file]")
 {
-    TrackerData<100, 4> trackedAircraft;
+    // With TIMESLICES=2 and 4 aircraft: maxPerRound = ceil(4/2) = 2.
+    // First sendScheduled fires 2, sets their sendTime = currentTime + HEARTBEAT_TIME.
+    // Second sendScheduled 500ms later fires the remaining 2 (still at sendTime=0).
+    time_us_Value = 0;
+    TrackerData<100, 2> trackedAircraft;
+
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        GATAS::AircraftPositionInfo ac;
+        ac.address = i;
+        ac.timestamp = 0;
+        ac.distanceFromOwn = 5000;
+        trackedAircraft.insert(ac);
+    }
+    REQUIRE(trackedAircraft.size() == 4);
+
     TestHandler testHandler;
-    auto delay = trackedAircraft.next(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
-    REQUIRE(delay == 250);
+    auto delegate = etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler);
+
+    // First slot at t=0: maxPerRound = ceil(4/2) = 2, fires 2
+    trackedAircraft.sendScheduled(delegate);
+    REQUIRE(testHandler.callBacks == 2);
+
+    // Second slot at t=600ms: remaining 2 still have sendTime=0, fires 2
+    time_us_Value = 600'000;
+    trackedAircraft.sendScheduled(delegate);
+    REQUIRE(testHandler.callBacks == 4);
+
+    // Calling again at the same time: all sendTimes are in the future, nothing fires
+    trackedAircraft.sendScheduled(delegate);
+    REQUIRE(testHandler.callBacks == 4);
+
+    //Time advances
+    time_us_Value = time_us_Value + 500'000;
+    trackedAircraft.sendScheduled(delegate);
+    REQUIRE(testHandler.callBacks == 6);
 }
 
 TEST_CASE("Should update data", "[single-file]")
@@ -222,7 +251,7 @@ TEST_CASE("Should update data", "[single-file]")
     REQUIRE(trackedAircraft.size() == 1);
 
     // Validate if the queue was updated
-    trackedAircraft.next(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
+    trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(testHandler));
 
     REQUIRE(testHandler.callBacks == 1);
 }

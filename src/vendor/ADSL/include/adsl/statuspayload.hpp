@@ -16,6 +16,8 @@ namespace ADSL
   class StatusPayload final
   {
   public:
+    static constexpr size_t LENGTH = 7;
+
     struct ReceiveCapability
     {
       enum enum_type : uint8_t

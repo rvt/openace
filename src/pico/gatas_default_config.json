@@ -35,7 +35,7 @@
     },
     "_comment_pinCode": "A pincode to be use for connecting to GA/TAS Connect online services",
     "pinCode": "0"
-  },  
+  },
   "ADSBDecoder": {
     "filterAbove": 1500,
     "filterBelow": 1500
@@ -70,16 +70,16 @@
     "offset": 0
   },
   "Flarm": {
-    "distanceIgnore": 50000
+    "distanceIgnore": 100000
   },
   "Fanet": {
-    "distanceIgnore": 50000
+    "distanceIgnore": 100000
   },
   "Ogn1": {
-    "distanceIgnore": 50000
+    "distanceIgnore": 100000
   },
   "ADSL": {
-    "distanceIgnore": 50000
+    "distanceIgnore": 100000
   },
   "Dump1090Client": {
     "ip": "192.168.178.105",

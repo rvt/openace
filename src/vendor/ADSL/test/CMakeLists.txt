@@ -38,10 +38,11 @@ set(SOURCES_IDIOMATIC_EXAMPLES # Tests
   networkpayload_tests.cpp
    protocol_tests.cpp
    utils_tests.cpp
-#   blockallocator_tests.cpp
+   blockallocator_tests.cpp
    address_tests.cpp
    trafficpayload_tests.cpp
    header_tests.cpp
+   uplinkentry_tests.cpp
 )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES

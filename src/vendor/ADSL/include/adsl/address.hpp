@@ -16,6 +16,7 @@ namespace ADSL
         uint16_t uniqueId = 0; ///< Unique Device ID
 
     public:
+        constexpr static size_t LENGTH = 3;
         /**
          * @brief Default constructor.
          */
@@ -114,10 +115,11 @@ namespace ADSL
          * @brief Serialize the address to a bit stream.
          * @param writer The bit stream writer.
          */
-        void serialize(etl::bit_stream_writer &writer) const
+        size_t serialize(etl::bit_stream_writer &writer) const
         {
             writer.write_unchecked<uint8_t>(mfgId);
             writer.write_unchecked<uint16_t>(uniqueId);
+            return 3;
         }
 
         /**

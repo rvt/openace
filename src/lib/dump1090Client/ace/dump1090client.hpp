@@ -26,9 +26,9 @@ class Dump1090Client : public BaseModule,
 
     etl::imessage_bus *bus;
 
-    bool wifiConnected;
-    uint32_t networkAddress;
-    BinaryReceiver *receiver;
+    bool wifiConnected = false;
+    uint32_t networkAddress = 0;
+    BinaryReceiver *receiver = nullptr;
     using TcpClient = TcpBufferedClient<48, 10>;
     TcpClient tcpClient;
 
@@ -40,9 +40,6 @@ public:
     static constexpr const char *NAME = "Dump1090Client";
 
     Dump1090Client(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                          wifiConnected(false),
-                                                                          networkAddress(0),
-                                                                          receiver(nullptr),
                                                                           tcpClient(
                                                                               config.ipPortBypath(NAME),
                                                                               DelimiterBitmap::CRLF(),

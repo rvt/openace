@@ -13,6 +13,8 @@ namespace ADSL
     class Header final
     {
     public:
+        constexpr static size_t LENGTH = 2 + Address::LENGTH;
+
         /**
          * @brief Enumeration for message types.
          * ADS-L.4.SRD860.F.2.1
@@ -116,13 +118,14 @@ namespace ADSL
          * @brief Serialize the header to a bit stream. v1/v2 are the same
          * @param writer The bit stream writer.
          */
-        void serialize(etl::bit_stream_writer &writer) const
+        size_t serialize(etl::bit_stream_writer &writer) const
         {
             writer.write_unchecked(static_cast<uint8_t>(payloadTypeIdentifier_), 8U);
             writer.write_unchecked(static_cast<uint8_t>(addressMappingTable_), 6U);
             address_.serialize(writer);
             writer.write_unchecked(0, 1U); 
             writer.write_unchecked(relay_);
+            return 1 + Address::LENGTH + 1;
         }
 
 

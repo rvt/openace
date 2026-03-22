@@ -117,19 +117,15 @@ void registerModules()
     }
 }
 
-__scratch_y("aceSpi_Mem") static uint8_t aceSpi_Mem[sizeof(AceSpi)];
+static uint8_t aceSpi_Mem[sizeof(AceSpi)];
 static uint8_t sx1262_1_Mem[sizeof(Sx1262)];
 static uint8_t sx1262_2_Mem[sizeof(Sx1262)];
-__scratch_y("GpsDecoder_Mem") static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
-__scratch_y("GPS_Mem") static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B))];
-__scratch_y("DataPort_Mem") static uint8_t DataPort_Mem[sizeof(DataPort)];
+static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
+static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B))];
+static uint8_t DataPort_Mem[sizeof(DataPort)];
 
-using MultiPool = MultiPoolAllocator<
-    PoolSpec<32, 16>,
-    PoolSpec<64, 8>,
-    PoolSpec<160, 4>>;
 
-MultiPool pool;
+GATAS::GlobalPoolConfiguration pool;
 
 BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configuration &config)
 {
@@ -215,7 +211,7 @@ static FlashStore permanentStore{PERMSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLAS
 // Used to store runtime information not stored in permanent store, counters, id's etc...
 static FlashStore binaryStore{BINSTORE_NUM_SECTORS * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE * 4};
 
-__scratch_y("GatasMem_Bus") static GATAS::ThreadSafeBus<24> bus;
+static GATAS::ThreadSafeBus<24> bus;
 
 static Config config(bus, volatileStore, permanentStore, binaryStore, DEFAULT_GATAS_CONFIG);
 volatile static bool loadIndicator = false;
@@ -287,7 +283,7 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
 static void loadModules(void *arg)
 {
     (void)arg;
-    
+
     bus.setPool(&BaseModule::getGlobalPool()); // Hack to set the pool into the messagebus
 
     CoreUtils::init();

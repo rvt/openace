@@ -2,7 +2,6 @@
 
 #include "ddb_db.hpp"
 #include <etl/algorithm.h>
-#include <etl/unordered_map.h>
 #include "ace/coreutils.hpp"
 
 /**

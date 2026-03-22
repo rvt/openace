@@ -67,7 +67,7 @@ void GatasConnect::on_receive_unknown(const etl::imessage &msg)
 
 void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg)
 {
-    hasGpsFix = msg.gpsFix.hasFix;
+    hasGpsFix = msg.gpsStats.gpsFix.hasFix;
 }
 
 /**

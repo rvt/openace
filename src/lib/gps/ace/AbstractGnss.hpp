@@ -31,7 +31,6 @@ private:
 
     enum TaskState : uint32_t
     {
-        EXIT = 1 << 0,
         NEW = 1 << 2,
     };
     struct
@@ -48,8 +47,8 @@ private:
     const int8_t ppsPin;
     bool softwarebasedPPS;
     int32_t softPPSlagUs;
-    uint32_t measureSoftPPSlag;
-    TaskHandle_t taskHandle;
+    uint32_t measureSoftPPSlag = 0;
+    TaskHandle_t taskHandle = nullptr;
     etl::queue_spsc_atomic<GATAS::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
 
     static constexpr const etl::string_view NAME = "Gnss";
@@ -102,9 +101,7 @@ public:
                                                                                                        pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
                                                                                                        ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
                                                                                                        softwarebasedPPS(softPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG),
-                                                                                                       softPPSlagUs(softPPSlagUs_),
-                                                                                                       measureSoftPPSlag(0),
-                                                                                                       taskHandle(nullptr)
+                                                                                                       softPPSlagUs(softPPSlagUs_)
     {
     }
 

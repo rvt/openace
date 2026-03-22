@@ -1237,8 +1237,8 @@ bool GDL90::sx_heartbeat_encode(etl::ivector<uint8_t> &unpacked,
 
     // [28]
     unpacked.push_back(towers.size());
-    uint32_t latitude;
-    uint32_t longitude;
+    uint32_t latitude=0;
+    uint32_t longitude=0;
     for (const auto &t : towers)
     {
         latlon_encode(latitude, t.first);

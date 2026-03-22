@@ -9,6 +9,7 @@
 #include "etl/unordered_map.h"
 #include "etl/set.h"
 #include "etl/scaled_rounding.h"
+#include "etl/algorithm.h"
 
 /**
  * A tracker data queue for all aircraft received
@@ -41,6 +42,18 @@ private:
             : sendTime(time), position(pos) {}
 
         TrackerEntry() = default;
+    };
+
+    struct ByDistance
+    {
+        bool operator()(const GATAS::AircraftPositionInfo *a, const GATAS::AircraftPositionInfo *b) const
+        {
+            if (a->distanceFromOwn != b->distanceFromOwn)
+            {
+                return a->distanceFromOwn < b->distanceFromOwn;
+            }
+            return a < b; // pointer as unique tiebreaker
+        }
     };
 
     etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
@@ -181,9 +194,9 @@ public:
             }
         }
 
+        GATAS_VERIFY(!trackedAircraft.full(), "TrackerData: Should never be full");
         if (trackedAircraft.full())
         {
-            GATAS_VERIFY(false, "TrackerData: Should never be full");
             return false;
         }
 
@@ -222,31 +235,57 @@ public:
         }
     }
 
-    uint16_t next(const etl::delegate<void(const GATAS::AircraftPositionInfo &)> &msg)
+    void sendScheduled(const etl::delegate<void(const GATAS::AircraftPositionInfo &)> &callback)
     {
         auto currentTime = CoreUtils::timeUs32Raw();
-        uint8_t count = 0;
-        auto maxPerRound = static_cast<uint32_t>(trackedAircraft.size() / TIMESLICES) + 1;
+        size_t count = 0;
+        size_t maxPerRound = (trackedAircraft.size() + TIMESLICES - 1) / TIMESLICES;
         for (auto &pair : trackedAircraft)
         {
             auto &it = pair.second;
             if (CoreUtils::isUsReachedRaw(it.sendTime, currentTime))
             {
-                msg(it.position);
+                callback(it.position);
                 count += 1;
                 it.sendTime = currentTime + HEARTBEAT_TIME;
                 if (count >= maxPerRound)
                 {
-                    return SLICE_SIZE_MS;
+                    return;
                 }
             }
         }
-        return SLICE_SIZE_MS;
     }
 
     void maintenance()
     {
         removeExpired();
         increaseAdaptiveRadius();
+    }
+
+    GATAS::AdslObandUplinkAircraft forClosest() const
+    {
+        constexpr size_t maxCount = 10;
+        etl::set<const GATAS::AircraftPositionInfo *, 10, ByDistance> closest;
+
+        for (const auto &pair : trackedAircraft)
+        {
+            const auto *e = &pair.second;
+            if (closest.size() < maxCount)
+            {
+                closest.insert(&e->position);
+            }
+            else if (e->position.distanceFromOwn < (*closest.rbegin())->distanceFromOwn)
+            {
+                closest.erase(etl::prev(closest.end()));
+                closest.insert(&e->position);
+            }
+        }
+
+        GATAS::AdslObandUplinkAircraft result;
+        for (const auto *e : closest)
+        {
+            result.push_back(*e);
+        }
+        return result;
     }
 };

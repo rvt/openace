@@ -14,27 +14,27 @@ using namespace ADSL;
 
 using TestRadioPacket = etl::vector<uint8_t, 255>;
 
-template <typename T>
-inline void printBufferHex(etl::span<T> buffer)
-{
+// template <typename T>
+// inline void printBufferHex(etl::span<T> buffer)
+// {
 
-  printf("Length(%d) ", static_cast<int>(buffer.size()));
+//   printf("Length(%d) ", static_cast<int>(buffer.size()));
 
-  for (size_t i = 0; i < buffer.size(); ++i)
-  {
-    if constexpr (sizeof(T) == 1)
-      printf("0x%02" PRIX8, static_cast<uint8_t>(buffer[i]));
-    else if constexpr (sizeof(T) == 2)
-      printf("0x%04" PRIX16, static_cast<uint16_t>(buffer[i]));
-    else if constexpr (sizeof(T) == 4)
-      printf("0x%08" PRIX32, static_cast<uint32_t>(buffer[i]));
-    else
-      printf("0x%X", static_cast<unsigned int>(buffer[i])); // fallback
+//   for (size_t i = 0; i < buffer.size(); ++i)
+//   {
+//     if constexpr (sizeof(T) == 1)
+//       printf("0x%02" PRIX8, static_cast<uint8_t>(buffer[i]));
+//     else if constexpr (sizeof(T) == 2)
+//       printf("0x%04" PRIX16, static_cast<uint16_t>(buffer[i]));
+//     else if constexpr (sizeof(T) == 4)
+//       printf("0x%08" PRIX32, static_cast<uint32_t>(buffer[i]));
+//     else
+//       printf("0x%X", static_cast<unsigned int>(buffer[i])); // fallback
 
-    if (i + 1 < buffer.size())
-      printf(", ");
-  }
-}
+//     if (i + 1 < buffer.size())
+//       printf(", ");
+//   }
+// }
 
 template <size_t N>
 etl::vector<uint8_t, N> makeVector(const uint8_t (&arr)[N])

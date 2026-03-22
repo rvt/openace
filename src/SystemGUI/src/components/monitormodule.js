@@ -34,7 +34,6 @@ class MonitorModule extends El {
 
   mounted() {
     this._running = true;
-    debugger
     this._colorSchema = this._getPolarColorSchema();
     this._fetchData();
   }

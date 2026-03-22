@@ -9,27 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- ADSL Traffic Uplink on O-Band for both reception and transmission (in ground station mode)
+- Groundstation mode that can show a static object at any height.
+- Send Traffic over ADSL using uplinkTraffic message
 
 ### Changed
 
-- 
+- Use etl::delegate instead of etl::function
+- Stopped storing a 'GATAS::*Msg' in local objects, always copy the contents as a rule
+- Update list of possible Aircraft types in UI
+- Update DDB
 
 ### Deprecated
 
-- 
+-
 
 ### Removed
 
-- 
+-
 
 ### Fixed
 
-- 
+-
 
 ### Security
 
-- 
+-
 
 ## [1.1.0] - 2026-03-02
 

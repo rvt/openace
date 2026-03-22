@@ -14,7 +14,7 @@
 
 #include "adsbdecoder.hpp"
 
-class Test : public etl::message_router<Test, GATAS::AircraftPositionMsg>
+class Test : public etl::message_router<Test, GATAS::IngressAircraftPositionMsg>
 {
 
 public:
@@ -30,7 +30,7 @@ public:
         bus.unsubscribe(*this);
     }
 
-    void on_receive(const GATAS::AircraftPositionMsg &msg)
+    void on_receive(const GATAS::IngressAircraftPositionMsg &msg)
     {
 //        printf("AircraftPosition Received\n");
         received = true;
@@ -203,7 +203,7 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
     // https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html  for 52.3888,4.7209
     REQUIRE(test.position.ellipseHeight == /*9029*/ 9072); // geoid aprox 43m
     REQUIRE(test.position.groundSpeed == Catch::Approx(230.98).margin(0.1)); // in m/s
-    REQUIRE(test.position.course == 25);                                     // ADSB data shows 25.94.. Should we use floats instead of int?
+    REQUIRE(test.position.track == 25);                                     // ADSB data shows 25.94.. Should we use floats instead of int?
     REQUIRE(test.position.lat == Catch::Approx(52.3888).margin(0.005));
     REQUIRE(test.position.lon == Catch::Approx(4.7209).margin(0.005));
     REQUIRE(test.position.verticalSpeed == Catch::Approx(4.552).margin(0.001));

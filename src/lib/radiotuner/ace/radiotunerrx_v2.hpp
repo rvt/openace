@@ -24,7 +24,7 @@
 /**
  * This class is responsible for setting up timings to receive data for each protocol
  */
-class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx, GATAS::OwnshipPositionMsg, GATAS::AircraftPositionMsg, GATAS::ConfigUpdatedMsg>
+class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx, GATAS::OwnshipPositionMsg, GATAS::IngressAircraftPositionMsg, GATAS::ConfigUpdatedMsg>
 {
     using SlotReceive = etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_ITEMS)>;
 
@@ -50,6 +50,11 @@ private:
         uint8_t radioNo;
         TimeSlotVector protocolTimings = {};
         etl::circular_iterator<TimeSlotVector::const_iterator> protocolIterator;
+
+        // Track last sent config to avoid redundant RadioControlMsg sends
+        GATAS::DataSource lastDataSource = GATAS::DataSource::_ITEMS;
+        uint32_t lastFrequency = 0;
+        uint32_t lastSendUsRaw = 0;
 
         // Constructor
         RadioProtocolCtx(RadioTunerRx *controller_, uint8_t radioNo_) : controller(controller_), radioNo(radioNo_), protocolTimings()
@@ -106,7 +111,7 @@ private:
     // Handle receiving of zone information
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     // handle receiving of datasources
-    void on_receive(const GATAS::AircraftPositionMsg &msg);
+    void on_receive(const GATAS::IngressAircraftPositionMsg &msg);
     // Handle configuration changes to protocols
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive_unknown(const etl::imessage &msg);

@@ -14,7 +14,7 @@
 #include "etl/map.h"
 #include "etl/message_bus.h"
 
-class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::TrackedAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg>
+class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::EgressAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg>
 {
     friend class message_router;
     GATAS::OwnshipMinimalPositionInfo ownshipPosition;
@@ -44,7 +44,7 @@ public:
         getBus().subscribe(*this);
     };
 
-    void on_receive(const GATAS::TrackedAircraftPositionMsg &msg);
+    void on_receive(const GATAS::EgressAircraftPositionMsg &msg);
 
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
 

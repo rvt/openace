@@ -38,7 +38,6 @@ void manchesterEncode(uint8_t destination[], const uint8_t source[], uint8_t sou
     }
 }
 
-
 /**
  * @brief Decode a Manchester (IEEE 802) encoded buffer directy into a destination
  */
@@ -64,22 +63,17 @@ void manchesterDecode(uint8_t destination[],
 #if defined(PICO_RP2040) || defined(PICO_RP2350)
 __attribute__((section(".itcm")))
 #endif
-void manchesterDecodeInline(uint8_t buffer[],
-                      uint8_t err[],
-                      uint8_t manchesterLength)
+void manchesterDecodeInline(uint8_t buffer[], uint8_t err[], uint8_t manchesterLength)
 {
-    uint8_t out = 0;
-    for (uint8_t i = 0; i + 1 < manchesterLength; i += 2)
+    uint8_t idx = 0;
+    for (uint8_t i = 0; i < manchesterLength; i++) // loop over packet bytes
     {
-        uint8_t h = manchesterDecodeLookupTable[buffer[i]];
-        uint8_t l = manchesterDecodeLookupTable[buffer[i + 1]];
-        uint8_t errH = h >> 4;
-        h &= 0x0F;
-        uint8_t errL = l >> 4;
-        l &= 0x0F;
-        buffer[out] = (h << 4) | l;
-        err[out] = (errH << 4) | errL;
-        ++out;
+        uint8_t valh = manchesterDecodeLookupTable[buffer[i]];
+        uint8_t vall = manchesterDecodeLookupTable[buffer[i + 1]];
+        buffer[idx] = (valh << 4) | (vall & 0x0F);
+        err[idx] = (valh & 0xF0) | (vall >> 4);
+        idx += 1;
+        i += 1;
     }
 }
 

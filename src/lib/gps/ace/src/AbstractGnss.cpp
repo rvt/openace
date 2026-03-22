@@ -66,7 +66,7 @@ void AbstractGnss::start()
     pioSerial.start();
     if (!softwarebasedPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG)
     {
-        registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, AbstractGnss_pps_callback);
+        registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, pinIntrCallback_t::create<AbstractGnss_pps_callback>());
     }
 };
 
@@ -86,12 +86,6 @@ void AbstractGnss::receiveTask(void *arg)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
         {
-            if (notifyValue & TaskState::EXIT)
-            {
-                vTaskDelete(nullptr);
-                return;
-            }
-
             if (notifyValue & TaskState::NEW)
             {
                 while (abstractGnss->queue.pop(sentence))

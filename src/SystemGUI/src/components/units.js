@@ -1,7 +1,7 @@
 const UNIT_TABLE = {
     hz: [
-        { scale: 1e9, suffix: "GHz", min: 1e9, digits: 1 },
-        { scale: 1e6, suffix: "MHz", min: 1e6, digits: 1 },
+        { scale: 1e9, suffix: "GHz", min: 1e9, digits: 3 },
+        { scale: 1e6, suffix: "MHz", min: 1e6, digits: 3 },
         { scale: 1e3, suffix: "kHz", min: 1e3, digits: 1 },
         { scale: 1, suffix: "Hz", min: 0, digits: 0 },
     ],

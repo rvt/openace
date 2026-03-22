@@ -22,8 +22,7 @@
 #include "etl/span.h"
 #include "etl/delegate.h"
 
-// TODO: Change to a etl::delegate
-typedef std::function<void(const uint32_t)> pinIntrCallback_t;
+using pinIntrCallback_t = etl::delegate<void(const uint32_t)>;
 
 // function to transform a reason into text
 const char *postConstructToString(GATAS::PostConstruct reason);
@@ -61,9 +60,9 @@ private:
         pinIntrCallback_t callback;
         uint32_t notificationValue;
         bool enabled;
-        pinInterruptHandler(uint32_t _event, TaskHandle_t _handler, uint32_t _notificationValue) : event(_event), handler(_handler), callback(nullptr), notificationValue(_notificationValue), enabled(true) {}
+        pinInterruptHandler(uint32_t _event, TaskHandle_t _handler, uint32_t _notificationValue) : event(_event), handler(_handler), callback{}, notificationValue(_notificationValue), enabled(true) {}
         pinInterruptHandler(uint32_t _event, pinIntrCallback_t _callback) : event(_event), handler(nullptr), callback(_callback), notificationValue(0x00), enabled(true) {}
-        pinInterruptHandler() : event(0x00), handler(nullptr), callback(nullptr), notificationValue(0x00), enabled(true) {}
+        pinInterruptHandler() : event(0x00), handler(nullptr), callback{}, notificationValue(0x00), enabled(true) {}
     };
     inline static etl::unordered_map<uint8_t, BaseModule::pinInterruptHandler, 8> pinInterruptHandlers;
 

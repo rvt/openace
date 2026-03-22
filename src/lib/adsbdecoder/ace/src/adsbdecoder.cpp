@@ -47,7 +47,7 @@ void ADSBDecoder::receiveBinary(const uint8_t *data, uint8_t length)
     processAdsbData(data, length);
 }
 
-void ADSBDecoder::on_receive(const GATAS::ADSBMessageBin &msg)
+void ADSBDecoder::on_receive(const GATAS::ADSBMessageBinMsg &msg)
 {
     processAdsbData(msg.data, msg.length);
 }
@@ -181,7 +181,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
             }
 
             // printf("Received  t:%06ld a:%06lX gnsAlt:%ldm gnsAlt:%0.2fft\n", usTime / 1'000'000, current.icao, current.ellipseHeight, current.ellipseHeight * M_TO_FT);
-            getBus().receive(GATAS::AircraftPositionMsg{
+            getBus().receive(GATAS::IngressAircraftPositionMsg{
                 {usTime - ADSBDECODER_US_DELAY_SERIAL_AND_OVERHEAD,
                  current.callSign,
                  current.icao,

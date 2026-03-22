@@ -41,7 +41,7 @@ public:
 
 private:
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr int MAX_IGNORE_DISTANCE = 50000;
+    static constexpr int MAX_IGNORE_DISTANCE = 100000;
     friend class message_router;
 
     struct OGNAircraftType
@@ -99,18 +99,15 @@ private:
 
     GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
 
-    GATAS::OwnshipPositionInfo ownshipPosition;
-    GATAS::BarometricPressureMsg lastBarometricPressureMsg;
-    GATAS::GpsStatsMsg gpsStats;
-    uint16_t distanceIgnore;
+    GATAS::OwnshipPositionInfo ownshipPosition{};
+    GATAS::BarometricPressure lastBarometricPressure{0, 0};
+    GATAS::GpsStats gpsStats{};
+    uint32_t distanceIgnore;
     static LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH * 8, 48> decoder;
 
 public:
     static constexpr const etl::string_view NAME = "Ogn1";
-    Ogn1(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                ownshipPosition{},
-                                                                lastBarometricPressureMsg{0,0},
-                                                                gpsStats{}
+    Ogn1(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
         auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Ogn1", "distanceIgnore");
         distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
