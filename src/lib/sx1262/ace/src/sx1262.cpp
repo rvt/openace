@@ -205,6 +205,13 @@ void Sx1262::radioInit()
 
     sx126x_set_pa_cfg(this, &DEFAULT_HIGH_POWER_PA_CFG);
     sx126x_set_ocp_value(this, (uint8_t)(120.0 / 2.5));
+
+    // Add RX gain register to retention
+    const uint16_t reg = 0x08AC;
+    sx126x_add_registers_to_retention_list(this, &reg, 1);
+
+    // Set boosted gain once
+    sx126x_cfg_rx_boosted(this, true);
 }
 
 void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_t payloadLength)
@@ -266,6 +273,8 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
                 syncLengthBits = newParameters.config->syncLength;
                 syncData = newParameters.config->syncWord.data();
                 pkt_params_gfsk.pld_len_in_bytes = payloadLength * (newParameters.config->manchester ? 2 : 1);
+
+                // Variable payload test (0 is true)
                 if (newParameters.config->packetLength == 0) // When newParameters.config->packetLength == 0, this means variable payload
                 {
                     pkt_params_gfsk.header_type = SX126X_GFSK_PKT_VAR_LEN;
@@ -276,11 +285,13 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
                 // RX Config
                 syncLengthBits = newParameters.config->syncLength - newParameters.config->syncSkipInRxLength;
                 syncData = newParameters.config->syncWord.data() + (newParameters.config->syncSkipInRxLength + 7) / 8;
+
+                // Variable payload test (0 is true)
                 if (newParameters.config->packetLength == 0)
                 {
                     pkt_params_gfsk.header_type = SX126X_GFSK_PKT_VAR_LEN;
-                    // Apparently this value must be set, even in variable packet length mode
-                    pkt_params_gfsk.pld_len_in_bytes = GROUNDSTATION_RX_BASE; 
+                    // Maximum payload size in variable mode
+                    pkt_params_gfsk.pld_len_in_bytes = GROUNDSTATION_RX_BASE;
                 }
                 else
                 {
@@ -297,10 +308,18 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
         else if (newParameters.frequency->mode == GATAS::Modulation::LORA)
         {
             sx126x_set_pkt_type(this, SX126X_PKT_TYPE_LORA);
+
+            auto pkg = DEFAULT_PKG_PARAMS_LORA;
+            // Only set sx126x_set_lora_mod_params in RX path
+            // payloadLength will be !=0 to indicate actual data needs to be send
             if (payloadLength == 0)
             {
                 auto mod = DEFAULT_MOD_PARAMS_LORA;
-                if (newParameters.frequency->channelBandwidth == 250000)
+                if (newParameters.frequency->channelBandwidth == 500000)
+                {
+                    mod.bw = SX126X_LORA_BW_250;
+                }
+                else if (newParameters.frequency->channelBandwidth == 250000)
                 {
                     mod.bw = SX126X_LORA_BW_250;
                 }
@@ -311,10 +330,18 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
 
                 // These Setting are handled in sendLORAPacket because codingrate is set dynamically packet
                 sx126x_set_lora_mod_params(this, &mod);
-                sx126x_set_lora_pkt_params(this, &DEFAULT_PKG_PARAMS_LORA);
+
+                pkg.pld_len_in_bytes = newParameters.config->packetLength;
             }
-            sx126x_write_register(this, 0x0740, newParameters.config->syncWord.data(), newParameters.config->syncLength);
-            // GATAS_INFO("Radio %d changed frequency from %ld to %ld", radioNo, lastParameters.frequency, newParameters.frequency);
+            else
+            {
+                pkg.pld_len_in_bytes = payloadLength;
+            }
+
+            pkg.preamble_len_in_symb = newParameters.config->txPreambleLength;
+            sx126x_set_lora_pkt_params(this, &pkg);
+
+            sx126x_set_lora_sync_word(this, newParameters.config->syncWord.data()[0]);
         }
     }
 
@@ -358,39 +385,46 @@ void Sx1262::sendGFSKPacket(const GATAS::RadioParameters &parameters, const uint
 void Sx1262::sendLORAPacket(const GATAS::RadioParameters &parameters, const uint8_t *data, uint8_t length)
 {
 
-    auto LORA_PARAMS = DEFAULT_MOD_PARAMS_LORA;
+    // printBufferHex(etl::span(data, length));
+    // putchar('\n');
+    auto mod = DEFAULT_MOD_PARAMS_LORA;
     switch (parameters.codingRate)
     {
     case 5:
-        LORA_PARAMS.cr = SX126X_LORA_CR_4_5;
+        mod.cr = SX126X_LORA_CR_4_5;
         break;
     case 6:
-        LORA_PARAMS.cr = SX126X_LORA_CR_4_6;
+        mod.cr = SX126X_LORA_CR_4_6;
         break;
     case 7:
-        LORA_PARAMS.cr = SX126X_LORA_CR_4_7;
-        break;
-    case 8:
-        LORA_PARAMS.cr = SX126X_LORA_CR_4_8;
-        break;
-    default:
-        LORA_PARAMS.cr = SX126X_LORA_CR_4_8;
+        mod.cr = SX126X_LORA_CR_4_7;
         break;
     }
-    sx126x_set_lora_mod_params(this, &LORA_PARAMS);
 
-    auto pkg = DEFAULT_PKG_PARAMS_LORA;
-    pkg.pld_len_in_bytes = length;
-    sx126x_set_lora_pkt_params(this, &pkg);
+    if (parameters.frequency->channelBandwidth == 500000)
+    {
+        mod.bw = SX126X_LORA_BW_500;
+    }
+    else if (parameters.frequency->channelBandwidth == 250000)
+    {
+        mod.bw = SX126X_LORA_BW_250;
+    }
+    else if (parameters.frequency->channelBandwidth == 125000)
+    {
+        mod.bw = SX126X_LORA_BW_125;
+    }
 
-    sx126x_set_tx_params(this, parameters.frequency->powerdBm, SX126X_RAMP_200_US);
+    // These Setting are handled in sendLORAPacket because codingrate is set dynamically packet
+    sx126x_set_lora_mod_params(this, &mod);
+
+    sx126x_set_tx_params(this, etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm), SX126X_RAMP_200_US);
 
     // Wait until CAD done
     // disablePinInterrupt(dio1Pin); // We are just waiting for CAD
     // Might be here a solution?? https://github.com/antirez/freakwan/tree/main/techo-port
     sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
-    enablePinInterrupt(dio1Pin, DIO1_TX_DONE); // Disable interrupt because sending is aSync
+    enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
 
     // 13.1.14 SetTx
     sx126x_write_buffer(this, 0x00, data, length);
@@ -622,6 +656,7 @@ void Sx1262::sx1262Task(void *arg)
                 // Test for TX in progress, if so continue and wait until DIO1_TX_DONE or any other notification and this will be tested
                 if (!CoreUtils::isUsReachedRaw(txExpiration))
                 {
+                    GATAS_WARN("TX timeout - no DIO1_TX_DONE received");
                     continue;
                 }
                 txExpiration = 0;

@@ -11,6 +11,7 @@
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
 #include "ace/spinlockguard.hpp"
+#include "ace/poolallocator.hpp"
 
 void FanetAce::start()
 {
@@ -42,7 +43,6 @@ void FanetAce::FanetAceTask(void *arg)
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(delay)))
         {
             (void)notifyValue;
-
         }
         if (auto guard = SemaphoreGuard(100, fanetAce->mutex))
         {
@@ -110,7 +110,7 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
             poolData,
             data.size(),
             radioNo});
-        //GATAS_INFO("FANET request position");
+        // GATAS_INFO("FANET request position");
         return true;
     }
     return false;
@@ -129,6 +129,14 @@ void FanetAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
 void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
 {
     (void)msg;
+    if (msg.dataSource != GATAS::DataSource::FANET)
+    {
+        return;
+    }
+    datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
+
+    PoolReleaseGuard poolGuard{getGlobalPool(), msg.frame};
+
     statistics.received += 1;
 
     FANET::Header::MessageType messageType;
@@ -245,6 +253,10 @@ void FanetAce::getData(etl::string_stream &stream, const etl::string_view path) 
 {
     (void)path;
     stream << "{";
+    for (const auto &stat : datasourceTimeStats.span())
+    {
+        stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",\n";
+    }
     stream << "\"received:k\":" << statistics.received;
     stream << ",\"send:k\":" << statistics.send;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;

@@ -6,6 +6,7 @@
 #include "ace/basemodule.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/messages.hpp"
+#include "ace/datasourcetimestatstable.hpp"
 
 #include "etl/map.h"
 #include "etl/message_bus.h"
@@ -52,6 +53,7 @@ private:
     TaskHandle_t taskHandle = nullptr;
     FANET::Protocol protocol;
     SemaphoreHandle_t mutex = nullptr;
+    GATAS::DataSourceTimeStatsTable<3> datasourceTimeStats;
 
     uint8_t radioNo = 0;
     uint32_t distanceIgnore;

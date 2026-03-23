@@ -126,7 +126,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
         {
             .preamble_len_in_symb = 12,
             .header_type = SX126X_LORA_PKT_EXPLICIT,
-            .pld_len_in_bytes = 0x80,
+            .pld_len_in_bytes = GROUNDSTATION_RX_BASE, // Based on Uplink ADSL Size so they can be teh same size, that's all
             .crc_is_on = true,
             .invert_iq_is_on = false,
         };
@@ -177,7 +177,7 @@ public:
     {
         //        assert(num >=0 && num <= 1);
     }
-    Sx1262(etl::imessage_bus &bus, const Configuration &config, uint8_t radioNo_) : Sx1262(bus, 
+    Sx1262(etl::imessage_bus &bus, const Configuration &config, uint8_t radioNo_) : Sx1262(bus,
                                                                                            config.pinMap(NAMES[radioNo_]),
                                                                                            radioNo_,
                                                                                            config.valueByPath(true, NAMES[radioNo_], "txEnabled"),
