@@ -60,8 +60,6 @@ void ADSLAce::on_receive(const GATAS::RadioRxMsg &msg)
     protocol.crcCheckOnReceive = true;
     auto status = protocol.handleRx(msg.rssidBm, msg.frame32Span()); // Currently expected that the frame size is always a multiple of 4
 
-GATAS_INFO("on_receive(const GATAS::RadioRxMsg &msg) length:%u",msg.lengthBytes);
-
     // clang-format off
     switch (status)
     {

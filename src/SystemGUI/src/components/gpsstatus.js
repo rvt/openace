@@ -74,8 +74,8 @@ class GpsStatus extends El {
             ${this._row(html, "Fix Quality", this.state.data?.fixQuality)}
             ${this._row(html, "Fix Type", this.state.data?.gpsFixType)}
             ${this._row(html, "GGA Messages", receivedGGA)}
-            ${this._row(html, "GA/TAS Build Time", this.state.data?.GATAS_BUILD_TIMESTAMP)}
-            ${this._row(html, "GA/TAS Version", this.state.data?.GATAS_BUILD_GIT_TAG)}
+            ${this._row(html, "GATAS Build Time", this.state.data?.GATAS_BUILD_TIMESTAMP)}
+            ${this._row(html, "GATAS Version", this.state.data?.GATAS_BUILD_GIT_TAG)}
           </tbody>
         </table>
       </div>

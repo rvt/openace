@@ -29,11 +29,11 @@
     }
   },
   "GatasConnect": {
-    "_comment_ip": "IP Address or DNS name of the server running GA/TAS Server",
+    "_comment_ip": "IP Address or DNS name of the server running GATAS Server",
     "gatasServer": {
       "ip": "gatas.vantwisk.nl"
     },
-    "_comment_pinCode": "A pincode to be use for connecting to GA/TAS Connect online services",
+    "_comment_pinCode": "A pincode to be use for connecting to GATAS Connect online services",
     "pinCode": "0"
   },
   "ADSBDecoder": {

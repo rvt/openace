@@ -224,7 +224,7 @@ class AircraftConfig extends El {
           <label for="autoConf">
             <input type="checkbox" id="autoConf" ref="autoConf" />Auto Configure
           </label>
-          <small>When enabled, GA/TAS will automatically treat this aircraft as yours if it detects a mismatched transponder code via ADS-B or MLAT, based on matching location and movement. It will then reconfigure GA/TAS accordingly. </small>
+          <small>When enabled, GATAS will automatically treat this aircraft as yours if it detects a mismatched transponder code via ADS-B or MLAT, based on matching location and movement. It will then reconfigure GATAS accordingly. </small>
           -->
 
           <label for="noTrack">

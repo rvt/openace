@@ -18,7 +18,7 @@
  * if the rithm is every 3 seconds, the GPS has not yet a lock
  * Steady blink WIFI not connected
  * Two fast blinks, GAT/AS acts as a Access Point
- * One single fast blink, GA/TAS is in client mode and connected to a network
+ * One single fast blink, GATAS is in client mode and connected to a network
  */
 class Idle : public BaseModule, public etl::message_router<Idle, GATAS::ConfigUpdatedMsg, GATAS::WifiConnectionStateMsg, GATAS::GpsStatsMsg>
 {

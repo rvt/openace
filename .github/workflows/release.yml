@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout GA/TAS
+      - name: Checkout GATAS
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -43,7 +43,7 @@ jobs:
           - { name: "rp2350", cmake_platform: "rp2350", board: "pico2_w", outfile: "GATAS_rp2350-arm-s.uf2" }
 
     steps:
-      - name: Checkout GA/TAS
+      - name: Checkout GATAS
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -93,7 +93,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout GA/TAS
+      - name: Checkout GATAS
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -115,6 +115,36 @@ jobs:
           test -f firmware/rp2040/GATAS_rp2040.uf2
           test -f firmware/rp2350/GATAS_rp2350-arm-s.uf2
 
+      - name: Build pre-release body
+        if: endsWith(github.ref, '-prerelease')
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          awk '/^## \[Unreleased\]/{flag=1; next} /^## \[/{if(flag)exit} flag' CHANGELOG.md > /tmp/changelog_section.md
+          python3 -c "
+          import os
+          t = open('.github/develop.md').read()
+          c = open('/tmp/changelog_section.md').read().strip()
+          t = t.replace('{{INTHISRELEASE}}', c)
+          t = t.replace('{{VERSION}}', os.environ['VERSION'])
+          print(t)
+          " > /tmp/release_body.md
+
+      - name: Build release body
+        if: startsWith(github.ref, 'refs/tags/v') && !endsWith(github.ref, '-prerelease')
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          awk '/^## \[[0-9]/{flag=1; next} /^## \[/{if(flag)exit} flag' CHANGELOG.md > /tmp/changelog_section.md
+          python3 -c "
+          import os
+          t = open('.github/release.md').read()
+          c = open('/tmp/changelog_section.md').read().strip()
+          t = t.replace('{{INTHISRELEASE}}', c)
+          t = t.replace('{{VERSION}}', os.environ['VERSION'])
+          print(t)
+          " > /tmp/release_body.md
+
       - name: Push to Pre-Release
         if: endsWith(github.ref, '-prerelease')
         uses: softprops/action-gh-release@v2
@@ -123,7 +153,7 @@ jobs:
           prerelease: true
           draft: false
           name: Pre-Release
-          body_path: ./.github/develop.md
+          body_path: /tmp/release_body.md
           files: |
             ./.github/develop.md
             ./LICENSE
@@ -139,7 +169,7 @@ jobs:
           prerelease: false
           draft: false
           name: ${{ github.ref_name }}
-          body_path: ./.github/release.md
+          body_path: /tmp/release_body.md
           files: |
             ./.github/release.md
             ./LICENSE

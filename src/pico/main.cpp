@@ -349,7 +349,7 @@ static void loadModules(void *arg)
         ╚██████╔╝██║     ███████╗██║ ╚████║██║  ██║╚██████╗███████╗
          ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝╚══════╝
 
-        GA/TAS Device ID: %lX
+        GATAS Device ID: %lX
 
         )=",
         static_cast<uint32_t>(config.internalStore()->gatasId));

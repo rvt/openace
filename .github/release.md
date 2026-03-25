@@ -1,22 +1,26 @@
-# Release version
+# Release version {{VERSION}}
 
-This is the **RELEASE** version of GA/TAS, use at your own risk
+This is the **RELEASE** version of GATAS, use at your own risk
 
 > [!TIP]
-> **GA/TAS is an ongoing project** that is continuously being developed and improved.
+> **GATAS is an ongoing project** that is continuously being developed and improved.
 > As a result, features, functionality, and performance may be updated or modified at any time without prior notice.
-> We value feedback and collaboration! 
-> If you have any questions, suggestions, or concerns, feel free to reach out. 
+> We value feedback and collaboration!
+> If you have any questions, suggestions, or concerns, feel free to reach out.
 > Your input helps us improve the project and ensure it meets the needs of the community.
 
 > [!IMPORTANT]
 > **Disclaimer: Use at Your Own Risk**
-> 
-> GA/TAS is provided "as is," without any warranties.
-> By downloading or using this device, you acknowledge that you do so at your own risk. 
-> The creators are not liable for any damages or issues resulting from its use. 
-> GA/TAS is intended for General Aviation only and should not be relied upon as the sole source of traffic or navigation information.
+>
+> GATAS is provided "as is," without any warranties.
+> By downloading or using this device, you acknowledge that you do so at your own risk.
+> The creators are not liable for any damages or issues resulting from its use.
+> GATAS is intended for General Aviation only and should not be relied upon as the sole source of traffic or navigation information.
 > Users are responsible for ensuring compliance with local aviation regulations.
+
+## In this release
+
+{{CHANGELOG}}
 
 ## How to Copy the UF2 File to the Raspberry Pi Pico
 

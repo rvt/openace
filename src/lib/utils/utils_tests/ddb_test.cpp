@@ -49,7 +49,7 @@ TEST_CASE("Unique FLARM DB Entry", "[single-file]")
 TEST_CASE("ICAO Should not be in DB", "[single-file]")
 {
     DDB ddb;
-    // 0x48515D is an entry that was ICAO only, that should not appear in GA/TAS
+    // 0x48515D is an entry that was ICAO only, that should not appear in GATAS
     auto lo = ddb.lookup(0x48515D);
     REQUIRE(lo == nullptr);
 }

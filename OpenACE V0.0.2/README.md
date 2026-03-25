@@ -1,4 +1,4 @@
-# GA/TAS Conspicuity Device PCB
+# GATAS Conspicuity Device PCB
 
 > **_NOTE:_**:
 > This PCB design contains few, but not all changes from the V0.0.1 version (not published) and is still work in progress.

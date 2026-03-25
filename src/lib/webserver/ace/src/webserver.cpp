@@ -326,7 +326,7 @@ void Webserver::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
     else if (wcs.wifiMode == GATAS::WifiMode::NC)
     {
         // httpd server in LWiP was never designed for de-init, I don't think this is possible.
-        // This might have consequences if GA/TAS
+        // This might have consequences if GATAS
         // Idea: May be after the first HTTP call we can capture the PCB??
         // We don;t want to keep calling httpd_init because this would possible leak memory
     }

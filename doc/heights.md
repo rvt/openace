@@ -5,7 +5,7 @@
 Heights and reference systems in geodesy and aviation can be confusing. Here is a summary of what
 I’ve learned so far.
 
-> GA/TAS USes HAE Internally for it's processing and uses the correct alttiude for each protocol by internal calculations to make predictions easer.
+> GATAS USes HAE Internally for it's processing and uses the correct alttiude for each protocol by internal calculations to make predictions easer.
 
 ---
 
@@ -75,7 +75,7 @@ I’ve learned so far.
 
 ## Calculating Altitudes
 
-For GA/TAS, GGA messages we use altitude MSL and the geodicHight
+For GATAS, GGA messages we use altitude MSL and the geodicHight
 
 `MSL (Orthometric Height) = Ellipsoid Height − Geoid Separation`
 `Ellipsoid Height = MSL (Orthometric Height) + Geoid Separation`

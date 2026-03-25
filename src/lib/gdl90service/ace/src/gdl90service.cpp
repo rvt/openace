@@ -405,7 +405,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
 
     // Send ForeFLight heartbeat
     // https://www.foreflight.com/connect/spec/
-    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GA/TAS", "GA/TAS Conspcty", 0b00)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 1/2 to 0 for unlimited internet
+    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", 0b00)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 1/2 to 0 for unlimited internet
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx += 1;

@@ -150,7 +150,7 @@ class ActionButtons extends El {
             <div class="alert alert-primary">
               <p>
               <strong>Access Point mode has been initiated.<br /></strong>
-              Please connect to the GA/TAS Access Point to continue the setup.
+              Please connect to the GATAS Access Point to continue the setup.
               </p>
             </div>
           </footer>
@@ -165,10 +165,10 @@ class ActionButtons extends El {
           <div class="overflow-auto accent-primary" style="color: black">
             <!-- Quick hack to make text black on Safari Desktop -->           
             <p>
-              If GA/TAS is currently in client mode, it will exit that mode and start the GA/TAS Access Point.
+              If GATAS is currently in client mode, it will exit that mode and start the GATAS Access Point.
             </p>
             <p>
-              After GA/TAS restarts, connect your device to the <strong>GATAS</strong> Wi-Fi network. (Or how you named it)
+              After GATAS restarts, connect your device to the <strong>GATAS</strong> Wi-Fi network. (Or how you named it)
               Then open your browser and go to <strong><a href="http://192.168.1.1">http://192.168.1.1</a></strong> to access the user interface.
               <br /><br />
               Once configured restart the device to get back into normal WIFI mode. 

@@ -17,7 +17,7 @@
 
 /**
  * WifiService handles both Access Point and Client Mode
- * AP Mode: You connect to GA/TAS
+ * AP Mode: You connect to GATAS
  * Client Mode: Open Ace connects to you
  *
  * It handles up to 4 network clients, process of connecting

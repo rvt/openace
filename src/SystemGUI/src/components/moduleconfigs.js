@@ -184,7 +184,7 @@ class WifiServiceConfig extends ModuleConfig {
          <div class="grid">
           <label for="apDisabled">
             <input type="checkbox" id="" id="apDisabled" ref="apDisabled" placeholder="1" />
-            When enabled, GA/TAS will only attemt to an Access point and will not create anAccess Point by itself. This setting is recommended when using GA/TAS Connect.
+            When enabled, GATAS will only attemt to an Access point and will not create anAccess Point by itself. This setting is recommended when using GATAS Connect.
           </label>
         </div> -->
         <br />
@@ -196,7 +196,7 @@ class WifiServiceConfig extends ModuleConfig {
                 <li>Ensure the hotspot is set to 2.4GHz. For an iPhone that means Maximize Compatibility must be enabled, Android phones usually allow both 2.4 and 5GHz.
                 <li>For Security set WPA2 Personal (or WPA3 if supported by your device)
               </ul>
-              For iPhone we noticed that you need to have the hotspot page open before an iPhone allows a connection. So after starting GA/TAS, go to your iPhones hotspat page and wait, it should just connect.
+              For iPhone we noticed that you need to have the hotspot page open before an iPhone allows a connection. So after starting GATAS, go to your iPhones hotspat page and wait, it should just connect.
             </div>
         </div>
 
@@ -221,7 +221,7 @@ class WifiServiceConfig extends ModuleConfig {
           </div>
         <br /><br />
           <h5>Access Point configuration</h5>
-        <p>Access point configuration. This AP will be created if GA/TAS could not connect to any other Access Points.
+        <p>Access point configuration. This AP will be created if GATAS could not connect to any other Access Points.
         </p>
         <div class="row g-0">
           <div class="col-10">
@@ -473,15 +473,15 @@ class GDLoverUDPConfig extends ModuleConfig {
         protocol.<br /><br />
         <div style="text-decoration: underline">When in Client mode:</div>
         <ul>
-          <li>GA/TAS will send GDL90 messages to the access using the below configured ports
-          <li>GA/TAS will send GDL90 to any of the below configured IP addresses and port.
+          <li>GATAS will send GDL90 messages to the access using the below configured ports
+          <li>GATAS will send GDL90 to any of the below configured IP addresses and port.
         </ul>
         <div style="text-decoration: underline">When in Access Point mode:</div>
         <ul>
-          <li>GA/TAS will send GDL90 messages to any of the connected clients using the below configured ports
-          <li>GA/TAS will send GDL90 to any of the below configured IP addresses and port.
+          <li>GATAS will send GDL90 messages to any of the connected clients using the below configured ports
+          <li>GATAS will send GDL90 to any of the below configured IP addresses and port.
         </ul>
-        In all cases GA/TAS will send messages to clients in the same network.
+        In all cases GATAS will send messages to clients in the same network.
       </p>
 
       <form ref="form" autocomplete="off" novalidate="novalidate">
@@ -490,10 +490,10 @@ class GDLoverUDPConfig extends ModuleConfig {
           <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-              Each device connected to GA/TAS will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to ${this.ports.length}
+              Each device connected to GATAS will automatically receive GDL90 packets. By default, these packets are sent on port <b>4000</b>, but up to ${this.ports.length}
               different ports can be configured to accommodate devices that listen on other ports. Default port is <b>4000</b>
-              When GA/TAS is connrect to an Access Point, additional GDL messages will be send to the gateway address. This allows
-              you to have for example foreflight on your telephone while GA/TAS uses your telephone as the accesspoint to GA/TASConnect
+              When GATAS is connrect to an Access Point, additional GDL messages will be send to the gateway address. This allows
+              you to have for example foreflight on your telephone while GATAS uses your telephone as the accesspoint to GATASConnect
               to Receive online traffic information.
             </p>
           </label>
@@ -595,7 +595,7 @@ class Dump1090ClientConfig extends ModuleConfig {
     return html`
       <h4>Configuration of the Dump1090 Client</h4>
       <p>
-        This module enables reading ADS-B data in the format '*8D7C7181215D01A08208204D8BF1;' from an external system like Dump1090 into GA/TAS (port
+        This module enables reading ADS-B data in the format '*8D7C7181215D01A08208204D8BF1;' from an external system like Dump1090 into GATAS (port
         &lt;IP&gt;:30002), processing them as traffic targets. Ensure that the ADSBDecoder is enabled and there is traffic within the filtered ranges above or
         below so you will actually see them.
           <div class="alert alert-warning">
@@ -830,23 +830,23 @@ class GatasConnectConfig extends ModuleConfig {
 
   render(html) {
     return html`
-      <h4>Configuration of GA/TAS Connect</h4>
+      <h4>Configuration of GATAS Connect</h4>
       <p>
-        GA/TAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI to operate.
+        GATAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI to operate.
         It fetches traffic around you up to about 50Km away.
         <br/><br/>
-        To setup GA/TAS Connect:
+        To setup GATAS Connect:
         <ul>
-          <li>Enter the the IP address of your GA/TAS Connect service you can use <span style="font-style: italic">gatas.vantwisk.nl</span> <a type="button" title="Copy to IP field" style="cursor:pointer;background:none;border:none;padding:0;margin:0;vertical-align:middle;" onclick=${() => { this.$refs.ip.value = 'gatas.vantwisk.nl'; }}>&#x2398;</a> which is free to use:
+          <li>Enter the the IP address of your GATAS Connect service you can use <span style="font-style: italic">gatas.vantwisk.nl</span> <a type="button" title="Copy to IP field" style="cursor:pointer;background:none;border:none;padding:0;margin:0;vertical-align:middle;" onclick=${() => { this.$refs.ip.value = 'gatas.vantwisk.nl'; }}>&#x2398;</a> which is free to use:
           <li>Then setup your WIFI to connect to your mobile hotspot and ensure to enable 'Client Only' in WifiService.
         </ul>
       </p>
 
         <div class="alert alert-warning">
           <div>
-          The Pin Code is used when you use <a href="https://gatas.vantwisk.nl" target="_blank" rel="noopener noreferrer">GA/TAS Connect</a> online
-          application to connect to your GA/TAS system to allow to configure your GA/TAS aircraft you are flying.
-          Instead of using the unique GA/TAS ID which is differcult to remmeber, you can use the Pin Code with your location.
+          The Pin Code is used when you use <a href="https://gatas.vantwisk.nl" target="_blank" rel="noopener noreferrer">GATAS Connect</a> online
+          application to connect to your GATAS system to allow to configure your GATAS aircraft you are flying.
+          Instead of using the unique GATAS ID which is differcult to remmeber, you can use the Pin Code with your location.
           When using 0 as Pin Code, the Pin Code functionality is disabled for added security if you whish to not use it.
           </div>
         </div>
@@ -855,7 +855,7 @@ class GatasConnectConfig extends ModuleConfig {
         <div class="row g-0">
             <div class="col-10">
               <label for="ip">
-                IP Address or domain name of GA/TAS Server:
+                IP Address or domain name of GATAS Server:
                 <input type="text" id="ip" ref="ip" placeholder="gatas.vantwisk.nl" } />
               </label>
             </div>
