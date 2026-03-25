@@ -185,7 +185,7 @@ void RadioTunerTx::on_receive(const GATAS::RadioControlMsg &msg)
     }
     else
     {
-        printf("DS: %d ", dsId);
+        GATAS_WARN("DS: %d ", dsId);
         //        GATAS_ASSERT(false, "Not expected to be full");
     }
 }

@@ -88,7 +88,7 @@ private:
     // Keep track of one task per each radio
     etl::vector<RadioProtocolCtx, GATAS_MAX_RADIOS> radioCtxList={};
     // All datasources that needs to be received
-    etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> dataSources={};
+    etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> configuredDatasources={};
 
     enum TaskState : uint32_t
     {
@@ -122,7 +122,7 @@ public:
     RadioTunerRx(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                         currentZone(CountryRegulations::Zone::ZONE0)
     {
-        dataSources = config.gaTasConfig().protocols;
+        configuredDatasources = config.gaTasConfig().protocols;
     }
     virtual ~RadioTunerRx() = default;
 

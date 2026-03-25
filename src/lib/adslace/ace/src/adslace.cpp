@@ -35,6 +35,7 @@ void ADSLAce::getData(etl::string_stream &stream, const etl::string_view path) c
     }
     stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
+    stream << ",\"uplinksPacketsSend:k\":" << statistics.uplinksPacketsSend;    
     stream << ",\"fec:err\":" << statistics.fecErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"encrypted\":" << statistics.encrypted;
@@ -139,7 +140,6 @@ bool ADSLAce::adsl_sendFrame(const void *ctx, const uint8_t *data, size_t length
         lengthBytes,
         params->radioNo});
 
-    statistics.transmittedAircraftPositions += 1;
     return true;
 }
 
@@ -183,11 +183,14 @@ void ADSLAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 
     protocol.tick(ownship.lat, ownship.lon, ownship.ellipseHeight, ownship.groundSpeed, ownship.track);
     protocol.rqSendTrafficPayload(txParams, addPayloadLength, tp);
+    statistics.transmittedAircraftPositions += 1;
 }
 
 void ADSLAce::on_receive(const GATAS::EgressAircraftPositionsMsg &msg)
 {
-    (void)msg;
+    if (msg.positions.empty()) {
+        return;
+    }
 
     etl::vector<ADSL::UplinkEntry, 8> traffic;
     for (auto &&t : msg.positions)
@@ -200,6 +203,7 @@ void ADSLAce::on_receive(const GATAS::EgressAircraftPositionsMsg &msg)
 
     rqOBandRadioParameters = Tx_Struct{msg.radioParameters, msg.radioNo};
     protocol.rqSendUplinkPayload(&rqOBandRadioParameters, false, traffic);
+    statistics.uplinksPacketsSend += 1;
 }
 
 // Called when a payload/header/status is received by the protocol layer

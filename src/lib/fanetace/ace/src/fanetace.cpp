@@ -55,7 +55,7 @@ void FanetAce::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::NAME)
     {
-        gaTasConfiguration = msg.config.gaTasConfig();
+        gaTasConfiguration = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.config.gaTasConfig());
         protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.icaoAddress});
     }
 }
@@ -65,6 +65,7 @@ void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
     if (msg.radioParameters.config->isTxDataSource(GATAS::DataSource::FANET))
     {
         auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+        auto gatasConfig = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), gaTasConfiguration);
 
         FANET::TrackingPayload payload;
         payload.latitude(ownship.lat)
@@ -73,9 +74,9 @@ void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
             .speed(ownship.groundSpeed * MS_TO_KPH)
             .groundTrack(ownship.track)
             .climbRate(ownship.verticalSpeed)
-            .tracking(!gaTasConfiguration.conspicuity.noTrack)
+            .tracking(!gatasConfig.conspicuity.noTrack)
             .turnRate(ownship.hTurnRate)
-            .aircraftType(mapAircraftCategory(gaTasConfiguration.conspicuity.category));
+            .aircraftType(mapAircraftCategory(gatasConfig.conspicuity.category));
 
         auto packet = FANET::Packet<1>()
                           .payload(payload)

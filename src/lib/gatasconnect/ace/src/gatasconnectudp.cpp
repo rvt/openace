@@ -92,6 +92,14 @@ void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     }
 }
 
+void GatasConnect::on_receive(const GATAS::IngressAircraftPositionMsg &msg)
+{
+    if (msg.position.dataSource < GATAS::DataSource::_RADIO)
+    {
+        lastRadioTrafficUs = CoreUtils::timeUs64();
+    }
+}
+
 void GatasConnect::getConfig(const Configuration &config)
 {
     pinCode = static_cast<uint32_t>(config.valueByPath(0, NAME, "pinCode"));
@@ -101,12 +109,13 @@ void GatasConnect::getConfig(const Configuration &config)
     auto gatasConfig = config.gaTasConfig();
     if (SPINLOCK_GUARD(spinLock))
     {
+        localConfigurationUpdateCnt = LOCALCONFIGURATIONCHANGE_HOLD_BACK;
         gatasServerStr = config.strValueByPath("gatas.vantwisk.nl", NAME, "gatasServer/ip");
         icaoAddress = gatasConfig.conspicuity.icaoAddress;
         allIcaoAddresses = gatasConfig.allIcaoAddresses;
+        groundStation = gatasConfig.conspicuity.groundStation;
         gatasId = config.internalStore()->gatasId;
-        localConfigurationUpdateCnt = LOCALCONFIGURATIONCHANGE_HOLD_BACK;
-        gatasServerIPAddress=IPADDR4_INIT(IPADDR_NONE);
+        gatasServerIPAddress = IPADDR4_INIT(IPADDR_NONE);
     }
 }
 
@@ -216,13 +225,18 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     etl::array<uint8_t, OWN_MAX + MAX_MSG + COBS_EXTRA_BYTES * 2> perCobsBuffer;
     etl::bit_stream_writer writer(perCobsBuffer.data(), perCobsBuffer.size(), etl::endian::big);
 
+    // Receive traffic for at least 60 seconds more
+    // This is here to reduce pressure on the GatasServer when there is no known traffic
+    // that can benefit from GATAS
+    constexpr uint64_t RADIO_TRAFFIC_WINDOW_US = 60'000'000ULL;
+    const bool hasRecentRadioTraffic = (CoreUtils::timeUs64() - lastRadioTrafficUs) < RADIO_TRAFFIC_WINDOW_US;
+
     if (SPINLOCK_GUARD(spinLock))
     {
-        // --- Ownship (optional)
-        if (hasGpsFix)
+        if ((hasRecentRadioTraffic || !groundStation) && hasGpsFix)
         {
+            // --- Ownship position: requests surrounding traffic data from server
             writer.restart();
-            // 28 Byte
             BinaryMessages::serializeOwnshipPositionV1(writer, ownshipPosition);
             auto size = encodeCOBS(perCobsBuffer.data(), ownshipSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
             position += size;
@@ -237,7 +251,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     }
 
     // Add android hotspot fix when Android would not route packages because they where to small
-    if (androidHotspotFix)
+    if (ANDROIDHOTSPOT_FIX)
     {
         lastSendCounter += 1;
         size_t fillSize = ANDROIDHOTSPOT_FIX_LOWMARK;

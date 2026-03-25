@@ -25,13 +25,14 @@
  * NOTE: This did not work well due to Android and possibleiOS and perhaps even telecom providers filtering to much UDP
  * However, it did work fine using a local WIFI network...
  */
-class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg>
+class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::IngressAircraftPositionMsg>
 {
     friend class message_router;
     // THis is used to fix a android HotSpot issue where small packages are not routed.
     // It sends a large and a small package size to ensure that Android sees them as important
     static constexpr size_t ANDROIDHOTSPOT_FIX_HIGHMARK = 128*3;
     static constexpr size_t ANDROIDHOTSPOT_FIX_LOWMARK = 160;
+    static constexpr bool ANDROIDHOTSPOT_FIX = true;
     // After how many 'sends' the system sends larger packages again
     static constexpr uint8_t ANDROIDHOTSPOT_COUNT_UNTILL_HIGH = 5;
     // Seconds to wait accepting packages after a local confiugration change
@@ -48,27 +49,28 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
         bool hasConnection = false;
     } statistics;
 
-    bool wifiConnected;
-    int spinLock;
-    bool androidHotspotFix;
-    uint64_t gatasId;
-    bool hasGpsFix;
-    uint8_t lastSendCounter;
+    bool wifiConnected = false;
+    int spinLock = SpinlockGuard::claim();
+    uint64_t gatasId = 0;
+    bool hasGpsFix = false;
+    uint64_t lastRadioTrafficUs = 0;
+    bool groundStation = false;
+    uint8_t lastSendCounter = 0;
     TimerHandle_t requestTimer = nullptr;
 
-    uint32_t icaoAddress;
-    uint32_t gatasIp;
-    uint32_t pinCode;
-    // Stop accepting data from gatasConnect for LOCALCONFIGURATIONCHANGE_HOLD_BACK to ensure the server accepts any new configuration 
+    uint32_t icaoAddress = 0;
+    uint32_t gatasIp = 0;
+    uint32_t pinCode = 0;
+    // Stop accepting data from gatasConnect for LOCALCONFIGURATIONCHANGE_HOLD_BACK to ensure the server accepts any new configuration
     // So we can disgard packages in transit. Can possibly be redesigned when a package counter can be send?
-    uint8_t localConfigurationUpdateCnt; 
-    udp_pcb *pcbSend;
+    uint8_t localConfigurationUpdateCnt = 0;
+    udp_pcb *pcbSend = nullptr;
     CobsStreamHandler cobsStreamHandler;
 
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddresses;
-    ip_addr_t gatasServerIPAddress=IPADDR4_INIT(IPADDR_NONE);
+    ip_addr_t gatasServerIPAddress = IPADDR4_INIT(IPADDR_NONE);
     GATAS::ConfigString gatasServerStr;
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    GATAS::OwnshipPositionInfo ownshipPosition = {};
 
 private:
     virtual GATAS::PostConstruct postConstruct() override;
@@ -89,6 +91,8 @@ private:
 
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
+    void on_receive(const GATAS::IngressAircraftPositionMsg &msg);
+
     static void requestTimerCallbackTrampoline(TimerHandle_t xTimer);
     void requestTimerCallback(TimerHandle_t xTimer);
     static void receiveUdpMessage(void *arg, struct udp_pcb *pcb,
@@ -99,23 +103,9 @@ private:
     static void resolveGatasServerCallback(const char *name, const ip_addr_t *ipaddr, void *arg);
 public:
     static constexpr const char *NAME = "GatasConnect";
-    GatasConnect(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME),
-    wifiConnected(false),
-    spinLock(SpinlockGuard::claim()),
-    androidHotspotFix(true),
-    gatasId(0),
-    hasGpsFix(false),
-    lastSendCounter(0),
-    requestTimer(nullptr),
-    icaoAddress(0),
-    gatasIp(0),
-    pinCode(0),
-    localConfigurationUpdateCnt(0),
-    pcbSend(nullptr),
-    cobsStreamHandler(CobsStreamHandler(bus, config)),
-    ownshipPosition{}
+    GatasConnect(etl::imessage_bus &bus, Configuration &config) : BaseModule(bus, NAME),
+    cobsStreamHandler(CobsStreamHandler(bus, config))
     {
-        (void)config;
         getConfig(config);
     }
     

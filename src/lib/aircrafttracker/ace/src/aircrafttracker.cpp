@@ -77,7 +77,8 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
 
 void AircraftTracker::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    // radioParameters.id == 1 means O Band Uplink
+    // radioParameters.id == 1 means O-Band Uplink
+    // We do that here, because we neeed to send 10 aircraft instead of just ownship
     // Only function as ADSL uplink in ground station mode
     if (groundStation_ && msg.radioParameters.config->dataSource() == GATAS::DataSource::ADSLO_HDR && msg.radioParameters.id == 1)
     {

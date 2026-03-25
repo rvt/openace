@@ -179,7 +179,7 @@ void RadioTunerRx::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == Configuration::NAME)
     {
-        dataSources = msg.config.gaTasConfig().protocols;
+        configuredDatasources = msg.config.gaTasConfig().protocols;
         assignDataSources();
     }
 }
@@ -212,7 +212,7 @@ void RadioTunerRx::assignDataSources()
         return;
     }
 
-    auto availableTimings = CountryRegulations::getProtocolRxTimingsForZone(currentZone.value(), dataSources);
+    auto availableTimings = CountryRegulations::getProtocolRxTimingsForZone(currentZone.value(), configuredDatasources);
 
     if (availableTimings.size() > 0)
     {

@@ -127,6 +127,7 @@ jobs:
           files: |
             ./.github/develop.md
             ./LICENSE
+            ./CHANGELOG.md
             firmware/rp2040/GATAS_rp2040.uf2
             firmware/rp2350/GATAS_rp2350-arm-s.uf2
 
@@ -142,5 +143,6 @@ jobs:
           files: |
             ./.github/release.md
             ./LICENSE
+            ./CHANGELOG.md
             firmware/rp2040/GATAS_rp2040.uf2
             firmware/rp2350/GATAS_rp2350-arm-s.uf2

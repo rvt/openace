@@ -837,7 +837,7 @@ class GatasConnectConfig extends ModuleConfig {
         <br/><br/>
         To setup GA/TAS Connect:
         <ul>
-          <li>Enter the the IP address of your GA/TAS Connect service you can use <span style="font-style: italic">gatas.vantwisk.nl</span> which is free to use:
+          <li>Enter the the IP address of your GA/TAS Connect service you can use <span style="font-style: italic">gatas.vantwisk.nl</span> <a type="button" title="Copy to IP field" style="cursor:pointer;background:none;border:none;padding:0;margin:0;vertical-align:middle;" onclick=${() => { this.$refs.ip.value = 'gatas.vantwisk.nl'; }}>&#x2398;</a> which is free to use:
           <li>Then setup your WIFI to connect to your mobile hotspot and ensure to enable 'Client Only' in WifiService.
         </ul>
       </p>
