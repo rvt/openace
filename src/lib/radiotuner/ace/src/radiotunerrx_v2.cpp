@@ -28,9 +28,6 @@ GATAS::PostConstruct RadioTunerRx::postConstruct()
         return GATAS::PostConstruct::TASK_ERROR;
     }
 
-    const auto result = CountryRegulations::validateProtocolTxTimings();
-    static_assert(result == 0, "ProtocolTxTimeSlot table is INVALID");
-
     return GATAS::PostConstruct::OK;
 }
 

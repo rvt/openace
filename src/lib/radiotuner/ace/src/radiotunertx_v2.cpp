@@ -10,9 +10,6 @@
 
 GATAS::PostConstruct RadioTunerTx::postConstruct()
 {
-    const auto result = CountryRegulations::validateProtocolTxTimings();
-    static_assert(result == 0, "ProtocolTxTimeSlot table is INVALID");
-
     if (xTaskCreate(radioTuneTaskTrampoline, RadioTunerTx::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle) != pdPASS)
     {
         return GATAS::PostConstruct::TASK_ERROR;
@@ -112,7 +109,7 @@ void RadioTunerTx::radioTuneTask()
                             GATAS_WARN("Warning: No timeslot for %s found %d", GATAS::toString(ds.dataSource), CoreUtils::msInSecond());
                         }
 
-                        auto delayMs = CountryRegulations::nextRandomTxTime(timing);
+                        auto delayMs = CountryRegulations::nextRandomTxTime(!isAirborne, timing);
                         currentTime = CoreUtils::timeUs32();
                         if (delayMs != UINT32_MAX)
                         {
@@ -160,6 +157,7 @@ void RadioTunerTx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     static auto lastTime = CoreUtils::timeUs32Raw();
     // Update ZONE every 30 seconds, or when still at ZONE0
+    isAirborne = msg.position.groundSpeed >= GATAS::GROUNDSPEED_CONSIDERING_AIRBORN;
     if (CoreUtils::isUsReachedRaw(lastTime) || static_cast<uint8_t>(currentZone) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0))
     {
         lastTime = CoreUtils::timeUs32Raw() + UPDATE_ZONE_REGULATION_EVERY;

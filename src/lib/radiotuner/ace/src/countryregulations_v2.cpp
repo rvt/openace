@@ -125,7 +125,7 @@ uint32_t CountryRegulations::frequencyByTimestamp(uint32_t timestamp, uint32_t n
     return v9 % nch;
 }
 
-uint32_t CountryRegulations::nextRandomTxTime(etl::span<const CountryRegulations::ProtocolTxTimeSlot> timing)
+uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, etl::span<const CountryRegulations::ProtocolTxTimeSlot> timing)
 {
     if (timing.empty())
     {
@@ -135,8 +135,8 @@ uint32_t CountryRegulations::nextRandomTxTime(etl::span<const CountryRegulations
     const uint32_t nowInSecond = CoreUtils::msInSecond();
 
     // txMinTime/txMaxTime are the same across all entries in a group (validated at compile time)
-    const uint32_t minDelay = timing[0].txMinTime;
-    const uint32_t maxDelay = timing[0].txMaxTime;
+    const uint32_t minDelay = staticTiming ? timing[0].txStaticMinTime : timing[0].txMinTime;
+    const uint32_t maxDelay = staticTiming ? timing[0].txStaticMaxTime : timing[0].txMaxTime;
 
     constexpr int MAX_TRIES = 5;
 

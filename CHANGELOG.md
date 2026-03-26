@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- When GATAS is Stationary, reduce TX times for positional data to averagy of 5..6 seconds
 - Use etl::delegate instead of etl::function
 - Stopped storing a 'GATAS::*Msg' in local objects, always copy the contents as a rule
 - Update list of possible Aircraft types in UI
