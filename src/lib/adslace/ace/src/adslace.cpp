@@ -35,7 +35,7 @@ void ADSLAce::getData(etl::string_stream &stream, const etl::string_view path) c
     }
     stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
-    stream << ",\"uplinksPacketsSend:k\":" << statistics.uplinksPacketsSend;    
+    stream << ",\"uplinksPacketsSend:k\":" << statistics.uplinksPacketsSend;
     stream << ",\"fec:err\":" << statistics.fecErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"encrypted\":" << statistics.encrypted;
@@ -387,6 +387,8 @@ void ADSLAce::adsl_buildStatusPayload(const void *ctx, ADSL::StatusPayload &sp)
     (void)ctx;
     sp.mBandReceiveCapability(ADSL::StatusPayload::ReceiveCapability::Partial);
     sp.oBandHdrReceiveCapability(ADSL::StatusPayload::ReceiveCapability::Partial);
+    sp.oBandHdrReceiveCapability(ADSL::StatusPayload::ReceiveCapability::Partial);
+    sp.adslTrafficUplinkClient(true);
 
     // TODO: Find a way to correctly know what
     sp.eReceiveConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_FANET);
@@ -413,9 +415,9 @@ ADSL::TrafficPayload::AircraftCategory ADSLAce::mapAircraftCategory(GATAS::Aircr
     {
         case B::UNKNOWN:                  return A::NO_INFO;
         case B::LIGHT:                    return A::LIGHT_FIXED_WING;
-        case B::SMALL:                    
-        case B::LARGE:                    
-        case B::HIGH_VORTEX:              
+        case B::SMALL:
+        case B::LARGE:
+        case B::HIGH_VORTEX:
         case B::HEAVY_ICAO:               return A::SMALL_TO_HEAVY_FIXED_WING;
 
         case B::AEROBATIC:                return A::LIGHT_FIXED_WING;

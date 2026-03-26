@@ -109,6 +109,8 @@ void RadioTunerTx::radioTuneTask()
                             GATAS_WARN("Warning: No timeslot for %s found %d", GATAS::toString(ds.dataSource), CoreUtils::msInSecond());
                         }
 
+                        // FOr the next time to issue a TX for this datasource, we decide if we are airborn or not. When airborn, we require a faster ping time then when not moving,
+                        // like when used as a ground station it's ok to ping every 5ish seconds to reduce airtime                       
                         auto delayMs = CountryRegulations::nextRandomTxTime(!isAirborne, timing);
                         currentTime = CoreUtils::timeUs32();
                         if (delayMs != UINT32_MAX)

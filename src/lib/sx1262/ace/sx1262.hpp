@@ -41,7 +41,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     // SInce the SX1262 only has a buffer of 256 bytes, we offset the RX buffer such that we can receive large frames
     // Maximum size of ADSL TrafficUplink is 200bytes whuch would be the maximum we could receive or transmit
     // This means using this configurationw e can never have one tranceiver send and receive ADSL large frames.
-    static constexpr uint8_t GROUNDSTATION_RX_BASE = 202; // Largest frame is 25 byte -> 50 in manchester
+    static constexpr uint8_t GROUNDSTATION_RX_BASE = 202; // Largest frame is 25 byte -> 50 in manchester But ADS-L doc seems to speak of 217 bytes
     static constexpr uint8_t DEFAULT_RX_BASE = 54;
 
     enum TaskState : uint8_t

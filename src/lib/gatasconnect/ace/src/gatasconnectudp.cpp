@@ -233,6 +233,8 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 
     if (SPINLOCK_GUARD(spinLock))
     {
+        // In groundstation mode we require that we only fetch traffic when we see actual traffic to reduce load on the gatasServer
+        // Otherwhise the system would keep fetching traffic for no reason.
         if ((hasRecentRadioTraffic || !groundStation) && hasGpsFix)
         {
             // --- Ownship position: requests surrounding traffic data from server
