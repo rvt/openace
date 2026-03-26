@@ -125,7 +125,7 @@ jobs:
           import os
           t = open('.github/develop.md').read()
           c = open('/tmp/changelog_section.md').read().strip()
-          t = t.replace('{{INTHISRELEASE}}', c)
+          t = t.replace('{{CHANGELOG}}', c)
           t = t.replace('{{VERSION}}', os.environ['VERSION'])
           print(t)
           " > /tmp/release_body.md
@@ -140,7 +140,7 @@ jobs:
           import os
           t = open('.github/release.md').read()
           c = open('/tmp/changelog_section.md').read().strip()
-          t = t.replace('{{INTHISRELEASE}}', c)
+          t = t.replace('{{CHANGELOG}}', c)
           t = t.replace('{{VERSION}}', os.environ['VERSION'])
           print(t)
           " > /tmp/release_body.md
