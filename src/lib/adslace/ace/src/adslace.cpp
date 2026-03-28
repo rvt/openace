@@ -29,10 +29,7 @@ void ADSLAce::getData(etl::string_stream &stream, const etl::string_view path) c
 {
     (void)path;
     stream << "{";
-    for (const auto &stat : datasourceTimeStats.span())
-    {
-        stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",\n";
-    }
+    datasourceTimeStats.toStream(stream);
     stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
     stream << ",\"uplinksPacketsSend:k\":" << statistics.uplinksPacketsSend;

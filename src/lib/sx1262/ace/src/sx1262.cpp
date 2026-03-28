@@ -62,12 +62,6 @@ GATAS::PostConstruct Sx1262::postConstruct()
     }
     GATAS_INFO(" found [%s] (Sx1261 is normal for a Sx1262) ", data);
 
-    mutex = xSemaphoreCreateMutex();
-    if (mutex == nullptr)
-    {
-        return GATAS::PostConstruct::MUTEX_ERROR;
-    }
-
     radioInit();
 
     if (xTaskCreate(sx1262Trampoline, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
@@ -105,7 +99,8 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << ",\"radio\":" << radioNo;
     stream << ",\"txEnabled:b\":" << txEnabled;
     stream << ",\"hasGpsFix:b\":" << hasGpsFix;
-    stream << ",\"isTransmitting:b\":" << (hasGpsFix && txEnabled);
+    stream << ",\"lastDeviceError:bin\":" << lastDeviceError;
+    stream << ",\"currentDeviceError:bin\":" << currentDeviceError;
     stream << "}";
 }
 
@@ -151,11 +146,8 @@ void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
-        if (auto guard = SemaphoreGuard(10, mutex))
-        {
-            newRxRadioParameters = GATAS::RadioParameters(msg.radioParameters);
-            xTaskNotify(taskHandle, TaskState::HANDLE_NEW_CONFIG, eSetBits);
-        }
+        newRxRadioParameters = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), GATAS::RadioParameters(msg.radioParameters));
+        xTaskNotify(taskHandle, TaskState::HANDLE_RX_CONFIG, eSetBits);
     }
 }
 
@@ -221,6 +213,15 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
 
     // TX Base at 0x00  RX Base at 0x80
     sx126x_set_buffer_base_address(this, 0x00, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE);
+
+    if (LOW_POWER_MODE)
+    {
+        sx126x_set_pa_cfg(this, &DEFAULT_LOW_POWER_PA_CFG);
+    }
+    else
+    {
+        sx126x_set_pa_cfg(this, &DEFAULT_HIGH_POWER_PA_CFG);
+    }
 
     if (newParameters.config->pcId != rxRadioParameters.config->pcId || true)
     {
@@ -365,7 +366,6 @@ void Sx1262::listen()
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
     enablePinInterrupt(dio1Pin, DIO1_RX_DONE);
     sx126x_set_rx(this, SX126X_MAX_TIMEOUT_IN_MS);
-    // GATAS_INFO("Radio %d set to listen", radioNo);
 }
 
 void Sx1262::sendGFSKPacket(const GATAS::RadioParameters &parameters, const uint8_t *data, uint8_t length)
@@ -376,7 +376,8 @@ void Sx1262::sendGFSKPacket(const GATAS::RadioParameters &parameters, const uint
     enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
 
     // 22Dbm is the max power for sx1262.
-    sx126x_set_tx_params(this, etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm), SX126X_RAMP_200_US);
+    int8_t powerdBm = LOW_POWER_MODE ? -17 : etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm);
+    sx126x_set_tx_params(this, powerdBm, SX126X_RAMP_200_US);
     sx126x_write_buffer(this, 0x00, data, length);
     // 13.1.14 SetTx
     sx126x_set_tx(this, SX126X_MAX_TIMEOUT_IN_MS);
@@ -417,7 +418,8 @@ void Sx1262::sendLORAPacket(const GATAS::RadioParameters &parameters, const uint
     // These Setting are handled in sendLORAPacket because codingrate is set dynamically packet
     sx126x_set_lora_mod_params(this, &mod);
 
-    sx126x_set_tx_params(this, etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm), SX126X_RAMP_200_US);
+    int8_t powerdBm = LOW_POWER_MODE ? -17 : etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm);
+    sx126x_set_tx_params(this, powerdBm, SX126X_RAMP_200_US);
 
     // Wait until CAD done
     // disablePinInterrupt(dio1Pin); // We are just waiting for CAD
@@ -443,26 +445,30 @@ void Sx1262::receiveGFSKPacket()
 
         if (receivedFrameLength >= 4)
         {
-            auto frameData = static_cast<uint8_t *>(getGlobalPool().alloc(receivedFrameLength));
-            if (frameData == nullptr)
+            // ADSL OHR has a lot of false packets, we eurly detect them and drop them
+            if (rxRadioParameters.config->dataSource() == GATAS::DataSource::ADSLO_HDR && (receivedFrameLength % 4 != 0))
             {
+                GATAS_WARN("Dropping invalid ADSL HDR packet");
                 return;
             }
 
-            GATAS::DataFrame rxFrame{
-                .epochSeconds = CoreUtils::secondsSinceEpoch(),
-                .frequency = rxRadioParameters.hopFrequency,
-                .config = rxRadioParameters.config,
-                .frame = frameData,
-                .length = receivedFrameLength,
-                .rssidBm = pkt_status.rssi_avg,
-            };
-
-            sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
-            if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(10)) != pdPASS)
+            if (auto frameData = static_cast<uint8_t *>(getGlobalPool().alloc(receivedFrameLength)))
             {
-                getGlobalPool().release(rxFrame.frame);
-                statistics.queueMissedErr += 1;
+                GATAS::DataFrame rxFrame{
+                    .epochSeconds = CoreUtils::secondsSinceEpoch(),
+                    .frequency = rxRadioParameters.hopFrequency,
+                    .config = rxRadioParameters.config,
+                    .frame = frameData,
+                    .length = receivedFrameLength,
+                    .rssidBm = pkt_status.rssi_avg,
+                };
+
+                sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
+                if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(10)) != pdPASS)
+                {
+                    getGlobalPool().release(rxFrame.frame);
+                    statistics.queueMissedErr += 1;
+                }
             }
         }
         else
@@ -473,8 +479,7 @@ void Sx1262::receiveGFSKPacket()
     else
     {
         // If we get here, there is some mis configuration going on
-        sx126x_clear_device_errors(this);
-        sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
+        checkAndClearDeviceErrors();
         GATAS_INFO("pkt_status.rx_status.pkt_received %d %d %d %d %d %d",
                    pkt_status.rx_status.pkt_received, pkt_status.rx_status.abort_error, pkt_status.rx_status.length_error,
                    pkt_status.rx_status.crc_error, pkt_status.rx_status.pkt_sent, pkt_status.rx_status.adrs_error);
@@ -496,26 +501,23 @@ void Sx1262::receiveLORAPacket()
 
         if (receivedFrameLength >= 4)
         {
-            auto frameData = static_cast<uint8_t *>(getGlobalPool().alloc(receivedFrameLength));
-            if (frameData == nullptr)
+            if (auto frameData = static_cast<uint8_t *>(getGlobalPool().alloc(receivedFrameLength)))
             {
-                return;
-            }
+                GATAS::DataFrame rxFrame{
+                    .epochSeconds = CoreUtils::secondsSinceEpoch(),
+                    .frequency = rxRadioParameters.hopFrequency,
+                    .config = rxRadioParameters.config,
+                    .frame = frameData,
+                    .length = receivedFrameLength,
+                    .rssidBm = pkt_status.signal_rssi_pkt_in_dbm,
+                };
 
-            GATAS::DataFrame rxFrame{
-                .epochSeconds = CoreUtils::secondsSinceEpoch(),
-                .frequency = rxRadioParameters.hopFrequency,
-                .config = rxRadioParameters.config,
-                .frame = frameData,
-                .length = receivedFrameLength,
-                .rssidBm = pkt_status.signal_rssi_pkt_in_dbm,
-            };
-
-            sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
-            if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(10)) != pdPASS)
-            {
-                getGlobalPool().release(rxFrame.frame);
-                statistics.queueMissedErr += 1;
+                sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
+                if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(10)) != pdPASS)
+                {
+                    getGlobalPool().release(rxFrame.frame);
+                    statistics.queueMissedErr += 1;
+                }
             }
         }
         else
@@ -526,8 +528,7 @@ void Sx1262::receiveLORAPacket()
     else
     {
         // If we get here, there is some mis configuration going on
-        sx126x_clear_device_errors(this);
-        sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
+        checkAndClearDeviceErrors();
     }
 }
 
@@ -545,7 +546,7 @@ void Sx1262::waitBusy(uint16_t minimumDelay) const
     uint8_t countdown = checkInterval;
     while (gpio_get(busyPin))
     {
-        vTaskDelay(TASK_DELAY_MS(20));
+        vTaskDelay(TASK_DELAY_MS(2));
         if (--countdown == 0)
         {
             statistics.buzyWaitsTimeout += 1;
@@ -567,13 +568,15 @@ void Sx1262::standBy()
 void Sx1262::checkAndClearDeviceErrors()
 {
     GATAS_MEASURE("checkAndClearDeviceErrors", 600 /* 200 */);
-    sx126x_errors_mask_t errors;
-    sx126x_status_t status = sx126x_get_device_errors(this, &errors);
-    if (status != SX126X_STATUS_OK && ((uint8_t)errors) != 0)
+    sx126x_status_t status = sx126x_get_device_errors(this, &currentDeviceError);
+    if (status == SX126X_STATUS_OK && currentDeviceError != 0)
     {
         statistics.deviceErrors += 1;
+        lastDeviceError = currentDeviceError;
+        sx126x_set_dio_irq_params(this, SX126X_IRQ_NONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
+        sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
         sx126x_clear_device_errors(this);
-        GATAS_WARN("Device Error: %d", errors);
+        GATAS_WARN("Device Error: %b", currentDeviceError);
     }
 }
 
@@ -626,69 +629,60 @@ void Sx1262::sx1262Task(void *arg)
     (void)arg;
     SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
     uint32_t txExpiration = 0;
-    bool hasNewConfig = false;
+    bool hasNewRXConfig = false;
+    bool doListen = false;
     while (true)
     {
         if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(2000)))
         {
             // When a new configuration mark it with a boolean as it needs to be processed later
-            if (notifyValue & TaskState::HANDLE_NEW_CONFIG)
+            if (notifyValue & TaskState::HANDLE_RX_CONFIG)
             {
-                hasNewConfig = true;
+                hasNewRXConfig = true;
             }
 
             // After TX, go back to RX
             if (notifyValue & TaskState::DIO1_TX_DONE)
             {
-                bool _;
-                if (auto guard = aceSpi->getLock(_))
-                {
-                    // GATAS_INFO("%8ld Listen Packet after TX ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(rxRadioParameters.config->dataSource));
-                    configureSx1262(rxRadioParameters, 0);
-                    listen();
-                }
+                doListen = true;
                 txExpiration = 0;
             }
 
-            // When in TX mode, the tranceiver cannot be reconfigured and we need to wait for the TX to finish
+            // When in TX mode, the transceiver cannot be reconfigured and we need to wait for the TX to finish
             if (txExpiration)
             {
-                // Test for TX in progress, if so continue and wait until DIO1_TX_DONE or any other notification and this will be tested
                 if (!CoreUtils::isUsReachedRaw(txExpiration))
                 {
-                    GATAS_WARN("TX timeout - no DIO1_TX_DONE received");
+                    // TX still in progress — normal, skip queue and wait for DIO1_TX_DONE
                     continue;
                 }
+                // 55ms elapsed without DIO1_TX_DONE — hardware likely stuck, fall through to recover
+                GATAS_WARN("TX timeout - no DIO1_TX_DONE received within 55ms");
                 txExpiration = 0;
+                doListen = true;
             }
 
             // When a packet is received, receive it and directly reconfigure the transceiver.. then send it to the bus
             if (notifyValue & TaskState::DIO1_RX_DONE)
             {
                 // GATAS_INFO("Radio %d Packet RX: %s timeMs:%d", radioNo, GATAS::toString(rxRadioParameters.config->dataSource), CoreUtils::msInSecond());
-                if (rxRadioParameters.frequency->mode == GATAS::Modulation::GFSK)
+                bool _;
+                if (auto guard = aceSpi->getLock(_))
                 {
-                    GATAS_MEASURE("Receive GFSK Packet Radio:", 1800, rxRadioParameters.hopFrequency);
-                    bool doSend;
-                    if (auto guard = aceSpi->getLock(doSend))
+                    standBy();
+                    if (rxRadioParameters.frequency->mode == GATAS::Modulation::GFSK)
                     {
+                        GATAS_MEASURE("Receive GFSK Packet Radio:", 1800, rxRadioParameters.hopFrequency);
                         receiveGFSKPacket();
-                        configureSx1262(rxRadioParameters, 0);
-                        listen();
+                        doListen = true;
                     }
-                }
-                else if (rxRadioParameters.frequency->mode == GATAS::Modulation::LORA)
-                {
-                    GATAS_MEASURE("Receive Lora Packet Radio:", 0, radioNo);
-                    bool doSend;
-                    if (auto guard = aceSpi->getLock(doSend))
+                    else if (rxRadioParameters.frequency->mode == GATAS::Modulation::LORA)
                     {
+                        GATAS_MEASURE("Receive Lora Packet Radio:", 0, radioNo);
                         receiveLORAPacket();
-                        configureSx1262(rxRadioParameters, 0);
-                        listen();
+                        doListen = true;
                     }
                 }
-                // GATAS_INFO("%8ld RX Packet ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(rxRadioParameters.config->dataSource));
             };
 
             // Only in TX
@@ -710,20 +704,24 @@ void Sx1262::sx1262Task(void *arg)
             }
 
             // Finally, if only a new configuration was set, reconfigure the tranceiver
-            if (hasNewConfig)
+            if (hasNewRXConfig)
             {
-                if (auto g = SemaphoreGuard(10, mutex))
-                {
-                    rxRadioParameters = newRxRadioParameters;
-                    // GATAS_INFO("%8ld New Config ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(rxRadioParameters.config->dataSource()));
-                    hasNewConfig = false;
-                }
+                // GATAS_INFO("%8ld New Config ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(rxRadioParameters.config->dataSource()));
+                rxRadioParameters = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), newRxRadioParameters);
+                hasNewRXConfig = false;
+                doListen = true;
+            }
+
+            // When set, instruct to start listening again
+            if (doListen)
+            {
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
                     configureSx1262(rxRadioParameters, 0);
                     listen();
                 }
+                doListen = false;
             }
         }
     }

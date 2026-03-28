@@ -237,7 +237,7 @@ TEST_CASE("nextRandomTxTime - result falls within txMin..txMax + tolerance", "[C
     int successCount = 0;
     for (int i = 0; i < 20; ++i)
     {
-        uint32_t delay = CountryRegulations::nextRandomTxTime(pts);
+        uint32_t delay = CountryRegulations::nextRandomTxTime(false, pts);
         if (delay != UINT32_MAX)
         {
             // Delay should be >= txMinTime and reasonably bounded
@@ -264,7 +264,7 @@ TEST_CASE("nextRandomTxTime - result lands within a valid EU_FLARMT timing windo
 
         for (int i = 0; i < 20; ++i)
         {
-            uint32_t delay = CountryRegulations::nextRandomTxTime(pts);
+            uint32_t delay = CountryRegulations::nextRandomTxTime(false, pts);
             if (delay == UINT32_MAX)
             {
                 ++failCount;
@@ -297,7 +297,7 @@ TEST_CASE("nextRandomTxTime - delay is at least txMinTime", "[CountryRegulations
 
     for (int i = 0; i < 20; ++i)
     {
-        uint32_t delay = CountryRegulations::nextRandomTxTime(pts);
+        uint32_t delay = CountryRegulations::nextRandomTxTime(false, pts);
         if (delay != UINT32_MAX)
         {
             REQUIRE(delay >= pts[0].txMinTime);
@@ -333,7 +333,7 @@ TEST_CASE("nextRandomTxTime - multi-slot: both TRAFFIC and UPLINK windows are re
         for (int i = 0; i < 50; ++i)
         {
             get_rand_64_SET(i);
-            uint32_t delay = CountryRegulations::nextRandomTxTime(pts);
+            uint32_t delay = CountryRegulations::nextRandomTxTime(false, pts);
             if (delay == UINT32_MAX)
             {
                 continue;

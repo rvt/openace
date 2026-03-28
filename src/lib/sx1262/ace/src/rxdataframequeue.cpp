@@ -36,8 +36,7 @@ void RxDataFrameQueue::getData(etl::string_stream &stream, const etl::string_vie
 {
     (void)path;
     stream << "{";
-    stream << ",\"totalIncoming:k\":\"" << statistics.totalIncoming << "\"";
-    stream << ",\"totalOutgoing:k\":\"" << statistics.totalOutgoing << "\"";
+    stream << "\"totalOutgoing:k\":\"" << statistics.totalOutgoing << "\"";
     stream << "}";
 }
 
@@ -57,52 +56,45 @@ void RxDataFrameQueue::radioQueueTask(void *arg)
         if (xQueueReceive(dataQueue, &rxFrame, portMAX_DELAY) == pdPASS)
         {
             PoolReleaseGuard guard{getGlobalPool(), rxFrame.frame};
-            if (rxFrame.length < 4)
-            {
-                GATAS_WARN("Received frame with length < 4 bytes, ignoring");
-                continue;
-            }
 
             statistics.totalOutgoing += 1;
             if (rxFrame.config->manchester)
             {
                 size_t byteLength = rxFrame.length >> 1;
-                auto error = static_cast<uint8_t *>(getGlobalPool().alloc(byteLength));
-                if (error == nullptr)
+                if (auto errorFrame = static_cast<uint8_t *>(getGlobalPool().alloc(byteLength)))
                 {
-                    continue;
+                    guard.disarm();
+                    auto msg = GATAS::RadioRxManchesterMsg{
+                        rxFrame.frame,
+                        errorFrame,
+                        byteLength,
+                        rxFrame.epochSeconds,
+                        rxFrame.frequency,
+                        rxFrame.config->dataSource(),
+                        rxFrame.rssidBm};
+
+                    manchesterDecodeInline(msg.frame, msg.error, rxFrame.length);
+
+                    // Handle multi protocol situations
+                    // auto ds = decideDataSource(rxFrame.config->dataSource(), msg.frame32(), rxFrame.length );
+                    // if (ds.dataSource < GATAS::DataSource::_TRANSPROTOCOLS)
+                    // {
+                    //     bitShift(
+                    //         msg.frame,
+                    //         msg.lengthBytes,
+                    //         ds.bitsToShift);
+
+                    //     bitShift(
+                    //         msg.error,
+                    //         msg.lengthBytes,
+                    //         ds.bitsToShift);
+
+                    //     msg.lengthBytes = ds.frameLength;
+                    //     msg.dataSource = ds.dataSource;
+                    // }
+
+                    getBus().receive(msg);
                 }
-                guard.disarm();
-                auto msg = GATAS::RadioRxManchesterMsg{
-                    rxFrame.frame,
-                    error,
-                    byteLength,
-                    rxFrame.epochSeconds,
-                    rxFrame.frequency,
-                    rxFrame.config->dataSource(),
-                    rxFrame.rssidBm};
-
-                manchesterDecodeInline(msg.frame, msg.error, rxFrame.length);
-
-                // Handle multi protocol situations
-                // auto ds = decideDataSource(rxFrame.config->dataSource(), msg.frame32(), rxFrame.length );
-                // if (ds.dataSource < GATAS::DataSource::_TRANSPROTOCOLS)
-                // {
-                //     bitShift(
-                //         msg.frame,
-                //         msg.lengthBytes,
-                //         ds.bitsToShift);
-
-                //     bitShift(
-                //         msg.error,
-                //         msg.lengthBytes,
-                //         ds.bitsToShift);
-
-                //     msg.lengthBytes = ds.frameLength;
-                //     msg.dataSource = ds.dataSource;
-                // }
-
-                getBus().receive(msg);
             }
             else
             {

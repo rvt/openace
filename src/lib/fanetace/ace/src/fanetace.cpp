@@ -254,10 +254,7 @@ void FanetAce::getData(etl::string_stream &stream, const etl::string_view path) 
 {
     (void)path;
     stream << "{";
-    for (const auto &stat : datasourceTimeStats.span())
-    {
-        stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",\n";
-    }
+    datasourceTimeStats.toStream(stream);
     stream << "\"received:k\":" << statistics.received;
     stream << ",\"send:k\":" << statistics.send;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;

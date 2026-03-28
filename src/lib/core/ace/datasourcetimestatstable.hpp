@@ -21,7 +21,7 @@ namespace GATAS
             uint32_t frequency = 0;
         };
 
-        using const_span_type   = etl::span<const DataSourceTimeStats>;
+        using const_span_type = etl::span<const DataSourceTimeStats>;
         using mutable_span_type = etl::span<DataSourceTimeStats>;
 
         void addReceiveStat(uint32_t frequency, uint16_t msInSecond)
@@ -81,6 +81,14 @@ namespace GATAS
         DataSourceTimeStatsTable()
         {
             init(mutable_span_type(buffer_.data(), MaxSources));
+        }
+
+        void toStream(etl::string_stream &stream) const
+        {
+            for (const auto &stat : span())
+            {
+                stream << "\"" << stat.frequency << ":dts\":\"" << stat.timeTenthMs.to_string() << "\",";
+            }
         }
 
     private:

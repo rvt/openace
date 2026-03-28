@@ -31,11 +31,7 @@ void Ogn1::getData(etl::string_stream &stream, const etl::string_view path) cons
 {
     (void)path;
     stream << "{";
-    for (const auto &stat : datasourceTimeStats.span())
-    {
-        stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",";
-    }
-
+    datasourceTimeStats.toStream(stream);
     stream << "\"relay\":[";
     for (uint8_t idx = 0; idx < 4; idx++)
     {

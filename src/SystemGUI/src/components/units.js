@@ -12,7 +12,7 @@ const UNIT_TABLE = {
         { scale: 1, suffix: "B", min: 0, digits: 1 },
     ],
     k: [
-        { scale: 1e3, suffix: "K", min: 1e3, digits: 2 },
+        { scale: 1e3, suffix: "K", min: 1e3, digits: 3 },
         { scale: 1, suffix: "", min: 0, digits: 0 },
     ],
     deg: [
@@ -88,14 +88,41 @@ const findUnit = (name) => {
     return "";
 };
 
+/**
+ * 
+ * @param Take a string of 0 and one, and replace them with big and small dots 
+ * @returns 
+ */
+const bitsToDots = (str) => {
+    return str.replace(/1/g, "●").replace(/0/g, "·");
+}
+
+const _chunkString = (str, size, sep = "'") => {
+    return str.match(new RegExp(`.{1,${size}}`, "g")).join(sep);
+}
+
+
 const formatUnit = (value, unit, locale = navigator.language) => {
 
+    // Binary true or false
     if (unit === 'b') {
         return value > 0 ? '&#10003;' : '&#x292B;';
     }
 
+    // Binary (numbers)
+    if (unit === 'bin') {
+        const bits = (value >>> 0).toString(2).padStart(8, '0');
+        return bitsToDots(bits);
+    }
+
+    // time el=elapsed?
     if (unit === 'el') {
         return formatTime(value);
+    }
+
+    // Datasource time stats
+    if (unit == 'dts') {
+        value = bitsToDots(_chunkString(value, 10, "|"));
     }
 
     const table = UNIT_TABLE[unit];
@@ -119,10 +146,16 @@ const formatUnit = (value, unit, locale = navigator.language) => {
 };
 
 const formatUnit2 = (name, value, locale = navigator.language) => {
-    const u = findUnit(name);
-    const v= formatUnit(value, u, locale);
-    name = name.replace(`:${u}`,'');
-    return {name:name, value:v}
+    const unit = findUnit(name);
+    value = formatUnit(value, unit, locale);
+    name = name.replace(`:${unit}`, '');
+
+    // Special case for dts, where the variable name is also a unit
+    if (unit == 'dts') {
+        name = formatUnit(name, 'hz', locale);
+    }
+
+    return { name, value }
 }
 
-export { formatUnit, formatUnit2, findUnit };
+export { formatUnit, formatUnit2, findUnit, bitsToDots };

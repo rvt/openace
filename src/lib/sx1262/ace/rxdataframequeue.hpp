@@ -27,7 +27,6 @@ private:
 
     struct
     {
-        uint32_t totalIncoming = 0;
         uint32_t totalOutgoing = 0;
     } statistics;
 

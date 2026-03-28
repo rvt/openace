@@ -19,10 +19,7 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
 {
     (void)path;
     stream << "{";
-    for (const auto &stat : datasourceTimeStats.span())
-    {
-        stream << "\"f" << stat.frequency << "\":\"" << stat.timeTenthMs.to_string() << "\",";
-    }
+    datasourceTimeStats.toStream(stream);
     stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
     stream << ",\"crc:err\":" << statistics.crcErr;

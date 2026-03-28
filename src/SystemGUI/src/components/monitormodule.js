@@ -2,7 +2,7 @@ import { El } from "@frameable/el";
 import store from "./store";
 import "./moduleconfigs";
 import { isDarkMode } from "./utils";
-import { formatUnit, formatUnit2 } from "./units";
+import { formatUnit, formatUnit2, bitsToDots } from "./units";
 
 const MAX_DISTANCE_IDX = 3;
 const AVG_DISTANCE_IDX = 2;
@@ -72,23 +72,8 @@ class MonitorModule extends El {
       });
   }
 
-  _chunkString(str, size, sep = "'") {
-    return str.match(new RegExp(`.{1,${size}}`, "g")).join(sep);
-  }
-
   _getPolarColorSchema() {
     return POLAR_COLORS[isDarkMode() ? "DARK" : "LIGHT"];
-  }
-
-  /**
-   * 
-   * @param Take a string of 0 and one, and replace them with big and small dots 
-   * @returns 
-   */
-  _bitsToDots(str) {
-    return str
-      .replace(/1/g, "●")
-      .replace(/0/g, "·");
   }
 
   /**
@@ -265,9 +250,8 @@ class MonitorModule extends El {
 
     if (Array.isArray(value)) {
       value = value.join(", ");
-    } else if (typeof value === "string" && /^[01]+$/.test(value) && value.length >= 10) {
+    } else if (typeof value === "string" && /^[01]+$/.test(value)) {
       isBitString = true;
-      value = this._bitsToDots(this._chunkString(value, 10, "|"));
     } else if (typeof value === "number") {
       isNumeric = true;
     }

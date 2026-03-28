@@ -12,14 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ADSL Traffic Uplink on O-Band for both reception and transmission (in ground station mode)
 - Groundstation mode that can show a static object at any height.
 - Send Traffic over ADSL using uplinkTraffic message
+- Low poer mode during development
 
 ### Changed
-
+ror
 - When GATAS is Stationary, reduce TX times for positional data to averagy of 5..6 seconds
 - Use etl::delegate instead of etl::function
 - Stopped storing a 'GATAS::*Msg' in local objects, always copy the contents as a rule
 - Update list of possible Aircraft types in UI
 - Update DDB
+- Better represent datasource time stats
 
 ### Deprecated
 
@@ -32,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Regression on FANET TX
+- Fixed Incorrectly handle of device error on transceiver
 
 ### Security
 
