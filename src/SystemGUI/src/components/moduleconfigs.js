@@ -767,6 +767,7 @@ class BluetoothConfig extends ModuleConfig {
             <input type="text" id="localName" ref="localName" placeholder="GaTas" />
           </label>
         </div>
+        <small>Needs restart of GATAS after changing the name</small>
 
         ${this.buttonArray(html)}
       </form>

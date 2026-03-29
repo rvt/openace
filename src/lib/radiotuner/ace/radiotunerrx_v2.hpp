@@ -21,6 +21,7 @@
 
 #include "timers.h"
 
+
 /**
  * This class is responsible for setting up timings to receive data for each protocol
  */
@@ -49,7 +50,7 @@ private:
         RadioTunerRx *controller;
         uint8_t radioNo;
         TimeSlotVector protocolTimings = {};
-        etl::circular_iterator<TimeSlotVector::const_iterator> protocolIterator;
+        uint8_t lastCheckedIndex = 0;
 
         // Track last sent config to avoid redundant RadioControlMsg sends
         GATAS::DataSource lastDataSource = GATAS::DataSource::_ITEMS;
@@ -67,11 +68,20 @@ private:
 
         void getData(etl::string_stream &stream) const
         {
-            (void)stream; // Avoid unused parameter warning
-            stream << ",\"radio_" << radioNo << "\":[";
+            stream << ",\"radio_" << radioNo << ":rrx\":[";
             for (auto it = protocolTimings.begin(); it != protocolTimings.end(); ++it)
             {
-                stream << "\"" << GATAS::toString((*it)->radioConfig.dataSource()) << "\"";
+                const auto &ts = **it;
+                stream << "{\"ds\":\"" << GATAS::toString(ts.radioConfig.dataSource()) << "\",\"ts\":[";
+                for (auto st = ts.timeSlots.begin(); st != ts.timeSlots.end(); ++st)
+                {
+                    stream << "{\"s\":" << st->start << ",\"e\":" << st->end << ",\"ch\":" << static_cast<uint8_t>(st->channel) << "}";
+                    if (etl::next(st) != ts.timeSlots.end())
+                    {
+                        stream << ",";
+                    }
+                }
+                stream << "]}";
                 if (etl::next(it) != protocolTimings.end())
                 {
                     stream << ",";

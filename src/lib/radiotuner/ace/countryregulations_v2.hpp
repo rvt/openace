@@ -66,7 +66,7 @@ public:
         // Remove 20ms from the end time so TX timings will not (eadsely) overflow into a region that won't be received
         static constexpr uint16_t REDUCE_ENDTIME_MS = 10;
         Channel channel = Channel::NOOP;
-        // STart / end tells between whcih ms in a second the protcol is active
+        // Start / end tells between which ms in a second the protocol is active
         uint16_t start = 0;
         uint16_t end = 0;
         uint8_t id = 0;

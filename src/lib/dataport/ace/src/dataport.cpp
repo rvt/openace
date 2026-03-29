@@ -44,6 +44,7 @@ void DataPort::on_receive(const GATAS::GPSSentenceMsg &msg)
     GATAS::NMEAString sentence = msg.sentence;
 
     // Check the message type at position 3–5
+    // Drop specific GPS sentences
     char type[4] = {sentence[4], sentence[5], '\0'};
     if (etl::string_view(type) == "SV")
     {

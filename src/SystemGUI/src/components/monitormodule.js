@@ -311,6 +311,96 @@ class MonitorModule extends El {
     `;
     }
 
+    if (item.name.endsWith(":rrx") && Array.isArray(item.value)) {
+      const name = item.name.split(':')[0];
+      const protocols = item.value;
+      const SEC = 1000;
+      const barWidth = 200;
+      const colors = ["#4caf50", "#2196f3", "#ff9800", "#e91e63", "#9c27b0"];
+
+      // Split a timeslot that wraps past 1000ms into two segments within 0-1000
+      const wrapSlots = (ts) => {
+        const segments = [];
+        for (const t of (ts || [])) {
+          if (t.e <= SEC) {
+            segments.push({ s: t.s, e: t.e, ch: t.ch });
+          } else if (t.s >= SEC) {
+            segments.push({ s: t.s - SEC, e: t.e - SEC, ch: t.ch });
+          } else {
+            segments.push({ s: t.s, e: SEC, ch: t.ch });
+            segments.push({ s: 0, e: t.e - SEC, ch: t.ch });
+          }
+        }
+        return segments;
+      };
+
+      return html`
+        <tr>
+          <th style="width:33%; vertical-align:top" scope="row">${name}</th>
+          <td>
+            <div style="font-size:11px; line-height:1.6">
+              ${protocols.map((p, idx) => {
+                const color = colors[idx % colors.length];
+                const segments = wrapSlots(p.ts);
+                return html`
+                  <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px">
+                    <span style="width:50px; flex-shrink:0; font-weight:bold; color:${color}">${p.ds}</span>
+                    <div style="position:relative; width:${barWidth}px; height:14px; background:#eee; border-radius:2px; flex-shrink:0">
+                      ${segments.map((s) => {
+                        const left = (s.s / SEC) * barWidth;
+                        const w = ((s.e - s.s) / SEC) * barWidth;
+                        return html`<div style="position:absolute; left:${left}px; width:${w}px; height:100%; background:${color}; opacity:0.7; border-radius:2px" title="ch${s.ch} ${s.s}-${s.e}ms"></div>`;
+                      })}
+                    </div>
+                    <span style="color:#888">${segments.map((s) => `${s.s}-${s.e}`).join(", ")}ms</span>
+                  </div>
+                `;
+              })}
+              ${(() => {
+                // Build combined schedule: for each 200ms slot, which protocol wins (round-robin)
+                const SLOT_MS = 200;
+                const slots = [];
+                let lastIdx = -1;
+                for (let ms = 0; ms < SEC; ms += SLOT_MS) {
+                  let winner = null;
+                  for (let i = 0; i < protocols.length; i++) {
+                    const checkIdx = (lastIdx + 1 + i) % protocols.length;
+                    const segs = wrapSlots(protocols[checkIdx].ts);
+                    const active = segs.some((s) => ms >= s.s && ms < s.e);
+                    if (active) {
+                      winner = { idx: checkIdx, ds: protocols[checkIdx].ds };
+                      lastIdx = checkIdx;
+                      break;
+                    }
+                  }
+                  slots.push(winner);
+                }
+                return html`
+                  <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px; margin-top:4px; border-top:1px solid #ddd; padding-top:4px">
+                    <span style="width:50px; flex-shrink:0; font-weight:bold; color:#555">sched</span>
+                    <div style="position:relative; width:${barWidth}px; height:14px; background:#eee; border-radius:2px; flex-shrink:0; display:flex">
+                      ${slots.map((w, si) => {
+                        const color = w ? colors[w.idx % colors.length] : "transparent";
+                        const slotW = barWidth / (SEC / SLOT_MS);
+                        return html`<div style="width:${slotW}px; height:100%; background:${color}; opacity:0.85" title="${w ? w.ds : 'idle'} ${si * SLOT_MS}-${(si + 1) * SLOT_MS}ms"></div>`;
+                      })}
+                    </div>
+                    <span style="color:#888">${slots.map((w) => w ? w.ds : "-").join(" | ")}</span>
+                  </div>
+                `;
+              })()}
+              <div style="position:relative; width:${barWidth}px; height:10px; margin-left:56px; margin-top:2px">
+                ${[0, 200, 400, 600, 800, 1000].map((ms) => {
+                  const left = (ms / SEC) * barWidth;
+                  return html`<span style="position:absolute; left:${left}px; font-size:8px; color:#999; transform:translateX(-50%)">${ms}</span>`;
+                })}
+              </div>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
     const rendered = this._renderDefault(html, item);
     const result = formatUnit2(item.name, rendered.value)
     return html`
