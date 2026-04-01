@@ -165,7 +165,7 @@ void RadioTunerTx::radioTuneTask()
                 }
             }
 
-            if (nextUpIn < 0)
+            if (nextUpIn < 1000)
             {
                 nextUpIn = 1000;
             }

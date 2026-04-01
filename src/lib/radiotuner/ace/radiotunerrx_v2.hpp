@@ -21,23 +21,32 @@
 
 #include "timers.h"
 
-
 /**
  * This class is responsible for setting up timings to receive data for each protocol
  */
 class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx, GATAS::OwnshipPositionMsg, GATAS::IngressAircraftPositionMsg, GATAS::ConfigUpdatedMsg>
 {
     using SlotReceive = etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_ITEMS)>;
+    using AvailableTimingsSpan = etl::span<const CountryRegulations::ProtocolRxTimeSlot *>;
 
 public:
     static constexpr const uint32_t UPDATE_ZONE_REGULATION_EVERY = 30'000'000; // Get new regulatory dataset every XXms
-    // Offset applies to the timing so that the receiver is set on time to new frequencies and/or modes
     static constexpr const uint8_t GATAS_RX_OFFSET = 1;
     static constexpr const uint32_t BIT_EVENT_DONE = 1 << 0;
-    static constexpr uint8_t MAX_EXTRA_SLOTS = 2; // Additional slots allowed for prioritisation
+    // Max pre-expanded RxTiming entries per radio (5 protocols × up to 3 segments each, rounded up)
+    static constexpr uint8_t MAX_RX_TIMINGS = 16;
+
+    // A single, non-wrapping listening window for one radio
+    struct RxTiming
+    {
+        const CountryRegulations::ProtocolRxTimeSlot *protocolTimeConfig = nullptr;
+        CountryRegulations::Channel channel=CountryRegulations::Channel::NOOP;
+        uint16_t start = 0;
+        uint16_t end = 0;
+    };
 
 private:
-    using TimeSlotVector = etl::vector<const CountryRegulations::ProtocolRxTimeSlot *, 3 + MAX_EXTRA_SLOTS>;
+    using TimeSlotVector = etl::vector<RxTiming, MAX_RX_TIMINGS>;
 
     // Each radio will get one task Context to handle
     struct RadioProtocolCtx
@@ -49,39 +58,36 @@ private:
 
         RadioTunerRx *controller;
         uint8_t radioNo;
-        TimeSlotVector protocolTimings = {};
-        uint8_t lastCheckedIndex = 0;
 
-        // Track last sent config to avoid redundant RadioControlMsg sends
-        GATAS::DataSource lastDataSource = GATAS::DataSource::_ITEMS;
-        uint32_t lastFrequency = 0;
-        uint32_t lastSendUsRaw = 0;
+        //
+        TimeSlotVector protocolTimings = {};
+        size_t currentProtocolIdx = std::numeric_limits<size_t>::max();
+        uint32_t maxTimeMs;
 
         // Constructor
         RadioProtocolCtx(RadioTunerRx *controller_, uint8_t radioNo_) : controller(controller_), radioNo(radioNo_), protocolTimings()
         {
+            clear();
         }
 
         // Ensure we never copy
         RadioProtocolCtx(const RadioProtocolCtx &) = delete;
         RadioProtocolCtx &operator=(RadioProtocolCtx const &) = delete;
 
+        void clear() {
+            protocolTimings.clear();
+            currentProtocolIdx = std::numeric_limits<size_t>::max();
+            maxTimeMs = 0;
+        }
+
         void getData(etl::string_stream &stream) const
         {
             stream << ",\"radio_" << radioNo << ":rrx\":[";
             for (auto it = protocolTimings.begin(); it != protocolTimings.end(); ++it)
             {
-                const auto &ts = **it;
-                stream << "{\"ds\":\"" << GATAS::toString(ts.radioConfig.dataSource()) << "\",\"ts\":[";
-                for (auto st = ts.timeSlots.begin(); st != ts.timeSlots.end(); ++st)
-                {
-                    stream << "{\"s\":" << st->start << ",\"e\":" << st->end << ",\"ch\":" << static_cast<uint8_t>(st->channel) << "}";
-                    if (etl::next(st) != ts.timeSlots.end())
-                    {
-                        stream << ",";
-                    }
-                }
-                stream << "]}";
+                const auto &ts = *it;
+                const char *dsName = (ts.protocolTimeConfig != nullptr) ? GATAS::toString(ts.protocolTimeConfig->radioConfig.dataSource()) : "NOOP";
+                stream << "{\"ds\":\"" << dsName << "\",\"s\":" << ts.start << ",\"e\":" << ts.end << ",\"ch\":" << static_cast<uint8_t>(ts.channel) << "}";
                 if (etl::next(it) != protocolTimings.end())
                 {
                     stream << ",";
@@ -96,9 +102,9 @@ private:
     SlotReceive slotReceive;
 
     // Keep track of one task per each radio
-    etl::vector<RadioProtocolCtx, GATAS_MAX_RADIOS> radioCtxList={};
+    etl::vector<RadioProtocolCtx, GATAS_MAX_RADIOS> radioCtxList = {};
     // All datasources that needs to be received
-    etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> configuredDatasources={};
+    etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> configuredDatasources = {};
 
     enum TaskState : uint32_t
     {
@@ -142,16 +148,20 @@ public:
 
 private:
     /**
-     * @brief Assign the datasources to each radio. THis should only be used and called after startup, or when aircraft is changed
-     *
+     * @brief Assign the datasources to each radio. Should only be called after startup or when zone/config changes.
      */
     void assignDataSources();
+    bool belongsToRadio(size_t timingIndex, size_t radioIndex, size_t radioCount)
+    {
+        return (timingIndex % radioCount) == radioIndex;
+    }
 
     /**
-     * Return true igf for this protocol data was received;
+     * Return true if for this protocol data was received;
      */
     bool hasReceived(GATAS::DataSource ds);
 
+    static bool fillNoop(RxTiming &entry, uint16_t midMs, etl::span<const CountryRegulations::ProtocolRxTimeSlot *> timings, size_t radioCount, size_t radioIdx, bool sameRadio);
     bool blockTasks();
     void releaseTasks();
 };

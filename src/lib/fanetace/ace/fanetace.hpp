@@ -39,7 +39,8 @@ private:
         (void)msg;
     }
 
-    static void FanetAceTask(void *arg);
+    static void fanetAceTaskTrampoline(void *arg);
+    void fanetAceTask(void *arg);
 
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
     void on_receive(const GATAS::RadioRxMsg &msg);

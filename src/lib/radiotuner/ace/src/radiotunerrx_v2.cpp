@@ -6,7 +6,7 @@
 
 #include "etl/algorithm.h"
 
-#include "pico/rand.h"
+#define GATAS_TUNE_LOG(fmt, ...) GATAS_LOG_IF(false, fmt, ##__VA_ARGS__)
 
 GATAS::PostConstruct RadioTunerRx::postConstruct()
 {
@@ -53,33 +53,23 @@ void RadioTunerRx::getData(etl::string_stream &stream, const etl::string_view pa
 
 void RadioTunerRx::radioTuneTask(void *arg)
 {
-    (void)arg;
-    uint16_t nextDelay = 200;
     RadioTunerRx *radioTunerRx = static_cast<RadioTunerRx *>(arg);
     bool taskBlocked = false;
+    uint16_t nextDelayMs = 200;
+
     while (true)
     {
-        // radioTunerRx->assignDataSources();
-        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(nextDelay));
+        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(nextDelayMs));
+        if (notifyValue & TaskState::BLOCK)
+        {
+            taskBlocked = true;
+            nextDelayMs = 100;
+            radioTunerRx->eventSync.set(BIT_EVENT_DONE);
+        }
         if (notifyValue & TaskState::UNBLOCK)
         {
             taskBlocked = false;
             radioTunerRx->eventSync.set(BIT_EVENT_DONE);
-            continue;
-        }
-        if (notifyValue & TaskState::BLOCK)
-        {
-            taskBlocked = true;
-            // TODO: Create a new way or message to disaple receivers?
-            // // Disable the transceivers during reconfiguration
-            // for (auto &ref : radioTunerRx->radioCtxList)
-            // {
-            //     radioTunerRx->getBus().receive(GATAS::RadioControlMsg{
-            //         GATAS::RadioParameters{&CountryRegulations::PROTOCOL_NONE, CountryRegulations::Europe.baseFrequency, 0, 8},
-            //         ref.radioNo});
-            // }
-            radioTunerRx->eventSync.set(BIT_EVENT_DONE);
-            continue;
         }
 
         if (taskBlocked)
@@ -87,74 +77,56 @@ void RadioTunerRx::radioTuneTask(void *arg)
             continue;
         }
 
-        auto timeMs = CoreUtils::msInSecond();
-        auto currentSlot = (timeMs / CountryRegulations::SLOT_MS);
+        const uint32_t nowMs = CoreUtils::msSinceMidnight();
+        int32_t nextWakeMs = 200; // default fallback
 
-        // On the RP2350 we have a little more math speed compared to RP2040, we can get timing slightly more tight
-#if defined(PICO_RP2350)
-        int32_t expectedSlot = (timeMs + 75) / CountryRegulations::SLOT_MS;
-        int16_t diff = CountryRegulations::SLOT_MS * expectedSlot - timeMs;
-        if (diff > 0)
-        {
-            // GATAS_INFO("Fixing time differences of %d %dms", timeMs, diff);
-            vTaskDelay(TASK_DELAY_MS(diff));
-        }
-#endif
         for (auto &&ref : radioTunerRx->radioCtxList)
         {
-            if (ref.protocolTimings.empty())
+            if (ref.protocolTimings.empty() || ref.maxTimeMs == 0)
             {
                 continue;
             }
 
-            // Scan all assigned protocols starting from lastCheckedIndex+1 (round-robin fairness)
-            // Pick the first one that is active in the current timeslot
-            const CountryRegulations::ProtocolRxTimeSlot *bestSlot = nullptr;
-            const CountryRegulations::ChannelTiming *bestTiming = nullptr;
-            const size_t count = ref.protocolTimings.size();
+            // Position within the repeating cycle
+            const int32_t cycleMs = nowMs % ref.maxTimeMs;
 
-            for (size_t i = 0; i < count; i++)
+            // Find which entry covers this time
+            size_t foundIdx = 0;
+            for (size_t i = 0; i < ref.protocolTimings.size(); i++)
             {
-                size_t idx = (ref.lastCheckedIndex + 1 + i) % count;
-                const auto *ts = ref.protocolTimings[idx];
-                auto *timing = CountryRegulations::findFittingTiming(currentSlot * CountryRegulations::SLOT_MS, ts->timeSlots);
-                if (timing != nullptr)
+                if (cycleMs >= ref.protocolTimings[i].start && cycleMs < ref.protocolTimings[i].end)
                 {
-                    bestSlot = ts;
-                    bestTiming = timing;
-                    ref.lastCheckedIndex = static_cast<uint8_t>(idx);
+                    foundIdx = i;
                     break;
                 }
             }
 
-            if (bestSlot == nullptr)
+            const auto &entry = ref.protocolTimings[foundIdx];
+
+            // Only reconfigure radio if protocol changed
+            if (foundIdx != ref.currentProtocolIdx)
             {
-                continue;
+                ref.currentProtocolIdx = foundIdx;
+                if (entry.protocolTimeConfig != nullptr)
+                {
+                    GATAS_TUNE_LOG("Radio %d switching to DS %s on channel %d", ref.radioNo, GATAS::toString(entry.protocolTimeConfig->radioConfig.dataSource()), static_cast<uint8_t>(entry.channel));
+                    auto frequency = CountryRegulations::getFrequency(entry.protocolTimeConfig->rfConfig, entry.channel);
+                    radioTunerRx->getBus().receive(GATAS::RadioControlMsg{
+                        GATAS::RadioParameters(&entry.protocolTimeConfig->radioConfig, &entry.protocolTimeConfig->rfConfig, frequency, 0),
+                        ref.radioNo});
+                    ref.statistics.taskActivity += 1;
+                }
             }
 
-            auto frequency = CountryRegulations::getFrequency(bestSlot->rfConfig, bestTiming->channel);
-            auto dataSource = bestSlot->radioConfig.dataSource();
-
-            // Skip sending if the same datasource+frequency was already sent recently
-            auto timeUs32Raw = CoreUtils::timeUs32Raw();
-            bool sameConfig = (ref.lastDataSource == dataSource && ref.lastFrequency == frequency);
-            bool withinTimeout = (timeUs32Raw - ref.lastSendUsRaw) < 2'500'000;
-            if (sameConfig && withinTimeout)
+            // Time until this entry ends (next transition)
+            int32_t timeToEnd = entry.end - cycleMs;
+            if (timeToEnd < nextWakeMs)
             {
-                continue;
+                nextWakeMs = timeToEnd;
             }
-
-            radioTunerRx->getBus().receive(GATAS::RadioControlMsg{GATAS::RadioParameters(&bestSlot->radioConfig, &bestSlot->rfConfig, frequency, 0), ref.radioNo});
-            ref.lastDataSource = dataSource;
-            ref.lastFrequency = frequency;
-            ref.lastSendUsRaw = timeUs32Raw;
-            ref.statistics.taskActivity += 1;
         }
 
-        // Calculate delay to next slot
-        // +1 is needed to fix half a milisecond fixes to ensure we go to the correct slot
-        // Unfortunatly it meens that sometimes we are 1ms late... Checing us timer might be overkill to fix a 1ms disperency.
-        nextDelay = CoreUtils::msDelayToReference((currentSlot + 1) * CountryRegulations::SLOT_MS + 1, CoreUtils::msInSecond());
+        nextDelayMs = static_cast<uint16_t>(etl::max(nextWakeMs - 2, static_cast<int32_t>(1))); // Minus 2 because it seems to be 2 MS 'late'
     }
 }
 
@@ -162,7 +134,6 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
 void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    // Set to current time else bluetooth connections will fail
     static auto lastTime = CoreUtils::timeUs32Raw();
 
     if (CoreUtils::isUsReachedRaw(lastTime) || currentZone.value() == CountryRegulations::Zone::ZONE0)
@@ -197,9 +168,6 @@ void RadioTunerRx::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-/**
- * Return true igf for this protocol data was received;
- */
 bool RadioTunerRx::hasReceived(GATAS::DataSource ds)
 {
     GATAS_ASSERT(ds < GATAS::DataSource::_TRANSPROTOCOLS, "Invalid datasource");
@@ -222,129 +190,92 @@ void RadioTunerRx::assignDataSources()
 
     auto availableTimings = CountryRegulations::getProtocolRxTimingsForZone(currentZone.value(), configuredDatasources);
 
-    for (auto &taskCtx : radioCtxList)
+    // Assign availableTimings evenly over the radios
+    size_t radioCount = radioCtxList.size();
+    size_t idx = 0;
+    for (auto &ctx : radioCtxList)
     {
-        taskCtx.protocolTimings.clear();
-        taskCtx.lastCheckedIndex = 0;
-        taskCtx.lastDataSource = GATAS::DataSource::_ITEMS;
-        taskCtx.lastFrequency = 0;
-    }
-
-    if (availableTimings.size() > 0)
-    {
-        // Calculate total active ms for each protocol
-        auto totalActiveMs = [](const CountryRegulations::ProtocolRxTimeSlot *slot) -> uint16_t
-        {
-            uint16_t total = 0;
-            for (const auto &t : slot->timeSlots)
-            {
-                total += (t.end - t.start);
-            }
-            return total;
-        };
-
-        // Track load per radio (total assigned active ms)
-        etl::array<uint16_t, GATAS_MAX_RADIOS> radioLoad = {};
-
-        // Sort indices by total active time descending (heaviest protocols assigned first)
-        etl::array<uint8_t, GATAS_MAX_SOURCE_PER_RADIO * GATAS_MAX_RADIOS> sortedIndices = {};
-        for (uint8_t i = 0; i < availableTimings.size(); i++)
-        {
-            sortedIndices[i] = i;
-        }
-        // Simple insertion sort (small N)
-        for (size_t i = 1; i < availableTimings.size(); i++)
-        {
-            for (size_t j = i; j > 0 && totalActiveMs(availableTimings[sortedIndices[j]]) > totalActiveMs(availableTimings[sortedIndices[j - 1]]); j--)
-            {
-                auto tmp = sortedIndices[j];
-                sortedIndices[j] = sortedIndices[j - 1];
-                sortedIndices[j - 1] = tmp;
-            }
-        }
-
-        // Greedy least-loaded assignment
+        ctx.clear();
+        static constexpr uint16_t MAX_NOOP_MS = 200;
+        uint16_t secondIndex = 0;
         for (size_t i = 0; i < availableTimings.size(); i++)
         {
-            const auto *protocol = availableTimings[sortedIndices[i]];
-
-            // Find radio with minimum load
-            size_t bestRadio = 0;
-            for (size_t r = 1; r < radioCtxList.size(); r++)
+            if (i % radioCount == idx)
             {
-                if (radioLoad[r] < radioLoad[bestRadio])
+                const auto &slots = availableTimings[i]->timeSlots;
+                const uint16_t offset = secondIndex * 1000;
+                uint16_t prevEnd = offset;
+
+                // Add main slots using their real timing positions within the second
+                // Insert NOOP entries for any gap before each slot
+                for (const auto &timing : slots)
                 {
-                    bestRadio = r;
+                    const uint16_t slotStart = static_cast<uint16_t>(offset + timing.start);
+                    while (prevEnd < slotStart && !ctx.protocolTimings.full())
+                    {
+                        uint16_t fillEnd = etl::min(static_cast<uint16_t>(prevEnd + MAX_NOOP_MS), slotStart);
+                        ctx.protocolTimings.emplace_back(nullptr, CountryRegulations::Channel::NOOP, prevEnd, fillEnd);
+                        prevEnd = fillEnd;
+                    }
+                    if (!ctx.protocolTimings.full())
+                    {
+                        uint16_t cappedEnd = etl::min(timing.end, static_cast<uint16_t>(1000));
+                        ctx.protocolTimings.emplace_back(availableTimings[i], timing.channel, slotStart, static_cast<uint16_t>(offset + cappedEnd));
+                        prevEnd = offset + cappedEnd;
+                    }
                 }
-            }
 
-            if (!radioCtxList[bestRadio].protocolTimings.full())
-            {
-                radioCtxList[bestRadio].protocolTimings.push_back(protocol);
-                radioLoad[bestRadio] += totalActiveMs(protocol);
+                // Fill any remaining gap to end of this second
+                const uint16_t secondEnd = static_cast<uint16_t>(offset + 1000);
+                while (prevEnd < secondEnd && !ctx.protocolTimings.full())
+                {
+                    uint16_t fillEnd = etl::min(static_cast<uint16_t>(prevEnd + MAX_NOOP_MS), secondEnd);
+                    ctx.protocolTimings.emplace_back(nullptr, CountryRegulations::Channel::NOOP, prevEnd, fillEnd);
+                    prevEnd = fillEnd;
+                }
+
+                ctx.maxTimeMs = secondEnd;
+                secondIndex++;
             }
         }
 
-        // Gap filling: for each radio, find 200ms windows with no active protocol
-        // and fill with protocols from other radios (up to MAX_EXTRA_SLOTS per radio)
-        for (size_t r = 0; r < radioCtxList.size(); r++)
+        // Fill NOOP gaps: prefer same-radio protocols first, then other radios
+        for (auto &entry : ctx.protocolTimings)
         {
-            auto &ctx = radioCtxList[r];
-            if (ctx.protocolTimings.full())
+            if (entry.protocolTimeConfig != nullptr)
             {
                 continue;
             }
-
-            // Check each 200ms window in a second
-            for (uint16_t slotStart = 0; slotStart < 1000; slotStart += CountryRegulations::SLOT_MS)
+            const uint16_t midMs = static_cast<uint16_t>((entry.start + entry.end) / 2);
+            if (!fillNoop(entry, midMs, availableTimings, radioCount, idx, true))
             {
-                // Does this radio already have something active here?
-                bool hasCoverage = false;
-                for (const auto *ts : ctx.protocolTimings)
-                {
-                    if (CountryRegulations::findFittingTiming(slotStart, ts->timeSlots) != nullptr)
-                    {
-                        hasCoverage = true;
-                        break;
-                    }
-                }
-                if (hasCoverage)
-                {
-                    continue;
-                }
-
-                // Find a protocol from another radio that is active in this window
-                for (size_t otherR = 0; otherR < radioCtxList.size(); otherR++)
-                {
-                    if (otherR == r)
-                    {
-                        continue;
-                    }
-                    for (const auto *ts : radioCtxList[otherR].protocolTimings)
-                    {
-                        if (CountryRegulations::findFittingTiming(slotStart, ts->timeSlots) != nullptr)
-                        {
-                            // Check not already assigned to this radio
-                            bool alreadyAssigned = etl::find(ctx.protocolTimings.cbegin(), ctx.protocolTimings.cend(), ts) != ctx.protocolTimings.cend();
-                            if (!alreadyAssigned && !ctx.protocolTimings.full())
-                            {
-                                ctx.protocolTimings.push_back(ts);
-                                goto nextSlot;
-                            }
-                        }
-                    }
-                }
-                nextSlot:;
-
-                if (ctx.protocolTimings.full())
-                {
-                    break;
-                }
+                fillNoop(entry, midMs, availableTimings, radioCount, idx, false);
             }
         }
-    }
 
+        idx++;
+    }
     releaseTasks();
+}
+
+bool RadioTunerRx::fillNoop(RxTiming &entry, uint16_t midMs, etl::span<const CountryRegulations::ProtocolRxTimeSlot *> timings, size_t radioCount, size_t radioIdx, bool sameRadio)
+{
+    for (size_t si = 0; si < timings.size(); si++)
+    {
+        bool isOwnRadio = (si % radioCount == radioIdx);
+        if (isOwnRadio != sameRadio)
+        {
+            continue;
+        }
+        const auto *fitting = CountryRegulations::findFittingTiming(midMs, timings[si]->timeSlots);
+        if (fitting != nullptr)
+        {
+            entry.protocolTimeConfig = timings[si];
+            entry.channel = fitting->channel;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool RadioTunerRx::blockTasks()
@@ -352,8 +283,6 @@ bool RadioTunerRx::blockTasks()
     eventSync.clear(BIT_EVENT_DONE);
     xTaskNotify(taskHandle, TaskState::BLOCK, eSetBits);
 
-    // Expected is 200ms per tick, we wait 10 times as long, much much longer
-    // We 'should' never end up here??
     if (!eventSync.wait(BIT_EVENT_DONE, pdMS_TO_TICKS(CountryRegulations::SLOT_MS * 10)))
     {
         GATAS_WARN("Failed to wait for event sync");
@@ -361,6 +290,7 @@ bool RadioTunerRx::blockTasks()
     }
     return true;
 }
+
 void RadioTunerRx::releaseTasks()
 {
     xTaskNotify(taskHandle, TaskState::UNBLOCK, eSetBits);

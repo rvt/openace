@@ -15,7 +15,7 @@
 
 class TcpClient
 {
-#define TCP_LOG(fmt, ...) GATAS_LOG_IF(GATAS_LOG_TCPCLIENT, "TcpClient: " fmt, ##__VA_ARGS__)
+#define TCP_LOG(fmt, ...) GATAS_LOG_IF(0, fmt, ##__VA_ARGS__)
 
 friend class TcpListener;
 

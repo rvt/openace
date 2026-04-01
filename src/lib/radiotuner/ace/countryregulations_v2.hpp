@@ -14,17 +14,6 @@ public:
     static constexpr uint32_t SLOT_IN_S = 1000 / SLOT_MS;
     static constexpr uint8_t MAX_COMBINED_TIMINGS = 4;
 
-    // enum Zone : uint8_t
-    // {
-    //     ZONE0, // Zone is unknown and no transmission will take place
-    //     ZONE1, // Zone 1: Europe, Africa, Russia, China (30W to 110E, excl. zone 5)
-    //     ZONE2, // Zone 2: North America (west of 30W, north of 10N)
-    //     ZONE3, // Zone 3: New Zealand (east of 160E)
-    //     ZONE4, // Zone 4: Australia (110E to 160E)
-    //     ZONE5, // Zone 5: Israel (34E to 54E and 29.25N to 33.5N
-    //     ZONE6  // Zone 6: South America (west of 30W, south of 10N)
-    // };
-
     struct Zone
     {
         enum enum_type : uint8_t
@@ -56,7 +45,7 @@ public:
         CH00,        // Channel 0 base Frequency
         CH01,        // Channel 1 base Frequency + separation
         CH00_01,     // Random pick channel 0 or 1
-        CH00_01_SEC, //  when second is evem channel 0  when second isodd channel 1
+        CH00_01_SEC, // when second is even channel 0  when second isodd channel 1
         CH24,        // Channel by epoch based on 24 channels (see frequencyByTimestamp)
         CH65         // Channel by epoch based on 64 channels (see frequencyByTimestamp)
     };
@@ -130,16 +119,11 @@ public:
     // Needs further research I did not get reliable reception yet
 
     // Europe
-    static constexpr etl::array<ChannelTiming, 1> NOOP {ChannelTiming{Channel::CH00,         00, 1000, 0}};
-    static constexpr etl::array EU_FLARMT              {ChannelTiming{Channel::CH00,        400,  800, 0}, ChannelTiming{Channel::CH01, 800, 1200, 0}};
-    static constexpr etl::array EU_OGNT                {ChannelTiming{Channel::CH01,        400,  800, 0}, ChannelTiming{Channel::CH00, 800, 1200, 0}};
-    static constexpr etl::array EU_ADSLT               {ChannelTiming{Channel::CH00_01_SEC, 450, 1000, 0}};
-    static constexpr etl::array EU_ADSLO               {ChannelTiming{Channel::CH00,        450, 1000, 0}};
-
-    // static constexpr etl::array EU_ADSLFLARMT          {ChannelTiming{Channel::CH00,    400,  800, 0}, ChannelTiming{Channel::CH01, 800, 1200, 0}};
-    // static constexpr etl::array EU_ADSLOGNT            {ChannelTiming{Channel::CH01,    400,  800, 0}, ChannelTiming{Channel::CH00, 800, 1200, 0}};
-
-    static constexpr etl::array EU_ADSLO_HDRT_R        {ChannelTiming{Channel::CH00,    200, 1000, 0}};
+    static constexpr etl::array<ChannelTiming, 1> NOOP {ChannelTiming{Channel::CH00,      0, 1000, 0}};
+    static constexpr etl::array EU_FLARMT              {ChannelTiming{Channel::CH01,      0,  200, 0}, ChannelTiming{Channel::CH00,        400,  800, 0}, ChannelTiming{Channel::CH01, 800, 1000, 0}};
+    static constexpr etl::array EU_OGNT                {ChannelTiming{Channel::CH00,      0,  200, 0}, ChannelTiming{Channel::CH01,        400,  800, 0}, ChannelTiming{Channel::CH00, 800, 1000, 0}};
+    static constexpr etl::array EU_ADSLM               {ChannelTiming{Channel::CH00_01, 450, 1000, 0}};
+    static constexpr etl::array EU_ADSLO_HDR           {ChannelTiming{Channel::CH00,    200,  600, 0}}; // Set to Max 600ms, so it can be filled by other protocols, I don't expect a lot of traffic here yet
     static constexpr etl::array EU_ADSLO_HDRT_TRAFFIC  {ChannelTiming{Channel::CH00,    450, 1000, 0}};
     static constexpr etl::array EU_ADSLO_HDRT_UPLINK   {ChannelTiming{Channel::CH00,    200,  450, 1}}; // id=1 indicates Uplink for ADSL
     static constexpr etl::array EU_FANETT              {ChannelTiming{Channel::CH00,      0, 1000, 0}};
@@ -148,6 +132,9 @@ public:
     static constexpr etl::array NA_FLARMT              {ChannelTiming{Channel::CH65, 0, 1000, 0}};
     static constexpr etl::array NA_OGNT                {ChannelTiming{Channel::CH65, 0, 1000, 0}};
     static constexpr etl::array NA_ADSL                {ChannelTiming{Channel::CH65, 0, 1000, 0}};
+
+    // static constexpr etl::array EU_ADSLFLARMT          {ChannelTiming{Channel::CH00,    400,  800, 0}, ChannelTiming{Channel::CH01, 800, 1200, 0}};
+    // static constexpr etl::array EU_ADSLOGNT            {ChannelTiming{Channel::CH01,    400,  800, 0}, ChannelTiming{Channel::CH00, 800, 1200, 0}};
 
     static constexpr ProtocolTxTimeSlot NOOP_TX_TIMESLOT{ CountryRegulations::Zone::enum_type::ZONE0, Europe_m,       PROTOCOL_NONE,  etl::span(NOOP), 0, 0, 0, 0, 0, 0};
     static constexpr ProtocolRxTimeSlot NOOP_RX_TIMESLOT{ CountryRegulations::Zone::enum_type::ZONE0, Europe_m,       PROTOCOL_NONE,  etl::span(NOOP)};
@@ -161,10 +148,10 @@ public:
         // ProtocolRxTimeSlot{ CountryRegulations::Zone::ZONE1, Europe,       PROTOCOL_RX_ADSLFLARM,  etl::span(EU_ADSLFLARMT)},
         // Needs further research
 
-        ProtocolRxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,     PROTOCOL_ADSLO_HDR, etl::span(EU_ADSLO_HDRT_R)},
-        ProtocolRxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,       PROTOCOL_ADSL,      etl::span(EU_ADSLT)},
-        ProtocolRxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,       PROTOCOL_OGN,       etl::span(EU_OGNT)},
         ProtocolRxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,       PROTOCOL_FLARM,     etl::span(EU_FLARMT)},
+        ProtocolRxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,     PROTOCOL_ADSLO_HDR, etl::span(EU_ADSLO_HDR)},
+        ProtocolRxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,       PROTOCOL_ADSL,      etl::span(EU_ADSLM)},
+        ProtocolRxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,       PROTOCOL_OGN,       etl::span(EU_OGNT)},
         ProtocolRxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_lora,    PROTOCOL_FANET,     etl::span(EU_FANETT)}
     };
 
@@ -174,7 +161,7 @@ public:
     static constexpr auto protocolTxTimimgs = etl::make_array<const ProtocolTxTimeSlot>(
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT_TRAFFIC), 600, 1400, 600, 1400, 15, 250},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT_UPLINK),  600, 1400, 5000, 6000, 15, 250},
-        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_ADSL,          etl::span(EU_ADSLT),              600, 1400, 5000, 6000, 15, 250},
+        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_ADSL,          etl::span(EU_ADSLM),              600, 1400, 5000, 6000, 15, 250},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_OGN,           etl::span(EU_OGNT),               600, 1400, 5000, 6000, 15, 150},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_FLARM,         etl::span(EU_FLARMT),             600, 1400, 5000, 6000, 15, 150},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_lora,  PROTOCOL_FANET,         etl::span(EU_FANETT),            2000, 3000, 6000, 7000, 15, 000},
@@ -357,6 +344,10 @@ public:
      */
     static uint32_t frequencyByTimestamp(uint32_t timestamp, uint32_t nch);
 
+    /**
+     * Tests if a given timing (in ms) falls within the active window defined by a ChannelTiming.
+     * The timing is normalized to a 0–999 ms range, and the function correctly handles windows that wrap around the end of the second (e.g. 800–200 ms).
+     */
     static bool isInTiming(uint32_t ms, const ChannelTiming &t)
     {
         // ms is in range 0..999
@@ -381,7 +372,9 @@ public:
         for (const auto &t : timings)
         {
             if (isInTiming(ms, t))
+            {
                 return true;
+            }
         }
         return false;
     }
@@ -391,7 +384,9 @@ public:
         for (const auto &t : timings)
         {
             if (isInTiming(ms, t))
+            {
                 return &t;
+            }
         }
         return nullptr;
     }

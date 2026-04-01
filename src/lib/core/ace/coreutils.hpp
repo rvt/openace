@@ -219,6 +219,11 @@ public:
         return secondsSinceEpoch() % 86'400;
     }
 
+    static uint32_t msSinceMidnight()
+    {
+        return msSinceEpoch() % 86'400'000;
+    }
+
     static tm localTime()
     {
         return localTime(msSinceEpoch());

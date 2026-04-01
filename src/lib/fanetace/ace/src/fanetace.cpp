@@ -15,7 +15,7 @@
 
 void FanetAce::start()
 {
-    xTaskCreate(FanetAceTask, FanetAce::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
+    xTaskCreate(fanetAceTaskTrampoline, FanetAce::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 2, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -30,23 +30,31 @@ GATAS::PostConstruct FanetAce::postConstruct()
     return GATAS::PostConstruct::OK;
 }
 
-void FanetAce::FanetAceTask(void *arg)
+void FanetAce::fanetAceTaskTrampoline(void *arg) {
+    FanetAce *fanetAce = static_cast<FanetAce *>(arg);
+    fanetAce->fanetAceTask(arg);
+}
+
+void FanetAce::fanetAceTask(void *arg)
 {
     (void)arg;
-    FanetAce *fanetAce = static_cast<FanetAce *>(arg);
     uint32_t waitUntil = 100;
     while (true)
     {
 
-        auto delay = (waitUntil - CoreUtils::timeMs32()) + 1;
+        int32_t delay = static_cast<int32_t>(waitUntil - CoreUtils::timeMs32());
+        if (delay < 1)
+        {
+            delay = 1;
+        }
         // printf("Delay %ld\n", delay);
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(delay)))
+        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(static_cast<uint32_t>(delay))))
         {
             (void)notifyValue;
         }
-        if (auto guard = SemaphoreGuard(100, fanetAce->mutex))
+        if (auto guard = SemaphoreGuard(100, mutex))
         {
-            waitUntil = fanetAce->protocol.handleTx();
+            waitUntil = protocol.handleTx();
         }
     }
 }
