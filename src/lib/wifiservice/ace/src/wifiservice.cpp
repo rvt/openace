@@ -1,12 +1,7 @@
-/**
- * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
 #include "../wifiservice.hpp"
 #include "lwip/apps/mdns.h"
 #include "ace/coreutils.hpp"
+#include "ace/lwiplock.hpp"
 
 #include "pico/lwip_freertos.h"
 #include "pico/stdlib.h"
@@ -455,6 +450,7 @@ WifiService::IpGw WifiService::getInterfaceInfo()
 {
 
     // Using cyw43_state.netif won't work for AP mode
+    LwipLock lock;
     struct netif *n = netif_list;
     while (n != NULL)
     {

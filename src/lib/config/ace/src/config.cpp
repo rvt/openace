@@ -378,7 +378,10 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
                 // ADSLM implies ADSLO_HDR
                 if (dataSource == GATAS::DataSource::ADSLM)
                 {
-                    protocols.push_back(GATAS::DataSource::ADSLO_HDR);
+                    if (!protocols.full())
+                    {
+                        protocols.push_back(GATAS::DataSource::ADSLO_HDR);
+                    }
                 }
             }
         }

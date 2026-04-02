@@ -25,6 +25,10 @@ const etl::vector<GATAS::Modulename, 7> CoreUtils::parsePath(const etl::string_v
     Token token;
     while ((token = etl::get_token(totalPath, "/.?&", token, true)))
     {
+        if (tokens.full())
+        {
+            break;
+        }
         tokens.emplace_back(token.value());
     }
     return tokens;

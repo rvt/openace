@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stopped storing a 'GATAS::*Msg' in local objects, always copy the contents as a rule
 - Update list of possible Aircraft types in UI
 - Update DDB
-- Better represent datasource time stats
+- Better represent RX Schedule with multiple protocols
 
 ### Deprecated
 
@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Regression on FANET TX
+- Possible zero or negative values in FreeRTOS delays
 - Fixed Incorrectly handle of device error on transceiver
 
 ### Security

@@ -28,6 +28,10 @@ void Dump1090Client::start()
 
 void Dump1090Client::processNewSentence(etl::span<uint8_t> data)
 {
+    if (data.size() < 8)
+    {
+        return;
+    }
     auto sentence = std::string_view(reinterpret_cast<const char*>(data.data()), data.size()-1);
 
     constexpr uint8_t ADSBDATALENGTH = 28;

@@ -111,7 +111,7 @@ public:
     static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSL          { 4, GATAS::DataSource::ADSLM,      true,  25, 16, 48, 8, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65}};                   // ADSL on normal 0xA9, 0x6A => 0x18 26Byte first byt elength = 25Byte
     static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSLO_HDR     { 5, GATAS::DataSource::ADSLO_HDR, false,   0, 16, 16, 0, {0x2D, 0xD4}};                                           // ADSL on O band HDR
     static constexpr GATAS::LinkLayerConfig PROTOCOL_PAW           { 6, GATAS::DataSource::PAW,        true,   0, 16, 64, 0, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}};       // Pilot Aware (ogn tracker calls this LDR???)
-    static constexpr GATAS::LinkLayerConfig PROTOCOL_FANET         { 7, GATAS::DataSource::FANET,     false, 200, 12,  1, 0, {0xF1}};                                                 // FANET
+    static constexpr GATAS::LinkLayerConfig PROTOCOL_FANET         { 7, GATAS::DataSource::FANET,     false, 200, 12,  8, 0, {0xF1}};                                                 // FANET
 
     // Needs further research I did not get reliable reception yet
     static constexpr GATAS::LinkLayerConfig PROTOCOL_RX_ADSLFLARM  { 8, GATAS::DataSource::ADSLFLARM,  true,  29, 16, 16, 0, {0x96, 0xA5}};     // works to receive FLARM                                     // ADSL/FLARM RX Sync

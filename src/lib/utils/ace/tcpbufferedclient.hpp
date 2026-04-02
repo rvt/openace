@@ -33,7 +33,7 @@ public:
         {
             if (delimiters.contains(c))
             {
-                if (receiveBufferPointer > 0)
+                if (receiveBufferPointer > 0 && receiveBufferPointer < receiveBuffer.size())
                 {
                     receiveBuffer[receiveBufferPointer++] = 0;
                     lineCallback({receiveBuffer.data(), receiveBufferPointer});

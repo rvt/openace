@@ -280,6 +280,11 @@ void ADSLAce::adsl_receivedUplinkTraffic(const ADSL::Header &header, etl::span<c
         // }
         auto epochMs = CoreUtils::msSinceEpoch();
         auto msElapsed = etl::max(static_cast<uint32_t>(0), static_cast<uint32_t>(epochMs - tp.timestampRestored(epochMs)));
+
+        if (positions.full())
+        {
+            break;
+        }
         positions.push_back(GATAS::AircraftPositionInfo{
             CoreUtils::timeUs32() - (msElapsed * 1000),
             "",
