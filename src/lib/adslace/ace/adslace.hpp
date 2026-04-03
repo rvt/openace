@@ -44,6 +44,7 @@ class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<A
         uint32_t receivedAircraftPositions = 0;
         uint32_t transmittedAircraftPositions = 0;
         uint32_t uplinksPacketsSend = 0;
+        uint32_t uplinksPacketsReceived = 0;
         uint32_t fecErr = 0;
         uint32_t outOfDistance = 0;
         uint32_t encrypted = 0;

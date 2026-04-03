@@ -9,7 +9,6 @@
 #include "ace/coreutils.hpp"
 #include "ace/messages.hpp"
 #include "ace/messages.hpp"
-#include "ace/spinlockguard.hpp"
 
 #include "etl/map.h"
 #include "etl/message_bus.h"

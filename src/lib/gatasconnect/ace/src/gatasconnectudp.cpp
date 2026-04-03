@@ -107,16 +107,15 @@ void GatasConnect::getConfig(const Configuration &config)
     pinCode = (pinCode == 0) ? 0 : etl::clamp(pinCode, static_cast<uint32_t>(1000), static_cast<uint32_t>(999999));
 
     auto gatasConfig = config.gaTasConfig();
-    if (SPINLOCK_GUARD(spinLock))
-    {
-        localConfigurationUpdateCnt = LOCALCONFIGURATIONCHANGE_HOLD_BACK;
-        gatasServerStr = config.strValueByPath("gatas.vantwisk.nl", NAME, "gatasServer/ip");
-        icaoAddress = gatasConfig.conspicuity.icaoAddress;
-        allIcaoAddresses = gatasConfig.allIcaoAddresses;
-        groundStation = gatasConfig.conspicuity.groundStation;
-        gatasId = config.internalStore()->gatasId;
-        gatasServerIPAddress = IPADDR4_INIT(IPADDR_NONE);
-    }
+
+    auto guard = SpinlockGuard{spinLock};
+    localConfigurationUpdateCnt = LOCALCONFIGURATIONCHANGE_HOLD_BACK;
+    gatasServerStr = config.strValueByPath("gatas.vantwisk.nl", NAME, "gatasServer/ip");
+    icaoAddress = gatasConfig.conspicuity.icaoAddress;
+    allIcaoAddresses = gatasConfig.allIcaoAddresses;
+    groundStation = gatasConfig.conspicuity.groundStation;
+    gatasId = config.internalStore()->gatasId;
+    gatasServerIPAddress = IPADDR4_INIT(IPADDR_NONE);
 }
 
 void GatasConnect::resolveGatasServerCallback(const char *name, const ip_addr_t *ipaddr, void *arg)
@@ -225,32 +224,53 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     etl::array<uint8_t, OWN_MAX + MAX_MSG + COBS_EXTRA_BYTES * 2> perCobsBuffer;
     etl::bit_stream_writer writer(perCobsBuffer.data(), perCobsBuffer.size(), etl::endian::big);
 
+    // Snapshot shared state under lock, then do encoding outside the critical section.
+    bool groundStationSnap = false;
+    bool hasGpsFixSnap = false;
+    uint64_t lastRadioTrafficUsSnap = 0;
+    uint64_t gatasIdSnap = 0;
+    uint32_t icaoAddressSnap = 0;
+    uint32_t gatasIpSnap = 0;
+    uint32_t pinCodeSnap = 0;
+    GATAS::OwnshipPositionInfo ownshipSnap{};
+    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddressesSnap;
+
+    if (auto guard = SpinlockGuard{spinLock})
+    {
+        groundStationSnap = groundStation;
+        hasGpsFixSnap = hasGpsFix;
+        lastRadioTrafficUsSnap = lastRadioTrafficUs;
+        gatasIdSnap = gatasId;
+        icaoAddressSnap = icaoAddress;
+        gatasIpSnap = gatasIp;
+        pinCodeSnap = pinCode;
+        ownshipSnap = ownshipPosition;
+        allIcaoAddressesSnap = allIcaoAddresses;
+    }
+
     // Receive traffic for at least 60 seconds more
     // This is here to reduce pressure on the GatasServer when there is no known traffic
     // that can benefit from GATAS
     constexpr uint64_t RADIO_TRAFFIC_WINDOW_US = 60'000'000ULL;
-    const bool hasRecentRadioTraffic = (CoreUtils::timeUs64() - lastRadioTrafficUs) < RADIO_TRAFFIC_WINDOW_US;
+    const bool hasRecentRadioTraffic = (CoreUtils::timeUs64() - lastRadioTrafficUsSnap) < RADIO_TRAFFIC_WINDOW_US;
 
-    if (SPINLOCK_GUARD(spinLock))
+    // In groundstation mode we require that we only fetch traffic when we see actual traffic to reduce load on the gatasServer
+    // Otherwhise the system would keep fetching traffic for no reason.
+    if ((hasRecentRadioTraffic || !groundStationSnap) && hasGpsFixSnap)
     {
-        // In groundstation mode we require that we only fetch traffic when we see actual traffic to reduce load on the gatasServer
-        // Otherwhise the system would keep fetching traffic for no reason.
-        if ((hasRecentRadioTraffic || !groundStation) && hasGpsFix)
-        {
-            // --- Ownship position: requests surrounding traffic data from server
-            writer.restart();
-            BinaryMessages::serializeOwnshipPositionV1(writer, ownshipPosition);
-            auto size = encodeCOBS(perCobsBuffer.data(), ownshipSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
-            position += size;
-        }
-
-        // --- Aircraft configuration (always send)
+        // --- Ownship position: requests surrounding traffic data from server
         writer.restart();
-        // > 25 Byte
-        BinaryMessages::serializeAircraftConfigurationV2(writer, gatasId, icaoAddress, allIcaoAddresses, gatasIp, pinCode);
-        auto size = encodeCOBS(perCobsBuffer.data(), configSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
+        BinaryMessages::serializeOwnshipPositionV1(writer, ownshipSnap);
+        auto size = encodeCOBS(perCobsBuffer.data(), ownshipSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
         position += size;
     }
+
+    // --- Aircraft configuration (always send)
+    writer.restart();
+    // > 25 Byte
+    BinaryMessages::serializeAircraftConfigurationV2(writer, gatasIdSnap, icaoAddressSnap, allIcaoAddressesSnap, gatasIpSnap, pinCodeSnap);
+    auto size = encodeCOBS(perCobsBuffer.data(), configSize, cobsPayload.data() + position, cobsPayload.size() - position, true);
+    position += size;
 
     // Add android hotspot fix when Android would not route packages because they where to small
     if (ANDROIDHOTSPOT_FIX)

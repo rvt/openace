@@ -49,7 +49,6 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     SemaphoreHandle_t mutex;
     uint32_t gateWayClient;
     bool wifiConnected;
-    int spinLock;
 
     etl::list<GATAS::Config::IpPort, GATAS_GDL90OVERUDP_MAX_CUSTOM_CLIENTS> customClients;
     etl::set<uint32_t, GATAS_MAXIMUM_TCP_CLIENTS> connectedClients;
@@ -78,8 +77,7 @@ public:
                                                                       taskHandle(nullptr),
                                                                       mutex(nullptr),
                                                                       gateWayClient{0},
-                                                                      wifiConnected(false),
-                                                                      spinLock(0) {
+                                                                      wifiConnected(false) {
         getConfigurationNoMutex(config);
 }
 

@@ -36,6 +36,7 @@ void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "{";
     stream << "\"_dummy\": 0";
     stream << ",\"zone\":\"ZONE" << static_cast<uint8_t>(currentZone) << "\"";
+    stream << ",\"taskActivity:k\":" << statistics.taskActivity;
     stream << "}";
 }
 
@@ -94,7 +95,7 @@ void RadioTunerTx::radioTuneTask()
                         {
                             auto frequency = CountryRegulations::getFrequency(timing[0].rfConfig, timeSlot->channel);
 
-                            // GATAS_INFO("TX: DS: %s Freq:%lu radio:%d id:%u ms:%u", GATAS::toString(ds.dataSource), frequency, dataSourceToRadio[dsId], timeSlot->id, msNow);
+//                            GATAS_INFO("TX: DS: %s Freq:%lu radio:%d id:%u ms:%u", GATAS::toString(ds.dataSource), frequency, dataSourceToRadio[dsId], timeSlot->id, msNow);
                             GATAS_MEASURE("Request TX", 2000);
                             getBus().receive(
                                 GATAS::RadioTxPositionRequestMsg{
@@ -104,6 +105,7 @@ void RadioTunerTx::radioTuneTask()
                                         frequency,
                                         timeSlot->id},
                                     dataSourceToRadio[dsId]});
+                            statistics.taskActivity += 1;
 
 #if GATAS_DEBUG==1
                             isAirborne = true;

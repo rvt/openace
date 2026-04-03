@@ -7,7 +7,6 @@
 #include "ace/coreutils.hpp"
 #include "ace/cobs.hpp"
 #include "ace/binarymessages.hpp"
-#include "ace/spinlockguard.hpp"
 #include "gatas_gatt.h"
 
 #include "ble/gatt-service/battery_service_server.h"
@@ -303,12 +302,12 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
 
             // clang-format off
             // printf("ATT_EVENT_MTU_EXCHANGE_COMPLETE Handle:%d MTU:%d\n", att_event_mtu_exchange_complete_get_handle(packet), att_event_mtu_exchange_complete_get_MTU(packet));
-            Bluetooth::withHandle(att_event_mtu_exchange_complete_get_handle(packet), 
+            Bluetooth::withHandle(att_event_mtu_exchange_complete_get_handle(packet),
                 etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
                 {
                     // We remove minus 16 because of additional header data that needs to fit
                     // This is different from what I was reading in the documentation, but this worked for us.
-                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16; 
+                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16;
                 })
             );
             // clang-format on
@@ -373,7 +372,7 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     case ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_CLIENT_CONFIGURATION_HANDLE:
     {
         // clang-format off
-        Bluetooth::withHandle(con_handle, 
+        Bluetooth::withHandle(con_handle,
             etl::delegate<void(BtContext &)>::create([buffer](BtContext &ctx)
             {
                 ctx.readyState |= little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION ? Bluetooth::CONN_READY : 0b000;

@@ -80,6 +80,15 @@ GATAS::PostConstruct Sx1262::postConstruct()
     return GATAS::PostConstruct::OK;
 }
 
+void Sx1262::enterDisabledState(uint8_t radioNo, const Configuration &config)
+{
+    auto pinMap = config.pinMap(NAMES[radioNo]);
+    auto csPin = pinMap.at(GATAS::PinType::CS);
+    gpio_init(csPin);
+    gpio_set_dir(csPin, GPIO_OUT);
+    gpio_put(csPin, 1);
+}
+
 void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
@@ -464,7 +473,7 @@ void Sx1262::receiveGFSKPacket()
                 };
 
                 sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
-                if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(10)) != pdPASS)
+                if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(30)) != pdPASS)
                 {
                     getGlobalPool().release(rxFrame.frame);
                     statistics.queueMissedErr += 1;
@@ -587,6 +596,17 @@ sx126x_irq_mask_t Sx1262::getIrqStatus()
     return mask;
 }
 
+bool Sx1262::isTxDone()
+{
+    const sx126x_irq_mask_t mask = getIrqStatus();
+    if (mask & SX126X_IRQ_TX_DONE)
+    {
+        sx126x_clear_irq_status(this, SX126X_IRQ_TX_DONE);
+        return true;
+    }
+    return false;
+}
+
 void Sx1262::sendPacket(const TxPacket &txPacket)
 {
     // GATAS_INFO("Radio %d TX %s timeMs:%d", radioNo, GATAS::toString(command.txPacket.radioParameters.config->dataSource), CoreUtils::msInSecond());
@@ -629,7 +649,6 @@ void Sx1262::sx1262Task(void *arg)
     (void)arg;
     SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
     uint32_t txExpiration = 0;
-    bool hasNewRXConfig = false;
     bool doListen = false;
     while (true)
     {
@@ -638,7 +657,9 @@ void Sx1262::sx1262Task(void *arg)
             // When a new configuration mark it with a boolean as it needs to be processed later
             if (notifyValue & TaskState::HANDLE_RX_CONFIG)
             {
-                hasNewRXConfig = true;
+                rxRadioParameters = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), newRxRadioParameters);
+                // GATAS_INFO("%8ld New Config ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(rxRadioParameters.config->dataSource()));
+                doListen = true;
             }
 
             // After TX, go back to RX
@@ -701,15 +722,6 @@ void Sx1262::sx1262Task(void *arg)
                     statistics.transmittedPackets += 1;
                     continue; // Need to wait for TX done
                 }
-            }
-
-            // Finally, if only a new configuration was set, reconfigure the tranceiver
-            if (hasNewRXConfig)
-            {
-                // GATAS_INFO("%8ld New Config ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(rxRadioParameters.config->dataSource()));
-                rxRadioParameters = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), newRxRadioParameters);
-                hasNewRXConfig = false;
-                doListen = true;
             }
 
             // When set, instruct to start listening again

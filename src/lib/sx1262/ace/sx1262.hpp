@@ -242,6 +242,7 @@ public:
     void sendLORAPacket(const GATAS::RadioParameters &parameters, const uint8_t *data, uint8_t length);
     void configureSx1262(const GATAS::RadioParameters &newParameters, uint8_t txPayloadLength);
     sx126x_irq_mask_t getIrqStatus();
+    bool isTxDone();
 
     void listen();
     void standBy();
@@ -254,4 +255,9 @@ public:
     void sendPacket(const TxPacket &txpacket);
 
     void waitBusy(uint16_t minimumDelay = 0) const;
+
+    /**
+     * When module is disabled, this static function can be called to ensure the CS pin is not floating and the device is in sleep mode.
+     */
+    static void enterDisabledState(uint8_t radioNo, const Configuration &config);
 };

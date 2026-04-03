@@ -26,7 +26,7 @@ void GDLoverUDP::getConfiguration(const Configuration &config)
 
 void GDLoverUDP::getConfigurationNoMutex(const Configuration &config)
 {
-    SPINLOCK_GUARD(spinLock);
+    auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()};
     udpPorts.clear();
     customClients.clear();
 
@@ -69,7 +69,6 @@ GATAS::PostConstruct GDLoverUDP::postConstruct()
     {
         return GATAS::PostConstruct::NETWORK_ERROR;
     }
-    spinLock = SpinlockGuard::claim();
 
     // https://www.foreflight.com/connect/spec/
     udp_bind(foreFlightPCB, IP_ADDR_ANY, FOREFLIGHT_UDP_PORT);
@@ -101,7 +100,7 @@ void GDLoverUDP::foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_a
     that->statistics.foreFlightBroadcasts += 1;
 
     // When this FF client has been detected already, then ignore
-    if (SPINLOCK_GUARD(that->spinLock))
+    if (auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()})
     {
         if (that->connectedClients.contains(ip4_addr_get_u32(ip_2_ip4(remoteAddr))) || that->connectedClients.full())
         {
@@ -143,8 +142,7 @@ void GDLoverUDP::foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_a
         return;
     }
 
-    SPINLOCK_GUARD(that->spinLock);
-
+    auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()};
     auto portExists = that->udpPorts.contains(static_cast<uint16_t>(outPort));
     // Only add this new client if we have space for a new port
     // or the existing ports exists and there is room for the address
@@ -184,7 +182,7 @@ void GDLoverUDP::on_receive_unknown(const etl::imessage &msg)
 
 void GDLoverUDP::on_receive(const GATAS::AccessPointClientsMsg &msg)
 {
-    connectedClients = SpinlockGuard::copyWithLock(spinLock, msg.msg);
+    connectedClients = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.msg);
 }
 
 void GDLoverUDP::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -233,7 +231,7 @@ void GDLoverUDP::transmitBuffer()
     }
 
     // Calculate how many pbufs 
-    auto [lconnectedClients, ludpPorts] = SpinlockGuard::copyWithLock(spinLock, connectedClients, udpPorts);
+    auto [lconnectedClients, ludpPorts] = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), connectedClients, udpPorts);
 
     uint8_t totalpBufs = lconnectedClients.size() * ludpPorts.size() + gateWayClient ? ludpPorts.size() : 0;
     for (const auto &client : customClients)

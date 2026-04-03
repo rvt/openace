@@ -158,7 +158,7 @@ etl::string_view DataPort::getPFLAAAircraftCategory(const GATAS::AircraftPositio
 {
     // clang-format off
     switch (position.aircraftType) {
-        case GATAS::AircraftCategory::GLIDER: return "1"; 
+        case GATAS::AircraftCategory::GLIDER: return "1";
         case GATAS::AircraftCategory::ROTORCRAFT:
         case GATAS::AircraftCategory::GYROCOPTER: return "3";
         case GATAS::AircraftCategory::SKY_DIVER: return "4";
@@ -181,7 +181,7 @@ etl::string_view DataPort::getPFLAAAircraftCategory(const GATAS::AircraftPositio
         case GATAS::AircraftCategory::LINE_OBSTACLE:
         case GATAS::AircraftCategory::CLUSTER_OBSTACLE: return "F";
         case GATAS::AircraftCategory::SURFACE_EMERGENCY_VEHICLE:
-        case GATAS::AircraftCategory::SURFACE_VEHICLE: 
+        case GATAS::AircraftCategory::SURFACE_VEHICLE:
         default: return "A"; // reserved
     }
     // clang-format on

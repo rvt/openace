@@ -157,7 +157,9 @@ configRUN_TIME_COUNTER_TYPE getRuntimeCounterValue();
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY    16
 
 /* RP2xxx specific */
+// SDK sync primitives are FreeRTOS‑aware
 #define configSUPPORT_PICO_SYNC_INTEROP         1
+// SDK timing calls (sleep_ms, absolute_time, alarm pools, etc.) are FreeRTOS‑aware
 #define configSUPPORT_PICO_TIME_INTEROP         1
 
 #include <assert.h>

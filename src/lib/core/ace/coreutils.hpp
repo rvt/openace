@@ -17,7 +17,7 @@ class CoreUtils
 
     inline static uint64_t CoreUtils_offsetTimeToAbsolute = 0;
     inline static uint32_t CoreUtils_timeUs32PpsOffset = 0;
-    inline static int spinLock;
+    inline static spin_lock_t *spinLock;
 
 public:
     static void init()
@@ -25,7 +25,7 @@ public:
         spinLock = SpinlockGuard::claim();
     }
 
-    __force_inline static int sharedSpinLock()
+    __force_inline static spin_lock_t * sharedSpinLock()
     {
         return spinLock;
     }

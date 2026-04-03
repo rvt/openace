@@ -48,10 +48,7 @@ void FanetAce::fanetAceTask(void *arg)
             delay = 1;
         }
         // printf("Delay %ld\n", delay);
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(static_cast<uint32_t>(delay))))
-        {
-            (void)notifyValue;
-        }
+        ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(static_cast<uint32_t>(delay)));
         if (auto guard = SemaphoreGuard(100, mutex))
         {
             waitUntil = protocol.handleTx();

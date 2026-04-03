@@ -33,6 +33,7 @@ void ADSLAce::getData(etl::string_stream &stream, const etl::string_view path) c
     stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
     stream << ",\"uplinksPacketsSend:k\":" << statistics.uplinksPacketsSend;
+    stream << ",\"uplinksPacketsReceived:k\":" << statistics.uplinksPacketsReceived;
     stream << ",\"fec:err\":" << statistics.fecErr;
     stream << ",\"outOfDistance\":" << statistics.outOfDistance;
     stream << ",\"encrypted\":" << statistics.encrypted;
@@ -264,7 +265,7 @@ void ADSLAce::adsl_receivedUplinkTraffic(const ADSL::Header &header, etl::span<c
     (void)header;
     auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
     etl::vector<GATAS::AircraftPositionInfo, ADSL::Protocol::MAX_UPLINK_TARGETS> positions;
-
+    statistics.uplinksPacketsReceived += 1;
     for (const auto &entry : entries)
     {
         const auto &tp = entry.payload();

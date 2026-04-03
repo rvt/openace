@@ -120,10 +120,10 @@ public:
 
     // Europe
     static constexpr etl::array<ChannelTiming, 1> NOOP {ChannelTiming{Channel::CH00,      0, 1000, 0}};
-    static constexpr etl::array EU_FLARMT              {ChannelTiming{Channel::CH01,      0,  200, 0}, ChannelTiming{Channel::CH00,        400,  800, 0}, ChannelTiming{Channel::CH01, 800, 1000, 0}};
-    static constexpr etl::array EU_OGNT                {ChannelTiming{Channel::CH00,      0,  200, 0}, ChannelTiming{Channel::CH01,        400,  800, 0}, ChannelTiming{Channel::CH00, 800, 1000, 0}};
-    static constexpr etl::array EU_ADSLM               {ChannelTiming{Channel::CH00_01, 450, 1000, 0}};
-    static constexpr etl::array EU_ADSLO_HDR           {ChannelTiming{Channel::CH00,    200,  600, 0}}; // Set to Max 600ms, so it can be filled by other protocols, I don't expect a lot of traffic here yet
+    static constexpr etl::array EU_FLARMT              {ChannelTiming{Channel::CH01,      0,  200, 0}, ChannelTiming{Channel::CH00, 400,  800, 0}, ChannelTiming{Channel::CH01, 800, 1000, 0}};
+    static constexpr etl::array EU_OGNT                {ChannelTiming{Channel::CH00,      0,  200, 0}, ChannelTiming{Channel::CH01, 400,  800, 0}, ChannelTiming{Channel::CH00, 800, 1000, 0}};
+    static constexpr etl::array EU_ADSLM               {ChannelTiming{Channel::CH00,    450,  800, 0}, ChannelTiming{Channel::CH01, 800, 1000, 0}};
+    static constexpr etl::array EU_ADSLO_HDR           {ChannelTiming{Channel::CH00,    200, 1000, 0}}; 
     static constexpr etl::array EU_ADSLO_HDRT_TRAFFIC  {ChannelTiming{Channel::CH00,    450, 1000, 0}};
     static constexpr etl::array EU_ADSLO_HDRT_UPLINK   {ChannelTiming{Channel::CH00,    200,  450, 1}}; // id=1 indicates Uplink for ADSL
     static constexpr etl::array EU_FANETT              {ChannelTiming{Channel::CH00,      0, 1000, 0}};

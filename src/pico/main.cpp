@@ -124,8 +124,19 @@ static uint8_t GpsDecoder_Mem[sizeof(GpsDecoder)];
 static uint8_t GPS_Mem[etl::max(sizeof(UbloxM8N), sizeof(L76B))];
 static uint8_t DataPort_Mem[sizeof(DataPort)];
 
-
 GATAS::GlobalPoolConfiguration pool;
+
+void disabled(etl::string_view name, Configuration &config)
+{
+    // clang-format off
+    if (name == Sx1262::NAMES[0]) {
+        Sx1262::enterDisabledState(0, config);
+    }
+    if (name == Sx1262::NAMES[1]) {
+        Sx1262::enterDisabledState(1, config);
+    }
+    // clang-format on
+}
 
 BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configuration &config)
 {
@@ -245,6 +256,7 @@ static void load(const etl::string_view str, etl::imessage_bus &bus, Configurati
     if (!(config.isModuleEnabled(str) || force))
     {
         printf("disabled ");
+        disabled(str, config);
         return;
     }
 
