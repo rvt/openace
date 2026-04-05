@@ -37,6 +37,40 @@ void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "\"_dummy\": 0";
     stream << ",\"zone\":\"ZONE" << static_cast<uint8_t>(currentZone) << "\"";
     stream << ",\"taskActivity:k\":" << statistics.taskActivity;
+
+    stream << ",\"schedule:rtx\":[";
+    bool firstDs = true;
+    for (const auto &ds : dataSourceTxEvents)
+    {
+        if (!firstDs)
+        {
+            stream << ",";
+        }
+        firstDs = false;
+        const char *dsName = GATAS::toString(ds.slot->radioConfig.dataSource());
+
+#if GATAS_DEBUG == 1
+        uint16_t minT = ds.slot->txMinTime;
+        uint16_t maxT = ds.slot->txMaxTime;
+#else
+        uint16_t minT = isAirborne ? ds.slot->txMinTime : ds.slot->txStaticMinTime;
+        uint16_t maxT = isAirborne ? ds.slot->txMaxTime : ds.slot->txStaticMaxTime;
+#endif
+        stream << "{\"ds\":\"" << dsName << "\",\"min\":" << minT << ",\"max\":" << maxT << ",\"slots\":[";
+        bool firstSlot = true;
+        for (const auto &ts : ds.slot->timeSlots)
+        {
+            if (!firstSlot)
+            {
+                stream << ",";
+            }
+            firstSlot = false;
+            stream << "{\"s\":" << ts.start << ",\"e\":" << ts.end << ",\"ch\":" << static_cast<uint8_t>(ts.channel) << "}";
+        }
+        stream << "]}";
+    }
+    stream << "]";
+
     stream << "}";
 }
 
@@ -70,95 +104,51 @@ void RadioTunerTx::radioTuneTask()
 
         if (!taskBlock)
         {
-            uint32_t currentTime = CoreUtils::timeUs32();
-            for (auto &&ds : dataSources)
+            for (auto &&ds : dataSourceTxEvents)
             {
-                if (CoreUtils::isUsReached(ds.atTime))
+                auto currentTime = CoreUtils::timeUs32();
+                if (CoreUtils::isUsReached(ds.atTime, currentTime))
                 {
-                    const auto timing = CountryRegulations::getProtocolTxTimings(currentZone, ds.dataSource);
-                    if (!timing.empty())
+                    auto channelTiming = CountryRegulations::findFittingTiming(currentTime, ds.slot->timeSlots);
+                    if (channelTiming == nullptr)
                     {
-                        auto dsId = static_cast<uint8_t>(ds.dataSource);
+                        continue;
+                    }
 
-                        etl::vector<CountryRegulations::ChannelTiming, MAX_COMBINED_TIMINGS> combinedSlots{};
-                        for (const auto &entry : timing)
-                        {
-                            if (entry.timeSlots.size() <= combinedSlots.available())
-                            {
-                                combinedSlots.insert(combinedSlots.end(), entry.timeSlots.begin(), entry.timeSlots.end());
-                            }
-                        }
-                        auto msNow = CoreUtils::msInSecond();
-                        auto timeSlot = CountryRegulations::findFittingTiming(msNow, combinedSlots);
-
-                        if (timeSlot != nullptr)
-                        {
-                            auto frequency = CountryRegulations::getFrequency(timing[0].rfConfig, timeSlot->channel);
-
-//                            GATAS_INFO("TX: DS: %s Freq:%lu radio:%d id:%u ms:%u", GATAS::toString(ds.dataSource), frequency, dataSourceToRadio[dsId], timeSlot->id, msNow);
-                            GATAS_MEASURE("Request TX", 2000);
-                            getBus().receive(
-                                GATAS::RadioTxPositionRequestMsg{
-                                    GATAS::RadioParameters{
-                                        &timing[0].radioConfig,
-                                        &timing[0].rfConfig,
-                                        frequency,
-                                        timeSlot->id},
-                                    dataSourceToRadio[dsId]});
-                            statistics.taskActivity += 1;
-
-#if GATAS_DEBUG==1
-                            isAirborne = true;
+                    auto frequencyHz = CountryRegulations::getFrequency(ds.slot->rfConfig, channelTiming->channel);
+                    // GATAS_INFO("TX: DS: %s Freq:%lu radio:%d id:%u ms:%lu", GATAS::toString(ds.slot->radioConfig.dataSource()), frequencyHz, dataSourceToRadio[static_cast<uint8_t>(ds.slot->radioConfig.dataSource())], channelTiming->id, currentTime % 1000);
+                    GATAS_MEASURE("Request TX", 2000);
+                    getBus().receive(
+                        GATAS::RadioTxPositionRequestMsg{
+                            GATAS::RadioParameters{
+                                &ds.slot->radioConfig,
+                                &ds.slot->rfConfig,
+                                frequencyHz,
+                                channelTiming->id},
+                            dataSourceToRadio[static_cast<uint8_t>(ds.slot->radioConfig.dataSource())]});
+                    statistics.taskActivity += 1;
+#if GATAS_DEBUG == 1
+                    auto delayMs = CountryRegulations::nextRandomTxTime(false, *ds.slot); 
+#else
+                    auto delayMs = CountryRegulations::nextRandomTxTime(!isAirborne, *ds.slot);
 #endif
-
-                            // Schedule next TX: airborne = fast ping, ground station = slower to reduce airtime
-                            auto delayMs = CountryRegulations::nextRandomTxTime(!isAirborne, timing);
-                            currentTime = CoreUtils::timeUs32();
-                            if (delayMs != UINT32_MAX)
-                            {
-                                ds.atTime = currentTime + delayMs * 1000;
-                            }
-                            else
-                            {
-                                GATAS_WARN("Warning: Next random no timing found %s", GATAS::toString(ds.dataSource));
-                                ds.atTime = currentTime + 950'000;
-                            }
-                        }
-                        else
-                        {
-                            // Missed the TX window — find the nearest upcoming slot and retry then
-                            uint16_t bestWait = 1000; // worst case: wrap to next second
-                            for (const auto &slot : combinedSlots)
-                            {
-                                // Slot starts later this second
-                                if (slot.start > msNow && (slot.start - msNow) < bestWait)
-                                {
-                                    bestWait = slot.start - msNow;
-                                }
-                                // Slot wraps into next second (start > 1000, normalize)
-                                uint16_t wrappedStart = (slot.start >= 1000) ? (slot.start - 1000) : slot.start;
-                                uint16_t waitWrap = (1000 - msNow) + wrappedStart;
-                                if (waitWrap < bestWait)
-                                {
-                                    bestWait = waitWrap;
-                                }
-                            }
-                            currentTime = CoreUtils::timeUs32();
-                            ds.atTime = currentTime + static_cast<uint32_t>(bestWait) * 1000;
-                        }
+                    currentTime = CoreUtils::timeUs32();
+                    if (delayMs != UINT32_MAX)
+                    {
+                        ds.atTime = currentTime + delayMs * 1000;
                     }
                     else
                     {
-                        // Try this DS again in 5 seconds when no TX was found
-                        ds.atTime = currentTime + 5'000'000;
+                        GATAS_WARN("Warning: Next random no timing found %s", GATAS::toString(ds.slot->radioConfig.dataSource()));
+                        ds.atTime = currentTime + 950'000;
                     }
                 }
             }
 
             // Decide the protcol that should be send next
-            currentTime = CoreUtils::timeUs32();
+            auto currentTime = CoreUtils::timeUs32();
             int32_t nextUpIn = 2'000'000;
-            for (auto &&ds : dataSources)
+            for (auto &&ds : dataSourceTxEvents)
             {
                 auto toRef = CoreUtils::usToReference(ds.atTime, currentTime);
                 if (toRef < nextUpIn)
@@ -184,10 +174,15 @@ void RadioTunerTx::on_receive(const GATAS::OwnshipPositionMsg &msg)
     static auto lastTime = CoreUtils::timeUs32Raw();
     // Update ZONE every 30 seconds, or when still at ZONE0
     isAirborne = msg.position.groundSpeed >= GATAS::GROUNDSPEED_CONSIDERING_AIRBORN;
-    if (CoreUtils::isUsReachedRaw(lastTime) || static_cast<uint8_t>(currentZone) == static_cast<uint8_t>(CountryRegulations::Zone::ZONE0))
+    if (CoreUtils::isUsReachedRaw(lastTime) || currentZone == CountryRegulations::Zone::ZONE0)
     {
         lastTime = CoreUtils::timeUs32Raw() + UPDATE_ZONE_REGULATION_EVERY;
-        currentZone = CountryRegulations::zone(msg.position.lat, msg.position.lon);
+        auto newZone = CountryRegulations::zone(msg.position.lat, msg.position.lon);
+        if (newZone != currentZone)
+        {
+            currentZone = newZone;
+            assignDataSources(configuredDatasources);
+        }
     }
 }
 
@@ -210,7 +205,6 @@ void RadioTunerTx::on_receive(const GATAS::RadioControlMsg &msg)
     else
     {
         GATAS_WARN("DS: %d ", dsId);
-        //        GATAS_ASSERT(false, "Not expected to be full");
     }
 }
 
@@ -231,10 +225,24 @@ void RadioTunerTx::assignDataSources(const etl::span<GATAS::DataSource> &newData
         return;
     }
 
-    dataSources.clear();
-    for (auto ds : newDataSources)
+    if (auto guard = SpinlockGuard(CoreUtils::sharedSpinLock()))
     {
-        dataSources.emplace_back(ds, CoreUtils::timeUs32());
+        configuredDatasources.clear();
+        dataSourceTxEvents.clear();
+
+        configuredDatasources.insert(configuredDatasources.end(), newDataSources.begin(), newDataSources.end());
+        for (auto &&ds : newDataSources)
+        {
+            const auto timing = CountryRegulations::getProtocolTxTimings(currentZone, ds);
+
+            if (!timing.empty())
+            {
+                for (const auto &entry : timing)
+                {
+                    dataSourceTxEvents.emplace_back(DataSourceTxEvent{&entry, CoreUtils::timeUs32()});
+                }
+            }
+        }
     }
 
     xTaskNotify(taskHandle, TaskState::UNBLOCK, eSetBits);

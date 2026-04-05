@@ -109,7 +109,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
                 ref.currentProtocolIdx = foundIdx;
                 if (entry.protocolTimeConfig != nullptr)
                 {
-                    GATAS_TUNE_LOG("Radio %d switching to DS %s on channel %d", ref.radioNo, GATAS::toString(entry.protocolTimeConfig->radioConfig.dataSource()), static_cast<uint8_t>(entry.channel));
+                    // GATAS_TUNE_LOG("Radio %d switching to DS %s on channel %d", ref.radioNo, GATAS::toString(entry.protocolTimeConfig->radioConfig.dataSource()), static_cast<uint8_t>(entry.channel));
                     auto frequency = CountryRegulations::getFrequency(entry.protocolTimeConfig->rfConfig, entry.channel);
                     radioTunerRx->getBus().receive(GATAS::RadioControlMsg{
                         GATAS::RadioParameters(&entry.protocolTimeConfig->radioConfig, &entry.protocolTimeConfig->rfConfig, frequency, 0),
@@ -151,7 +151,10 @@ void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 void RadioTunerRx::on_receive(const GATAS::IngressAircraftPositionMsg &msg)
 {
     GATAS_ASSERT(msg.position.dataSource < GATAS::DataSource::_TRANSPROTOCOLS, "Invalid datasource");
-    slotReceive[(uint8_t)msg.position.dataSource] += 1;
+    if (static_cast<uint8_t>(msg.position.dataSource) < slotReceive.size())
+    {
+        slotReceive[static_cast<uint8_t>(msg.position.dataSource)] += 1;
+    }
 }
 
 void RadioTunerRx::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -283,7 +286,7 @@ bool RadioTunerRx::blockTasks()
     eventSync.clear(BIT_EVENT_DONE);
     xTaskNotify(taskHandle, TaskState::BLOCK, eSetBits);
 
-    if (!eventSync.wait(BIT_EVENT_DONE, pdMS_TO_TICKS(CountryRegulations::SLOT_MS * 10)))
+    if (!eventSync.wait(BIT_EVENT_DONE, pdMS_TO_TICKS(2000)))
     {
         GATAS_WARN("Failed to wait for event sync");
         return false;

@@ -155,7 +155,7 @@ void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
-        newRxRadioParameters = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), GATAS::RadioParameters(msg.radioParameters));
+        newRxRadioParameters = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.radioParameters);
         xTaskNotify(taskHandle, TaskState::HANDLE_RX_CONFIG, eSetBits);
     }
 }

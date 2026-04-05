@@ -26,7 +26,7 @@
  */
 class RadioTunerRx : public BaseModule, public etl::message_router<RadioTunerRx, GATAS::OwnshipPositionMsg, GATAS::IngressAircraftPositionMsg, GATAS::ConfigUpdatedMsg>
 {
-    using SlotReceive = etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_ITEMS)>;
+    using SlotReceive = etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_RADIO)>;
     using AvailableTimingsSpan = etl::span<const CountryRegulations::ProtocolRxTimeSlot *>;
 
 public:
@@ -99,7 +99,7 @@ private:
     };
 
     // Keep track if there is any traffic on the datasources
-    SlotReceive slotReceive;
+    SlotReceive slotReceive={};
 
     // Keep track of one task per each radio
     etl::vector<RadioProtocolCtx, GATAS_MAX_RADIOS> radioCtxList = {};
@@ -117,8 +117,8 @@ private:
 
     // Current zone we are flying in
     Property<CountryRegulations::Zone> currentZone;
-    EventSync eventSync;
-    TaskHandle_t taskHandle;
+    EventSync eventSync={};
+    TaskHandle_t taskHandle=nullptr;
 
 private:
     static void radioTuneTask(void *arg);
@@ -139,6 +139,7 @@ public:
                                                                         currentZone(CountryRegulations::Zone::ZONE0)
     {
         configuredDatasources = config.gaTasConfig().protocols;
+        currentZone.set(CountryRegulations::Zone::ZONE0);
     }
     virtual ~RadioTunerRx() = default;
 

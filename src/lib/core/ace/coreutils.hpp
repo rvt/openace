@@ -466,6 +466,7 @@ public:
     static int getRadialSection(int16_t degree)
     {
         constexpr int16_t sectionSize = 360 / SECTIONS;
+        degree = CoreUtils::toBearing(degree);
 
         // Calculate the section
         return static_cast<int>(fmodf((degree + (sectionSize >> 1)) / sectionSize, SECTIONS));

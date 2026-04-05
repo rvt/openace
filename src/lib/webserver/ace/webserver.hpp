@@ -8,10 +8,9 @@
 
 #include "etl/message_bus.h"
 
-class Webserver : public BaseModule, public etl::message_router<Webserver, GATAS::WifiConnectionStateMsg>
+class Webserver : public BaseModule, public etl::message_router<Webserver>
 {
     friend class message_router;
-    bool httpdInitialised;
 public:
     mutable struct
     {
@@ -19,7 +18,7 @@ public:
     } statistics;
 
     static constexpr const etl::string_view NAME = "Webserver";
-    Webserver(etl::imessage_bus& bus, const Configuration &config) : BaseModule(bus, NAME), httpdInitialised(false)
+    Webserver(etl::imessage_bus& bus, const Configuration &config) : BaseModule(bus, NAME)
     {
         (void)config;
     }
@@ -31,8 +30,6 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
-
-    void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
 
     void on_receive_unknown(const etl::imessage& msg);
 };

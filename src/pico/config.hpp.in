@@ -5,10 +5,10 @@
 #ifndef GATAS_LOG_ACTIVE_MODULES
 #define GATAS_LOG_ACTIVE_MODULES ( 0 )
 #endif
-  
+
 // ***** Networking
 // NO_SYS should have been set by pico_cyw43_arch_lwip_sys_freertos but somehow it's not added
-#define NO_SYS 0 
+#define NO_SYS 0
 #define LWIP_HTTPD 1
 #define LWIP_HTTPD_SSI 0
 #define LWIP_HTTPD_CGI 0
@@ -61,10 +61,9 @@
 // START: ***** Debugging PICO items
 // https://github.com/raspberrypi/pico-sdk/blob/master/src/boards/include/boards/pico_w.h
 #ifndef NDEBUG
-#define PICO_DEOPTIMIZED_DEBUG ( 1 )
 #define PICO_DEBUG_MALLOC ( 1 )
-#define PICO_USE_MALLOC_MUTEX ( 1 )
 #define PICO_CYW43_ARCH_DEBUG_ENABLED ( 1 )
+#define PICO_ENTER_USB_BOOT_ON_EXIT ( 1 )
 #define ETL_VERBOSE_ERRORS ( 1 )
 #define ETL_LOG_ERRORS ( 1 )
 #define ETL_DEBUG ( 1 )
@@ -72,7 +71,6 @@
 #define GATAS_LWIP_DEBUG ( 0 )
 #define GATAS_FREERTOS_DEBUG ( 1 )
 #define GATAS_DEBUG ( 1 )
-#define PICO_ENTER_USB_BOOT_ON_EXIT ( 1 )
 
 // Other's that could help debugging problems
 // #define HTTPD_DEBUG LWIP_DBG_ON
@@ -80,6 +78,7 @@
 #endif
 // END: ***** Debugging PICO items
 
+#define PICO_USE_MALLOC_MUTEX ( 1 )
 
 
 // Route UART messages over different pins by default
@@ -93,7 +92,7 @@
 // DHCP lease time. 30 minutes TO ensure we remove unneeded targets on time. But long enough to ensure we do not loose connection
 #define GATAS_DEFAULT_LEASE_TIME_S ( 60 * 30 )
 
-// ***** ETLCPP 
+// ***** ETLCPP
 // https://www.etlcpp.com/mutex.html
 // Malloc in ETL should use FreeRTOS mutexes
 #define ETL_TARGET_OS_FREERTOS ( 1 )
@@ -101,7 +100,7 @@
 #define ETL_NO_EXCEPTIONS ( 1 )
 #define ETL_ARRAY_VIEW_IS_MUTABLE ( 1 )
 
-// ***** GaTas configurations 
+// ***** GaTas configurations
 
 // Maximum number of TCP clients that can connect to the server
 #define GATAS_MAXIMUM_TCP_CLIENTS ( 4 )
@@ -119,7 +118,7 @@
 #define GATAS_EMAFLOAT_K_FACTOR_2PS ( 1.2f )
 
 // Maximum radios that can be controlled
-#define GATAS_MAX_RADIOS ( 2 ) 
+#define GATAS_MAX_RADIOS ( 2 )
 // Maximum number of datasources per radio that can be handled
 #define GATAS_MAX_SOURCE_PER_RADIO ( 3 )
 

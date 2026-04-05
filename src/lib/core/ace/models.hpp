@@ -201,10 +201,9 @@ namespace GATAS
         ADSLO_HDR = 2,
         FANET = 3,
         OGN1 = 4,
-        PAW = 5,
-        _RADIO = 6,          // ANything beflore Radio can only be received over hardware
-        ADSB = 6,
-        _TRANSPROTOCOLS = 6, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
+        _RADIO = 5,          // ANything beflore Radio can only be received over hardware
+        ADSB = 5,
+        _TRANSPROTOCOLS = 5, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         ADSLFLARM = 253,     // Combination of ADSL/FLARM, not an acutal protocol but needed for RX of multiple protocols
         ADSLOGN = 254,       // Combination of ADSL/OGN, not an acutal protocol but needed for RX of multiple protocols
         _ITEMS = 9,          // Maximum number of items eg last item + 1

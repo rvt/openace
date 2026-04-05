@@ -369,7 +369,17 @@ WifiService::ConnectClientResult WifiService::connectClient()
 bool WifiService::checkIfClientActive(int itf)
 {
     (void)itf;
-    return netif_default && netif_is_up(netif_default) && netif_is_link_up(netif_default);
+    LwipLock lock;
+    struct netif *n = netif_list;
+    while (n != nullptr)
+    {
+        if (netif_is_up(n) && netif_is_link_up(n))
+        {
+            return true;
+        }
+        n = n->next;
+    }
+    return false;
 }
 
 void WifiService::enableSta()
@@ -448,9 +458,8 @@ void WifiService::mDnsDeinit(int itf)
 
 WifiService::IpGw WifiService::getInterfaceInfo()
 {
-
+    LwipLock lock; // protects netif_list iteration
     // Using cyw43_state.netif won't work for AP mode
-    LwipLock lock;
     struct netif *n = netif_list;
     while (n != NULL)
     {
@@ -474,7 +483,6 @@ void WifiService::on_receive(const GATAS::Every5SecMsg &msg)
         return;
     }
 
-    const auto interface = getInterfaceInfo();
     if (!active)
     {
         getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
@@ -482,7 +490,8 @@ void WifiService::on_receive(const GATAS::Every5SecMsg &msg)
         return;
     }
 
-    if (interface.ip.addr != 0)
+    const auto interface = getInterfaceInfo();
+    if (!ip4_addr_isany_val(interface.ip))
     {
         currentWifiActiveStatus = true;
         getBus().receive(GATAS::WifiConnectionStateMsg{wifiMode, interface.ip.addr, interface.gateWay.addr});

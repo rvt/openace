@@ -28,7 +28,7 @@ public:
     void handle(float ownShipLat, float ownShipLon, etl::span<uint8_t> cobsBuffer)
     {
         gulp.setRef(cobsBuffer);
-        etl::vector<GATAS::AircraftPositionInfo, 8> positionMessages;
+        etl::vector<GATAS::AircraftPositionInfo, GATAS::IngressAircraftPositionsMsg::MAX_POSITIONS> positionMessages;
 
         etl::span<uint8_t> data;
         while (gulp.pop_into(data))

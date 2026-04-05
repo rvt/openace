@@ -37,7 +37,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
 {
     static constexpr uint8_t MANCHESTER = 2;               // Used to just clarify why we sometime multiply by 2
 #if GATAS_DEBUG == 1
-    static constexpr uint8_t LOW_POWER_MODE = true;
+    static constexpr uint8_t LOW_POWER_MODE = false;
 #else
     static constexpr uint8_t LOW_POWER_MODE = false;
 #endif

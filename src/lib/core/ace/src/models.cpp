@@ -65,7 +65,6 @@ namespace GATAS
         {DataSource::FANET, "Fanet"},
         {DataSource::ADSB, "ADSB"},
         {DataSource::OGN1, "OGN"},
-        {DataSource::PAW, "PAW"},
         {DataSource::NONE, "NONE"}
     };
 

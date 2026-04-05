@@ -12,6 +12,8 @@
 #include "etl/string.h"
 #include "etl/set.h"
 #include "etl/array.h"
+#include "etl/vector.h"
+#include "etl/algorithm.h"
 
 namespace GATAS
 {
@@ -51,7 +53,7 @@ namespace GATAS
      */
     struct IngressAircraftPositionMsg : public etl::message<5>
     {
-        const GATAS::AircraftPositionInfo &position;
+        const GATAS::AircraftPositionInfo position;
         int16_t rssidBm; // Received signal strength indicator in dB
         IngressAircraftPositionMsg(const GATAS::AircraftPositionInfo &position_, int16_t rssidBm_) : position(position_), rssidBm(rssidBm_) {}
         IngressAircraftPositionMsg(const GATAS::AircraftPositionInfo &position_) : position(position_), rssidBm(INT16_MIN) {}
@@ -62,8 +64,13 @@ namespace GATAS
      */
     struct IngressAircraftPositionsMsg : public etl::message<33>
     {
-        const etl::ivector<GATAS::AircraftPositionInfo> &positions;
-        IngressAircraftPositionsMsg(const etl::ivector<GATAS::AircraftPositionInfo> &positions_) : positions(positions_) {}
+        static constexpr size_t MAX_POSITIONS = 10;
+        etl::vector<GATAS::AircraftPositionInfo, 10> positions;
+        IngressAircraftPositionsMsg(const etl::ivector<GATAS::AircraftPositionInfo> &positions_)
+            : positions(positions_.begin(), positions_.begin() + etl::min(positions_.size(), MAX_POSITIONS))
+        {
+            GATAS_ASSERT(positions_.size() <= MAX_POSITIONS, "IngressAircraftPositionsMsg overflow");
+        }
     };
 
     /**
@@ -71,7 +78,7 @@ namespace GATAS
      */
     struct EgressAircraftPositionMsg : public etl::message<23>
     {
-        const AircraftPositionInfo &position;
+        const AircraftPositionInfo position;
         EgressAircraftPositionMsg(const AircraftPositionInfo &position_) : position(position_) {}
     };
 
@@ -80,7 +87,7 @@ namespace GATAS
      */
     struct EgressAircraftPositionsMsg : public etl::message<35>
     {
-        const AdslObandUplinkAircraft &positions;
+        const AdslObandUplinkAircraft positions;
         const GATAS::RadioParameters radioParameters;
         uint8_t radioNo;
         EgressAircraftPositionsMsg(const AdslObandUplinkAircraft &positions_, const GATAS::RadioParameters &radioParameters_, uint8_t radioNo_)
@@ -92,7 +99,7 @@ namespace GATAS
      */
     struct OwnshipPositionMsg : public etl::message<6>
     {
-        const OwnshipPositionInfo &position;
+        const OwnshipPositionInfo position;
         OwnshipPositionMsg(const OwnshipPositionInfo &position_) : position(position_) {}
     };
 
@@ -122,12 +129,7 @@ namespace GATAS
         BarometricPressureMsg() : barometricPressure{} {}
     };
 
-    struct PoolRelease
-    {
-        virtual void releasePool(GATAS::GlobalPoolConfiguration &pool) = 0;
-    };
-
-    struct RadioRxMsgBase : public PoolRelease
+    struct RadioRxMsgBase
     {
         mutable uint8_t *frame;     // Mutable Hack to set the ptr to nullptr once it was freed
         mutable size_t lengthBytes; // hack to allow reset the length on a const object from the messagebus
@@ -154,13 +156,13 @@ namespace GATAS
             return etl::span<uint8_t>(frame, lengthBytes);
         }
 
-        virtual void releasePool(GATAS::GlobalPoolConfiguration &pool) override
+        void releasePool(GATAS::GlobalPoolConfiguration &pool)
         {
             if (frame)
             {
-                GATAS_WARN("Release pool RadioRxMsgBase");
+                printf("frame released RadioRxMsgBase\n");
                 pool.release(frame);
-                pool.release(static_cast<uint8_t *>(frame));
+                frame = nullptr;
             }
         }
     };
@@ -194,6 +196,17 @@ namespace GATAS
         {
             return etl::span<uint8_t>(error, lengthBytes);
         }
+
+        void releasePool(GATAS::GlobalPoolConfiguration &pool)
+        {
+            RadioRxMsgBase::releasePool(pool);
+            if (error)
+            {
+                printf("Error released RadioRxManchesterMsg\n");
+                pool.release(error);
+                error = nullptr;
+            }
+        }
     };
 
     /**
@@ -211,7 +224,7 @@ namespace GATAS
      * @brief Message send to transmit a frame over the radio
      *
      */
-    struct RadioTxFrameMsg : public PoolRelease, public etl::message<202>
+    struct RadioTxFrameMsg : public etl::message<202>
     {
         GATAS::RadioParameters radioParameters;
         mutable const uint8_t *frame; // We use a mutable se we can change the pointer to a nullptr aftere clearing it
@@ -220,7 +233,7 @@ namespace GATAS
 
         RadioTxFrameMsg(const GATAS::RadioParameters &radioParameters_, const uint8_t *frame_, size_t length_, uint8_t radioNo_) : radioParameters(radioParameters_), frame(frame_), length(length_), radioNo(radioNo_) {}
 
-        virtual void releasePool(GATAS::GlobalPoolConfiguration &pool) override
+        void releasePool(GATAS::GlobalPoolConfiguration &pool)
         {
             if (frame)
             {

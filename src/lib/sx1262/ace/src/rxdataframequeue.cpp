@@ -163,17 +163,6 @@ RxDataFrameQueue::DataSourceMatch RxDataFrameQueue::decideDataSource(GATAS::Data
         }
     }
 
-    if (ds == GATAS::DataSource::PAW && frameLengthBytes >= 31) // Pilot aware??
-    {
-        const uint32_t SignLDR[6] = {0x00000000, 0x00187100};
-        if (diffBits<2>(frame, SignLDR) <= 2)
-        {
-            return {
-                .dataSource = GATAS::DataSource::PAW,
-                .bitsToShift = 48,
-                .frameLength = frameLengthBytes};
-        }
-    }
     return {
         .dataSource = ds,
         .bitsToShift = 0,

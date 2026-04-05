@@ -200,12 +200,13 @@ public:
             return false;
         }
 
-        auto time = CoreUtils::timeUs32Raw();
-        auto it = trackedAircraft.find(position.address);
         if (ddbLookupsEnabled)
         {
             assignCallsignFromDDB(position);
         }
+
+        auto time = CoreUtils::timeUs32Raw();
+        auto it = trackedAircraft.find(position.address);
         if (it != trackedAircraft.end())
         {
             it->second.sendTime = time;

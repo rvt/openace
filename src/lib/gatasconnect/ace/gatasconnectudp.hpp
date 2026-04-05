@@ -50,7 +50,6 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     } statistics;
 
     bool wifiConnected = false;
-    spin_lock_t * spinLock = SpinlockGuard::claim();
     uint64_t gatasId = 0;
     bool hasGpsFix = false;
     uint64_t lastRadioTrafficUs = 0;

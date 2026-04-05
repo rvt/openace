@@ -125,18 +125,13 @@ uint32_t CountryRegulations::frequencyByTimestamp(uint32_t timestamp, uint32_t n
     return v9 % nch;
 }
 
-uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, etl::span<const CountryRegulations::ProtocolTxTimeSlot> timing)
+uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, const CountryRegulations::ProtocolTxTimeSlot &timing)
 {
-    if (timing.empty())
-    {
-        return UINT32_MAX;
-    }
-
     const uint32_t nowInSecond = CoreUtils::msInSecond();
 
     // txMinTime/txMaxTime are the same across all entries in a group (validated at compile time)
-    const uint32_t minDelay = staticTiming ? timing[0].txStaticMinTime : timing[0].txMinTime;
-    const uint32_t maxDelay = staticTiming ? timing[0].txStaticMaxTime : timing[0].txMaxTime;
+    const uint32_t minDelay = staticTiming ? timing.txStaticMinTime : timing.txMinTime;
+    const uint32_t maxDelay = staticTiming ? timing.txStaticMaxTime : timing.txMaxTime;
 
     constexpr int MAX_TRIES = 5;
 
@@ -146,16 +141,26 @@ uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, etl::span<const
     for (int i = 0; i < MAX_TRIES; ++i)
     {
         uint32_t futureMs = (nowInSecond + delay) % 1000;
-        for (const auto &entry : timing)
+        if (fitsAnyTiming(futureMs, timing.timeSlots))
         {
-            if (fitsAnyTiming(futureMs, entry.timeSlots))
-            {
-                return delay;
-            }
+            return delay;
         }
         delay = delay + 225;
     }
 
     // No suitable slot found this time
+    return UINT32_MAX;
+}
+
+uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, etl::span<const CountryRegulations::ProtocolTxTimeSlot> timing)
+{
+    for (const auto &entry : timing)
+    {
+        auto t = nextRandomTxTime(staticTiming, entry);
+        if (t != UINT32_MAX)
+        {
+            return t;
+        }
+    }
     return UINT32_MAX;
 }

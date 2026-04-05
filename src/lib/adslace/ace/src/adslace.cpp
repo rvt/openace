@@ -188,7 +188,7 @@ void ADSLAce::on_receive(const GATAS::EgressAircraftPositionsMsg &msg)
         return;
     }
 
-    etl::vector<ADSL::UplinkEntry, 8> traffic;
+    etl::vector<ADSL::UplinkEntry, GATAS::IngressAircraftPositionsMsg::MAX_POSITIONS> traffic={};
     for (auto &&t : msg.positions)
     {
         if (!traffic.full())

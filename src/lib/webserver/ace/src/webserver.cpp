@@ -140,7 +140,6 @@ void httpd_post_finished(void *connection, char *response_uri, u16_t response_ur
         {
             configModule->deleteData(requestContext.uri);
         }
-       
     }
 
     snprintf(response_uri, response_uri_len, "/ok.json");
@@ -299,35 +298,17 @@ void Webserver::getData(etl::string_stream &stream, const etl::string_view path)
 
 GATAS::PostConstruct Webserver::postConstruct()
 {
+    webserver = this;
     return GATAS::PostConstruct::OK;
 }
 
 void Webserver::start()
 {
-    webserver = this;
+    httpd_init();
     getBus().subscribe(*this);
 };
 
 void Webserver::on_receive_unknown(const etl::imessage &msg)
 {
     (void)msg;
-}
-
-void Webserver::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
-{
-    // Only start the webserver after WIFI has been connected.
-    // We have seen halts from the microcontroller when the website did a request to the webserver while WIFI was not fully up yet.
-    // This runs in a general stack (properly of the message bus)
-    if (wcs.wifiMode != GATAS::WifiMode::NC && !httpdInitialised)
-    {
-        httpd_init();
-        httpdInitialised = true;
-    }
-    else if (wcs.wifiMode == GATAS::WifiMode::NC)
-    {
-        // httpd server in LWiP was never designed for de-init, I don't think this is possible.
-        // This might have consequences if GATAS
-        // Idea: May be after the first HTTP call we can capture the PCB??
-        // We don;t want to keep calling httpd_init because this would possible leak memory
-    }
 }

@@ -10,8 +10,6 @@
 class CountryRegulations
 {
 public:
-    static constexpr uint32_t SLOT_MS = 200;
-    static constexpr uint32_t SLOT_IN_S = 1000 / SLOT_MS;
     static constexpr uint8_t MAX_COMBINED_TIMINGS = 4;
 
     struct Zone
@@ -94,7 +92,7 @@ public:
 
     // Not validated
     static constexpr GATAS::RfConfig NorthAmerica {GATAS::Modulation::GFSK, 902'200'000, 400'000, 30, 234300, 100000, 50000, 5};
-    static constexpr GATAS::RfConfig NewZealand   {GATAS::Modulation::GFSK, 869'250'000, 200'000, 10, 234300, 100000, 50000, 5}; 
+    static constexpr GATAS::RfConfig NewZealand   {GATAS::Modulation::GFSK, 869'250'000, 200'000, 10, 234300, 100000, 50000, 5};
     static constexpr GATAS::RfConfig Australia    {GATAS::Modulation::GFSK, 917'000'000, 400'000, 30, 234300, 100000, 50000, 5};
     static constexpr GATAS::RfConfig Israel       {GATAS::Modulation::GFSK, 916'200'000, 200'000, 22, 234300, 100000, 50000, 5};
     static constexpr GATAS::RfConfig SouthAmerica {GATAS::Modulation::GFSK, 917'000'000, 400'000, 30, 234300, 100000, 50000, 5};
@@ -110,7 +108,6 @@ public:
 
     static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSL          { 4, GATAS::DataSource::ADSLM,      true,  25, 16, 48, 8, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65}};                   // ADSL on normal 0xA9, 0x6A => 0x18 26Byte first byt elength = 25Byte
     static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSLO_HDR     { 5, GATAS::DataSource::ADSLO_HDR, false,   0, 16, 16, 0, {0x2D, 0xD4}};                                           // ADSL on O band HDR
-    static constexpr GATAS::LinkLayerConfig PROTOCOL_PAW           { 6, GATAS::DataSource::PAW,        true,   0, 16, 64, 0, {0xB4, 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71}};       // Pilot Aware (ogn tracker calls this LDR???)
     static constexpr GATAS::LinkLayerConfig PROTOCOL_FANET         { 7, GATAS::DataSource::FANET,     false, 200, 12,  8, 0, {0xF1}};                                                 // FANET
 
     // Needs further research I did not get reliable reception yet
@@ -123,7 +120,7 @@ public:
     static constexpr etl::array EU_FLARMT              {ChannelTiming{Channel::CH01,      0,  200, 0}, ChannelTiming{Channel::CH00, 400,  800, 0}, ChannelTiming{Channel::CH01, 800, 1000, 0}};
     static constexpr etl::array EU_OGNT                {ChannelTiming{Channel::CH00,      0,  200, 0}, ChannelTiming{Channel::CH01, 400,  800, 0}, ChannelTiming{Channel::CH00, 800, 1000, 0}};
     static constexpr etl::array EU_ADSLM               {ChannelTiming{Channel::CH00,    450,  800, 0}, ChannelTiming{Channel::CH01, 800, 1000, 0}};
-    static constexpr etl::array EU_ADSLO_HDR           {ChannelTiming{Channel::CH00,    200, 1000, 0}}; 
+    static constexpr etl::array EU_ADSLO_HDR           {ChannelTiming{Channel::CH00,    200, 1000, 0}};
     static constexpr etl::array EU_ADSLO_HDRT_TRAFFIC  {ChannelTiming{Channel::CH00,    450, 1000, 0}};
     static constexpr etl::array EU_ADSLO_HDRT_UPLINK   {ChannelTiming{Channel::CH00,    200,  450, 1}}; // id=1 indicates Uplink for ADSL
     static constexpr etl::array EU_FANETT              {ChannelTiming{Channel::CH00,      0, 1000, 0}};
@@ -160,7 +157,7 @@ public:
      */
     static constexpr auto protocolTxTimimgs = etl::make_array<const ProtocolTxTimeSlot>(
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT_TRAFFIC), 600, 1400, 600, 1400, 15, 250},
-        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT_UPLINK),  600, 1400, 5000, 6000, 15, 250},
+        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT_UPLINK),  800, 1000, 5000, 6000, 15, 250},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_ADSL,          etl::span(EU_ADSLM),              600, 1400, 5000, 6000, 15, 250},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_OGN,           etl::span(EU_OGNT),               600, 1400, 5000, 6000, 15, 150},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_FLARM,         etl::span(EU_FLARMT),             600, 1400, 5000, 6000, 15, 150},
@@ -170,7 +167,9 @@ public:
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE2, NorthAmerica, PROTOCOL_OGN,           etl::span(NA_OGNT),               600, 1400, 5000, 6000, 15, 150},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE2, NorthAmerica, PROTOCOL_ADSL,          etl::span(NA_ADSL),               600, 1400, 5000, 6000, 15, 150}
     );
+    static constexpr size_t MAX_PROTOCOL_TX_TIMINGS = protocolTxTimimgs.size();
     // clang-format on
+
 
     static constexpr uint8_t validateProtocolTxTimings()
     {
@@ -334,6 +333,7 @@ public:
      * @return Delay in ms, or UINT32_MAX if no suitable slot was found after MAX_TRIES.
      */
     static uint32_t nextRandomTxTime(bool staticTiming, etl::span<const CountryRegulations::ProtocolTxTimeSlot> timing);
+    static uint32_t nextRandomTxTime(bool staticTiming, const CountryRegulations::ProtocolTxTimeSlot &timing);
 
     /**
      * @brief Calculate the frequency channel based on a timestamp.

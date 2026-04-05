@@ -81,7 +81,7 @@ void GatasConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 
 void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    ownshipPosition = SpinlockGuard::copyWithLock(spinLock, msg.position);
+    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
 }
 
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -108,7 +108,7 @@ void GatasConnect::getConfig(const Configuration &config)
 
     auto gatasConfig = config.gaTasConfig();
 
-    auto guard = SpinlockGuard{spinLock};
+    auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()};
     localConfigurationUpdateCnt = LOCALCONFIGURATIONCHANGE_HOLD_BACK;
     gatasServerStr = config.strValueByPath("gatas.vantwisk.nl", NAME, "gatasServer/ip");
     icaoAddress = gatasConfig.conspicuity.icaoAddress;
@@ -149,7 +149,7 @@ bool GatasConnect::resolveIP()
             GATAS_WARN("dns_gethostbyname failed for %s, retrying", gatasServerStr.c_str());
         }
     }
-    return gatasServerIPAddress.addr != IPADDR_NONE;
+    return gatasServerIPAddress.addr != IPADDR_NONE && !ip_addr_isloopback(&gatasServerIPAddress) && !ip_addr_isany(&gatasServerIPAddress);
 }
 
 void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
@@ -173,7 +173,8 @@ void GatasConnect::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
     else
     {
         taskCtx->lastSendCounter = 0;
-        auto ownship = SpinlockGuard::copyWithLock(taskCtx->spinLock, taskCtx->ownshipPosition);
+
+        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), taskCtx->ownshipPosition);
         // Reset the pkgCount to get a honest pkgSend vs pkg Received
         if (!taskCtx->statistics.hasConnection)
         {
@@ -235,7 +236,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     GATAS::OwnshipPositionInfo ownshipSnap{};
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddressesSnap;
 
-    if (auto guard = SpinlockGuard{spinLock})
+    if (auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()})
     {
         groundStationSnap = groundStation;
         hasGpsFixSnap = hasGpsFix;

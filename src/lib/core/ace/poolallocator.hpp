@@ -132,7 +132,7 @@ public:
 
     void release(const void *ptr)
     {
-// Added to enable testing of the class         
+// Added to enable testing of the class
 #if UINTPTR_MAX == 0xFFFFFFFF
         auto masked_ptr = reinterpret_cast<void *>(reinterpret_cast<const uintptr_t>(ptr) & ~0x3U);
 #else
@@ -321,7 +321,7 @@ private:
     {
         if constexpr (I >= sizeof...(Pools))
         {
-            GATAS_WARN("Realloc to large");
+            printf("Realloc to large");
             return nullptr;
         }
         else
@@ -339,7 +339,7 @@ private:
                     void *newPtr = alloc(newSize);
                     if (!newPtr)
                     {
-                        GATAS_WARN("Realloc full");
+                        printf("Realloc full");
                         etl::get<I>(pools).release(ptr);
                         return nullptr;
                     }

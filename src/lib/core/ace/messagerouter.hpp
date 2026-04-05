@@ -27,6 +27,25 @@ namespace GATAS
 #endif
         GATAS::GlobalPoolConfiguration *pool = nullptr;
 
+        static void tryReleasePool(const etl::imessage &message, GATAS::GlobalPoolConfiguration &poolRef)
+        {
+            // Avoid reinterpret_cast on multiple-inheritance messages.
+            switch (message.get_message_id())
+            {
+            case 200: // RadioRxMsg
+                static_cast<GATAS::RadioRxMsg &>(const_cast<etl::imessage &>(message)).releasePool(poolRef);
+                break;
+            case 201: // RadioRxManchesterMsg
+                static_cast<GATAS::RadioRxManchesterMsg &>(const_cast<etl::imessage &>(message)).releasePool(poolRef);
+                break;
+            case 202: // RadioTxFrameMsg
+                static_cast<GATAS::RadioTxFrameMsg &>(const_cast<etl::imessage &>(message)).releasePool(poolRef);
+                break;
+            default:
+                break;
+            }
+        }
+
     public:
         ThreadSafeBus() : etl::imessage_bus(router_list), xMutex(xSemaphoreCreateRecursiveMutex())
         {
@@ -75,11 +94,12 @@ namespace GATAS
             }
             else
             {
-                if (msgId >= 200 && msgId < 255 && pool != nullptr)
-                {
-                    reinterpret_cast<GATAS::PoolRelease &>(const_cast<etl::imessage &>(message)).releasePool(*pool);
-                }
                 GATAS_WARN("Message not send current:%d:%d core0:%d core1:%d", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
+            }
+
+            if (msgId >= 200 && msgId < 255 && pool != nullptr)
+            {
+                tryReleasePool(message, *pool);
             }
         }
 
@@ -93,21 +113,16 @@ namespace GATAS
             auto currentMsgId = message.get_message_id();
             auto coreNum = get_core_num();
             lastMsgPerCore[coreNum] = currentMsgId;
-#endif
 
-#if GATAS_DEBUG == 1
             GATAS_MEASURE_M("", 20'000 /* 10'000 */);
             processMessage(message);
             if (measure)
             {
                 printf("Bus Messages: current:%d:%d core0:%d core1:%d\n", get_core_num(), message.get_message_id(), previousPerCore[0], previousPerCore[1]);
             }
+            lastMsgPerCore[get_core_num()] = 0;
 #else
             processMessage(message);
-#endif
-
-#if GATAS_DEBUG == 1
-            lastMsgPerCore[get_core_num()] = 0;
 #endif
         }
 
@@ -128,11 +143,12 @@ namespace GATAS
             }
             else
             {
-                if (msgId >= 200 && msgId < 255 && pool != nullptr)
-                {
-                    reinterpret_cast<GATAS::PoolRelease &>(const_cast<etl::imessage &>(shared_msg.get_message())).releasePool(*pool);
-                }
                 GATAS_WARN("Message not send current:%d:%d core0:%d core1:%d", get_core_num(), msgId, lastMsgPerCore[0], lastMsgPerCore[1]);
+            }
+
+            if (msgId >= 200 && msgId < 255 && pool != nullptr)
+            {
+                tryReleasePool(shared_msg.get_message(), *pool);
             }
         }
     };

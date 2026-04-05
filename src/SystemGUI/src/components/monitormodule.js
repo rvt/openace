@@ -314,6 +314,20 @@ class MonitorModule extends El {
     `;
     }
 
+    const dsColorMap = {
+      "OGN": "#cb6827",
+      "Flarm": "#31a84a",
+      "ADSL": "#808cff",
+      "ADSL Hdr": "#596eef",
+      "Fanet": "#674ea7",
+      "ADSB": "#fdce03",
+      "PAW": "#ce1f28",
+      "NOOP": "#555",
+      "ADSL FLARM": "#66bb6a",
+      "ADSL OGN": "#ff9800",
+      "NONE": "#333",
+    };
+
     if (item.name.endsWith(":rrx") && Array.isArray(item.value)) {
       const name = item.name.split(':')[0];
       // entries are pre-expanded flat RxTiming: {ds, s, e, ch} — no wrapping needed
@@ -324,19 +338,7 @@ class MonitorModule extends El {
       const totalMs = Math.ceil(Math.max(...entries.map((e) => e.e), SEC) / SEC) * SEC;
       const totalW = (totalMs / SEC) * barW;
 
-      const dsColorMap = {
-        "OGN": "#cb6827",
-        "Flarm": "#31a84a",
-        "ADSL": "#808cff",
-        "ADSL Hdr": "#596eef",
-        "Fanet": "#674ea7",
-        "ADSB": "#fdce03",
-        "PAW": "#ce1f28",
-        "NOOP": "#555",
-        "ADSL FLARM": "#66bb6a",
-        "ADSL OGN": "#ff9800",
-        "NONE": "#333",
-      };
+
       const dsColor = (ds) => dsColorMap[ds] || "#888";
 
       // Render a single bar for one entry
@@ -379,6 +381,63 @@ class MonitorModule extends El {
                 `)}
               </div>
 
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    if (item.name.endsWith(":rtx") && Array.isArray(item.value)) {
+      const name = item.name.split(':')[0];
+      const protocols = item.value; // [{ds, slots:[{s,e,ch},...]}]
+      const SEC = 1000;
+      const barW = 200; // px per 1000ms
+
+      const allSlots = protocols.flatMap((p) => p.slots || []);
+      const totalMs = Math.ceil(Math.max(...allSlots.map((s) => s.e), SEC) / SEC) * SEC;
+      const totalW = (totalMs / SEC) * barW;
+
+      const dsColor = (ds) => dsColorMap[ds] || "#888";
+
+      const renderProtocolRow = (proto) => {
+        const color = dsColor(proto.ds);
+        const hasTiming = proto.min != null;
+        const avg = hasTiming ? ((proto.min + proto.max) / 2 / 1000).toFixed(1) : null;
+        return html`
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px">
+            <span style="width:70px; font-size:10px; color:#555; text-align:right; flex-shrink:0">${proto.ds}</span>
+            <div style="position:relative; width:${totalW}px; height:16px; background:#eee; border-radius:2px">
+              ${(proto.slots || []).map((ts) => {
+          const left = (ts.s / totalMs) * totalW;
+          const w = Math.max(1, ((ts.e - ts.s) / totalMs) * totalW);
+          return html`<div style="position:absolute; left:${left}px; text-align:center; width:${w}px; height:100%; background:${color}; opacity:0.8; border-radius:6px" title="${proto.ds} ch${ts.ch} ${ts.s}-${ts.e}ms">${ts.ch}</div>`;
+        })}
+            </div>
+            ${hasTiming ? html`<span style="width:130px; font-size:10px; color:#999; flex-shrink:0">${proto.min}-${proto.max}ms ~${avg}s</span>` : ''}
+          </div>
+        `;
+      };
+
+      const ticks = Array.from({ length: totalMs / 200 + 1 }, (_, i) => i * 200);
+
+      return html`
+        <tr>
+          <th style="width:33%; vertical-align:top" scope="row">${name}</th>
+          <td>
+            <div style="font-size:11px; line-height:1.6">
+              ${protocols.map((p) => renderProtocolRow(p))}
+
+              <!-- Tick marks -->
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="width:70px; flex-shrink:0"></span>
+                <div style="position:relative; width:${totalW}px; height:10px; margin-top:2px">
+                  ${ticks.map((ms) => {
+          const left = (ms / totalMs) * totalW;
+          const bold = ms % SEC === 0;
+          return html`<span style="position:absolute; left:${left}px; font-size:8px; color:${bold ? '#555' : '#aaa'}; transform:translateX(-50%); font-weight:${bold ? 'bold' : 'normal'}">${ms}</span>`;
+        })}
+                </div>
+              </div>
             </div>
           </td>
         </tr>

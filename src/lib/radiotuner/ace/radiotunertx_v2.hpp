@@ -23,12 +23,10 @@
  */
 class RadioTunerTx : public BaseModule, public etl::message_router<RadioTunerTx, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::RadioControlMsg>
 {
-    static constexpr uint32_t MAX_COMBINED_TIMINGS = CountryRegulations::MAX_COMBINED_TIMINGS;
-
     struct DataSourceTxEvent
     {
-        GATAS::DataSource dataSource;
-        uint32_t atTime;
+        const CountryRegulations::ProtocolTxTimeSlot *slot;
+        uint32_t atTime = 0;
     };
     enum TaskState : uint32_t
     {
@@ -61,7 +59,8 @@ private:
     bool isAirborne = false;
     etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> dataSourceToRadio = {};
     static constexpr size_t MaxQueueSize = static_cast<size_t>(GATAS::DataSource::_TRANSPROTOCOLS);
-    etl::vector<DataSourceTxEvent, MaxQueueSize> dataSources;
+    etl::vector<DataSourceTxEvent, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> dataSourceTxEvents;
+    etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> configuredDatasources;
 
     EventSync eventSync;
     TaskHandle_t taskHandle;
