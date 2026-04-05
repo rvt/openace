@@ -131,81 +131,60 @@ namespace GATAS
 
     struct RadioRxMsgBase
     {
-        mutable uint8_t *frame;     // Mutable Hack to set the ptr to nullptr once it was freed
+        mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> frame;
         mutable size_t lengthBytes; // hack to allow reset the length on a const object from the messagebus
         uint32_t epochSeconds;
         uint32_t frequency;
         GATAS::DataSource dataSource;
         int8_t rssidBm;
 
-        RadioRxMsgBase(uint8_t *frame_, size_t lengthBytes_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
-            : frame(frame_), lengthBytes(lengthBytes_), epochSeconds(epochSeconds_), frequency(frequency_), dataSource(dataSource_), rssidBm(rssidBm_) {}
+        RadioRxMsgBase(GATAS::GlobalPoolConfiguration &pool, uint8_t *frame_, size_t lengthBytes_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : frame(pool, frame_), lengthBytes(lengthBytes_), epochSeconds(epochSeconds_), frequency(frequency_), dataSource(dataSource_), rssidBm(rssidBm_) {}
 
         uint32_t *frame32() const
         {
-            return reinterpret_cast<uint32_t *>(frame);
+            return reinterpret_cast<uint32_t *>(frame.get());
         }
 
         etl::span<uint32_t> frame32Span() const
         {
-            return etl::span<uint32_t>(reinterpret_cast<uint32_t *>(frame), (lengthBytes + 3) / 4);
+            return etl::span<uint32_t>(reinterpret_cast<uint32_t *>(frame.get()), (lengthBytes + 3) / 4);
         }
 
         etl::span<uint8_t> frameSpan() const
         {
-            return etl::span<uint8_t>(frame, lengthBytes);
-        }
-
-        void releasePool(GATAS::GlobalPoolConfiguration &pool)
-        {
-            if (frame)
-            {
-                printf("frame released RadioRxMsgBase\n");
-                pool.release(frame);
-                frame = nullptr;
-            }
+            return etl::span<uint8_t>(frame.get(), lengthBytes);
         }
     };
 
     struct RadioRxMsg : public RadioRxMsgBase, public etl::message<200>
     {
-        explicit RadioRxMsg(uint8_t *data_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
-            : RadioRxMsgBase(data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_)
+        explicit RadioRxMsg(GATAS::GlobalPoolConfiguration &pool, uint8_t *data_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : RadioRxMsgBase(pool, data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_)
         {
         }
     };
 
     struct RadioRxManchesterMsg : public RadioRxMsgBase, public etl::message<201>
     {
-        mutable uint8_t *error; // Mutable Hack to set the ptr to nullptr once it was freed
+        mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> error;
 
-        explicit RadioRxManchesterMsg(uint8_t *data_, uint8_t *error_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
-            : RadioRxMsgBase(data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_), error(error_) {}
+        explicit RadioRxManchesterMsg(GATAS::GlobalPoolConfiguration &pool, uint8_t *data_, uint8_t *error_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : RadioRxMsgBase(pool, data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_), error(pool, error_) {}
 
         uint32_t *err32()
         {
-            return reinterpret_cast<uint32_t *>(error);
+            return reinterpret_cast<uint32_t *>(error.get());
         }
 
         etl::span<uint32_t> error32Span() const
         {
-            return etl::span<uint32_t>(reinterpret_cast<uint32_t *>(error), (lengthBytes + 3) / 4);
+            return etl::span<uint32_t>(reinterpret_cast<uint32_t *>(error.get()), (lengthBytes + 3) / 4);
         }
 
         etl::span<uint8_t> errorSpan() const
         {
-            return etl::span<uint8_t>(error, lengthBytes);
-        }
-
-        void releasePool(GATAS::GlobalPoolConfiguration &pool)
-        {
-            RadioRxMsgBase::releasePool(pool);
-            if (error)
-            {
-                printf("Error released RadioRxManchesterMsg\n");
-                pool.release(error);
-                error = nullptr;
-            }
+            return etl::span<uint8_t>(error.get(), lengthBytes);
         }
     };
 
@@ -227,22 +206,11 @@ namespace GATAS
     struct RadioTxFrameMsg : public etl::message<202>
     {
         GATAS::RadioParameters radioParameters;
-        mutable const uint8_t *frame; // We use a mutable se we can change the pointer to a nullptr aftere clearing it
+        mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, const uint8_t> frame;
         size_t length;
         uint8_t radioNo;
 
-        RadioTxFrameMsg(const GATAS::RadioParameters &radioParameters_, const uint8_t *frame_, size_t length_, uint8_t radioNo_) : radioParameters(radioParameters_), frame(frame_), length(length_), radioNo(radioNo_) {}
-
-        void releasePool(GATAS::GlobalPoolConfiguration &pool)
-        {
-            if (frame)
-            {
-                GATAS_WARN("Release pool RadioTxFrameMsg");
-                (void)pool;
-                pool.release(const_cast<uint8_t *>(frame));
-                frame = nullptr;
-            }
-        }
+        RadioTxFrameMsg(GATAS::GlobalPoolConfiguration &pool, const GATAS::RadioParameters &radioParameters_, const uint8_t *frame_, size_t length_, uint8_t radioNo_) : radioParameters(radioParameters_), frame(pool, frame_), length(length_), radioNo(radioNo_) {}
     };
 
     /**

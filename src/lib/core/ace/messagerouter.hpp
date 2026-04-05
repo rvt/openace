@@ -21,86 +21,22 @@ namespace GATAS
     class ThreadSafeBus : public etl::imessage_bus
     {
         etl::vector<etl::imessage_router *, MAX_ROUTERS_> router_list;
-        SemaphoreHandle_t xMutex;
 #if GATAS_DEBUG == 1
         etl::array<uint8_t, 2> lastMsgPerCore;
 #endif
-        GATAS::GlobalPoolConfiguration *pool = nullptr;
-
-        static void tryReleasePool(const etl::imessage &message, GATAS::GlobalPoolConfiguration &poolRef)
-        {
-            // Avoid reinterpret_cast on multiple-inheritance messages.
-            switch (message.get_message_id())
-            {
-            case 200: // RadioRxMsg
-                static_cast<GATAS::RadioRxMsg &>(const_cast<etl::imessage &>(message)).releasePool(poolRef);
-                break;
-            case 201: // RadioRxManchesterMsg
-                static_cast<GATAS::RadioRxManchesterMsg &>(const_cast<etl::imessage &>(message)).releasePool(poolRef);
-                break;
-            case 202: // RadioTxFrameMsg
-                static_cast<GATAS::RadioTxFrameMsg &>(const_cast<etl::imessage &>(message)).releasePool(poolRef);
-                break;
-            default:
-                break;
-            }
-        }
 
     public:
-        ThreadSafeBus() : etl::imessage_bus(router_list), xMutex(xSemaphoreCreateRecursiveMutex())
+        ThreadSafeBus() : etl::imessage_bus(router_list)
         {
         }
 
-        ThreadSafeBus(etl::imessage_router &successor) : etl::imessage_bus(router_list, successor), xMutex(xSemaphoreCreateRecursiveMutex())
+        ThreadSafeBus(etl::imessage_router &successor) : etl::imessage_bus(router_list, successor)
         {
-        }
-
-        void setPool(GATAS::GlobalPoolConfiguration *pool_)
-        {
-            pool = pool_;
         }
 
         void processMessage(const etl::imessage &message)
         {
-            auto msgId = message.get_message_id();
-            bool skipMutex;
-            uint16_t blockTime;
-            switch (msgId)
-            {
-            // These are message that must be delivered with high guarantee
-            // therefor setting a higher lock timeout
-            case 21: // AccessPointClientsMsg
-            case 24: // WifiConnectionStateMsg
-            case 29: // Every1SecMsg
-                blockTime = 1000;
-                skipMutex = false;
-                break;
-            case 20: // ConfigUpdatedMsg
-                blockTime = 1;
-                skipMutex = true;
-                break;
-            default:
-                skipMutex = false;
-                blockTime = 50;
-            }
-            if (skipMutex || xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(blockTime)) == pdTRUE)
-            {
-                etl::imessage_bus::receive(message);
-
-                if (!skipMutex)
-                {
-                    xSemaphoreGiveRecursive(xMutex);
-                }
-            }
-            else
-            {
-                GATAS_WARN("Message not send current:%d:%d core0:%d core1:%d", get_core_num(), message.get_message_id(), lastMsgPerCore[0], lastMsgPerCore[1]);
-            }
-
-            if (msgId >= 200 && msgId < 255 && pool != nullptr)
-            {
-                tryReleasePool(message, *pool);
-            }
+            etl::imessage_bus::receive(message);
         }
 
         //*******************************************
@@ -130,26 +66,9 @@ namespace GATAS
         virtual void
         receive(etl::shared_message shared_msg) override
         {
-            // Note: Skipping Only for <20> / ConfigUpdatedMsg
-            auto msgId = shared_msg.get_message().get_message_id();
-            auto skipMutex = msgId == 20;
-            if (skipMutex || (xSemaphoreTakeRecursive(xMutex, TASK_DELAY_MS(10)) == pdTRUE))
-            {
-                etl::imessage_bus::receive(shared_msg);
-                if (!skipMutex)
-                {
-                    xSemaphoreGiveRecursive(xMutex);
-                }
-            }
-            else
-            {
-                GATAS_WARN("Message not send current:%d:%d core0:%d core1:%d", get_core_num(), msgId, lastMsgPerCore[0], lastMsgPerCore[1]);
-            }
-
-            if (msgId >= 200 && msgId < 255 && pool != nullptr)
-            {
-                tryReleasePool(shared_msg.get_message(), *pool);
-            }
+            // , this should be avoided since it can lead to dangling references if not used carefully
+            GATAS_WARN("Shared message received");
+            etl::imessage_bus::receive(shared_msg);
         }
     };
 };

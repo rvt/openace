@@ -6,6 +6,7 @@
 #include "ace/models.hpp"
 
 #include "ace/bitutils.hpp"
+#include "etl/queue_spsc_atomic.h"
 
 /**
  * @brief THis was created to handle the raw Lora/GFSK frames from the radio tranceivers such that the tranceiver is quickly ofloaded.
@@ -27,12 +28,12 @@ private:
 
     struct
     {
-        uint32_t totalOutgoing = 0;
+        uint32_t totalQueued = 0;
+        uint32_t queueFull = 0;
     } statistics;
 
     TaskHandle_t taskHandle;
-    QueueHandle_t dataQueue;
-    ;
+    etl::queue_spsc_atomic<GATAS::DataFrame, 2, etl::memory_model::MEMORY_MODEL_SMALL> dataQueue;
 
     static void radioQueueTaskTrampoline(void *arg);
     void radioQueueTask(void *arg);
@@ -46,7 +47,7 @@ private:
 public:
     static constexpr const etl::string_view NAME = "RxDataFrameQueue";
 
-    RxDataFrameQueue(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), dataQueue(nullptr)
+    RxDataFrameQueue(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), taskHandle(nullptr), dataQueue()
     {
         (void)config;
     }
@@ -56,9 +57,7 @@ public:
     virtual void start() override;
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
-    QueueHandle_t queue() const
-    {
-        return dataQueue;
-    }
+    bool push(GATAS::DataFrame &&frame);
+
     DataSourceMatch decideDataSource(GATAS::DataSource ds, uint32_t frame[], uint8_t frameLength);
 };

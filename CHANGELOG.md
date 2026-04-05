@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update list of possible Aircraft types in UI
 - Update DDB
 - Better represent RX Schedule with multiple protocols
+- Use xTaskNotifyWait instead of ulTaskNotifyTake
+- Removed the mutexes from the MessageRouter
 
 ### Deprecated
 

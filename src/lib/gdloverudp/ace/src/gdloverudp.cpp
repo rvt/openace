@@ -198,7 +198,8 @@ void GDLoverUDP::gdlOverUDPTask(void *arg)
     GDLoverUDP *at = static_cast<GDLoverUDP *>(arg);
     while (true)
     {
-        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1000));
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(1000));
 
         // Handle TRANSMIT
         if (notifyValue == 0 || (notifyValue & TaskState::TRANSMIT))

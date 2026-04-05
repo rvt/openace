@@ -33,9 +33,6 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
 
     if (msg.dataSource == GATAS::DataSource::FLARM)
     {
-        PoolReleaseGuard frameGuard{getGlobalPool(), msg.frame};
-        PoolReleaseGuard errorGuard{getGlobalPool(), msg.error};
-
         datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
 
@@ -140,6 +137,7 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 
             statistics.transmittedAircraftPositions += 1;
             getBus().receive(GATAS::RadioTxFrameMsg{
+                getGlobalPool(),
                 msg.radioParameters,
                 frame,
                 Flarm2024Packet::TOTAL_LENGTH,

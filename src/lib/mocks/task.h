@@ -87,6 +87,22 @@ inline uint32_t ulTaskGenericNotifyTake(UBaseType_t uxIndexToWaitOn,
 #define ulTaskNotifyTakeIndexed(uxIndexToWaitOn, xClearCountOnExit, xTicksToWait) \
     ulTaskGenericNotifyTake((uxIndexToWaitOn), (xClearCountOnExit), (xTicksToWait))
 
+inline BaseType_t xTaskNotifyWait(uint32_t ulBitsToClearOnEntry,
+                                  uint64_t ulBitsToClearOnExit,
+                                  uint32_t *pulNotificationValue,
+                                  TickType_t xTicksToWait)
+{
+    (void)ulBitsToClearOnEntry;
+    (void)ulBitsToClearOnExit;
+    (void)xTicksToWait;
+    if (pulNotificationValue != nullptr)
+    {
+        *pulNotificationValue = xTaskNotifyCalled ? xTaskNotifyulValue : 0;
+    }
+    printf("xTaskNotifyWait\n");
+    return xTaskNotifyCalled ? pdPASS : pdFAIL;
+}
+
 inline TaskHandle_t xTaskGetCurrentTaskHandle(void)
 {
     printf("xTaskGetCurrentTaskHandle\n");

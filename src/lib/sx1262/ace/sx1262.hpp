@@ -58,7 +58,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     struct TxPacket
     {
         GATAS::RadioParameters radioParameters;
-        const uint8_t *frame;
+        PoolOwnedPtr<GATAS::GlobalPoolConfiguration, const uint8_t> frame;
         size_t length = 0;
     };
 
@@ -69,8 +69,6 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
         uint32_t transmittedPackets = 0;
         uint32_t buzyWaitsTimeout = 0;
         uint32_t queueFull = 0;
-        uint32_t queueMissedErr = 0;
-
     } statistics;
 
     // ************************************************************************************

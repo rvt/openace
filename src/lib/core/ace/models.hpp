@@ -1,6 +1,7 @@
 #pragma once
 
 #include "constants.hpp"
+#include "poolallocator.hpp"
 
 // #include "etl/string.h"
 //  #include "etl/map.h"
@@ -473,7 +474,7 @@ namespace GATAS
         uint32_t epochSeconds;
         uint32_t frequency;
         const GATAS::LinkLayerConfig *config;
-        uint8_t *frame;
+        PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> frame;
         size_t length; // Length of the data frame in bytes
         int8_t rssidBm;
     };

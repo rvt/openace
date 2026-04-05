@@ -53,8 +53,6 @@ void ADSLAce::on_receive(const GATAS::RadioRxMsg &msg)
     {
         return;
     }
-    PoolReleaseGuard frameGuard{getGlobalPool(), msg.frame};
-
     protocol.crcCheckOnReceive = true;
     auto status = protocol.handleRx(msg.rssidBm, msg.frame32Span()); // Currently expected that the frame size is always a multiple of 4
 
@@ -83,9 +81,7 @@ void ADSLAce::on_receive(const GATAS::RadioRxManchesterMsg &msg)
     }
     ADSL::Protocol::RxStatudeCode status = ADSL::Protocol::RxStatudeCode::OTHER_ERROR;
 
-    PoolReleaseGuard frameGuard{getGlobalPool(), msg.frame};
     const int check = ADSL::Correct(msg.frameSpan().subspan(1), msg.errorSpan().subspan(1));
-    getGlobalPool().release(msg.error);
 
     if (check == -1)
     {
@@ -131,6 +127,7 @@ bool ADSLAce::adsl_sendFrame(const void *ctx, const uint8_t *data, size_t length
     const Tx_Struct *params = static_cast<const Tx_Struct *>(ctx);
 
     getBus().receive(GATAS::RadioTxFrameMsg{
+        getGlobalPool(),
         params->radioParameters,
         data,
         lengthBytes,

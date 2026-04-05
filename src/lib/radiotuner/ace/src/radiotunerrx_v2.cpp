@@ -59,7 +59,9 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
     while (true)
     {
-        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(nextDelayMs));
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(nextDelayMs));
+
         if (notifyValue & TaskState::BLOCK)
         {
             taskBlocked = true;

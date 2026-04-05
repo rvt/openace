@@ -296,8 +296,6 @@ static void loadModules(void *arg)
 {
     (void)arg;
 
-    bus.setPool(&BaseModule::getGlobalPool()); // Hack to set the pool into the messagebus
-
     CoreUtils::init();
     config.postConstruct();
     config.start();
@@ -431,7 +429,8 @@ void vDiagnosticsTask(void *pvParameters)
             vPortFree(taskStatusArray);
         }
 
-        ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(5000));
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(5'000));
     }
 }
 #endif

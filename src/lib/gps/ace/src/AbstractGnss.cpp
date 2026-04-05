@@ -83,7 +83,10 @@ void AbstractGnss::receiveTask(void *arg)
     GATAS::NMEAString sentence;
     while (true)
     {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, portMAX_DELAY);
+
         while (abstractGnss->queue.pop(sentence))
         {
             if (abstractGnss->preProcessSentence(sentence))

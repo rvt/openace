@@ -267,6 +267,7 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
             etl::mem_copy(reinterpret_cast<uint8_t *>(&packet), OGN_PACKET_LENGTH_FEC, data);
 
             getBus().receive(GATAS::RadioTxFrameMsg{
+                getGlobalPool(),
                 msg.radioParameters,
                 data,
                 OGN_PACKET_LENGTH_FEC,
@@ -280,14 +281,11 @@ void Ogn1::on_receive(const GATAS::RadioRxManchesterMsg &msg)
 {
     if (msg.dataSource == GATAS::DataSource::OGN1)
     {
-        PoolReleaseGuard frameGuard{getGlobalPool(), msg.frame};
-        PoolReleaseGuard errorGuard{getGlobalPool(), msg.error};
-
         datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
         OGN1_Packet packet;
 
         // Validate packet, and correct if possible
-        uint8_t check = Ogn1::errorCorrect((uint8_t *)&packet, msg.frame, msg.error);
+        uint8_t check = Ogn1::errorCorrect((uint8_t *)&packet, msg.frame.get(), msg.error.get());
         if (check & 0x0F)
         {
             statistics.fecErr += 1;

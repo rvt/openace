@@ -11,7 +11,7 @@ GATAS::PostConstruct AircraftTracker::postConstruct()
 
 void AircraftTracker::start()
 {
-    xTaskCreate(aircraftTrackerTrampoline, AircraftTracker::NAME.cbegin(), configMINIMAL_STACK_SIZE + 512, this, tskIDLE_PRIORITY + 6, &taskHandle);
+    xTaskCreate(aircraftTrackerTrampoline, AircraftTracker::NAME.cbegin(), configMINIMAL_STACK_SIZE + 768, this, tskIDLE_PRIORITY + 6, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -125,7 +125,9 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
     (void)arg;
     while (true)
     {
-        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1000 / TIMESLICES));
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(1000 / TIMESLICES));
+
         // Handle timers
         if (notifyValue & TaskState::MAINTAIN)
         {
@@ -176,8 +178,9 @@ void AircraftTracker::sendEligibleAircraft()
 
 void AircraftTracker::closest10()
 {
-    if (Tx_Struct msg; tXqueue.pop(msg)) {
-        auto aircraft = trackedAircraft.forClosest();        
+    if (Tx_Struct msg; tXqueue.pop(msg))
+    {
+        auto aircraft = trackedAircraft.forClosest();
         getBus().receive(GATAS::EgressAircraftPositionsMsg(aircraft, msg.radioParameters, msg.radioNo));
         tXqueue.clear();
     }

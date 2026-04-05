@@ -88,7 +88,9 @@ void RadioTunerTx::radioTuneTask()
     bool taskBlock = false;
     while (true)
     {
-        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(nextDelayMs));
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(nextDelayMs));
+
         if (notifyValue & TaskState::UNBLOCK)
         {
             taskBlock = false;
@@ -128,7 +130,7 @@ void RadioTunerTx::radioTuneTask()
                             dataSourceToRadio[static_cast<uint8_t>(ds.slot->radioConfig.dataSource())]});
                     statistics.taskActivity += 1;
 #if GATAS_DEBUG == 1
-                    auto delayMs = CountryRegulations::nextRandomTxTime(false, *ds.slot); 
+                    auto delayMs = CountryRegulations::nextRandomTxTime(false, *ds.slot);
 #else
                     auto delayMs = CountryRegulations::nextRandomTxTime(!isAirborne, *ds.slot);
 #endif

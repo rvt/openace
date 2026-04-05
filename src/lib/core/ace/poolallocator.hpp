@@ -11,33 +11,94 @@
 #include <cstring>
 
 template <typename Pool, typename T>
-class PoolReleaseGuard
+class PoolOwnedPtr
 {
 public:
-    PoolReleaseGuard(Pool &pool, T *&ptr) : pool_(&pool), ptr_(&ptr)
+    PoolOwnedPtr() = default;
+
+    PoolOwnedPtr(Pool &pool, T *ptr) : pool_(&pool), ptr_(ptr)
     {
     }
 
-    ~PoolReleaseGuard()
+    ~PoolOwnedPtr()
     {
-        if (ptr_ && *ptr_)
+        reset();
+    }
+
+    PoolOwnedPtr(const PoolOwnedPtr &) = delete;
+    PoolOwnedPtr &operator=(const PoolOwnedPtr &) = delete;
+
+    PoolOwnedPtr(PoolOwnedPtr &&other) noexcept : pool_(other.pool_), ptr_(other.ptr_)
+    {
+        other.pool_ = nullptr;
+        other.ptr_ = nullptr;
+    }
+
+    PoolOwnedPtr &operator=(PoolOwnedPtr &&other) noexcept
+    {
+        if (this != &other)
         {
-            pool_->release(*ptr_);
-            *ptr_ = nullptr; // poison the original owner
+            reset();
+            pool_ = other.pool_;
+            ptr_ = other.ptr_;
+            other.pool_ = nullptr;
+            other.ptr_ = nullptr;
         }
+        return *this;
     }
 
-    void disarm()
+    void reset(T *newPtr = nullptr)
     {
-        ptr_ = nullptr; // stops destructor from touching anything
+        if (ptr_ && pool_)
+        {
+            pool_->release(ptr_);
+        }
+
+        ptr_ = newPtr;
     }
 
-    PoolReleaseGuard(const PoolReleaseGuard &) = delete;
-    PoolReleaseGuard &operator=(const PoolReleaseGuard &) = delete;
+    void adopt(Pool &pool, T *ptr)
+    {
+        reset();
+        pool_ = &pool;
+        ptr_ = ptr;
+    }
+
+    T *detach() const
+    {
+        T *ptr = ptr_;
+        ptr_ = nullptr;
+        return ptr;
+    }
+
+    T *get() const
+    {
+        return ptr_;
+    }
+
+    operator T *() const
+    {
+        return ptr_;
+    }
+
+    T &operator*() const
+    {
+        return *ptr_;
+    }
+
+    T *operator->() const
+    {
+        return ptr_;
+    }
+
+    explicit operator bool() const
+    {
+        return ptr_ != nullptr;
+    }
 
 private:
-    Pool *pool_;
-    T **ptr_;
+    mutable Pool *pool_ = nullptr;
+    mutable T *ptr_ = nullptr;
 };
 
 // Pool specification
@@ -136,7 +197,7 @@ public:
 #if UINTPTR_MAX == 0xFFFFFFFF
         auto masked_ptr = reinterpret_cast<void *>(reinterpret_cast<const uintptr_t>(ptr) & ~0x3U);
 #else
-        auto masked_ptr = ptr;
+        auto masked_ptr = const_cast<void*>(ptr);
 #endif
         SemaphoreGuard lock(portMAX_DELAY, mutex);
         release_impl<0>(masked_ptr);

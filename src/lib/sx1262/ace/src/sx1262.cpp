@@ -95,7 +95,6 @@ void Sx1262::getData(etl::string_stream &stream, const etl::string_view path) co
     stream << "{";
     stream << "\"deviceErrors\":" << statistics.deviceErrors;
     stream << ",\"spiNo\":" << spiHall->spiNum();
-    stream << ",\"queueMissed:err\":" << statistics.queueMissedErr;
     stream << ",\"receivedPackets:k\":" << statistics.receivedPackets;
     stream << ",\"transmittedPackets:k\":" << statistics.transmittedPackets;
     stream << ",\"buzyWaitsTimeout:err\":" << statistics.buzyWaitsTimeout;
@@ -117,19 +116,17 @@ void Sx1262::on_receive(const GATAS::RadioTxFrameMsg &msg)
 {
     if (msg.radioNo == radioNo)
     {
-        PoolReleaseGuard guard{getGlobalPool(), msg.frame};
-
-        if (txQueue.full())
+        if (hasGpsFix && txEnabled)
         {
-            statistics.queueFull += 1;
-        }
-        else if (hasGpsFix && txEnabled)
-        {
-            guard.disarm();
-            txQueue.push(TxPacket{
+            TxPacket txPacket{
                 .radioParameters = msg.radioParameters,
-                .frame = msg.frame,
-                .length = msg.length});
+                .frame = etl::move(msg.frame),
+                .length = msg.length};
+
+            if (!txQueue.push(etl::move(txPacket)))
+            {
+                statistics.queueFull += 1;
+            }
         }
 
         xTaskNotify(taskHandle, TaskState::HANDLETX, eSetBits);
@@ -467,17 +464,13 @@ void Sx1262::receiveGFSKPacket()
                     .epochSeconds = CoreUtils::secondsSinceEpoch(),
                     .frequency = rxRadioParameters.hopFrequency,
                     .config = rxRadioParameters.config,
-                    .frame = frameData,
+                    .frame = {getGlobalPool(), frameData},
                     .length = receivedFrameLength,
                     .rssidBm = pkt_status.rssi_avg,
                 };
 
-                sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
-                if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(30)) != pdPASS)
-                {
-                    getGlobalPool().release(rxFrame.frame);
-                    statistics.queueMissedErr += 1;
-                }
+                sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame.get(), receivedFrameLength);
+                rxDataFrameQueue->push(etl::move(rxFrame));
             }
         }
         else
@@ -516,17 +509,13 @@ void Sx1262::receiveLORAPacket()
                     .epochSeconds = CoreUtils::secondsSinceEpoch(),
                     .frequency = rxRadioParameters.hopFrequency,
                     .config = rxRadioParameters.config,
-                    .frame = frameData,
+                    .frame = {getGlobalPool(), frameData},
                     .length = receivedFrameLength,
                     .rssidBm = pkt_status.signal_rssi_pkt_in_dbm,
                 };
 
-                sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame, receivedFrameLength);
-                if (xQueueSendToBack(rxDataFrameQueue->queue(), &rxFrame, TASK_DELAY_MS(10)) != pdPASS)
-                {
-                    getGlobalPool().release(rxFrame.frame);
-                    statistics.queueMissedErr += 1;
-                }
+                sx126x_read_buffer(this, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE, rxFrame.frame.get(), receivedFrameLength);
+                rxDataFrameQueue->push(etl::move(rxFrame));
             }
         }
         else
@@ -648,11 +637,14 @@ void Sx1262::sx1262Task(void *arg)
 {
     (void)arg;
     SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
-    uint32_t txExpiration = 0;
+    uint32_t keepTransmittingUntill = 0;
     bool doListen = false;
     while (true)
     {
-        if (uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(2000)))
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(2000));
+
+        if (notifyValue)
         {
             // When a new configuration mark it with a boolean as it needs to be processed later
             if (notifyValue & TaskState::HANDLE_RX_CONFIG)
@@ -666,20 +658,21 @@ void Sx1262::sx1262Task(void *arg)
             if (notifyValue & TaskState::DIO1_TX_DONE)
             {
                 doListen = true;
-                txExpiration = 0;
+                keepTransmittingUntill = 0;
             }
 
             // When in TX mode, the transceiver cannot be reconfigured and we need to wait for the TX to finish
-            if (txExpiration)
+            if (keepTransmittingUntill)
             {
-                if (!CoreUtils::isUsReachedRaw(txExpiration))
+                // Keep listening
+                if (!CoreUtils::isUsReachedRaw(keepTransmittingUntill))
                 {
                     // TX still in progress — normal, skip queue and wait for DIO1_TX_DONE
                     continue;
                 }
                 // 55ms elapsed without DIO1_TX_DONE — hardware likely stuck, fall through to recover
                 GATAS_WARN("TX timeout - no DIO1_TX_DONE received within 55ms");
-                txExpiration = 0;
+                keepTransmittingUntill = 0;
                 doListen = true;
             }
 
@@ -709,14 +702,12 @@ void Sx1262::sx1262Task(void *arg)
             // Only in TX
             if (TxPacket txPacket; txQueue.pop(txPacket))
             {
-                PoolReleaseGuard poolGuard{getGlobalPool(), txPacket.frame};
-
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
                     GATAS_MEASURE("Send Radio:", 1500, radioNo);
                     // GATAS_INFO("%8ld TX Packet ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(txPacket.radioParameters.config->dataSource()));
-                    txExpiration = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
+                    keepTransmittingUntill = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     configureSx1262(txPacket.radioParameters, txPacket.length);
                     sendPacket(txPacket);
                     statistics.transmittedPackets += 1;

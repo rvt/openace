@@ -35,7 +35,9 @@ void Gdl90Service::gdl90ServiceTask(void *arg)
     Gdl90Service *gdl90Service = (Gdl90Service *)arg;
     while (true)
     {
-        uint32_t notifyValue = ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(1'000));
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(1'000));
+
         if (notifyValue & TaskState::SHUTDOWN)
         {
             vTaskDelete(nullptr);

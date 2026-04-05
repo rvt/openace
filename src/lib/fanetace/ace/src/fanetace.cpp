@@ -48,7 +48,10 @@ void FanetAce::fanetAceTask(void *arg)
             delay = 1;
         }
         // printf("Delay %ld\n", delay);
-        ulTaskNotifyTake(pdTRUE, TASK_DELAY_MS(static_cast<uint32_t>(delay)));
+
+        uint32_t notifyValue = 0;
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(static_cast<uint32_t>(delay)));
+
         if (auto guard = SemaphoreGuard(100, mutex))
         {
             waitUntil = protocol.handleTx();
@@ -112,6 +115,7 @@ bool FanetAce::fanet_sendFrame(uint8_t codingRate, etl::span<const uint8_t> data
     {
         etl::mem_copy(data.cbegin(), data.cend(), poolData);
         getBus().receive(GATAS::RadioTxFrameMsg{
+            getGlobalPool(),
             radioParameters,
             poolData,
             data.size(),
@@ -141,12 +145,10 @@ void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
     }
     datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
 
-    PoolReleaseGuard poolGuard{getGlobalPool(), msg.frame};
-
     statistics.received += 1;
 
     FANET::Header::MessageType messageType;
-    auto spanMsg = etl::span<const uint8_t>(msg.frame, msg.lengthBytes);
+    auto spanMsg = etl::span<const uint8_t>(msg.frame.get(), msg.lengthBytes);
     if (auto guard = SemaphoreGuard(10, mutex))
     {
         messageType = protocol.handleRx(msg.rssidBm, spanMsg);
@@ -183,7 +185,7 @@ void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
         GATAS::IngressAircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
-                "",
+                GATAS::CallSign{},
                 packet.source().asUint(),
                 GATAS::AddressType::FANET,
                 GATAS::DataSource::FANET,
@@ -219,7 +221,7 @@ void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
         GATAS::IngressAircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
                 CoreUtils::timeUs32(),
-                "",
+                GATAS::CallSign{},
                 packet.source().asUint(),
                 GATAS::AddressType::FANET,
                 GATAS::DataSource::FANET,

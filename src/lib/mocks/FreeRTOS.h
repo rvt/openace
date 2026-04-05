@@ -13,6 +13,7 @@ typedef void (* TimerCallbackFunction_t)( void * );
 #define UBaseType_t uint32_t
 #define pdPASS 0
 #define pdFALSE 0
+#define pdFAIL 0
 #define pdTRUE 1
 #define StaticTask_t int
 #define StackType_t uint8_t
