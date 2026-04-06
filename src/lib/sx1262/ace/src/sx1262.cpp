@@ -382,7 +382,7 @@ void Sx1262::sendGFSKPacket(const GATAS::RadioParameters &parameters, const uint
     enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
 
     // 22Dbm is the max power for sx1262.
-    int8_t powerdBm = LOW_POWER_MODE ? -17 : etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm);
+    int8_t powerdBm = LOW_POWER_MODE ? LOW_POWER_DBM : etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm);
     sx126x_set_tx_params(this, powerdBm, SX126X_RAMP_200_US);
     sx126x_write_buffer(this, 0x00, data, length);
     // 13.1.14 SetTx
@@ -424,7 +424,7 @@ void Sx1262::sendLORAPacket(const GATAS::RadioParameters &parameters, const uint
     // These Setting are handled in sendLORAPacket because codingrate is set dynamically packet
     sx126x_set_lora_mod_params(this, &mod);
 
-    int8_t powerdBm = LOW_POWER_MODE ? -17 : etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm);
+    int8_t powerdBm = LOW_POWER_MODE ? LOW_POWER_DBM : etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm);
     sx126x_set_tx_params(this, powerdBm, SX126X_RAMP_200_US);
 
     // Wait until CAD done

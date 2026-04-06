@@ -37,10 +37,12 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
 {
     static constexpr uint8_t MANCHESTER = 2;               // Used to just clarify why we sometime multiply by 2
 #if GATAS_DEBUG == 1
-    static constexpr uint8_t LOW_POWER_MODE = false;
+    static constexpr bool LOW_POWER_MODE = true;
 #else
-    static constexpr uint8_t LOW_POWER_MODE = false;
+    static constexpr bool LOW_POWER_MODE = false;
 #endif
+    static constexpr uint8_t LOW_POWER_DBM = 0; // - 17 (0xEF) to +14 (0x0E) dBm by step of 1 dB if low power PA is selected
+
     // SInce the SX1262 only has a buffer of 256 bytes, we offset the RX buffer such that we can receive large frames
     // Maximum size of ADSL TrafficUplink is 200bytes whuch would be the maximum we could receive or transmit
     // This means using this configurationw e can never have one tranceiver send and receive ADSL large frames.
