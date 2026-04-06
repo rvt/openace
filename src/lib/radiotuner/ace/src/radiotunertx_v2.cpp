@@ -25,8 +25,7 @@ void RadioTunerTx::start()
     Configuration *configuration = static_cast<Configuration *>(BaseModule::moduleByName(*this, Configuration::NAME));
     if (configuration)
     {
-        auto gaTasConfiguration = configuration->gaTasConfig();
-        assignDataSources(gaTasConfiguration.protocols);
+      on_receive(GATAS::ConfigUpdatedMsg(*configuration, Configuration::NAME));
     }
 };
 
@@ -53,6 +52,7 @@ void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view pa
         uint16_t minT = ds.slot->txMinTime;
         uint16_t maxT = ds.slot->txMaxTime;
 #else
+
         uint16_t minT = isAirborne ? ds.slot->txMinTime : ds.slot->txStaticMinTime;
         uint16_t maxT = isAirborne ? ds.slot->txMaxTime : ds.slot->txStaticMaxTime;
 #endif

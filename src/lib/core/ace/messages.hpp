@@ -224,7 +224,7 @@ namespace GATAS
         RadioControlMsg(const GATAS::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
     };
 
-    struct ConfigUpdatedMsg : public etl::message<20> /* Don't change from 20!!!! They are used in MessageRouter*/
+    struct ConfigUpdatedMsg : public etl::message<20> 
     {
         const Configuration &config;
         const GATAS::Modulename moduleName;

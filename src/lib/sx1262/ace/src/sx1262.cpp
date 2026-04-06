@@ -139,8 +139,8 @@ void Sx1262::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     {
         txEnabled = msg.config.valueByPath(true, Sx1262::NAMES[radioNo], "txEnabled");
         offsetHz = msg.config.valueByPath(true, Sx1262::NAMES[radioNo], "offset");
-        groundStation = msg.config.gaTasConfig().conspicuity.groundStation;
     }
+    groundStation = msg.config.gaTasConfig().conspicuity.groundStation;
 }
 
 void Sx1262::on_receive(const GATAS::GpsStatsMsg &msg)

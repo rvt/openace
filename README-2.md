@@ -48,7 +48,7 @@ First, though this is how you set up your Pico toolchain on a Mac. The Foundatio
 
 * Install the toolchain, don't use brew it seems to be broken:
   * Download toolchain from [Arm GNU Toolchain](https://developer.arm.com/downloads/-/gnu-rm)
-  * Add export PATH=/Applications/ARM/bin:$PATH to you .zshrc .bash_profile 
+  * Add export PATH=/Applications/ARM/bin:$PATH to you .zshrc .bash_profile
   * Add export PICO_TOOLCHAIN_PATH="/Applications/ARM"
 * Configure the IDE:
   * Run — or install and then run — Microsoft Visual Studio Code.
@@ -85,10 +85,10 @@ Create a launch configuration:
           "break main",
           "continue"
         ]
-      },
+      }
 ```
 
-If you get something like _adapter speed_ then add `adapter speed 12000` to `target/rp2040.cfg` (in openocd configuration directory) 
+If you get something like _adapter speed_ then add `adapter speed 12000` to `target/rp2040.cfg` (in openocd configuration directory)
 
 ### Setup Visual Studio Code Multiroot
 
@@ -102,8 +102,8 @@ To see the printf statements during debugging
 
 * [Chrome Terminal](https://webserial.io/) Seems to work very nice
 * `minicom -D /dev/cu.usbmodem14102`, On  quickly press `esc q` to exit.
-* AirConnect testing `nc 192.168.1.1 2000`    Exit ctrl->c 
-# Dump1090 testing `nc 172.23.255.59 30002 | ts '%.s'`  
+* AirConnect testing `nc 192.168.1.1 2000`    Exit ctrl->c
+# Dump1090 testing `nc 172.23.255.59 30002 | ts '%.s'`
 
 # wont work well : socat TCP-LISTEN:30002,fork TCP:172.23.255.59:30002
 
@@ -173,7 +173,7 @@ curl -X POST -d '{"ssid":"net_1","password":"anode89-jeep-?!"}' "http://192.168.
 Free RAM https://forums.raspberrypi.com/viewtopic.php?t=347638
 
 
-FreeRTOS/Demo/ThirdParty/Community-Supported-Demos/CORTEX_M0+_RP2040 
+FreeRTOS/Demo/ThirdParty/Community-Supported-Demos/CORTEX_M0+_RP2040
 
 
 https://forums.raspberrypi.com/viewtopic.php?t=329406&sid=6837a40d449c8d51755402a44ce0d96f&start=25
@@ -206,10 +206,9 @@ FANET  : $PSRFS,1,protocol,5*7A
 ADSL   : $PSRFS,1,protocol,8*77
 
 
+Save and reboot: $PSRFC,SAV*3C
+
 Latest+BLE_+GDL90 over BLE: $PSRFC,1,0,7,1,1,1,0,0,2,1,0,1,1,5,5,0,0,0,0*4C
 
-### Can not find free FPB Comparator!
 
 see:  [](https://forums.raspberrypi.com/viewtopic.php?t=343683)
-
-To many breakpoints or breakpoints that are old/outdated

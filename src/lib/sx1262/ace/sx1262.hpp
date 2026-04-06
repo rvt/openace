@@ -189,6 +189,7 @@ public:
                                                                                            config.gaTasConfig().conspicuity.groundStation,
                                                                                            config.valueByPath(true, NAMES[radioNo_], "offset"))
     {
+
     }
 
     virtual ~Sx1262() = default;
