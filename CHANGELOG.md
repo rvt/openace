@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Groundstation mode that can show a static object at any height.
 - Send Traffic over ADSL using uplinkTraffic message
 - Low poer mode during development
+- Allow for per protocol RX or TX, or RX and TX selection
 
 ### Changed
 
