@@ -131,13 +131,13 @@ public:
             .size = size};
     }
 
-    static void serializeAircraftConfigurationV2(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t currentAddress, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode)
+    static void serializeAircraftConfigurationV2(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode)
     {
         writer.write_unchecked(DataType(DataType::AIRCRAFT_CONFIGURATIONS_V2).get_value(), 8U);
         writer.write_unchecked(0, 8U); // Reserved
         writer.write_unchecked(gatasId, 32U);
         writer.write_unchecked(gatasIp, 32U);
-        writer.write_unchecked(currentAddress, 24U);
+        writer.write_unchecked(icaoAddressSnap, 24U);
 
         writer.write_unchecked(0, 32U);       // Version
         writer.write_unchecked(pinCode, 24U); // gatasConnect Pincode

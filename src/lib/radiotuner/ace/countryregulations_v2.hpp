@@ -391,13 +391,13 @@ public:
         return nullptr;
     }
 
-    static etl::vector<const ProtocolRxTimeSlot *, GATAS_MAX_SOURCE_PER_RADIO * GATAS_MAX_RADIOS> getProtocolRxTimingsForZone(Zone zone, const etl::span<const GATAS::DataSource> dataSources)
+    static etl::vector<const ProtocolRxTimeSlot *, GATAS_MAX_SOURCE_PER_RADIO * GATAS_MAX_RADIOS> getProtocolRxTimingsForZone(Zone zone, const etl::span<const GATAS::DataSourceConfig> dataSources)
     {
         etl::vector<const ProtocolRxTimeSlot *, GATAS_MAX_SOURCE_PER_RADIO * GATAS_MAX_RADIOS> result;
         for (const auto &slot : protocolRxTimimgs)
         {
-            auto isDs = etl::find_if(dataSources.cbegin(), dataSources.cend(), [slot](GATAS::DataSource ds)
-                                     { return slot.radioConfig.isRxDataSource(ds); });
+            auto isDs = etl::find_if(dataSources.cbegin(), dataSources.cend(), [slot](GATAS::DataSourceConfig ds)
+                                     { return slot.radioConfig.isRxDataSource(ds.dataSource) && ds.isRx(); });
 
             if (slot.zone == zone && !result.full() && (isDs != dataSources.cend()))
             {

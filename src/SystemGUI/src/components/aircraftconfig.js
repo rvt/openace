@@ -24,10 +24,18 @@ class AircraftConfig extends El {
       "Drop Plane"];
 
     this.transponderTypes = ["ICAO", "FLARM", "OGN", "ADSL"];
-    this.protocolTypes = ["FLARM", "OGN", "ADSL", "FANET"];
+    this.protocolTypes = ["OGN", "FLARM", "ADSL", "FANET"];
+    this.protocolModes = [
+      { value: "OFF", label: "OFF" },
+      { value: "RX_TX", label: "RX/TX" },
+      { value: "RX", label: "RX" },
+      { value: "TX", label: "TX" },
+    ];
 
     this.state = this.$observable({ showHelp: false, aircraft: {}, groundStation: false });
     this.copyOfAircraft = {};
+    this.protocolModeState = {};
+    this._resetProtocolModeState();
     this._fetchData().then((data) => {
       Object.assign(this.state.aircraft, data);
       Object.assign(this.copyOfAircraft, data);
@@ -102,6 +110,96 @@ class AircraftConfig extends El {
     this._updateGroundStationState(e.target.checked);
   }
 
+  _resetProtocolModeState() {
+    this.protocolModeState = Object.fromEntries(this.protocolTypes.map((protocol) => [protocol, "OFF"]));
+  }
+
+  _protocolRefName(protocol, mode) {
+    return `protocol${protocol.toUpperCase()}${mode}`;
+  }
+
+  _protocolInputId(protocol, mode) {
+    return `protocol_${protocol.toUpperCase()}_${mode}`;
+  }
+
+  _protocolLabelRefName(protocol, mode) {
+    return `protocolLabel${protocol.toUpperCase()}${mode}`;
+  }
+
+  _protocolModeLabelStyle(active) {
+    const base = [
+      "display: inline-flex",
+      "align-items: center",
+      "gap: 0.35rem",
+      "margin: 0",
+      "padding: 0.4rem 0.75rem",
+      "border-radius: 999px",
+      "border: 1px solid #7b8794",
+      "font: inherit",
+      "outline: none",
+      "appearance: none",
+      "cursor: pointer",
+      "user-select: none",
+      "transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease",
+      "background: #f5f7fa",
+      "color: #1f2937",
+    ];
+    if (active) {
+      base.push("background: #203040");
+      base.push("color: #ffffff");
+      base.push("border-color: #203040");
+    }
+    return base.join("; ");
+  }
+
+  _setProtocolMode(protocol, mode) {
+    this.protocolModeState[protocol] = mode;
+    this._updateProtocolModeStyles(protocol);
+  }
+
+  _onProtocolModeChange(protocol, mode) {
+    this._setProtocolMode(protocol, mode);
+  }
+
+  _updateProtocolModeStyles(protocol) {
+    for (const mode of this.protocolModes) {
+      const labelRef = this.$refs[this._protocolLabelRefName(protocol, mode.value)];
+      if (labelRef) {
+        const active = this.protocolModeState[protocol] === mode.value;
+        labelRef.style.background = active ? "#203040" : "#f5f7fa";
+        labelRef.style.color = active ? "#ffffff" : "#1f2937";
+        labelRef.style.borderColor = active ? "#203040" : "#7b8794";
+      }
+    }
+  }
+
+  _normalizeProtocolModes(protocols) {
+    const normalized = Object.fromEntries(this.protocolTypes.map((protocol) => [protocol, "OFF"]));
+    if (!Array.isArray(protocols)) {
+      return normalized;
+    }
+
+    for (const protocol of protocols) {
+      if (typeof protocol === "string") {
+        normalized[protocol] = "RX_TX";
+        continue;
+      }
+
+      if (protocol && typeof protocol === "object") {
+        for (const [protocolName, protocolConfig] of Object.entries(protocol)) {
+          if (!this.protocolTypes.includes(protocolName)) {
+            continue;
+          }
+
+          const mode = protocolConfig?.mode ?? "RX_TX";
+          normalized[protocolName] = this.protocolModes.some((item) => item.value === mode) ? mode : "RX_TX";
+        }
+      }
+    }
+
+    return normalized;
+  }
+
   _updateGroundStationState(enabled) {
     this.state.groundStation = enabled;
     if (enabled) {
@@ -123,11 +221,10 @@ class AircraftConfig extends El {
     this.$refs.groundStation.checked = aircraft.groundStation;
     this._updateGroundStationState(!!aircraft.groundStation);
     this.$refs.heightAboveGps.value = aircraft.heightAboveGps ?? 0;
+    this.protocolModeState = this._normalizeProtocolModes(aircraft.protocols);
+    this.protocolTypes.forEach((protocol) => this._updateProtocolModeStyles(protocol));
     //    this.$refs.autoConf.checked = aircraft.autoConf;
     //    this.$refs.privacy.checked = aircraft.privacy;
-    for (let i of this.protocolTypes) {
-      this.$refs[`protocol${i.toUpperCase()}`].checked = aircraft.protocols.includes(i);
-    }
   }
 
   _getFormData() {
@@ -143,9 +240,14 @@ class AircraftConfig extends El {
 
     //    aircraft.privacy = this.$refs.privacy.checked;
     aircraft.protocols = [];
-    for (let i of this.protocolTypes) {
-      if (this.$refs[`protocol${i.toUpperCase()}`].checked) {
-        aircraft.protocols.push(i);
+    for (let protocol of this.protocolTypes) {
+      const mode = this.protocolModeState[protocol] ?? "OFF";
+      if (mode !== "OFF") {
+        aircraft.protocols.push({
+          [protocol]: {
+            mode,
+          },
+        });
       }
     }
     return aircraft;
@@ -160,7 +262,10 @@ class AircraftConfig extends El {
       return Promise.resolve({
         category: "Light",
         addressType: "ICAO",
-        protocols: ["OGN", "ADSL"],
+        protocols: [
+          { OGN: { mode: "RX_TX" } },
+          { ADSL: { mode: "RX_TX" } },
+        ],
       });
     }
   }
@@ -200,14 +305,32 @@ class AircraftConfig extends El {
 
       <div class="section row g-3">
         <div>
-            <h6>Protocols to Enable (Send and Receive)</h6>
+            <h6>Protocol Modes</h6>
 
             ${this.protocolTypes.map(
               (item) => html`
-                <label>
-                  <input type="checkbox" ref="protocol${item.toUpperCase()}" />
-                  ${item}
-                </label>
+                <div class="mb-2" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
+                  <div class="fw-bold" style="min-width: 5rem;">${item}</div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
+                    ${this.protocolModes.map(
+                      (mode) => html`
+                        <label ref="${this._protocolLabelRefName(item, mode.value)}" for="${this._protocolInputId(item, mode.value)}" style="${this._protocolModeLabelStyle(this.protocolModeState[item] === mode.value)}">
+                          <input
+                            type="radio"
+                            id="${this._protocolInputId(item, mode.value)}"
+                            name="protocol${item.toUpperCase()}"
+                            ref="${this._protocolRefName(item, mode.value)}"
+                            value="${mode.value}"
+                            ${this.protocolModeState[item] === mode.value ? "checked" : ""}
+                            onchange=${() => this._onProtocolModeChange(item, mode.value)}
+                            style="margin: 0; accent-color: currentColor;"
+                          />
+                          <span>${mode.label}</span>
+                        </label>
+                      `,
+                    )}
+                  </div>
+                </div>
               `,
             )}
 
@@ -282,8 +405,8 @@ class AircraftConfig extends El {
             </p>
 
             <p>
-            <b>Protocols to Enable</b><br />
-            Enable the protocols that are used to send/receive aircraft information on. To enable ADS-B use the correct module under 'Modules'.
+            <b>Protocol Modes</b><br />
+            Select whether each protocol should be disabled, receive only, transmit only, or both receive and transmit. To enable ADS-B use the correct module under 'Modules'.
             </p>
 
             <p>

@@ -202,7 +202,7 @@ namespace GATAS
         ADSLO_HDR = 2,
         FANET = 3,
         OGN1 = 4,
-        _RADIO = 5,          // ANything beflore Radio can only be received over hardware
+        _RADIO = 5, // ANything beflore Radio can only be received over hardware
         ADSB = 5,
         _TRANSPROTOCOLS = 5, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         ADSLFLARM = 253,     // Combination of ADSL/FLARM, not an acutal protocol but needed for RX of multiple protocols
@@ -215,6 +215,38 @@ namespace GATAS
     const char *dataSourceIntToString(uint8_t ds);
     const char *toString(DataSource ds);
     DataSource stringToDataSource(const char *str);
+
+    struct DataSourceMode
+    {
+        enum enum_type : uint8_t
+        {
+            RX = 1,
+            TX = 2,
+            RX_TX = 3
+        };
+
+        ETL_DECLARE_ENUM_TYPE(DataSourceMode, uint8_t)
+        ETL_ENUM_TYPE(RX, "RX")
+        ETL_ENUM_TYPE(TX, "TX")
+        ETL_ENUM_TYPE(RX_TX, "RX_TX")
+        ETL_END_ENUM_TYPE
+    };
+
+    struct DataSourceConfig
+    {
+        DataSource dataSource;
+        DataSourceMode mode;
+
+        bool isRx() const
+        {
+            return (mode == DataSourceMode::RX || mode == DataSourceMode::RX_TX);
+        }
+
+        bool isTx() const
+        {
+            return (mode == DataSourceMode::TX || mode == DataSourceMode::RX_TX);
+        }
+    };
 
     /**
      * Aircraft location message and time of reception
@@ -237,7 +269,7 @@ namespace GATAS
         int16_t ellipseHeight; // Altitude above the GeoId (MSL) in meters. For aircraft where altitude is based from BARO, this is an estimate
         float verticalSpeed;   // in m/s
         float groundSpeed;     // in m/s
-        int16_t track;        // 0..359
+        int16_t track;         // 0..359
         float hTurnRate;       // deg/s Turn rate in the horizontal plane
 
         // These can be used by received to understand where the target is relative to ownship
@@ -280,7 +312,7 @@ namespace GATAS
         struct GaTasConfiguration
         {
             Conspicuity conspicuity;
-            etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
+            etl::vector<GATAS::DataSourceConfig, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
             etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddresses; // List of all configured hex codes of all aircraft
         };
 

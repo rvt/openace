@@ -28,7 +28,7 @@ public:
              GATAS::AddressType::ICAO,
              false,
              false},
-            {GATAS::DataSource::OGN1}};
+            {{GATAS::DataSource::OGN1, GATAS::DataSourceMode::RX_TX}}};
     }
 
     virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName) const override

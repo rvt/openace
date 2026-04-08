@@ -21,10 +21,28 @@
       "category": "Light",
       "privacy": 0,
       "noTrack": 0,
+      "groundStation": 0,
       "protocols": [
-        "OGN",
-        "ADSL",
-        "FLARM"
+        {
+          "OGN": {
+            "mode": "RT"
+          }
+        },
+        {
+          "FLARM": {
+            "mode": "RT"
+          }
+        },
+        {
+          "ADSL": {
+            "mode": "RT"
+          }
+        },
+        {
+          "FANET": {
+            "mode": "T"
+          }
+        }
       ]
     }
   },
@@ -108,7 +126,6 @@
     "softPPS": 1
   },
   "SerialADSB": {},
-
   "_commentPinMaps": "Hardware specific items are only handled by pinmapping",
   "PICO_2RADIO": {
     "AceSpi": {

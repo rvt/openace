@@ -101,14 +101,14 @@ TEST_CASE("fitsAnyTiming with multiple windows", "[timing]")
 // ─────────────────────────────────────────────────────────────────────────────
 TEST_CASE("getProtocolRxTimingsForZone - returns all ZONE1 slots when all sources requested", "[CountryRegulations][rxZone]")
 {
-    etl::array sources = {
-        GATAS::DataSource::FLARM,
-        GATAS::DataSource::OGN1,
-        GATAS::DataSource::ADSLO_HDR,
-        GATAS::DataSource::FANET};
+    etl::array<GATAS::DataSourceConfig, 4> sources = {{
+        {GATAS::DataSource::FLARM, GATAS::DataSourceMode::RX_TX},
+        {GATAS::DataSource::OGN1, GATAS::DataSourceMode::RX_TX},
+        {GATAS::DataSource::ADSLO_HDR, GATAS::DataSourceMode::RX_TX},
+        {GATAS::DataSource::FANET, GATAS::DataSourceMode::RX_TX}}};
     auto result = CountryRegulations::getProtocolRxTimingsForZone(
         CountryRegulations::Zone::enum_type::ZONE1,
-        etl::span<const GATAS::DataSource>(sources.data(), sources.size()));
+        etl::span<const GATAS::DataSourceConfig>(sources.data(), sources.size()));
 
     // 4 ZONE1 RX entries (ADSLM removed from table)
     REQUIRE(result.size() == 4);
@@ -120,10 +120,11 @@ TEST_CASE("getProtocolRxTimingsForZone - returns all ZONE1 slots when all source
 
 TEST_CASE("getProtocolRxTimingsForZone - filters to only requested sources", "[CountryRegulations][rxZone]")
 {
-    etl::array sources = {GATAS::DataSource::FLARM};
+    etl::array<GATAS::DataSourceConfig, 1> sources = {{
+        {GATAS::DataSource::FLARM, GATAS::DataSourceMode::RX_TX}}};
     auto result = CountryRegulations::getProtocolRxTimingsForZone(
         CountryRegulations::Zone::enum_type::ZONE1,
-        etl::span<const GATAS::DataSource>(sources.data(), sources.size()));
+        etl::span<const GATAS::DataSourceConfig>(sources.data(), sources.size()));
 
     REQUIRE(result.size() == 1);
     REQUIRE(result[0]->radioConfig.isRxDataSource(GATAS::DataSource::FLARM));
@@ -131,20 +132,22 @@ TEST_CASE("getProtocolRxTimingsForZone - filters to only requested sources", "[C
 
 TEST_CASE("getProtocolRxTimingsForZone - wrong zone returns empty", "[CountryRegulations][rxZone]")
 {
-    etl::array sources = {GATAS::DataSource::FLARM, GATAS::DataSource::OGN1};
+    etl::array<GATAS::DataSourceConfig, 2> sources = {{
+        {GATAS::DataSource::FLARM, GATAS::DataSourceMode::RX_TX},
+        {GATAS::DataSource::OGN1, GATAS::DataSourceMode::RX_TX}}};
     auto result = CountryRegulations::getProtocolRxTimingsForZone(
         CountryRegulations::Zone::enum_type::ZONE5, // No ZONE5 entries in protocolRxTimimgs
-        etl::span<const GATAS::DataSource>(sources.data(), sources.size()));
+        etl::span<const GATAS::DataSourceConfig>(sources.data(), sources.size()));
 
     REQUIRE(result.empty());
 }
 
 TEST_CASE("getProtocolRxTimingsForZone - empty source list returns empty", "[CountryRegulations][rxZone]")
 {
-    etl::array<GATAS::DataSource, 0> sources{};
+    etl::array<GATAS::DataSourceConfig, 0> sources{};
     auto result = CountryRegulations::getProtocolRxTimingsForZone(
         CountryRegulations::Zone::enum_type::ZONE1,
-        etl::span<const GATAS::DataSource>(sources.data(), sources.size()));
+        etl::span<const GATAS::DataSourceConfig>(sources.data(), sources.size()));
 
     REQUIRE(result.empty());
 }

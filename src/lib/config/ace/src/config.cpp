@@ -351,7 +351,6 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
     JsonObjectConst aircraftConfig = doc["aircraft"][aircraftId];
 
     // Default if no aircraft config was found
-    etl::vector<GATAS::DataSource, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
     if (aircraftConfig.isNull())
     {
         return {
@@ -363,27 +362,69 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
                 .noTrack = false,
                 .groundStation = false,
                 .heightAboveGps = 0},
-            .protocols = protocols,
+            .protocols = {},
             .allIcaoAddresses = {}};
     }
 
-    for (auto protocol : aircraftConfig["protocols"].as<JsonArrayConst>())
+    etl::vector<GATAS::DataSourceConfig, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
+    auto appendProtocol = [&](GATAS::DataSource dataSource, GATAS::DataSourceMode mode, bool legacyFormat)
     {
-        if (!protocols.full())
+        if (dataSource == GATAS::DataSource::NONE || protocols.full())
         {
-            auto dataSource = GATAS::stringToDataSource(protocol.as<const char *>());
-            if (dataSource != GATAS::DataSource::NONE)
+            return;
+        }
+
+        protocols.push_back({dataSource, mode});
+
+        // Legacy configs expect ADSL to enable the header protocol as well.
+        if (legacyFormat && dataSource == GATAS::DataSource::ADSLM && !protocols.full())
+        {
+            protocols.push_back({GATAS::DataSource::ADSLO_HDR, mode});
+        }
+    };
+
+    for (JsonVariantConst protocol : aircraftConfig["protocols"].as<JsonArrayConst>())
+    {
+        if (protocol.is<const char *>())
+        {
+            // Backwards compatibility: old format is an array of protocol names.
+            appendProtocol(GATAS::stringToDataSource(protocol.as<const char *>()), GATAS::DataSourceMode::RX_TX, true);
+            continue;
+        }
+
+        if (!protocol.is<JsonObjectConst>())
+        {
+            continue;
+        }
+
+        for (JsonPairConst protocolEntry : protocol.as<JsonObjectConst>())
+        {
+            auto dataSource = GATAS::stringToDataSource(protocolEntry.key().c_str());
+            if (dataSource == GATAS::DataSource::NONE)
             {
-                protocols.push_back(dataSource);
-                // ADSLM implies ADSLO_HDR
-                if (dataSource == GATAS::DataSource::ADSLM)
+                continue;
+            }
+
+            GATAS::DataSourceMode mode = GATAS::DataSourceMode::RX_TX;
+            JsonObjectConst protocolConfig = protocolEntry.value().as<JsonObjectConst>();
+            if (!protocolConfig.isNull())
+            {
+                auto modeStr = protocolConfig["mode"].as<const char *>();
+                if (modeStr != nullptr)
                 {
-                    if (!protocols.full())
+                    etl::string_view modeValue = modeStr;
+                    if (modeValue == "RX")
                     {
-                        protocols.push_back(GATAS::DataSource::ADSLO_HDR);
+                        mode = GATAS::DataSourceMode::RX;
+                    }
+                    else if (modeValue == "TX")
+                    {
+                        mode = GATAS::DataSourceMode::TX;
                     }
                 }
             }
+
+            appendProtocol(dataSource, mode, false);
         }
     }
 

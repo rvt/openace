@@ -215,7 +215,7 @@ void RadioTunerTx::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void RadioTunerTx::assignDataSources(const etl::span<GATAS::DataSource> &newDataSources)
+void RadioTunerTx::assignDataSources(const etl::span<GATAS::DataSourceConfig> &newDataSources)
 {
     eventSync.clear(BIT_EVENT_DONE);
     xTaskNotify(taskHandle, TaskState::BLOCK, eSetBits);
@@ -235,8 +235,12 @@ void RadioTunerTx::assignDataSources(const etl::span<GATAS::DataSource> &newData
         configuredDatasources.insert(configuredDatasources.end(), newDataSources.begin(), newDataSources.end());
         for (auto &&ds : newDataSources)
         {
-            const auto timing = CountryRegulations::getProtocolTxTimings(currentZone, ds);
-
+            // Ignore Datasources that are not for transmission
+            if (!ds.isTx()) {
+                continue;
+            }
+            const auto timing = CountryRegulations::getProtocolTxTimings(currentZone, ds.dataSource);
+            
             if (!timing.empty())
             {
                 for (const auto &entry : timing)

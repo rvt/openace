@@ -60,10 +60,14 @@ TEST_CASE("Fully Configured", "[single-file]")
         REQUIRE(GATAS::AircraftCategory::SMALL == hwConfig.conspicuity.category);
         //        REQUIRE ( (hwConfig.privacy == 0) );
         REQUIRE(4 == hwConfig.protocols.size());
-        REQUIRE(GATAS::DataSource::OGN1 == hwConfig.protocols[0]);
-        REQUIRE(GATAS::DataSource::ADSLM == hwConfig.protocols[1]);
-        REQUIRE(GATAS::DataSource::ADSLO_HDR == hwConfig.protocols[2]);
-        REQUIRE(GATAS::DataSource::FLARM == hwConfig.protocols[3]);
+        REQUIRE(GATAS::DataSource::OGN1 == hwConfig.protocols[0].dataSource);
+        REQUIRE(GATAS::DataSourceMode::RX_TX == hwConfig.protocols[0].mode);
+        REQUIRE(GATAS::DataSource::ADSLM == hwConfig.protocols[1].dataSource);
+        REQUIRE(GATAS::DataSourceMode::RX_TX == hwConfig.protocols[1].mode);
+        REQUIRE(GATAS::DataSource::ADSLO_HDR == hwConfig.protocols[2].dataSource);
+        REQUIRE(GATAS::DataSourceMode::RX_TX == hwConfig.protocols[2].mode);
+        REQUIRE(GATAS::DataSource::FLARM == hwConfig.protocols[3].dataSource);
+        REQUIRE(GATAS::DataSourceMode::RX_TX == hwConfig.protocols[3].mode);
     }
 
     SECTION("Arrays")
