@@ -217,6 +217,7 @@ void RadioTunerTx::on_receive_unknown(const etl::imessage &msg)
 
 void RadioTunerTx::assignDataSources(const etl::span<GATAS::DataSourceConfig> &newDataSources)
 {
+    auto guard = BaseModule::lockSharedMutex();
     eventSync.clear(BIT_EVENT_DONE);
     xTaskNotify(taskHandle, TaskState::BLOCK, eSetBits);
 

@@ -367,7 +367,7 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
     }
 
     etl::vector<GATAS::DataSourceConfig, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> protocols;
-    auto appendProtocol = [&](GATAS::DataSource dataSource, GATAS::DataSourceMode mode, bool legacyFormat)
+    auto appendProtocol = [&](GATAS::DataSource dataSource, GATAS::DataSourceMode mode)
     {
         if (dataSource == GATAS::DataSource::NONE || protocols.full())
         {
@@ -377,7 +377,7 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
         protocols.push_back({dataSource, mode});
 
         // Legacy configs expect ADSL to enable the header protocol as well.
-        if (legacyFormat && dataSource == GATAS::DataSource::ADSLM && !protocols.full())
+        if (dataSource == GATAS::DataSource::ADSLM && !protocols.full())
         {
             protocols.push_back({GATAS::DataSource::ADSLO_HDR, mode});
         }
@@ -388,7 +388,7 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
         if (protocol.is<const char *>())
         {
             // Backwards compatibility: old format is an array of protocol names.
-            appendProtocol(GATAS::stringToDataSource(protocol.as<const char *>()), GATAS::DataSourceMode::RX_TX, true);
+            appendProtocol(GATAS::stringToDataSource(protocol.as<const char *>()), GATAS::DataSourceMode::RX_TX);
             continue;
         }
 
@@ -424,7 +424,7 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
                 }
             }
 
-            appendProtocol(dataSource, mode, false);
+            appendProtocol(dataSource, mode);
         }
     }
 

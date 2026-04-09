@@ -87,6 +87,11 @@ public:
         moduleLoaderMap[name] = {GATAS::PostConstruct::NA, hwCheck, nullptr};
     }
 
+    static SemaphoreGuard<> lockSharedMutex(uint32_t waitMs = portMAX_DELAY)
+    {
+        return SemaphoreGuard<>(waitMs, baseMutex);
+    }
+
     static GATAS::GlobalPoolConfiguration &getGlobalPool()
     {
         return globalPool;

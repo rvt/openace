@@ -183,6 +183,8 @@ bool RadioTunerRx::hasReceived(GATAS::DataSource ds)
 
 void RadioTunerRx::assignDataSources()
 {
+    auto guard = BaseModule::lockSharedMutex();
+
     if (currentZone.value() == CountryRegulations::Zone::enum_type::ZONE0)
     {
         return;
