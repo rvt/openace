@@ -10,11 +10,6 @@ void Idle::start()
     getBus().subscribe(*this);
 };
 
-void Idle::on_receive(const GATAS::ConfigUpdatedMsg &msg)
-{
-    (void)msg;
-}
-
 void Idle::on_receive(const GATAS::GpsStatsMsg &msg)
 {
     hasGpsFix = msg.gpsStats.gpsFix.hasFix;

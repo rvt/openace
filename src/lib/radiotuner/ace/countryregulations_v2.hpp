@@ -50,7 +50,7 @@ public:
 
     struct ChannelTiming
     {
-        // Remove 20ms from the end time so TX timings will not (eadsely) overflow into a region that won't be received
+        // Remove 10ms from the end time so TX timings will not (eadsely) overflow into a region that won't be received
         static constexpr uint16_t REDUCE_ENDTIME_MS = 10;
         Channel channel = Channel::NOOP;
         // Start / end tells between which ms in a second the protocol is active

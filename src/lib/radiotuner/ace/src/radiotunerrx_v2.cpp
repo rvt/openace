@@ -79,8 +79,9 @@ void RadioTunerRx::radioTuneTask(void *arg)
             continue;
         }
 
-        const uint32_t nowMs = CoreUtils::msSinceMidnight();
-        int32_t nextWakeMs = 200; // default fallback
+        const uint32_t loopStartMs = CoreUtils::msSinceMidnight();
+        const uint32_t nowMs = loopStartMs;
+        uint32_t nextBoundaryInMs = std::numeric_limits<uint32_t>::max();
 
         for (auto &&ref : radioTunerRx->radioCtxList)
         {
@@ -96,13 +97,15 @@ void RadioTunerRx::radioTuneTask(void *arg)
             size_t foundIdx = 0;
             for (size_t i = 0; i < ref.protocolTimings.size(); i++)
             {
-                if (cycleMs >= ref.protocolTimings[i].start && cycleMs < ref.protocolTimings[i].end)
+                auto lenientCycleMs = cycleMs + 20;
+                if (lenientCycleMs >= ref.protocolTimings[i].start && lenientCycleMs < ref.protocolTimings[i].end)
                 {
                     foundIdx = i;
                     break;
                 }
             }
 
+//            GATAS_INFO("Radio %d cycleMs: %ld, ppsMS: %d  current entry: %u, start: %d, end: %d, ds: %s\n", ref.radioNo, cycleMs,  CoreUtils::msInSecond(), foundIdx, ref.protocolTimings[foundIdx].start, ref.protocolTimings[foundIdx].end, (ref.protocolTimings[foundIdx].protocolTimeConfig != nullptr) ? GATAS::toString(ref.protocolTimings[foundIdx].protocolTimeConfig->radioConfig.dataSource()) : "NOOP");
             const auto &entry = ref.protocolTimings[foundIdx];
 
             // Only reconfigure radio if protocol changed
@@ -120,15 +123,26 @@ void RadioTunerRx::radioTuneTask(void *arg)
                 }
             }
 
-            // Time until this entry ends (next transition)
-            int32_t timeToEnd = entry.end - cycleMs;
-            if (timeToEnd < nextWakeMs)
+            // Time until this radio hits its next timing boundary.
+            // We take the minimum across all radios so the task wakes on the earliest boundary.
+            uint32_t timeToBoundary = static_cast<uint32_t>(entry.end - cycleMs);
+            if (timeToBoundary < nextBoundaryInMs)
             {
-                nextWakeMs = timeToEnd;
+                nextBoundaryInMs = timeToBoundary;
             }
         }
 
-        nextDelayMs = static_cast<uint16_t>(etl::max(nextWakeMs - 2, static_cast<int32_t>(1))); // Minus 2 because it seems to be 2 MS 'late'
+        if (nextBoundaryInMs == std::numeric_limits<uint32_t>::max())
+        {
+            nextBoundaryInMs = 1000;
+        }
+
+        const uint32_t loopEndMs = CoreUtils::msSinceMidnight();
+        const uint32_t loopElapsedMs = (loopEndMs >= loopStartMs)
+                                           ? (loopEndMs - loopStartMs)
+                                           : (86'400'000U - loopStartMs + loopEndMs);
+        const int32_t correctedDelayMs = static_cast<int32_t>(nextBoundaryInMs) - static_cast<int32_t>(loopElapsedMs);
+        nextDelayMs = static_cast<uint16_t>(etl::max(correctedDelayMs, static_cast<int32_t>(1)));
     }
 }
 

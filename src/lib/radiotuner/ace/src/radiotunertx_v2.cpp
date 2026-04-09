@@ -108,17 +108,18 @@ void RadioTunerTx::radioTuneTask()
         {
             for (auto &&ds : dataSourceTxEvents)
             {
-                auto currentTime = CoreUtils::timeUs32();
-                if (CoreUtils::isUsReached(ds.atTime, currentTime))
+                if (CoreUtils::isUsReached(ds.atTime))
                 {
-                    auto channelTiming = CountryRegulations::findFittingTiming(currentTime, ds.slot->timeSlots);
+                    auto channelTiming = CountryRegulations::findFittingTiming(CoreUtils::timeMs32(), ds.slot->timeSlots);
                     if (channelTiming == nullptr)
                     {
                         continue;
                     }
 
                     auto frequencyHz = CountryRegulations::getFrequency(ds.slot->rfConfig, channelTiming->channel);
-                    // GATAS_INFO("TX: DS: %s Freq:%lu radio:%d id:%u ms:%lu", GATAS::toString(ds.slot->radioConfig.dataSource()), frequencyHz, dataSourceToRadio[static_cast<uint8_t>(ds.slot->radioConfig.dataSource())], channelTiming->id, currentTime % 1000);
+                    
+                    // GATAS_INFO("TX: DS: %s Freq:%lu radio:%d id:%u ms:%lu", GATAS::toString(ds.slot->radioConfig.dataSource()), frequencyHz, dataSourceToRadio[static_cast<uint8_t>(ds.slot->radioConfig.dataSource())], channelTiming->id, CoreUtils::timeMs32());
+                    
                     GATAS_MEASURE("Request TX", 2000);
                     getBus().receive(
                         GATAS::RadioTxPositionRequestMsg{
@@ -134,25 +135,25 @@ void RadioTunerTx::radioTuneTask()
 #else
                     auto delayMs = CountryRegulations::nextRandomTxTime(!isAirborne, *ds.slot);
 #endif
-                    currentTime = CoreUtils::timeUs32();
+                    auto currentTimeUs = CoreUtils::timeUs32();
                     if (delayMs != UINT32_MAX)
                     {
-                        ds.atTime = currentTime + delayMs * 1000;
+                        ds.atTime = currentTimeUs + delayMs * 1000;
                     }
                     else
                     {
                         GATAS_WARN("Warning: Next random no timing found %s", GATAS::toString(ds.slot->radioConfig.dataSource()));
-                        ds.atTime = currentTime + 950'000;
+                        ds.atTime = currentTimeUs + 950'000;
                     }
                 }
             }
 
             // Decide the protcol that should be send next
-            auto currentTime = CoreUtils::timeUs32();
+            auto currentTimeUs = CoreUtils::timeUs32();
             int32_t nextUpIn = 2'000'000;
             for (auto &&ds : dataSourceTxEvents)
             {
-                auto toRef = CoreUtils::usToReference(ds.atTime, currentTime);
+                auto toRef = CoreUtils::usToReference(ds.atTime, currentTimeUs);
                 if (toRef < nextUpIn)
                 {
                     nextUpIn = toRef;

@@ -20,7 +20,7 @@
  * Two fast blinks, GAT/AS acts as a Access Point
  * One single fast blink, GATAS is in client mode and connected to a network
  */
-class Idle : public BaseModule, public etl::message_router<Idle, GATAS::ConfigUpdatedMsg, GATAS::WifiConnectionStateMsg, GATAS::GpsStatsMsg>
+class Idle : public BaseModule, public etl::message_router<Idle, GATAS::WifiConnectionStateMsg, GATAS::GpsStatsMsg>
 {
     static constexpr uint8_t PATTERN_STEPS = 24;
     // clang-format off
@@ -40,7 +40,6 @@ class Idle : public BaseModule, public etl::message_router<Idle, GATAS::ConfigUp
     repeating_timer_t timer;                   // callback timer struct
 private:
     void on_receive(const GATAS::GpsStatsMsg &msg);
-    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive(const GATAS::WifiConnectionStateMsg &wcs);
     void on_receive_unknown(const etl::imessage &msg);
     void calculatePattern();

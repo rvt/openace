@@ -9,24 +9,23 @@ namespace GATAS
         PinType type;
     };
     constexpr Mapping<PinType, const char *> pinMappings[] =
-    {
-        {PinType::CLK, "CLK"},
-        {PinType::MOSI, "MOSI"},
-        {PinType::MISO, "MISO"},
-        {PinType::RST, "RST"},
-        {PinType::TX, "TX"},
-        {PinType::RX, "RX"},
-        {PinType::BUSY, "BUSY"},
-        {PinType::CS, "CS"},
-        {PinType::O0, "O0"},
-        {PinType::I0, "I0"},
-        {PinType::DIO1, "DIO1"},
-        {PinType::P0, "P0"},
-        {PinType::P1, "P1"},
-        {PinType::P2, "P2"},
-        {PinType::AD0, "AD0"},
-        {PinType::SPI, "SPI"}
-    };
+        {
+            {PinType::CLK, "CLK"},
+            {PinType::MOSI, "MOSI"},
+            {PinType::MISO, "MISO"},
+            {PinType::RST, "RST"},
+            {PinType::TX, "TX"},
+            {PinType::RX, "RX"},
+            {PinType::BUSY, "BUSY"},
+            {PinType::CS, "CS"},
+            {PinType::O0, "O0"},
+            {PinType::I0, "I0"},
+            {PinType::DIO1, "DIO1"},
+            {PinType::P0, "P0"},
+            {PinType::P1, "P1"},
+            {PinType::P2, "P2"},
+            {PinType::AD0, "AD0"},
+            {PinType::SPI, "SPI"}};
 
     PinType stringToPinType(const char *str)
     {
@@ -34,16 +33,15 @@ namespace GATAS
     }
 
     constexpr Mapping<AddressType, const char *> addressMappings[] =
-    {
-        {AddressType::RANDOM, "RANDOM"},
-        {AddressType::ICAO, "ICAO"},
-        {AddressType::FLARM, "FLARM"},
-        {AddressType::OGN, "OGN"},
-        {AddressType::FANET, "FANET"},
-        {AddressType::ADSL, "ADSL"},
-        {AddressType::RESERVED, "RESERVED"},
-        {AddressType::UNKNOWN, "UNKNOWN"}
-    };
+        {
+            {AddressType::RANDOM, "RANDOM"},
+            {AddressType::ICAO, "ICAO"},
+            {AddressType::FLARM, "FLARM"},
+            {AddressType::OGN, "OGN"},
+            {AddressType::FANET, "FANET"},
+            {AddressType::ADSL, "ADSL"},
+            {AddressType::RESERVED, "RESERVED"},
+            {AddressType::UNKNOWN, "UNKNOWN"}};
 
     const char *addressTypeToString(AddressType ds)
     {
@@ -56,17 +54,16 @@ namespace GATAS
     };
 
     constexpr Mapping<DataSource, const char *> dataSourceMappings[] =
-    {
-        {DataSource::FLARM, "Flarm"},
-        {DataSource::ADSLM, "ADSL"}, // <-- Don;t change to ADSM, this is also used for the frontend
-        {DataSource::ADSLO_HDR, "ADSL Hdr"},
-        {DataSource::ADSLFLARM, "ADSL FLARM"},
-        {DataSource::ADSLOGN, "ADSL OGN"},
-        {DataSource::FANET, "Fanet"},
-        {DataSource::ADSB, "ADSB"},
-        {DataSource::OGN1, "OGN"},
-        {DataSource::NONE, "NONE"}
-    };
+        {
+            {DataSource::FLARM, "Flarm"},
+            {DataSource::ADSLM, "ADSL"}, // <-- Don;t change to ADSM, this is also used for the frontend
+            {DataSource::ADSLO_HDR, "ADSL Hdr"},
+            {DataSource::ADSLFLARM, "ADSL FLARM"},
+            {DataSource::ADSLOGN, "ADSL OGN"},
+            {DataSource::FANET, "Fanet"},
+            {DataSource::ADSB, "ADSB"},
+            {DataSource::OGN1, "OGN"},
+            {DataSource::NONE, "NONE"}};
 
     const char *dataSourceIntToString(uint8_t ds)
     {
@@ -88,14 +85,13 @@ namespace GATAS
     };
 
     constexpr Mapping<pDopInterpretation, const char *> interpretationMappings[] =
-    {
-        {pDopInterpretation::IDEAL, "Ideal"},
-        {pDopInterpretation::EXCELLENT, "Excellent"},
-        {pDopInterpretation::GOOD, "Good"},
-        {pDopInterpretation::MODERATE, "Moderate"},
-        {pDopInterpretation::FAIR, "Fair"},
-        {pDopInterpretation::POOR, "Poor"}
-    };
+        {
+            {pDopInterpretation::IDEAL, "Ideal"},
+            {pDopInterpretation::EXCELLENT, "Excellent"},
+            {pDopInterpretation::GOOD, "Good"},
+            {pDopInterpretation::MODERATE, "Moderate"},
+            {pDopInterpretation::FAIR, "Fair"},
+            {pDopInterpretation::POOR, "Poor"}};
 
     const char *DOPInterpretationToString(pDopInterpretation interpretation)
     {
@@ -129,5 +125,15 @@ namespace GATAS
         return enumToString(modulationMapping, at, "-");
     }
 
-}
+    constexpr Mapping<DataSourceMode::enum_type, const char *> DataSourceModeMapping[] =
+        {
+            {DataSourceMode::TX, "TX"},
+            {DataSourceMode::RX, "RX"},
+            {DataSourceMode::RX_TX, "RX_TX"}
+        };
 
+    DataSourceMode stringToDataSourceMode(const char *str)
+    {
+        return stringToEnum(DataSourceModeMapping, str, DataSourceMode::RX_TX);
+    }
+}

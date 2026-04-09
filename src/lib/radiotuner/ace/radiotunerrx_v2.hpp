@@ -34,7 +34,7 @@ public:
     static constexpr const uint8_t GATAS_RX_OFFSET = 1;
     static constexpr const uint32_t BIT_EVENT_DONE = 1 << 0;
     // Max pre-expanded RxTiming entries per radio (5 protocols × up to 3 segments each, rounded up)
-    static constexpr uint8_t MAX_RX_TIMINGS = 16;
+    static constexpr uint8_t MAX_RX_TIMINGS = 24;
 
     // A single, non-wrapping listening window for one radio
     struct RxTiming

@@ -412,15 +412,7 @@ const GATAS::Config::GaTasConfiguration Config::gaTasConfig() const
                 auto modeStr = protocolConfig["mode"].as<const char *>();
                 if (modeStr != nullptr)
                 {
-                    etl::string_view modeValue = modeStr;
-                    if (modeValue == "RX")
-                    {
-                        mode = GATAS::DataSourceMode::RX;
-                    }
-                    else if (modeValue == "TX")
-                    {
-                        mode = GATAS::DataSourceMode::TX;
-                    }
+                    mode = GATAS::stringToDataSourceMode(modeStr);
                 }
             }
 

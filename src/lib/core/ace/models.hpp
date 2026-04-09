@@ -232,6 +232,8 @@ namespace GATAS
         ETL_END_ENUM_TYPE
     };
 
+    DataSourceMode stringToDataSourceMode(const char *str);
+
     struct DataSourceConfig
     {
         DataSource dataSource;

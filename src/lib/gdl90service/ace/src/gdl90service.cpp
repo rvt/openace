@@ -116,8 +116,8 @@ void Gdl90Service::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     if (msg.moduleName == Configuration::NAME)
     {
         const Configuration &config = msg.config;
-        auto current = config.gaTasConfig();
-        auto ownCallSign = config.getCallSignFromHex(current.conspicuity.icaoAddress);
+        auto gaTasConfig = config.gaTasConfig();
+        auto ownCallSign = config.getCallSignFromHex(gaTasConfig.conspicuity.icaoAddress);
         if (auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()})
         {
             ownshipCallsign = makeGdlCallsign(ownCallSign);

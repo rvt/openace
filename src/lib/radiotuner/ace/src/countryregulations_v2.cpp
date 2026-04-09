@@ -132,23 +132,20 @@ uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, const CountryRe
     // txMinTime/txMaxTime are the same across all entries in a group (validated at compile time)
     const uint32_t minDelay = staticTiming ? timing.txStaticMinTime : timing.txMinTime;
     const uint32_t maxDelay = staticTiming ? timing.txStaticMaxTime : timing.txMaxTime;
+    const uint32_t range = maxDelay - minDelay + 1;
 
-    constexpr int MAX_TRIES = 5;
+    constexpr uint32_t MAX_TRIES = 5;
 
-    uint32_t randRange = (uint32_t)(get_rand_64() % (maxDelay - minDelay + 1));
-    uint32_t delay = minDelay + randRange;
-
-    for (int i = 0; i < MAX_TRIES; ++i)
+    for (uint32_t i = 0; i < MAX_TRIES; ++i)
     {
-        uint32_t futureMs = (nowInSecond + delay) % 1000;
+        uint32_t delay = minDelay + static_cast<uint32_t>(get_rand_64() % range);
+        uint32_t futureMs = nowInSecond + delay;
         if (fitsAnyTiming(futureMs, timing.timeSlots))
         {
             return delay;
         }
-        delay = delay + 225;
     }
 
-    // No suitable slot found this time
     return UINT32_MAX;
 }
 

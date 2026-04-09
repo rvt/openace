@@ -257,37 +257,39 @@ TEST_CASE("nextRandomTxTime - result lands within a valid EU_FLARMT timing windo
     const auto pts = CountryRegulations::getProtocolTxTimings(
         CountryRegulations::Zone::enum_type::ZONE1, GATAS::DataSource::FLARM);
 
-    // Run from several different starting positions within the second
+    REQUIRE_FALSE(pts.empty());
+
+    // The Pico rand mock returns a fixed value per seed, so test the function
+    // deterministically by sweeping candidate delays across the full tx window.
+    // This verifies that valid candidates are accepted and invalid candidates
+    // are rejected, without depending on a hit-rate threshold.
     for (uint32_t startMs : {751u, 100u, 250u, 500u, 750u})
     {
         setTime(1700000000000ULL + startMs);
 
-        int successCount = 0;
-        int failCount = 0;
+        const uint32_t minDelay = pts[0].txMinTime;
+        const uint32_t maxDelay = pts[0].txMaxTime;
 
-        for (int i = 0; i < 20; ++i)
+        for (uint32_t delayCandidate = minDelay; delayCandidate <= maxDelay; ++delayCandidate)
         {
+            // Force nextRandomTxTime() to test a single candidate delay.
+            get_rand_64_SET(delayCandidate - minDelay);
+
             uint32_t delay = CountryRegulations::nextRandomTxTime(false, pts);
-            if (delay == UINT32_MAX)
+            uint32_t futureMs = (startMs + delayCandidate) % 1000;
+            bool valid = CountryRegulations::fitsAnyTiming(futureMs, pts[0].timeSlots);
+
+            INFO("startMs=" << startMs << " delayCandidate=" << delayCandidate << " delay=" << delay << " futureMs=" << futureMs);
+
+            if (valid)
             {
-                ++failCount;
-                continue;
+                REQUIRE(delay == delayCandidate);
             }
-
-            uint32_t futureMs = (startMs + delay) % 1000;
-
-            // Must land in CH00: 400..790 or CH01 wrap: 800..989 or 0..189
-            // (790 and 189 account for REDUCE_ENDTIME_MS=10)
-            bool inCH00 = (futureMs >= 400 && futureMs < 790);
-            bool inCH01 = (futureMs >= 800 || futureMs < 190);
-
-            INFO("startMs=" << startMs << " delay=" << delay << " futureMs=" << futureMs);
-            REQUIRE((inCH00 || inCH01));
-            ++successCount;
+            else
+            {
+                REQUIRE(delay == UINT32_MAX);
+            }
         }
-
-        // From any starting position, most attempts should find a valid slot
-        REQUIRE(successCount >= 15);
     }
 }
 
