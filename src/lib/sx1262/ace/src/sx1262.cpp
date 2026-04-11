@@ -657,6 +657,7 @@ void Sx1262::sx1262Task(void *arg)
             // After TX, go back to RX
             if (notifyValue & TaskState::DIO1_TX_DONE)
             {
+                statistics.transmittedPackets += 1;
                 doListen = true;
                 keepTransmittingUntill = 0;
             }
@@ -710,7 +711,6 @@ void Sx1262::sx1262Task(void *arg)
                     keepTransmittingUntill = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     configureSx1262(txPacket.radioParameters, txPacket.length);
                     sendPacket(txPacket);
-                    statistics.transmittedPackets += 1;
                     continue; // Need to wait for TX done
                 }
             }

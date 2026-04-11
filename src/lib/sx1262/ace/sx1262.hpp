@@ -146,7 +146,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
         {
             .sf = SX126X_LORA_SF7,
             .bw = SX126X_LORA_BW_250,
-            .cr = SX126X_LORA_CR_4_8,
+            .cr = SX126X_LORA_CR_4_5,
             .ldro = 0,
         };
 

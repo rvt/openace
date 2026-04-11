@@ -314,6 +314,55 @@ class MonitorModule extends El {
     `;
     }
 
+    if (item.name.endsWith(":aoa")) {
+      const title = item.name.split(':')[0];
+      let aircraft = [];
+
+      if (Array.isArray(item.value)) {
+        aircraft = item.value.map((entry) => ({
+          hex: entry.hex ?? entry.address ?? "UNK",
+          ds: entry.ds ?? entry.datasource ?? entry.dataSource ?? "UNKNOWN",
+          dis: entry.dis ?? entry.distance ?? entry["distance:m"] ?? Number.MAX_SAFE_INTEGER,
+        }));
+      } else if (item.value && typeof item.value === "object") {
+        const hex = item.value.hex ?? [];
+        const ds = item.value.ds ?? [];
+        const dis = item.value.dis ?? [];
+        const len = Math.max(hex.length, ds.length, dis.length);
+        for (let i = 0; i < len; i++) {
+          aircraft.push({
+            hex: hex[i] ?? "UNK",
+            ds: ds[i] ?? "UNKNOWN",
+            dis: dis[i] ?? Number.MAX_SAFE_INTEGER,
+          });
+        }
+      }
+
+      aircraft.sort((a, b) => a.dis - b.dis);
+
+      return html`
+        <tr>
+          <th style="width:33%; vertical-align:top" scope="row">${title}</th>
+          <td>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              ${aircraft.map((aircraft) => {
+        const distance = aircraft.dis ?? "-";
+        const hex = aircraft.hex ?? "UNK";
+        const dataSource = aircraft.ds ?? "UNKNOWN";
+        return html`
+                  <div style="display:grid; grid-template-columns: 50px 50px 50px; gap:12px; align-items:center; font-size:11px; line-height:1.2; padding:2px 0">
+                    <span style="font-family:monospace; font-weight:700;">${hex}</span>
+                    <span style="">${dataSource}</span>
+                    <span style="text-align:left; font-variant-numeric: tabular-nums;">${distance} m</span>
+                  </div>
+                `;
+      })}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
     const dsColorMap = {
       "OGN": "#cb6827",
       "Flarm": "#31a84a",
@@ -432,10 +481,10 @@ class MonitorModule extends El {
                 <span style="width:70px; flex-shrink:0"></span>
                 <div style="position:relative; width:${totalW}px; height:10px; margin-top:2px">
                   ${ticks.map((ms) => {
-          const left = (ms / totalMs) * totalW;
-          const bold = ms % SEC === 0;
-          return html`<span style="position:absolute; left:${left}px; font-size:8px; color:${bold ? '#555' : '#aaa'}; transform:translateX(-50%); font-weight:${bold ? 'bold' : 'normal'}">${ms}</span>`;
-        })}
+        const left = (ms / totalMs) * totalW;
+        const bold = ms % SEC === 0;
+        return html`<span style="position:absolute; left:${left}px; font-size:8px; color:${bold ? '#555' : '#aaa'}; transform:translateX(-50%); font-weight:${bold ? 'bold' : 'normal'}">${ms}</span>`;
+      })}
                 </div>
               </div>
             </div>

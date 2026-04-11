@@ -5,6 +5,8 @@
 #include "../countryregulations_v2.hpp"
 
 #include "etl/algorithm.h"
+#include "etl/random.h"
+#include "etl/utility.h"
 
 #define GATAS_TUNE_LOG(fmt, ...) GATAS_LOG_IF(false, fmt, ##__VA_ARGS__)
 
@@ -56,6 +58,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
     RadioTunerRx *radioTunerRx = static_cast<RadioTunerRx *>(arg);
     bool taskBlocked = false;
     uint16_t nextDelayMs = 200;
+    uint32_t lastTrafficReEvalUs = CoreUtils::timeUs32() + RE_EVALUATE_DATASOURCES_USEC;
 
     while (true)
     {
@@ -79,8 +82,14 @@ void RadioTunerRx::radioTuneTask(void *arg)
             continue;
         }
 
+        if (CoreUtils::isUsReached(lastTrafficReEvalUs))
+        {
+            lastTrafficReEvalUs = CoreUtils::timeUs32() + RE_EVALUATE_DATASOURCES_USEC;
+            GATAS_INFO("Re-evaluating datasource assignment with traffic bias. Received packets");
+            radioTunerRx->assignDataSourcesFromTask();
+        }
+
         const uint32_t loopStartMs = CoreUtils::msSinceMidnight();
-        const uint32_t nowMs = loopStartMs;
         uint32_t nextBoundaryInMs = std::numeric_limits<uint32_t>::max();
 
         for (auto &&ref : radioTunerRx->radioCtxList)
@@ -91,21 +100,21 @@ void RadioTunerRx::radioTuneTask(void *arg)
             }
 
             // Position within the repeating cycle
-            const int32_t cycleMs = nowMs % ref.maxTimeMs;
+            const int32_t cycleMs = loopStartMs % ref.maxTimeMs;
 
             // Find which entry covers this time
             size_t foundIdx = 0;
             for (size_t i = 0; i < ref.protocolTimings.size(); i++)
             {
                 auto lenientCycleMs = cycleMs + 20;
-                if (lenientCycleMs >= ref.protocolTimings[i].start && lenientCycleMs < ref.protocolTimings[i].end)
+                if (lenientCycleMs >= ref.protocolTimings[i].start() && lenientCycleMs < ref.protocolTimings[i].end())
                 {
                     foundIdx = i;
                     break;
                 }
             }
 
-//            GATAS_INFO("Radio %d cycleMs: %ld, ppsMS: %d  current entry: %u, start: %d, end: %d, ds: %s\n", ref.radioNo, cycleMs,  CoreUtils::msInSecond(), foundIdx, ref.protocolTimings[foundIdx].start, ref.protocolTimings[foundIdx].end, (ref.protocolTimings[foundIdx].protocolTimeConfig != nullptr) ? GATAS::toString(ref.protocolTimings[foundIdx].protocolTimeConfig->radioConfig.dataSource()) : "NOOP");
+            //            GATAS_INFO("Radio %d cycleMs: %ld, ppsMS: %d  current entry: %u, start: %d, end: %d, ds: %s\n", ref.radioNo, cycleMs,  CoreUtils::msInSecond(), foundIdx, ref.protocolTimings[foundIdx].start, ref.protocolTimings[foundIdx].end, (ref.protocolTimings[foundIdx].protocolTimeConfig != nullptr) ? GATAS::toString(ref.protocolTimings[foundIdx].protocolTimeConfig->radioConfig.dataSource()) : "NOOP");
             const auto &entry = ref.protocolTimings[foundIdx];
 
             // Only reconfigure radio if protocol changed
@@ -125,7 +134,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
             // Time until this radio hits its next timing boundary.
             // We take the minimum across all radios so the task wakes on the earliest boundary.
-            uint32_t timeToBoundary = static_cast<uint32_t>(entry.end - cycleMs);
+            uint32_t timeToBoundary = static_cast<uint32_t>(entry.end() - cycleMs);
             if (timeToBoundary < nextBoundaryInMs)
             {
                 nextBoundaryInMs = timeToBoundary;
@@ -143,6 +152,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
                                            : (86'400'000U - loopStartMs + loopEndMs);
         const int32_t correctedDelayMs = static_cast<int32_t>(nextBoundaryInMs) - static_cast<int32_t>(loopElapsedMs);
         nextDelayMs = static_cast<uint16_t>(etl::max(correctedDelayMs, static_cast<int32_t>(1)));
+        GATAS_WARN("Next delay set to %d ms", nextDelayMs);
     }
 }
 
@@ -159,7 +169,7 @@ void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
         if (currentZone.isModified())
         {
-            assignDataSources();
+            assignDataSourcesWithTrafficBias();
         }
     }
 }
@@ -178,7 +188,8 @@ void RadioTunerRx::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     if (msg.moduleName == Configuration::NAME)
     {
         configuredDatasources = msg.config.gaTasConfig().protocols;
-        assignDataSources();
+        clearTrafficStats();
+        assignDataSourcesWithTrafficBias();
     }
 }
 
@@ -187,29 +198,59 @@ void RadioTunerRx::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-bool RadioTunerRx::hasReceived(GATAS::DataSource ds)
+uint8_t RadioTunerRx::hasReceived(GATAS::DataSource ds)
 {
     GATAS_ASSERT(ds < GATAS::DataSource::_TRANSPROTOCOLS, "Invalid datasource");
-    bool hasReception = slotReceive[static_cast<uint8_t>(ds)] != 0;
+    uint8_t priority = 0;
+    const uint16_t receiveCount = slotReceive[static_cast<uint8_t>(ds)];
+    if (receiveCount > 5) // We can properly optmise this by getting data frame the aircraft tracker
+    {
+        priority = 2;
+    }
+    else if (receiveCount > 0) // At least one aircraft
+    {
+        priority = 1;
+    }
     slotReceive[static_cast<uint8_t>(ds)] = 0;
-    return hasReception;
+    return priority;
 }
 
-void RadioTunerRx::assignDataSources()
+void RadioTunerRx::clearTrafficStats()
 {
-    auto guard = BaseModule::lockSharedMutex();
+    etl::fill(slotReceive.begin(), slotReceive.end(), 0);
+}
 
-    if (currentZone.value() == CountryRegulations::Zone::enum_type::ZONE0)
+void RadioTunerRx::assignDataSourcesFromTask()
+{
+    auto availableTimings = CountryRegulations::getProtocolRxTimingsForZone(currentZone.value(), configuredDatasources);
+    etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> receiveBoost = {};
+    for (const auto &timing : availableTimings)
     {
-        return;
+        GATAS::DataSource ds = timing->radioConfig.dataSource();
+        receiveBoost[static_cast<uint8_t>(ds)] = hasReceived(ds);
     }
+    assignDataSourcesImpl(availableTimings, etl::span<const uint8_t>(receiveBoost));
+}
 
+void RadioTunerRx::assignDataSourcesWithTrafficBias()
+{
     if (!blockTasks())
     {
         return;
     }
 
-    auto availableTimings = CountryRegulations::getProtocolRxTimingsForZone(currentZone.value(), configuredDatasources);
+    assignDataSourcesFromTask();
+    releaseTasks();
+}
+
+void RadioTunerRx::assignDataSourcesImpl(const etl::span<const CountryRegulations::ProtocolRxTimeSlot *> availableTimings, etl::span<const uint8_t> receiveBoost)
+{
+    if (currentZone.value() == CountryRegulations::Zone::enum_type::ZONE0)
+    {
+        return;
+    }
+
+    auto guard = BaseModule::lockSharedMutex();
 
     // Assign availableTimings evenly over the radios
     size_t radioCount = radioCtxList.size();
@@ -217,48 +258,23 @@ void RadioTunerRx::assignDataSources()
     for (auto &ctx : radioCtxList)
     {
         ctx.clear();
-        static constexpr uint16_t MAX_NOOP_MS = 200;
         uint16_t secondIndex = 0;
+
         for (size_t i = 0; i < availableTimings.size(); i++)
         {
             if (i % radioCount == idx)
             {
-                const auto &slots = availableTimings[i]->timeSlots;
-                const uint16_t offset = secondIndex * 1000;
-                uint16_t prevEnd = offset;
-
-                // Add main slots using their real timing positions within the second
-                // Insert NOOP entries for any gap before each slot
-                for (const auto &timing : slots)
+                const auto *timing = availableTimings[i];
+                const uint8_t extraCount = etl::min<uint8_t>(receiveBoost[static_cast<uint8_t>(timing->radioConfig.dataSource())], 2) + 1;
+                for (uint8_t extra = 0; extra < extraCount; ++extra)
                 {
-                    const uint16_t slotStart = static_cast<uint16_t>(offset + timing.start);
-                    while (prevEnd < slotStart && !ctx.protocolTimings.full())
-                    {
-                        uint16_t fillEnd = etl::min(static_cast<uint16_t>(prevEnd + MAX_NOOP_MS), slotStart);
-                        ctx.protocolTimings.emplace_back(nullptr, CountryRegulations::Channel::NOOP, prevEnd, fillEnd);
-                        prevEnd = fillEnd;
-                    }
-                    if (!ctx.protocolTimings.full())
-                    {
-                        uint16_t cappedEnd = etl::min(timing.end, static_cast<uint16_t>(1000));
-                        ctx.protocolTimings.emplace_back(availableTimings[i], timing.channel, slotStart, static_cast<uint16_t>(offset + cappedEnd));
-                        prevEnd = offset + cappedEnd;
-                    }
+                    appendProtocolTimings(ctx, timing, secondIndex);
                 }
-
-                // Fill any remaining gap to end of this second
-                const uint16_t secondEnd = static_cast<uint16_t>(offset + 1000);
-                while (prevEnd < secondEnd && !ctx.protocolTimings.full())
-                {
-                    uint16_t fillEnd = etl::min(static_cast<uint16_t>(prevEnd + MAX_NOOP_MS), secondEnd);
-                    ctx.protocolTimings.emplace_back(nullptr, CountryRegulations::Channel::NOOP, prevEnd, fillEnd);
-                    prevEnd = fillEnd;
-                }
-
-                ctx.maxTimeMs = secondEnd;
-                secondIndex++;
             }
         }
+
+        // SHuffle
+        spreadSecondIndex(ctx);
 
         // Fill NOOP gaps: prefer same-radio protocols first, then other radios
         for (auto &entry : ctx.protocolTimings)
@@ -267,7 +283,7 @@ void RadioTunerRx::assignDataSources()
             {
                 continue;
             }
-            const uint16_t midMs = static_cast<uint16_t>((entry.start + entry.end) / 2);
+            const uint16_t midMs = static_cast<uint16_t>((entry.start() + entry.end()) / 2);
             if (!fillNoop(entry, midMs, availableTimings, radioCount, idx, true))
             {
                 fillNoop(entry, midMs, availableTimings, radioCount, idx, false);
@@ -276,7 +292,112 @@ void RadioTunerRx::assignDataSources()
 
         idx++;
     }
-    releaseTasks();
+}
+
+void RadioTunerRx::spreadSecondIndex(RadioProtocolCtx &ctx)
+{
+    using IndexVector = etl::vector<uint16_t, MAX_RX_TIMINGS>;
+
+    IndexVector unique;
+
+    // 1. Collect unique secondIndex values (stable order)
+    for (const auto &e : ctx.protocolTimings)
+    {
+        bool found = false;
+        for (const auto &v : unique)
+        {
+            if (v == e.secondIndex)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            unique.push_back(e.secondIndex);
+        }
+    }
+
+    const uint16_t N = unique.size();
+    if (N <= 2)
+    {
+        return; // nothing to improve
+    }
+
+    // 2. Build new order: even indices first, then odd
+    IndexVector order;
+
+    for (uint16_t i = 0; i < N; i += 2)
+    {
+        order.push_back(unique[i]);
+    }
+
+    for (uint16_t i = 1; i < N; i += 2)
+    {
+        order.push_back(unique[i]);
+    }
+
+    // 3. Rebuild vector in new order (stable within groups)
+    TimeSlotVector result;
+
+    for (uint16_t newIdx = 0; newIdx < order.size(); ++newIdx)
+    {
+        uint16_t oldIdx = order[newIdx];
+
+        for (const auto &e : ctx.protocolTimings)
+        {
+            if (e.secondIndex == oldIdx)
+            {
+                RxTiming copy = e;
+                copy.secondIndex = newIdx; // reassign to compact index
+                result.push_back(copy);
+            }
+        }
+    }
+
+    // 4. Replace original
+    ctx.protocolTimings = result;
+}
+
+bool RadioTunerRx::appendProtocolTimings(RadioProtocolCtx &ctx, const CountryRegulations::ProtocolRxTimeSlot *timing, uint16_t &secondIndex)
+{
+    if (timing == nullptr)
+    {
+        return false;
+    }
+
+    static constexpr uint16_t MAX_NOOP_MS = 200;
+    static constexpr uint16_t SECOND_END = 1000;
+    uint16_t prevRelEnd = 0;
+
+    for (const auto &slot : timing->timeSlots)
+    {
+        const uint16_t slotRelStart = slot.start;
+        while (prevRelEnd < slotRelStart && !ctx.protocolTimings.full())
+        {
+            const uint16_t fillRelEnd = etl::min(static_cast<uint16_t>(prevRelEnd + MAX_NOOP_MS), slotRelStart);
+            ctx.protocolTimings.emplace_back(nullptr, CountryRegulations::Channel::NOOP, prevRelEnd, fillRelEnd, secondIndex);
+            prevRelEnd = fillRelEnd;
+        }
+        if (!ctx.protocolTimings.full())
+        {
+            const uint16_t cappedRelEnd = etl::min(slot.end, SECOND_END);
+            ctx.protocolTimings.emplace_back(timing, slot.channel, slotRelStart, cappedRelEnd, secondIndex);
+            prevRelEnd = cappedRelEnd;
+        }
+    }
+
+    while (prevRelEnd < SECOND_END && !ctx.protocolTimings.full())
+    {
+        const uint16_t fillRelEnd = etl::min(static_cast<uint16_t>(prevRelEnd + MAX_NOOP_MS), SECOND_END);
+        ctx.protocolTimings.emplace_back(nullptr, CountryRegulations::Channel::NOOP, prevRelEnd, fillRelEnd, secondIndex);
+        prevRelEnd = fillRelEnd;
+    }
+
+    ++secondIndex;
+    ctx.maxTimeMs = static_cast<uint32_t>(secondIndex) * 1000U;
+    return !ctx.protocolTimings.full();
 }
 
 bool RadioTunerRx::fillNoop(RxTiming &entry, uint16_t midMs, etl::span<const CountryRegulations::ProtocolRxTimeSlot *> timings, size_t radioCount, size_t radioIdx, bool sameRadio)

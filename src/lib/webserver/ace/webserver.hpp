@@ -12,6 +12,8 @@ class Webserver : public BaseModule, public etl::message_router<Webserver>
 {
     friend class message_router;
 public:
+    static constexpr size_t MAX_TCP_HEADER_SIZE = 60;
+    static constexpr size_t MAX_CONTENT_SIZE = 2560 - MAX_TCP_HEADER_SIZE;
     mutable struct
     {
         uint16_t memAllocErr = 0;

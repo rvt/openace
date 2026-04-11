@@ -6,6 +6,11 @@
 
 GATAS::PostConstruct AircraftTracker::postConstruct()
 {
+    trackedAircraftMutex = xSemaphoreCreateMutex();
+    if (trackedAircraftMutex == nullptr)
+    {
+        return GATAS::PostConstruct::MUTEX_ERROR;
+    }
     return GATAS::PostConstruct::OK;
 }
 
@@ -40,6 +45,7 @@ void AircraftTracker::on_receive(const GATAS::Every5SecMsg &msg)
 void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
+    auto guard = lockTrackedAircraft();
     stream << "{";
     for (uint8_t i = 0; i < static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS); i++)
     {
@@ -51,6 +57,43 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     stream << ",\"numberOfObjectsTracking\":" << trackedAircraft.size();
     stream << ",\"positionsProcessed:k\":" << statistics.positionsProcessed;
     stream << ",\"adaptiveRadius:m\":" << trackedAircraft.radius();
+    stream << ",\"aircraft:aoa\":{";
+
+    stream << "\"hex\":[";
+    bool first = true;
+    trackedAircraft.forEachPosition([&](const GATAS::AircraftPositionInfo &aircraft) {
+        if (!first)
+        {
+            stream << ",";
+        }
+        first = false;
+        stream << "\"";
+        CoreUtils::streamIcaoAddress(stream, aircraft.address, aircraft.addressType);
+        stream << "\"";
+    });
+
+    stream << "],\"ds\":[";
+    first = true;
+    trackedAircraft.forEachPosition([&](const GATAS::AircraftPositionInfo &aircraft) {
+        if (!first)
+        {
+            stream << ",";
+        }
+        first = false;
+        stream << "\"" << GATAS::toString(aircraft.dataSource) << "\"";
+    });
+
+    stream << "],\"dis\":[";
+    first = true;
+    trackedAircraft.forEachPosition([&](const GATAS::AircraftPositionInfo &aircraft) {
+        if (!first)
+        {
+            stream << ",";
+        }
+        first = false;
+        stream << aircraft.distanceFromOwn;
+    });
+    stream << "]}";
     stream << "}";
 }
 
@@ -128,6 +171,7 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
     {
         uint32_t notifyValue = 0;
         xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(1000 / TIMESLICES));
+        auto guard = lockTrackedAircraft();
 
         // Handle timers
         if (notifyValue & TaskState::MAINTAIN)

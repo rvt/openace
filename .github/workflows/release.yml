@@ -177,3 +177,44 @@ jobs:
             ./CHANGELOG.md
             firmware/rp2040/GATAS_rp2040.uf2
             firmware/rp2350/GATAS_rp2350-arm-s.uf2
+
+#      - name: Notify Discord
+#        if: endsWith(github.ref_name, '-prerelease') || contains(github.ref_name, '-rc') || (startsWith(github.ref, 'refs/tags/v') && !endsWith(github.ref_name, '-prerelease') && !contains(github.ref_name, '-rc'))
+#        env:
+#          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+#          TAG_NAME: ${{ github.ref_name }}
+#          REPOSITORY: ${{ github.repository }}
+#          SHA: ${{ github.sha }}
+#        run: |
+#          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+#            echo "DISCORD_WEBHOOK_URL secret is not set; skipping Discord notification."
+#            exit 0
+#          fi
+#
+#          if [[ "$TAG_NAME" == *-prerelease || "$TAG_NAME" == *-rc* ]]; then
+#            KIND="RC"
+#          else
+#            KIND="Release"
+#          fi
+#
+#          RELEASE_URL="https://github.com/${REPOSITORY}/releases/tag/${TAG_NAME}"
+#          SHORT_SHA="${SHA:0:7}"
+#
+#          payload=$(KIND="$KIND" TAG_NAME="$TAG_NAME" RELEASE_URL="$RELEASE_URL" SHORT_SHA="$SHORT_SHA" python3 - <<'PY'
+#import json
+#import os
+#
+#kind = os.environ["KIND"]
+#tag_name = os.environ["TAG_NAME"]
+#release_url = os.environ["RELEASE_URL"]
+#short_sha = os.environ["SHORT_SHA"]
+#
+#message = f"**OpenAce {kind} published**: `{tag_name}` ({short_sha})\n{release_url}"
+#print(json.dumps({"content": message}))
+#PY
+#)
+#
+#          curl -fsSL \
+#            -H "Content-Type: application/json" \
+#            -d "$payload" \
+#            "$DISCORD_WEBHOOK_URL"

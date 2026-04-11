@@ -157,7 +157,7 @@ public:
      */
     static constexpr auto protocolTxTimimgs = etl::make_array<const ProtocolTxTimeSlot>(
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT_TRAFFIC), 600, 1400, 5000, 6000, 15, 250},
-        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT_UPLINK),  800, 1000,  800, 1000, 15, 250},
+        ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_hdr,   PROTOCOL_ADSLO_HDR,     etl::span(EU_ADSLO_HDRT_UPLINK),  800, 1600,  800, 1600, 15, 250},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_ADSL,          etl::span(EU_ADSLM),              600, 1400, 5000, 6000, 15, 250},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_OGN,           etl::span(EU_OGNT),               600, 1400, 5000, 6000, 15, 150},
         ProtocolTxTimeSlot{ CountryRegulations::Zone::enum_type::ZONE1, Europe_m,     PROTOCOL_FLARM,         etl::span(EU_FLARMT),             600, 1400, 5000, 6000, 15, 150},
@@ -169,7 +169,6 @@ public:
     );
     static constexpr size_t MAX_PROTOCOL_TX_TIMINGS = protocolTxTimimgs.size();
     // clang-format on
-
 
     static constexpr uint8_t validateProtocolTxTimings()
     {
@@ -332,9 +331,9 @@ public:
      * @param timing  Span of one or more ProtocolTxTimeSlot entries for the same datasource.
      * @return Delay in ms, or UINT32_MAX if no suitable slot was found after MAX_TRIES.
      */
-    static uint32_t nextRandomTxTime(bool staticTiming, etl::span<const CountryRegulations::ProtocolTxTimeSlot> timing);
     static uint32_t nextRandomTxTime(bool staticTiming, const CountryRegulations::ProtocolTxTimeSlot &timing);
 
+public:
     /**
      * @brief Calculate the frequency channel based on a timestamp.
      *

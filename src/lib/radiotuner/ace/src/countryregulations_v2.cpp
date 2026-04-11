@@ -134,7 +134,7 @@ uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, const CountryRe
     const uint32_t maxDelay = staticTiming ? timing.txStaticMaxTime : timing.txMaxTime;
     const uint32_t range = maxDelay - minDelay + 1;
 
-    constexpr uint32_t MAX_TRIES = 5;
+    constexpr uint32_t MAX_TRIES = 10;
 
     for (uint32_t i = 0; i < MAX_TRIES; ++i)
     {
@@ -149,15 +149,3 @@ uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, const CountryRe
     return UINT32_MAX;
 }
 
-uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, etl::span<const CountryRegulations::ProtocolTxTimeSlot> timing)
-{
-    for (const auto &entry : timing)
-    {
-        auto t = nextRandomTxTime(staticTiming, entry);
-        if (t != UINT32_MAX)
-        {
-            return t;
-        }
-    }
-    return UINT32_MAX;
-}

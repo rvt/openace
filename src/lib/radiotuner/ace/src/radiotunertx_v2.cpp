@@ -142,7 +142,7 @@ void RadioTunerTx::radioTuneTask()
                     }
                     else
                     {
-                        GATAS_WARN("Warning: Next random no timing found %s", GATAS::toString(ds.slot->radioConfig.dataSource()));
+                        GATAS_WARN("Warning: Next random no timing found %s ", GATAS::toString(ds.slot->radioConfig.dataSource()));
                         ds.atTime = currentTimeUs + 950'000;
                     }
                 }

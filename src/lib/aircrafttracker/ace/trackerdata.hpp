@@ -144,6 +144,15 @@ private:
 public:
     TrackerData() : adaptiveRadius(75000), ddbLookupsEnabled(false) {}
 
+    template <typename Callback>
+    void forEachPosition(const Callback &callback) const
+    {
+        for (const auto &pair : trackedAircraft)
+        {
+            callback(pair.second.position);
+        }
+    }
+
     void ddbEnabled(bool enabled)
     {
         ddbLookupsEnabled = enabled;

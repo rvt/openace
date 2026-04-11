@@ -201,7 +201,6 @@ int handle_captive(fs_file *file, const etl::ivector<GATAS::Modulename> &path)
 
 int fs_open_custom(fs_file *file, const char *name)
 {
-    constexpr auto MAX_CONTENT_SIZE = 1536;
 
     auto pathString = GATAS::ConfigPathString(name);
     auto path = CoreUtils::parsePath(pathString);
@@ -232,11 +231,11 @@ int fs_open_custom(fs_file *file, const char *name)
     }
 
     memset(file, 0, sizeof(fs_file));
-    file->pextension = mem_malloc(MAX_CONTENT_SIZE + 1);
+    file->pextension = mem_malloc(Webserver::MAX_CONTENT_SIZE + 1);
     if (file->pextension)
     {
         // Get the response and get it's size in the large buffer first
-        etl::string_ext response((char *)file->pextension, MAX_CONTENT_SIZE);
+        etl::string_ext response((char *)file->pextension, Webserver::MAX_CONTENT_SIZE);
         etl::string_stream stream(response);
         module->getData(stream, pathString);
 

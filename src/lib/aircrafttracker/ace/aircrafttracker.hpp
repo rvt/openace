@@ -28,6 +28,8 @@
 class AircraftTracker : public BaseModule, public etl::message_router<AircraftTracker, GATAS::ConfigUpdatedMsg, GATAS::RadioTxPositionRequestMsg, GATAS::IngressAircraftPositionMsg, GATAS::IngressAircraftPositionsMsg, GATAS::Every5SecMsg>
 {
 private:
+    mutable SemaphoreHandle_t trackedAircraftMutex = nullptr;
+
     friend class message_router;
 
     static constexpr uint8_t MAX_TRACKING_PLANES = 32;
@@ -94,6 +96,10 @@ private:
     void maintenance();
 
     void handleTrackedAircraft(const GATAS::AircraftPositionInfo &position);
+    SemaphoreGuard<> lockTrackedAircraft(uint32_t waitMs = portMAX_DELAY) const
+    {
+        return SemaphoreGuard<>(waitMs, trackedAircraftMutex);
+    }
 
 public:
     static constexpr const etl::string_view NAME = "AircraftTracker";
