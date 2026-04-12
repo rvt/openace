@@ -32,8 +32,8 @@ seen by transmitting different protocols and be able to see them.
 
 | ![GATAS Server](doc/img/gatasServer.png)<br>Additional traffic via gatasServer                                                       | ![Sky Demon)](doc/img/skydemon-1.png) <br> soaring planes directly via FLARM                |
 |--------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| ![SHowing Range](doc/img/web-showing-range.png) Showing range of 24Km                                                                | ![Sky Demon)](doc/img/firstversion.jpeg)<br> Two Tranceiver Version I have been flying with |
-| ![Gatas Server](doc/img/gatasServer_sel.png) <br> GATAS Server selecting Aircraft                                                   | ![All modules](doc/img/gatas-all-modules.png) <br> All modules                              |
+| ![Showing Range](doc/img/web-showing-range.png) Showing range of 24Km                                                                | ![Sky Demon)](doc/img/firstversion.jpeg)<br> Two Tranceiver Version I have been flying with |
+| ![Gatas Server](doc/img/gatasServer_sel.png) <br> GATAS Server selecting Aircraft                                                    | ![All modules](doc/img/gatas-all-modules.png) <br> All modules                              |
 | ![GATAS Pulse](doc/img/pulse-components.png)  <br> [GATAS Pulse Build Instructions](https://github.com/rvt/openace/wiki/gatas-Pulse) | ![GATAS Pulse](doc/img/pulse-aquila.png) <br/> GATAS Pulse                                  |
 
 > [!NOTE]
@@ -64,9 +64,8 @@ Radio Protocol is the method used to communicate with other conspicuity devices
 | ADS-L                  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | FLARM (2024)           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | FANET                  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| ADS-B with Module.     | :no_entry:         | :heavy_check_mark: | :heavy_minus_sign: |
 | ADS-B via gatasConnect | :no_entry:         | :heavy_check_mark: | :heavy_minus_sign: |
-| PAW                    | :construction:     | :construction:     | :construction:     |
+| PAW (2026 uses ADS-L)  | :heavy_check_mark  | :heavy_check_mark  | :heavy_check_mark  |
 
 \* Multi Protocol is a feature of GATAS that allows to enable multiple protocols both send and
 receive on a single transceiver by sharing the air time. The Transceiver will alternate between the
@@ -106,7 +105,7 @@ or Tablet, do let me know so I can add or help out to make this work.
 | SeeYou Navigator |                    | :heavy_check_mark: |                      | GPS and traffic targets shown                            |
 
 > [!INFO]
-> Thanks to PocketFMS (EasyVFR) for providing a Developer license of EasyVFR 4 to help test GATAS GDL90
+> Thanks to  [PocketFMS / EasyVFR](https://easyvfr4.aero/nl/) for providing a Developer license of EasyVFR 4 to help test GATAS GDL90
 >
 
 
