@@ -35,7 +35,7 @@ public:
     static constexpr const uint32_t BIT_EVENT_DONE = 1 << 0;
     // Max pre-expanded RxTiming entries per radio.
     // Increased to leave room for traffic-biased duplicate listening windows.
-    static constexpr uint8_t MAX_RX_TIMINGS = 32;
+    static constexpr uint8_t MAX_RX_TIMINGS = 64;
     static constexpr uint8_t RE_EVALUATE_DATASOURCES_SEC = 10;
     static constexpr uint32_t RE_EVALUATE_DATASOURCES_USEC = RE_EVALUATE_DATASOURCES_SEC * 1000 * 1000;
 
@@ -164,7 +164,7 @@ private:
      */
     void assignDataSourcesFromTask();
     void assignDataSourcesWithTrafficBias();
-    void assignDataSourcesImpl(const etl::span<const CountryRegulations::ProtocolRxTimeSlot *> availableTimings, etl::span<const uint8_t> receiveBoost);
+    void assignDataSourcesImpl(etl::span<const uint8_t> receiveBoost);
     void spreadSecondIndex(RadioProtocolCtx &ctx);
     bool belongsToRadio(size_t timingIndex, size_t radioIndex, size_t radioCount)
     {

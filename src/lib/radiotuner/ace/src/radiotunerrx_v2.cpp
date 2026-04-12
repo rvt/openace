@@ -152,7 +152,6 @@ void RadioTunerRx::radioTuneTask(void *arg)
                                            : (86'400'000U - loopStartMs + loopEndMs);
         const int32_t correctedDelayMs = static_cast<int32_t>(nextBoundaryInMs) - static_cast<int32_t>(loopElapsedMs);
         nextDelayMs = static_cast<uint16_t>(etl::max(correctedDelayMs, static_cast<int32_t>(1)));
-        GATAS_WARN("Next delay set to %d ms", nextDelayMs);
     }
 }
 
@@ -222,14 +221,12 @@ void RadioTunerRx::clearTrafficStats()
 
 void RadioTunerRx::assignDataSourcesFromTask()
 {
-    auto availableTimings = CountryRegulations::getProtocolRxTimingsForZone(currentZone.value(), configuredDatasources);
     etl::array<uint8_t, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> receiveBoost = {};
-    for (const auto &timing : availableTimings)
+    for (const auto &dsc : configuredDatasources)
     {
-        GATAS::DataSource ds = timing->radioConfig.dataSource();
-        receiveBoost[static_cast<uint8_t>(ds)] = hasReceived(ds);
+        receiveBoost[static_cast<uint8_t>(dsc.dataSource)] = hasReceived(dsc.dataSource);
     }
-    assignDataSourcesImpl(availableTimings, etl::span<const uint8_t>(receiveBoost));
+    assignDataSourcesImpl(etl::span<const uint8_t>(receiveBoost));
 }
 
 void RadioTunerRx::assignDataSourcesWithTrafficBias()
@@ -243,13 +240,14 @@ void RadioTunerRx::assignDataSourcesWithTrafficBias()
     releaseTasks();
 }
 
-void RadioTunerRx::assignDataSourcesImpl(const etl::span<const CountryRegulations::ProtocolRxTimeSlot *> availableTimings, etl::span<const uint8_t> receiveBoost)
+void RadioTunerRx::assignDataSourcesImpl(etl::span<const uint8_t> receiveBoost)
 {
     if (currentZone.value() == CountryRegulations::Zone::enum_type::ZONE0)
     {
         return;
     }
 
+    auto availableTimings = CountryRegulations::getProtocolRxTimingsForZone(currentZone.value(), configuredDatasources);
     auto guard = BaseModule::lockSharedMutex();
 
     // Assign availableTimings evenly over the radios
@@ -273,7 +271,9 @@ void RadioTunerRx::assignDataSourcesImpl(const etl::span<const CountryRegulation
             }
         }
 
-        // SHuffle
+        // Shuffle
+        // TODO: We can optmisr htis properly bynot caling this
+        // when receiveBoost contains all, or near all protocols?
         spreadSecondIndex(ctx);
 
         // Fill NOOP gaps: prefer same-radio protocols first, then other radios
@@ -294,6 +294,12 @@ void RadioTunerRx::assignDataSourcesImpl(const etl::span<const CountryRegulation
     }
 }
 
+/**
+ * Ensure that adjacent protcols are spread acros the whole schedule
+ * effectivly this means that if OGN was received, we ensure that OGN os not listend to twwice after eachother, but spread more evenly.
+ * Example OGN, FANET, OGN, ADSL,  instead of OGN, OGN, FABET, ADSL
+ * 
+ * */
 void RadioTunerRx::spreadSecondIndex(RadioProtocolCtx &ctx)
 {
     using IndexVector = etl::vector<uint16_t, MAX_RX_TIMINGS>;

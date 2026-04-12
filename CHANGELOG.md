@@ -9,13 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+-
+
+### Security
+
+-
+
+## 2.0.0 - 2026-04-12
+
+### Added
+
 - ADSL Traffic Uplink on O-Band for both reception and transmission (in ground station mode)
 - Groundstation mode that can show a static object at any height.
 - Send Traffic over ADSL using uplinkTraffic message
 - Low poer mode during development
 - Allow for per protocol RX or TX, or RX and TX selection
 - Show in aircraft tracker the aircraft that it is tracking
-- Adaptive protocol prioritisation. This will allocate more listening slots for protocols that is actually received to increase pings per aircraft 
+- Adaptive protocol prioritisation. This will allocate more listening slots for protocols that is actually received to increase pings per aircraft
 
 ### Changed
 
@@ -46,10 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -
 
-## [1.1.0] - 2026-03-02
-
-- Initial release of GATAS
-
 ## [1.2.0] - 2026-03-12
 
 ### Added
@@ -64,3 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - GDL90 Bug where negative lat/log where not resolved correctly on output
+
+## [1.1.0] - 2026-03-02
+
+- Initial release of GATAS

@@ -414,11 +414,13 @@ public:
     template <typename T>
     constexpr static T toBearing(T angle)
     {
-        while (angle < static_cast<T>(0)) {
+        while (angle < static_cast<T>(0))
+        {
             angle += static_cast<T>(360);
         }
 
-        while (angle >= static_cast<T>(360)) {
+        while (angle >= static_cast<T>(360))
+        {
             angle -= static_cast<T>(360);
         }
 

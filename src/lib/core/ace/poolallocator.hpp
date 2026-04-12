@@ -222,123 +222,13 @@ public:
         return etl::get<I>(pools).owns(ptr);
     }
 
-    // Note to self: problem with the unique_ptr is that we need to change the wrapping objects also to unique_ptr
-    // If we do that, we need a pool for that so we can just move pointers around. In the prvious refactor that was to large
-    // to handle
-
-    // struct NoopDeleter
-    // {
-    //     template <typename T>
-    //     void operator()(T *) const noexcept {}
-    // };
-
-    // template <typename T = uint8_t>
-    // using PoolUniquePtr = std::unique_ptr<T, NoopDeleter>;
-
-    // template <typename T = uint8_t>
-    // constexpr PoolUniquePtr<T> make_null_pool_ptr()
-    // {
-    //     return PoolUniquePtr<T>(nullptr, NoopDeleter{});
-    // }
-
-    // template <typename T = uint8_t>
-    // PoolUniquePtr<T> unique_alloc(size_t size)
-    // {
-    //     void *raw = alloc(size);
-    //     if (!raw)
-    //     {
-    //         return PoolUniquePtr<T>(nullptr, +[](T *) {});
-    //     }
-
-    //     return PoolUniquePtr<T>(
-    //         static_cast<T *>(raw),
-    //         +[this](T *p)
-    //         {
-    //             this.release(p);
-    //         });
-    // }
-
-    // template <typename T = uint8_t>
-    // PoolUniquePtr<T> unique_realloc(PoolUniquePtr<T> &uptr, size_t newSize)
-    // {
-    //     // If the current pointer is null, just allocate a new block
-    //     if (!uptr)
-    //     {
-    //         void *raw = alloc(newSize);
-    //         if (!raw)
-    //         {
-    //             return PoolUniquePtr<T>(nullptr, +[](T *) {});
-    //         }
-
-    //         return PoolUniquePtr<T>(
-    //             static_cast<T *>(raw),
-    //             +[this](T *p)
-    //             { this->release(p); });
-    //     }
-
-    //     // realloc the existing block
-    //     void *newPtr = realloc(uptr.get(), newSize);
-    //     if (!newPtr)
-    //     {
-    //         return PoolUniquePtr<T>(nullptr, +[](T *) {});
-    //     }
-
-    //     // release the old pointer (automatic via uptr reset)
-    //     uptr.release(); // release ownership, we now manage newPtr
-
-    //     return PoolUniquePtr<T>(
-    //         static_cast<T *>(newPtr),
-    //         +[this](T *p)
-    //         { this->release(p); });
-    // }
-
-    // template <typename T = uint8_t>
-    // PoolUniquePtr<T> wrap_unique(T *ptr)
-    // {
-    //     if (!ptr)
-    //     {
-    //         return PoolUniquePtr<T>(nullptr, +[](T *) {});
-    //     }
-
-    //     // This is a serious bug: wrapping memory not owned by this allocator
-    //     GATAS_ASSERT(owns_pool(ptr), "Attempting to wrap pointer not owned by any pool");
-
-    //     return PoolUniquePtr<T>(
-    //         ptr,
-    //         +[this](T *p)
-    //         {
-    //             this->release(p);
-    //         });
-    // }
-
-    // Note to self:
-    // Problem with teh shared_ptr is that it consumes quite a bit of memopry compared to the data it is managing
-    // template <typename T = uint8_t>
-    // std::shared_ptr<T> wrap_shared(T *ptr)
-    // {
-    //     if (!ptr)
-    //     {
-    //         return std::shared_ptr<T>(nullptr, +[](T *) {});
-    //     }
-
-    //     // Assert that pointer is owned by this allocator
-    //     // GATAS_ASSERT(owns_pool(ptr), "Attempting to wrap pointer not owned by any pool");
-
-    //     return std::shared_ptr<T>(
-    //         ptr,
-    //         [this](T *p)
-    //         {
-    //             this->release(p);
-    //         });
-    // }
-
 private:
     template <size_t I>
     void *alloc_impl(size_t size)
     {
         if constexpr (I >= sizeof...(Pools))
         {
-            GATAS_WARN("Alloc to large %u bytes requested", size);
+            GATAS_WARN("Alloc to large");
             return nullptr;
         }
         else
@@ -382,7 +272,7 @@ private:
     {
         if constexpr (I >= sizeof...(Pools))
         {
-            printf("Realloc to large");
+            GATAS_WARN("Realloc to large");
             return nullptr;
         }
         else
@@ -400,7 +290,7 @@ private:
                     void *newPtr = alloc(newSize);
                     if (!newPtr)
                     {
-                        printf("Realloc full");
+                        GATAS_WARN("Realloc full");
                         etl::get<I>(pools).release(ptr);
                         return nullptr;
                     }

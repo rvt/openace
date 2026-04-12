@@ -184,7 +184,7 @@ class WifiServiceConfig extends ModuleConfig {
          <div class="grid">
           <label for="apDisabled">
             <input type="checkbox" id="" id="apDisabled" ref="apDisabled" placeholder="1" />
-            When enabled, GATAS will only attemt to an Access point and will not create anAccess Point by itself. This setting is recommended when using GATAS Connect.
+            When enabled, GATAS will only attempt to an Access point and will not create anAccess Point by itself. This setting is recommended when using GATAS Connect.
           </label>
         </div> -->
         <br />

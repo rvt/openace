@@ -218,7 +218,7 @@ public:
                 {
                     return 5;
                 }
-                if (t.start >= 2000 || t.end >= 2000)
+                if (t.start >= 1000 || t.end > 1000)
                 {
                     return 6;
                 }
@@ -250,7 +250,7 @@ public:
                 {
                     return 15;
                 }
-                if (t.start >= 2000 || t.end >= 2000)
+                if (t.start >= 1000 || t.end > 1000)
                 {
                     return 16;
                 }
