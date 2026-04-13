@@ -65,7 +65,7 @@ Radio Protocol is the method used to communicate with other conspicuity devices
 | FLARM (2024)           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | FANET                  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ADS-B via gatasConnect | :no_entry:         | :heavy_check_mark: | :heavy_minus_sign: |
-| PAW (2026 uses ADS-L)  | :heavy_check_mark  | :heavy_check_mark  | :heavy_check_mark  |
+| PAW (2026 uses ADS-L)  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
 \* Multi Protocol is a feature of GATAS that allows to enable multiple protocols both send and
 receive on a single transceiver by sharing the air time. The Transceiver will alternate between the
@@ -74,6 +74,8 @@ different protocols and prioritize a specific protocol when it receives data for
 - Fanet support sending and receving including forwaring of FANET messages
 - gatasConnect is a protocol and service to receive additional traffic information via mobile
   connection.
+
+\* PAW legacy protocol is not supported, only their new ADS-L version
 
 ### Communication support
 
