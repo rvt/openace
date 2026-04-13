@@ -1,11 +1,11 @@
 # GATAS Conspicuity Device
 
 [![Build GaTas](https://github.com/rvt/openace/actions/workflows/ci.yml/badge.svg)](https://github.com/rvt/openace/actions/workflows/ci.yml)
+![version](https://img.shields.io/badge/version-2.0.0-green)
 
 [<img src="doc/img/Discord-Logo-Blurple.png" height="45px">](https://discord.gg/J6mXTcWndS)
 
-> [!TIP]
-> Please visit the [GATAS WIKI](https://rvt.github.io/gatas-doc/) for build information.
+[📋 Changelog](./CHANGELOG.md) | [🎯 Wiki](https://rvt.github.io/gatas-doc/)
 
 The GATAS Conspicuity device is designed for General Aviation pilots flying in areas where multiple
 protocols, such as OGN, Flarm, ADS-L and FANET, are used. It can transmit and receive multiple
@@ -44,7 +44,7 @@ seen by transmitting different protocols and be able to see them.
 
 ## ADS-L Issue 2 — Ground Station Mode & Traffic Uplink
 
-GATAS supports **ADS-L Issue 2** including ground station mode and traffic uplink. In ground
+**New in 2.0.0**: GATAS now supports **ADS-L Issue 2** including ground station mode and traffic uplink. In ground
 station mode the device not only transmits its own position but also re-broadcasts received traffic
 back into the ADS-L network as uplink frames, making nearby traffic visible to other ADS-L
 participants that would otherwise be out of range. This includes any traffic received via Gatas Connect and thus showing additional MLAT traffic.
@@ -70,6 +70,9 @@ Radio Protocol is the method used to communicate with other conspicuity devices
 \* Multi Protocol is a feature of GATAS that allows to enable multiple protocols both send and
 receive on a single transceiver by sharing the air time. The Transceiver will alternate between the
 different protocols and prioritize a specific protocol when it receives data for that protocol.
+
+**Adaptive Protocol Prioritisation (New in 2.0.0)**: GATAS now intelligently allocates more listening slots
+for protocols that are actively receiving traffic, increasing pings per aircraft and improving overall situational awareness.
 
 - Fanet support sending and receving including forwaring of FANET messages
 - gatasConnect is a protocol and service to receive additional traffic information via mobile
