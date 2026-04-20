@@ -32,6 +32,8 @@ private:
     static constexpr int32_t SLICE_SIZE_MS = 1'000 / TIMESLICES;
     static constexpr int32_t MAX_POSITION_INTERPOLATIONS_USEC = 10'000'000;
     static constexpr int32_t TIME_SEND_HYSTERESIS = 100'000;
+    // Prefer RADIO positions over others for this number of us
+    static constexpr int32_t RADIO_PRIORITY_TIMEOUT_US = 4000000;
 
     struct TrackerEntry
     {
@@ -219,6 +221,18 @@ public:
         if (it != trackedAircraft.end())
         {
             it->second.sendTime = time;
+
+            // Prefer MLAT over ADSB for RADIO_PRIORITY_TIMEOUT_US to avoid jumps.
+            // We assume ADSB/MLAT data is less acurate due to delays in the chain
+            // TODO: We should revise this once all timings are validated (they are within a second, bit in finer detail)
+            const bool trackedIsRadio = it->second.position.dataSource != GATAS::DataSource::ADSB;
+            const bool incomingIsMlat = position.dataSource == GATAS::DataSource::ADSB;
+            const bool radioStillFresh = !CoreUtils::isUsReachedRaw(it->second.position.timestamp + RADIO_PRIORITY_TIMEOUT_US, time);
+            if (trackedIsRadio && incomingIsMlat && radioStillFresh)
+            {
+                return false;
+            }
+
             it->second.position = position;
         }
         else
