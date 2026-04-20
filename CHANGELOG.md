@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Prefere RADIO data over ADSB data when aircraft came in over multiple datasources. Unless older than 40000000us old, then we insert teh ADSB position. THis is to prevent weird position jumps because ADSB data is usually delayed
 
 ### Changed
 
