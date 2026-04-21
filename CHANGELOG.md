@@ -9,7 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Prefere RADIO data over ADSB data when aircraft came in over multiple datasources. Unless older than 40000000us old, then we insert teh ADSB position. This is to prevent weird position jumps because ADSB data is usually delayed
+- 
+
+### Changed
+
+-
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+-
+
+### Security
+
+-
+
+## 2.0.1 - 2026-04-32
+
+### Added
+
+- Prefer radio-derived positions over ADS-B when an aircraft is received from multiple data sources. Only switch to ADS-B if the radio position is older than 4,000,000 µs (4 seconds). This avoids sudden position jumps, as ADS-B data is typically delayed. And we trust radio positions more.
 
 ### Changed
 
