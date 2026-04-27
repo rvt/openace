@@ -11,6 +11,7 @@
 #include "print.hpp"
 #include "framebuffer.hpp"
 #include "utils.hpp"
+#include "errorCorrect.hpp"
 
 #include "etl/map.h"
 #include "etl/optional.h"

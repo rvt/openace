@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "../include/adsl/errorCorrect.hpp"
 #include "../include/adsl/uplinkentry.hpp"
 
 #include "etl/vector.h"

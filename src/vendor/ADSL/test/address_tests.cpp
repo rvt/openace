@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../include/adsl/errorCorrect.hpp"
 #include "../include/adsl/utils.hpp"
 #include "../include/adsl/address.hpp"
 #include "helpers.hpp"

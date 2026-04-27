@@ -91,7 +91,7 @@ void ADSLAce::on_receive(const GATAS::RadioRxManchesterMsg &msg)
     {
         protocol.crcCheckOnReceive = false;
         auto frameBytes = msg.frameSpan();
-        msg.lengthBytes = frameBytes[0]; // LEngth it stored on first byte
+        msg.lengthBytes = frameBytes[0]; // Length it stored on first byte
         etl::mem_move(frameBytes.data() + 1, frameBytes.size() - 1, frameBytes.data());
         status = protocol.handleRx(msg.rssidBm, msg.frame32Span());
         datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
