@@ -1,5 +1,6 @@
 #pragma once
 
+#include "coreutils.hpp"
 #include "messages.hpp"
 #include "etl/array.h"
 
@@ -14,6 +15,16 @@ namespace GATAS
     template<size_t NUM_RADIALS = 8>
     class AntennaRadiationPattern
     {
+    public:
+        struct MeasurementSnapshot
+        {
+            int16_t avgRssiDbm;
+            int16_t maxRssiDbm;
+            uint32_t avgDistance;
+            uint32_t maxDistance;
+        };
+
+    private:
         struct Measurement
         {
             int16_t avgRssiDbm;
@@ -39,7 +50,9 @@ namespace GATAS
 
         void put(const GATAS::IngressAircraftPositionMsg &msg) {
             auto &position = msg.position;
-            uint8_t positionInRadial = CoreUtils::getRadialSection<NUM_RADIALS>(CoreUtils::bearingFromInDegShort(position.relEastFromOwn, position.relNorthFromOwn));
+            const float bearingFromOwn = CoreUtils::bearingFromInDegShort(position.relEastFromOwn, position.relNorthFromOwn);
+            const float relativeBearing = CoreUtils::toBearing(bearingFromOwn - static_cast<float>(position.track));
+            uint8_t positionInRadial = CoreUtils::getRadialSection<NUM_RADIALS>(relativeBearing);
             Measurement &measurement = radiationPattern[positionInRadial];
 
             if (position.distanceFromOwn > measurement.maxDistance)
@@ -49,6 +62,23 @@ namespace GATAS
             }
             measurement.avgDistance = (measurement.avgDistance + position.distanceFromOwn) / 2;
             measurement.avgRssiDbm = (measurement.avgRssiDbm + msg.rssidBm) / 2;
+        }
+
+        etl::array<MeasurementSnapshot, NUM_RADIALS> _radiationPattern() const
+        {
+            etl::array<MeasurementSnapshot, NUM_RADIALS> snapshot;
+            for (size_t i = 0; i < NUM_RADIALS; ++i)
+            {
+                const Measurement &measurement = radiationPattern[i];
+                snapshot[i] = {
+                    measurement.avgRssiDbm,
+                    measurement.maxRssiDbm,
+                    measurement.avgDistance,
+                    measurement.maxDistance,
+                };
+            }
+
+            return snapshot;
         }
 
         void serialize(etl::string_stream &stream) const {

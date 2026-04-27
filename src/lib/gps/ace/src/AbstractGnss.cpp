@@ -97,6 +97,7 @@ void AbstractGnss::receiveTask(void *arg)
                 if (ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG && abstractGnss->statistics.totalReceived % 10 == 0)
                 {
                     // Note: Using printf so it will show up in a release build as well
+                    // TODO: L76B we should check if the GGA or ZDA message is better on time
                     printf("Software PPS lags %" PRIu32 "us behind\n", abstractGnss->softPPSlagUs);
                 }
             }
