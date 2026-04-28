@@ -17,10 +17,10 @@ namespace GATAS
     public:
         struct Measurement
         {
-            int16_t avgRssiDbm = -128;
-            int16_t maxRssiDbm = -128; // the rssi that was received by maxDistance
-            uint32_t avgDistance = 0;
-            uint32_t maxDistance = 0;
+            int16_t avgRssiDbm;
+            int16_t maxRssiDbm;
+            uint32_t avgDistance;
+            uint32_t maxDistance;
 
             Measurement() : avgRssiDbm(-128), maxRssiDbm(-128), avgDistance(0), maxDistance(0)
             {
