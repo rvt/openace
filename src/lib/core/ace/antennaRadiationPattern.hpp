@@ -4,7 +4,6 @@
 #include "messages.hpp"
 #include "etl/array.h"
 
-
 namespace GATAS
 {
     /**
@@ -12,33 +11,25 @@ namespace GATAS
      *
      * @tparam NUM_RADIALS
      */
-    template<size_t NUM_RADIALS = 8>
+    template <size_t NUM_RADIALS = 8>
     class AntennaRadiationPattern
     {
     public:
-        struct MeasurementSnapshot
-        {
-            int16_t avgRssiDbm;
-            int16_t maxRssiDbm;
-            uint32_t avgDistance;
-            uint32_t maxDistance;
-        };
-
-    private:
         struct Measurement
         {
-            int16_t avgRssiDbm;
-            int16_t maxRssiDbm; // the rssi that was received by maxDistance
-            uint32_t avgDistance;
-            uint32_t maxDistance;
+            int16_t avgRssiDbm = -128;
+            int16_t maxRssiDbm = -128; // the rssi that was received by maxDistance
+            uint32_t avgDistance = 0;
+            uint32_t maxDistance = 0;
+
             Measurement() : avgRssiDbm(-128), maxRssiDbm(-128), avgDistance(0), maxDistance(0)
             {
             }
 
-             Measurement(const Measurement&) = delete;
-             Measurement& operator=(const Measurement&) = delete;
-             Measurement(Measurement&&) = delete;
-             Measurement& operator=(Measurement&&) = delete;
+            Measurement(const Measurement &) = delete;
+            Measurement &operator=(const Measurement &) = delete;
+            Measurement(Measurement &&) = delete;
+            Measurement &operator=(Measurement &&) = delete;
         };
 
     private:
@@ -47,8 +38,8 @@ namespace GATAS
     public:
         AntennaRadiationPattern() : radiationPattern() {};
 
-
-        void put(const GATAS::IngressAircraftPositionMsg &msg) {
+        void put(const GATAS::IngressAircraftPositionMsg &msg)
+        {
             auto &position = msg.position;
             const float bearingFromOwn = CoreUtils::bearingFromInDegShort(position.relEastFromOwn, position.relNorthFromOwn);
             const float relativeBearing = CoreUtils::toBearing(bearingFromOwn - static_cast<float>(position.track));
@@ -64,43 +55,32 @@ namespace GATAS
             measurement.avgRssiDbm = (measurement.avgRssiDbm + msg.rssidBm) / 2;
         }
 
-        etl::array<MeasurementSnapshot, NUM_RADIALS> _radiationPattern() const
+        const etl::array<Measurement, NUM_RADIALS>& _radiationPattern() const
         {
-            etl::array<MeasurementSnapshot, NUM_RADIALS> snapshot;
-            for (size_t i = 0; i < NUM_RADIALS; ++i)
-            {
-                const Measurement &measurement = radiationPattern[i];
-                snapshot[i] = {
-                    measurement.avgRssiDbm,
-                    measurement.maxRssiDbm,
-                    measurement.avgDistance,
-                    measurement.maxDistance,
-                };
-            }
-
-            return snapshot;
+            return radiationPattern;
         }
 
-        void serialize(etl::string_stream &stream) const {
+        void serialize(etl::string_stream &stream) const
+        {
+            // Generates: [ [avgRssiDbm, maxRssiDbm, avgDistance, maxDistance], [avgRssiDbm, maxRssiDbm, avgDistance, maxDistance], ....]
             stream << "[";
-
-            // [ [avgRssiDbm, maxRssiDbm, avgDistance, maxDistance], [avgRssiDbm, maxRssiDbm, avgDistance, maxDistance], ....]
-            for (size_t i = 0; i < NUM_RADIALS; ++i) {
+            for (size_t i = 0; i < NUM_RADIALS; ++i)
+            {
                 const Measurement &m = radiationPattern[i];
 
                 stream << "[" << m.avgRssiDbm << ","
-                << m.maxRssiDbm << ","
-                << m.avgDistance << ","
-                << m.maxDistance << "]";
+                       << m.maxRssiDbm << ","
+                       << m.avgDistance << ","
+                       << m.maxDistance << "]";
 
-                if (i < NUM_RADIALS - 1) {
+                if (i < NUM_RADIALS - 1)
+                {
                     stream << ",";
                 }
             }
 
             stream << "]";
         }
-
     };
 
 }

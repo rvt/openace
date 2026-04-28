@@ -25,7 +25,7 @@ TEST_CASE("put stores measurements in the expected radial", "[antennaRadiationPa
     pattern.put(makeMsg(15620, -10000, -12000, 45, -70));
     pattern.put(makeMsg(200, 100, 0, 90, -60));
 
-    const auto snapshot = pattern._radiationPattern();
+    const auto &snapshot = pattern._radiationPattern();
 
     REQUIRE(snapshot[4].avgDistance == 7810);
     REQUIRE(snapshot[4].maxDistance == 15620);
