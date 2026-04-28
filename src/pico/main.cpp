@@ -370,7 +370,7 @@ static void loadModules(void *arg)
     vTaskDelete(nullptr);
 }
 
-#if configGENERATE_RUN_TIME_STATS == 1
+#if configGENERATE_RUN_TIME_STATS == 1 && configSHOW_RUN_TIME_STATS == 1
 void vDiagnosticsTask(void *pvParameters)
 {
     constexpr size_t DIAG_STRING_SIZE = 2048; // Adjust based on your needs
@@ -466,7 +466,7 @@ void vLaunch(void)
     vTaskCoreAffinitySet(task, 1);
 
     // Dump some CPU diagnostics to terminal of all running tasks
-#if configGENERATE_RUN_TIME_STATS == 1
+#if configGENERATE_RUN_TIME_STATS == 1 && configSHOW_RUN_TIME_STATS == 1
     xTaskCreate(vDiagnosticsTask, "DiagTask", configMINIMAL_STACK_SIZE + 1024, nullptr, tskIDLE_PRIORITY, nullptr);
 #endif
 

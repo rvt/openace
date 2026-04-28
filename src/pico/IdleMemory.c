@@ -112,6 +112,5 @@ void vApplicationTickHook(void)
 {
 }
 
-static uint32_t start_time_us = 0;
-void configureRuntimeStatsTimer(void) { start_time_us = time_us_32(); }
-uint32_t getRuntimeCounterValue(void) { return time_us_32() - start_time_us; }
+void configureRuntimeStatsTimer(void) {  }
+uint32_t getRuntimeCounterValue(void) { return time_us_32(); }
