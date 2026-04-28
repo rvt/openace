@@ -23,9 +23,9 @@ void Flarm2024::getData(etl::string_stream &stream, const etl::string_view path)
     stream << "\"receivedAircraftPositions:k\":" << statistics.receivedAircraftPositions;
     stream << ",\"transmittedAircraftPositions:k\":" << statistics.transmittedAircraftPositions;
     stream << ",\"crc:err\":" << statistics.crcErr;
-    stream << ",\"otherErr:err\":" << statistics.otherErr;
-    stream << ",\"outOfDistance\":" << statistics.outOfDistance;
-    stream << ",\"messageTypeNot0x02\":" << statistics.messageTypeNot0x02;
+    stream << ",\"crcCorrect:k\":" << statistics.crcCorrect;
+    stream << ",\"outOfDistance:k\":" << statistics.outOfDistance;
+    stream << ",\"messageTypeNot0x02:k\":" << statistics.messageTypeNot0x02;
     stream << "}";
 }
 
@@ -40,15 +40,14 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
         Flarm2024Packet packet;
 
         auto result = packet.loadFromBuffer(epochSeconds, msg.frameSpan(), msg.errorSpan());
-        if (result == -1)
+        if (result < 0)
         {
             statistics.crcErr += 1;
             return;
         }
         else if (result != 0)
         {
-            statistics.otherErr += 1;
-            return;
+            statistics.crcCorrect += 1;
         }
 
         if (packet.messageType() != 0x02)

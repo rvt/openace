@@ -34,7 +34,7 @@ private:
         uint32_t receivedAircraftPositions = 0;
         uint32_t transmittedAircraftPositions = 0;
         uint32_t crcErr = 0;
-        uint32_t otherErr = 0;
+        uint32_t crcCorrect = 0;
         uint32_t outOfDistance = 0;
         uint32_t messageTypeNot0x02 = 0;
     } statistics;

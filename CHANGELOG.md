@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- FLARM packets will now be corrected for bit flips when possible to improve reception on larger distances
 
 ### Deprecated
 
@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- AntennaRadionPattern was alligned to north instead of track of aircraft. Only issue in the web interface
 
 ### Security
 
