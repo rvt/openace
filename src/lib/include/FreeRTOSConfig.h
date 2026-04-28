@@ -94,7 +94,7 @@
 // When configGENERATE_RUN_TIME_STATS is enabled FreeRTOS will collect runtime data
 #define configGENERATE_RUN_TIME_STATS           0
 // When configSHOW_RUN_TIME_STATS is 1, additional data is dumped to the UART when configGENERATE_RUN_TIME_STATS is 1, else it's just collected
-#define configSHOW_RUN_TIME_STATS               1
+#define configSHOW_RUN_TIME_STATS               0
 
 #if configGENERATE_RUN_TIME_STATS == 1
 #define configUSE_TRACE_FACILITY                1
