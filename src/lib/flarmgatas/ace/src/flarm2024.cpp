@@ -45,7 +45,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
             statistics.crcErr += 1;
             return;
         }
-        else if (result != 0)
+        else if (result > 0)
         {
             statistics.correctedFrames += 1;
         }
