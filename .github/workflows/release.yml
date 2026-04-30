@@ -136,8 +136,11 @@ jobs:
         env:
           VERSION: ${{ github.ref_name }}
         run: |
-          VERSION_NO_V="${VERSION#v}"
-          awk -v ver="$VERSION_NO_V" '$0 ~ "^## \\[" ver "\\]"{flag=1; next} /^## \[/{if(flag)exit} flag' CHANGELOG.md > /tmp/changelog_section.md
+          awk -v ver="$VERSION" '$0 ~ "^## \\[" ver "\\]"{flag=1; next} /^## \[/{if(flag)exit} flag' CHANGELOG.md > /tmp/changelog_section.md
+          if [ ! -s /tmp/changelog_section.md ]; then
+            echo "Failed to extract changelog section for ${VERSION}" >&2
+            exit 1
+          fi
           python3 -c "
           import os
           t = open('.github/release.md').read()

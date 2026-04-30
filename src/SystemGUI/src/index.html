@@ -1,106 +1,104 @@
 <!doctype html>
 <html lang="en" xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1"
-    />
-    <meta name="color-scheme" content="light dark" />
-    <title>GATAS</title>
 
-    <!-- Polyfill :has() for spry-css -->
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        document
-          .querySelectorAll('input[type="checkbox"]')
-          .forEach((checkBox) => {
-            checkBox.addEventListener("click", (event) => {
-              event.target.parentElement.classList.toggle(
-                "has-checked",
-                event.target.checked,
-              );
-            });
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>GATAS</title>
+
+  <!-- Polyfill :has() for spry-css -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document
+        .querySelectorAll('input[type="checkbox"]')
+        .forEach((checkBox) => {
+          checkBox.addEventListener("click", (event) => {
+            event.target.parentElement.classList.toggle(
+              "has-checked",
+              event.target.checked,
+            );
           });
-
-        document.querySelectorAll(".tooltip").forEach((tooltip) => {
-          tooltip.parentElement.classList.add("has-tooltip");
         });
+
+      document.querySelectorAll(".tooltip").forEach((tooltip) => {
+        tooltip.parentElement.classList.add("has-tooltip");
       });
-    </script>
+    });
+  </script>
 
-    <!--link rel="stylesheet" href="css/spry.min.css" /-->
-    <link rel="stylesheet" href="css/spry.min.css" />
-    <link rel="stylesheet" href="css/custom.css" />
-  </head>
+  <!--link rel="stylesheet" href="css/spry.min.css" /-->
+  <link rel="stylesheet" href="css/spry.min.css" />
+  <link rel="stylesheet" href="css/custom.css" />
+</head>
 
-  <body id="body" class="overflow-x-hidden">
-    <script>
-      if (
-        window.matchMedia &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-      ) {
-        document.body.classList.add("dark");
-      }
-    </script>
+<body id="body" class="overflow-x-hidden">
+  <script>
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    ) {
+      document.body.classList.add("dark");
+    }
+  </script>
 
-    <div class="row jc-center">
-      <div class="lg-col-8 md-col-10 sm-col-12">
-        <gatas-main> </gatas-main>
-      </div>
+  <div class="row jc-center">
+    <div class="lg-col-8 md-col-10 sm-col-12">
+      <gatas-main> </gatas-main>
     </div>
-  </body>
+  </div>
+</body>
 
-  <script type="module">
-    import { El } from "@frameable/el";
-    import store from "./components/store";
-    import "./components/menu";
-    import "./components/session";
-    import "./components/modules";
-    import "./components/gpsstatus";
-    import "./components/actionbuttons";
+<script type="module">
+  import { El } from "@frameable/el";
+  import store from "./components/store";
+  import "./components/menu";
+  import "./components/session";
+  import "./components/modules";
+  import "./components/gpsstatus";
+  import "./components/actionbuttons";
 
-    class GaTasMain extends El {
-      created() {
-        store.init().then((data) => {
-          // Have to set this with a timeout or else the drop down does not appear on the right aircraft
-          setTimeout(() => {
-            // Default page to open
-            store.state.page = "session";
-          }, 50);
-        });
+  class GaTasMain extends El {
+    created() {
+      store.init().then((data) => {
+        // Have to set this with a timeout or else the drop down does not appear on the right aircraft
+        setTimeout(() => {
+          // Default page to open
+          store.state.page = "session";
+        }, 50);
+      });
+    }
+
+    render(html) {
+      let pageContent;
+      switch (store.state.page) {
+        case "session":
+          pageContent = html`<gatas-session key="session"></gatas-session>`;
+          break;
+        case "actions":
+          pageContent = html`<action-buttons key="actions"></action-buttons>`;
+          break;
+        case "modules":
+          pageContent = html`<gatas-modules key="modules"></gatas-modules>`;
+          break;
+        case "status":
+          pageContent = html`<gps-status key="gpsstatus"></gps-status>`;
+          break;
+        case "config":
+          pageContent = html`<gatas-config key="config"></gatas-config>`;
+          break;
+        default:
+          pageContent = "";
       }
 
-      render(html) {
-        let pageContent;
-        switch (store.state.page) {
-          case "session":
-            pageContent = html`
-            <action-buttons></action-buttons>
-            <gatas-session key="session"></gatas-session>`;
-            break;
-          case "modules":
-            pageContent = html`<gatas-modules
-              key="modules"
-            ></gatas-modules>`;
-            break;
-          case "status":
-            pageContent = html`<gps-status key="gpsstatus"></gps-status>`;
-            break;
-          case "config":
-            pageContent = html`<gatas-config key="config"></gatas-config>`;
-            break;
-          default:
-            pageContent = "";
-        }
-
-        return html`
+      return html`
           <main-menu></main-menu>
           <div>Your gatasID: <strong>${store.state.gatasId}</strong></div>
           ${pageContent}
         `;
-      }
     }
-    customElements.define("gatas-main", GaTasMain);
-  </script>
+  }
+  customElements.define("gatas-main", GaTasMain);
+</script>
+
 </html>

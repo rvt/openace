@@ -43,7 +43,6 @@ class GaTasModules extends El {
       "Bmp280",
       "Config",
       "AircraftTracker",
-      "WifiService",
       "DataPort",
       "AirConnect",
       "Bluetooth",

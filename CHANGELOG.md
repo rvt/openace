@@ -31,6 +31,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -
 
+## [v2.1.1] - 2026-04-30
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+- Better rendering of RadioTUnerTX and Protocol Timing in the UI
+- Moved the 'action' buttons to a seperate page in the UI
+
+### Security
+
+-
+
 ## [v2.1.0] - 2026-04-28
 
 ### Added

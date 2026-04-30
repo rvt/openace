@@ -120,9 +120,15 @@ const formatUnit = (value, unit, locale = navigator.language) => {
         return formatTime(value);
     }
 
-    // Datasource time stats
+    // Datasource time stats: show two 500ms halves on separate lines.
     if (unit == 'dts') {
-        value = bitsToDots(_chunkString(value, 10, "|"));
+      const chunks = value.match(/.{1,50}/g) || [value];
+      value = chunks
+            .map((chunk, idx) => {
+                const label = idx === 0 ? '0..500ms' : '500..1000ms';
+                return `${label}\n${bitsToDots(_chunkString(chunk, 10, "|"))}`;
+            })
+            .join("\n");
     }
 
     const table = UNIT_TABLE[unit];

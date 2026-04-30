@@ -76,6 +76,10 @@ class MonitorModule extends El {
     return POLAR_COLORS[isDarkMode() ? "DARK" : "LIGHT"];
   }
 
+  _isCompactTimeline() {
+    return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+  }
+
   /**
    * Draw a small 2D plane
    * 
@@ -264,6 +268,9 @@ class MonitorModule extends El {
     if (isNumeric) {
       style += "font-family: monospace;";
     }
+    if (typeof item.name === "string" && item.name.endsWith(":dts")) {
+      style += "font-family: monospace;font-size: 6px;white-space: pre-wrap;word-break: break-all;line-height: 1.05;";
+    }
 
     // Error tags will be rendered orange when the value is != 0
     if (
@@ -363,10 +370,34 @@ class MonitorModule extends El {
       `;
     }
 
+    if (item.name.endsWith(":dts")) {
+      const result = formatUnit2(item.name, item.value);
+      const lines = String(result.value).split("\n");
+      const name = result.name;
+
+      return html`
+        <tr>
+          <th style="width:33%" scope="row">${name}</th>
+          <td style="font-family: monospace;">
+            <div style="display:flex; flex-direction:column; gap:4px">
+              ${lines.reduce((acc, line, index) => {
+        if (index % 2 === 0) {
+          acc.push(html`<div style="font-size:10px; font-weight:600; line-height:1.1">${line}</div>`);
+        } else {
+          acc.push(html`<div style="font-size:6px; line-height:1.05; word-break:break-all">${line}</div>`);
+        }
+        return acc;
+      }, [])}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
     const dsColorMap = {
       "OGN": "#cb6827",
       "Flarm": "#31a84a",
-      "ADSL": "#808cff",
+      "ADSL": "#303a80",
       "ADSL Hdr": "#596eef",
       "Fanet": "#674ea7",
       "ADSB": "#fdce03",
@@ -383,12 +414,55 @@ class MonitorModule extends El {
       const entries = item.value;
       const SEC = 1000;
       const barW = 200; // px per 1000ms
+      const compactMode = this._isCompactTimeline();
 
       const totalMs = Math.ceil(Math.max(...entries.map((e) => e.e), SEC) / SEC) * SEC;
       const totalW = (totalMs / SEC) * barW;
 
 
       const dsColor = (ds) => dsColorMap[ds] || "#888";
+
+      const renderSegment = (entry, rowStart, rowEnd, rowWidthMs) => {
+        const segStart = Math.max(entry.s, rowStart);
+        const segEnd = Math.min(entry.e, rowEnd);
+        if (segEnd <= segStart) {
+          return null;
+        }
+
+        const left = ((segStart - rowStart) / rowWidthMs) * 100;
+        const w = Math.max(1, ((segEnd - segStart) / rowWidthMs) * 100);
+        const continuesLeft = entry.s < rowStart;
+        const continuesRight = entry.e > rowEnd;
+
+        return html`
+          <div
+            style="position:absolute; left:${left}%; top:1px; width:${w}%; height:14px; background:${dsColor(entry.ds)}; opacity:0.85; border-radius:6px; box-sizing:border-box; ${continuesLeft ? 'border-left:2px solid rgba(255,255,255,0.85);' : ''} ${continuesRight ? 'border-right:2px solid rgba(255,255,255,0.85);' : ''}"
+            title="${entry.ds} ch${entry.ch} ${entry.s}-${entry.e}ms"
+          >
+            <span style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:10px; line-height:14px; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45); pointer-events:none">${entry.ch}</span>
+          </div>`;
+      };
+
+      const renderCompactTimeline = () => {
+        const rows = Array.from({ length: Math.max(1, Math.ceil(totalMs / SEC)) }, (_, i) => ({
+          start: i * SEC,
+          end: Math.min((i + 1) * SEC, totalMs),
+        }));
+
+        return html`
+          <div style="display:flex; flex-direction:column; gap:4px">
+            ${rows.map((row, rowIndex) => html`
+              <div style="display:flex; align-items:center; gap:6px; ${rowIndex > 0 ? 'border-top:1px dashed #ddd; padding-top:4px;' : ''}">
+                <span style="width:54px; flex-shrink:0; font-size:9px; color:#777; text-align:right">
+                  ${Math.floor(row.start / SEC)}-${Math.ceil(row.end / SEC)}s
+                </span>
+                <div style="position:relative; flex:1; min-width:0; height:16px; background:#eee; border-radius:2px; overflow:hidden">
+                  ${entries.map((entry) => renderSegment(entry, row.start, row.end, SEC))}
+                </div>
+              </div>
+            `)}
+          </div>`;
+      };
 
       // Render a single bar for one entry
       const renderBar = (entry) => {
@@ -404,20 +478,21 @@ class MonitorModule extends El {
           <th style="width:33%; vertical-align:top" scope="row">${name}</th>
           <td>
             <div style="font-size:11px; line-height:1.6">
+              ${compactMode ? renderCompactTimeline() : html`
+                <!-- Schedule: cumulative entries -->
+                <div style="position:relative; width:${totalW}px; height:16px; background:#eee; border-radius:2px">
+                  ${entries.map((e) => renderBar(e))}
+                </div>
 
-              <!-- Schedule: cumulative entries -->
-              <div style="position:relative; width:${totalW}px; height:16px; background:#eee; border-radius:2px">
-                ${entries.map((e) => renderBar(e))}
-              </div>
-
-              <!-- Tick marks -->
-              <div style="position:relative; width:${totalW}px; height:10px; margin-top:2px">
-                ${ticks.map((ms) => {
-        const left = (ms / totalMs) * totalW;
-        const bold = ms % SEC === 0;
-        return html`<span style="position:absolute; left:${left}px; font-size:8px; color:${bold ? '#555' : '#aaa'}; transform:translateX(-50%); font-weight:${bold ? 'bold' : 'normal'}">${ms}</span>`;
-      })}
-              </div>
+                <!-- Tick marks -->
+                <div style="position:relative; width:${totalW}px; height:10px; margin-top:2px">
+                  ${ticks.map((ms) => {
+                    const left = (ms / totalMs) * totalW;
+                    const bold = ms % SEC === 0;
+                    return html`<span style="position:absolute; left:${left}px; font-size:8px; color:${bold ? '#555' : '#aaa'}; transform:translateX(-50%); font-weight:${bold ? 'bold' : 'normal'}">${ms}</span>`;
+                  })}
+                </div>
+              `}
 
               <!-- Legend -->
               <br />
@@ -441,6 +516,7 @@ class MonitorModule extends El {
       const protocols = item.value; // [{ds, slots:[{s,e,ch},...]}]
       const SEC = 1000;
       const barW = 200; // px per 1000ms
+      const compactMode = this._isCompactTimeline();
 
       const allSlots = protocols.flatMap((p) => p.slots || []);
       const totalMs = Math.ceil(Math.max(...allSlots.map((s) => s.e), SEC) / SEC) * SEC;
@@ -448,19 +524,62 @@ class MonitorModule extends El {
 
       const dsColor = (ds) => dsColorMap[ds] || "#888";
 
+      const renderSegment = (proto, slot, rowStart, rowEnd, rowWidthMs) => {
+        const color = dsColor(proto.ds);
+        const segStart = Math.max(slot.s, rowStart);
+        const segEnd = Math.min(slot.e, rowEnd);
+        if (segEnd <= segStart) {
+          return null;
+        }
+
+        const left = ((segStart - rowStart) / rowWidthMs) * 100;
+        const w = Math.max(1, ((segEnd - segStart) / rowWidthMs) * 100);
+        const continuesLeft = slot.s < rowStart;
+        const continuesRight = slot.e > rowEnd;
+
+        return html`
+          <div
+            style="position:absolute; left:${left}%; top:1px; width:${w}%; height:14px; background:${color}; opacity:0.85; border-radius:6px; box-sizing:border-box; ${continuesLeft ? 'border-left:2px solid rgba(255,255,255,0.85);' : ''} ${continuesRight ? 'border-right:2px solid rgba(255,255,255,0.85);' : ''}"
+            title="${proto.ds} ch${slot.ch} ${slot.s}-${slot.e}ms"
+          >
+            <span style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:10px; line-height:14px; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45); pointer-events:none">${slot.ch}</span>
+          </div>`;
+      };
+
       const renderProtocolRow = (proto) => {
         const color = dsColor(proto.ds);
         const hasTiming = proto.min != null;
         const avg = hasTiming ? ((proto.min + proto.max) / 2 / 1000).toFixed(1) : null;
+        const rows = compactMode ? Array.from({ length: Math.max(1, Math.ceil(totalMs / SEC)) }, (_, i) => ({
+          start: i * SEC,
+          end: Math.min((i + 1) * SEC, totalMs),
+        })) : [];
         return html`
-          <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px">
+          <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:4px">
+            <div style="display:flex; align-items:center; gap:6px">
             <span style="width:70px; font-size:10px; color:#555; text-align:right; flex-shrink:0">${proto.ds}</span>
-            <div style="position:relative; width:${totalW}px; height:16px; background:#eee; border-radius:2px">
-              ${(proto.slots || []).map((ts) => {
-          const left = (ts.s / totalMs) * totalW;
-          const w = Math.max(1, ((ts.e - ts.s) / totalMs) * totalW);
-          return html`<div style="position:absolute; left:${left}px; text-align:center; width:${w}px; height:100%; background:${color}; opacity:0.8; border-radius:6px" title="${proto.ds} ch${ts.ch} ${ts.s}-${ts.e}ms">${ts.ch}</div>`;
-        })}
+              ${compactMode
+            ? html`
+                <div style="display:flex; flex:1; flex-direction:column; gap:4px; min-width:0">
+                  ${rows.map((row, rowIndex) => html`
+                    <div style="display:flex; align-items:center; gap:6px; ${rowIndex > 0 ? 'border-top:1px dashed #ddd; padding-top:4px;' : ''}">
+                      <span style="width:42px; flex-shrink:0; font-size:9px; color:#777; text-align:right">${Math.floor(row.start / SEC)}-${Math.ceil(row.end / SEC)}s</span>
+                      <div style="position:relative; flex:1; min-width:0; height:16px; background:#eee; border-radius:2px; overflow:hidden">
+                        ${(proto.slots || []).map((ts) => renderSegment(proto, ts, row.start, row.end, SEC))}
+                      </div>
+                    </div>
+                  `)}
+                </div>
+              `
+            : html`
+                <div style="position:relative; width:${totalW}px; height:16px; background:#eee; border-radius:2px">
+                  ${(proto.slots || []).map((ts) => {
+                    const left = (ts.s / totalMs) * totalW;
+                    const w = Math.max(1, ((ts.e - ts.s) / totalMs) * totalW);
+                    return html`<div style="position:absolute; left:${left}px; width:${w}px; height:100%; background:${color}; opacity:0.8; border-radius:6px; display:flex; align-items:center; justify-content:center; overflow:hidden" title="${proto.ds} ch${ts.ch} ${ts.s}-${ts.e}ms"><span style="font-size:10px; line-height:14px; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45); pointer-events:none">${ts.ch}</span></div>`;
+                  })}
+                </div>
+              `}
             </div>
             ${hasTiming ? html`<span style="width:130px; font-size:10px; color:#999; flex-shrink:0">${proto.min}-${proto.max}ms ~${avg}s</span>` : ''}
           </div>
@@ -476,17 +595,19 @@ class MonitorModule extends El {
             <div style="font-size:11px; line-height:1.6">
               ${protocols.map((p) => renderProtocolRow(p))}
 
-              <!-- Tick marks -->
-              <div style="display:flex; align-items:center; gap:6px">
-                <span style="width:70px; flex-shrink:0"></span>
-                <div style="position:relative; width:${totalW}px; height:10px; margin-top:2px">
-                  ${ticks.map((ms) => {
-        const left = (ms / totalMs) * totalW;
-        const bold = ms % SEC === 0;
-        return html`<span style="position:absolute; left:${left}px; font-size:8px; color:${bold ? '#555' : '#aaa'}; transform:translateX(-50%); font-weight:${bold ? 'bold' : 'normal'}">${ms}</span>`;
-      })}
+              ${compactMode ? html`` : html`
+                <!-- Tick marks -->
+                <div style="display:flex; align-items:center; gap:6px">
+                  <span style="width:70px; flex-shrink:0"></span>
+                  <div style="position:relative; width:${totalW}px; height:10px; margin-top:2px">
+                    ${ticks.map((ms) => {
+                      const left = (ms / totalMs) * totalW;
+                      const bold = ms % SEC === 0;
+                      return html`<span style="position:absolute; left:${left}px; font-size:8px; color:${bold ? '#555' : '#aaa'}; transform:translateX(-50%); font-weight:${bold ? 'bold' : 'normal'}">${ms}</span>`;
+                    })}
+                  </div>
                 </div>
-              </div>
+              `}
             </div>
           </td>
         </tr>
