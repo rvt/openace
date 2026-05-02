@@ -11,7 +11,6 @@
 #include "etl/message_bus.h"
 #include "etl/string.h"
 #include "etl/set.h"
-#include "etl/array.h"
 #include "etl/vector.h"
 #include "etl/algorithm.h"
 
@@ -224,7 +223,7 @@ namespace GATAS
         RadioControlMsg(const GATAS::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
     };
 
-    struct ConfigUpdatedMsg : public etl::message<20> 
+    struct ConfigUpdatedMsg : public etl::message<20>
     {
         const Configuration &config;
         const GATAS::Modulename moduleName;

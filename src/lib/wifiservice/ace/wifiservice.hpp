@@ -2,9 +2,7 @@
 #include "FreeRTOS.h"
 #include "timers.h"
 
-#include "etl/message_bus.h"
 #include "etl/string.h"
-#include "etl/set.h"
 #include "etl/list.h"
 
 #include "ace/basemodule.hpp"

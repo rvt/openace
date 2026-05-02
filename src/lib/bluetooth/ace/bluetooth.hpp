@@ -7,11 +7,9 @@
 #include "task.h"
 
 /* ETLCPP */
-#include "etl/message_bus.h"
 #include "etl/list.h"
 #include "etl/string.h"
 #include "etl/queue_spsc_atomic.h"
-#include "etl/bit_stream.h"
 
 /* GaTas */
 #include "ace/constants.hpp"

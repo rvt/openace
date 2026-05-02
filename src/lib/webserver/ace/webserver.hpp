@@ -6,8 +6,6 @@
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 
-#include "etl/message_bus.h"
-
 class Webserver : public BaseModule, public etl::message_router<Webserver>
 {
     friend class message_router;

@@ -5,8 +5,6 @@
 #include "pico/binary_info.h"
 #include "pico/stdlib.h"
 
-#include "etl/message_bus.h"
-
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"

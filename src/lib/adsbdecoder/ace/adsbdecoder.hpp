@@ -13,11 +13,6 @@
 
 #include "mode-s.hpp"
 
-#include "etl/map.h"
-#include "etl/set.h"
-#include "etl/message_bus.h"
-
-
 #include "FreeRTOS.h"
 #include "semphr.h"
 
@@ -51,9 +46,9 @@ private:
     SemaphoreHandle_t mutex;
     uint32_t filterRadius=100'000;
     GATAS::OwnshipMinimalPositionInfo ownshipPosition;
-    mode_s_t state;      
+    mode_s_t state;
     int32_t filterAbove; // Filter out all aircraft above me in meters. 1000 means all aircraft 1000m or more above me will not get processed
-    int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed    
+    int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed
 public:
     static constexpr const etl::string_view NAME = "ADSBDecoder";
     ADSBDecoder(etl::imessage_bus &bus, const Configuration &config) : BinaryReceiver(bus, NAME), mutex(nullptr), filterRadius(100000)
@@ -92,11 +87,11 @@ private:
     void processAdsbData(const uint8_t* data, uint8_t length);
 
     bool outOfAltitudeRange(const GATAS::OwnshipMinimalPositionInfo &opi, int32_t otherellipseHeight);
-    
+
     void on_receive_unknown(const etl::imessage &msg)
     {
         (void)msg;
     }
 
-    GATAS::AircraftCategory getAircraftCategory(const etl::string_view category) const;    
+    GATAS::AircraftCategory getAircraftCategory(const etl::string_view category) const;
 };

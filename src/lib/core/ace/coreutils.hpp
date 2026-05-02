@@ -11,6 +11,7 @@
 #include "spinlockguard.hpp"
 
 #include "etl/string.h"
+#include "etl/vector.h"
 
 class CoreUtils
 {

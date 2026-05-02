@@ -6,7 +6,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "etl/message_bus.h"
 #include "etl/string_view.h"
 
 #include "ace/constants.hpp"

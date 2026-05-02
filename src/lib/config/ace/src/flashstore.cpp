@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include "../flashstore.hpp"
 
 #include "pico/flash.h"

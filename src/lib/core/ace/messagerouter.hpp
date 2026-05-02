@@ -8,7 +8,6 @@
 #include "constants.hpp"
 
 /* Vendor. */
-#include "etl/message_router.h"
 #include "etl/message_bus.h"
 #include "etl/vector.h"
 

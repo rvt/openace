@@ -5,7 +5,6 @@
 #include "../old/streambuffer.hpp"
 #include "ace/binarymessages.hpp"
 #include "ace/messages.hpp"
-#include "etl/message_bus.h"
 #include "etl/span.h"
 #include "etl/vector.h"
 

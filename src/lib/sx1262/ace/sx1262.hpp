@@ -18,7 +18,6 @@
 #include "pico/stdlib.h"
 
 /* Vendor. */
-#include "etl/message_bus.h"
 #include "etl/queue_spsc_atomic.h"
 
 /* GaTas Libraries */
