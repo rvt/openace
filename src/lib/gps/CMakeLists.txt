@@ -1,21 +1,16 @@
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.18)
 
 project(gps VERSION 0.0.0 LANGUAGES CXX)
-set(MSG_PREFIX "${PROJECT_NAME} |")
+include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)
 
-set(MODULE_SOURCE_FILES
+gatas_add_module(
+    SOURCE_FILES
         ace/src/ubloxm8n.cpp
         ace/src/L76B.cpp
         ace/src/AbstractGnss.cpp
+    TARGET_LINK_LIBS
+        pioserial
+        utils
+    PICO_EXTRA_LIBS
+        hardware_pio
 )
-
-set(MODULE_TARGET_LINK
-    pioserial
-    utils
-)
-
-set(PICO_EXTRA_LIBS
-    hardware_pio
-)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)

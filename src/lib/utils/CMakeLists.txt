@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.18)
 
 project(utils VERSION 0.0.0 LANGUAGES CXX)
-set(MSG_PREFIX "${PROJECT_NAME} |")
+include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)
 
-set(MODULE_SOURCE_FILES
+gatas_add_module(
+    SOURCE_FILES
         ace/src/picopio.cpp
         ace/src/ldpc.cpp
         ace/src/bitutils.cpp
@@ -13,10 +14,6 @@ set(MODULE_SOURCE_FILES
         ace/src/moreutils.cpp
         ace/src/manchester.cpp
         ace/src/cobs.cpp
+    PICO_EXTRA_LIBS
+        hardware_pio
 )
-
-set(PICO_EXTRA_LIBS
-    hardware_pio
-)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)

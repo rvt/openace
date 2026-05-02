@@ -26,7 +26,12 @@ execute_process(
 # itself. Default configurations could go here if that makes sense
 set(CONFIG_HEADER "${CMAKE_CURRENT_LIST_DIR}/generated/config.hpp")
 configure_file(config.hpp.in ${CONFIG_HEADER} @ONLY)
-add_definitions(-include ${CONFIG_HEADER})
+
+add_library(gatas_build_options INTERFACE)
+target_compile_options(gatas_build_options INTERFACE
+  -include
+  ${CONFIG_HEADER}
+)
 
 # Add buildtime timestamp Move this to a dedicated 'status' module to reduce
 # build times
@@ -47,19 +52,7 @@ string(TIMESTAMP BUILD_TIMESTAMP_EPOCH "%s" UTC)
 
 set(BUILD_TIME_HEADER "${CMAKE_CURRENT_LIST_DIR}/generated/build_time.hpp")
 string(TIMESTAMP BUILD_TIMESTAMP "%Y-%m-%d %H:%M:%SZ" UTC)
-file(WRITE "${BUILD_TIME_HEADER}"
-    "#pragma once\n"
-    "#define BUILD_TIMESTAMP \"${BUILD_TIMESTAMP}\"\n"
-    "#define BUILD_TIMESTAMP_EPOCH ${BUILD_TIMESTAMP_EPOCH}\n"
-    "#define BUILD_GIT_TAG \"${GIT_TAG}\"\n"
-)
-#add_definitions(-include ${BUILD_TIME_HEADER})
-
-# Create a custom command and target to ensure the header is generated
-add_custom_command(
-  OUTPUT "${BUILD_TIME_HEADER}"
-  COMMAND ${CMAKE_COMMAND} -E touch "${BUILD_TIME_HEADER}"
-  DEPENDS "${BUILD_TIME_HEADER}")
+configure_file(build_time.hpp.in "${BUILD_TIME_HEADER}" @ONLY)
 
 # pico_sdk_import.cmake is a single file copied from this SDK note: this must
 # happen before project() include(cmake/pico_sdk_import.cmake)7s
@@ -89,7 +82,7 @@ if(GATAS_UART_OVER_USB STREQUAL "")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-  add_compile_options(
+  set(FIRMWARE_COMPILE_OPTIONS
     -O2
     -Wall
     -fsingle-precision-constant
@@ -97,9 +90,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     -ffunction-sections
     -fdata-sections
     -fno-exceptions
-    )
+  )
 else()
-  add_compile_options(
+  set(FIRMWARE_COMPILE_OPTIONS
     -g
     -O0
     -Wall
@@ -108,34 +101,12 @@ else()
     -ffunction-sections
     -fdata-sections
     -fno-exceptions
-    )
-    endif()
+  )
+endif()
 
-add_link_options(-Wl,--print-memory-usage)
-
-# Collect all .c/cpp/hpp/h files from the specified directory and its
-# subdirectories So we can set the correct compile flag for them
-file(
-  GLOB_RECURSE
-  C_SOURCE_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/../lib/**/*.c"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../lib/**/*.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../lib/**/*.hpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../lib/**/*.cpp")
-
-foreach(file ${C_SOURCE_FILES})
-  get_filename_component(dir ${file} DIRECTORY)
-  if("${dir}" MATCHES ".*/build(/.*)?")
-    list(REMOVE_ITEM C_SOURCE_FILES ${file})
-  endif()
-endforeach()
-
-# message(${C_SOURCE_FILES})
-
-# Set for these files specific compile options
-set_source_files_properties(${C_SOURCE_FILES}
-                            PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Werror -Wvexing-parse
-")
+set(FIRMWARE_LINK_OPTIONS
+  -Wl,--print-memory-usage
+)
 
 pico_sdk_init()
 
@@ -146,6 +117,16 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../lib globalLib)
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}
   ${CMAKE_CURRENT_LIST_DIR}/../lib/include)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE gatas_build_options)
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+  ${FIRMWARE_COMPILE_OPTIONS}
+)
+
+target_link_options(${PROJECT_NAME} PRIVATE
+  ${FIRMWARE_LINK_OPTIONS}
+)
 
 
 target_link_libraries(
