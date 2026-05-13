@@ -161,7 +161,6 @@ void GDLoverUDP::getData(etl::string_stream &stream, const etl::string_view path
     (void)path;
     stream << "{";
     stream << "\"heartbeatTx:k\":" << statistics.heartbeatTx;
-    stream << ",\"bufferAlloc:err\":" << statistics.bufferAllocErr;
     stream << ",\"sendFailure:err\":" << statistics.sendFailureErr;
     stream << ",\"foreFlightBroadcasts:k\":" << statistics.foreFlightBroadcasts;
     stream << ",\"currentAddressesInUse\":" << connectedClients.size();

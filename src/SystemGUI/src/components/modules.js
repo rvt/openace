@@ -47,10 +47,11 @@ class GaTasModules extends El {
       "AirConnect",
       "Bluetooth",
       "Webserver",
-      "GatasConnect"
+      "GatasConnect",
+      "GatasConnectUDP"
     ];
 
-    this.configurable = ["AircraftTracker", "L76B", "UbloxM8N", "WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "Bluetooth", "GatasConnect"];
+    this.configurable = ["AircraftTracker", "L76B", "UbloxM8N", "WifiService", "ADSBDecoder", "GDLoverUDP", "Dump1090Client", "Bmp280", "Sx1262_0", "Sx1262_1", "Bluetooth", "GatasConnect", "GatasConnectUDP"];
 
     this.enablers = [
       "ADSBDecoder",
@@ -72,6 +73,7 @@ class GaTasModules extends El {
       "DataPort",
       "AirConnect",
       "GatasConnect",
+      "GatasConnectUDP",
       "GpsDecoder"
     ];
     this.info = {
@@ -85,6 +87,8 @@ class GaTasModules extends El {
       Bluetooth: (html) => html`Transmits all DataPort messages over Bluetooth, providing NMEA datastreams to external devices. EFBs like SkyDemon can connect to GaTas via Bluetooth.`,
       Gdl90Service: (html) => html`Generates GDL90 messages. Requires a module like GDLoverUDP to receive them on external devices.`,
       GDLoverUDP: (html) => html`Transmits GDL90 messages over UDP to external devices.`,
+      GatasConnect: (html) => html`Generates COBS-framed GATAS Connect traffic and routes it to the configured transport.`,
+      GatasConnectUDP: (html) => html`Receives and transmits GATAS Connect COBS payloads over UDP.`,
       Flarm: (html) => html`Sends and receives Flarm protocol messages.`,
       Ogn1: (html) => html`Sends and receives OGN protocol messages.`,
       ADSL: (html) => html`Sends and receives ADS-L protocol messages.`,

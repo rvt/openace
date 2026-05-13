@@ -47,12 +47,15 @@
     }
   },
   "GatasConnect": {
+    "pinCode": "0",
+    "output": "udp"
+  },
+  "GatasConnectUDP": {
     "_comment_ip": "IP Address or DNS name of the server running GATAS Server",
     "gatasServer": {
       "ip": "gatas.vantwisk.nl"
     },
-    "_comment_pinCode": "A pincode to be use for connecting to GATAS Connect online services",
-    "pinCode": "0"
+    "_comment_pinCode": "A pincode to be use for connecting to GATAS Connect online services"
   },
   "ADSBDecoder": {
     "filterAbove": 1500,

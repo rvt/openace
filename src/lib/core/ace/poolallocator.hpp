@@ -71,11 +71,13 @@ public:
         return ptr;
     }
 
+    // TODO: DO we use get() or 
     T *get() const
     {
         return ptr_;
     }
 
+    // TODO: Do we use this (looks like a raw ptr)
     operator T *() const
     {
         return ptr_;
@@ -86,6 +88,7 @@ public:
         return *ptr_;
     }
 
+    // TODO: Do we use this (looks like a raw ptr)
     T *operator->() const
     {
         return ptr_;
@@ -228,7 +231,7 @@ private:
     {
         if constexpr (I >= sizeof...(Pools))
         {
-            GATAS_WARN("Alloc to large");
+            GATAS_WARN("Alloc to large, %d", size);
             return nullptr;
         }
         else

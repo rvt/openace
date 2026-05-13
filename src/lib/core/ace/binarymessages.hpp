@@ -14,6 +14,9 @@
 class BinaryMessages
 {
 public:
+    // Upper bound for one framed COBS payload including the trailing zero delimiter.
+    static constexpr size_t MAX_COBS_FRAME_SIZE = 256;
+
     /**
      * Object that can be used by binary messages to indicate how many bytes it will consume
      * A function 'items' is provided to calculate the number of items that can be expected to calculate

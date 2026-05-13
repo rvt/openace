@@ -9,13 +9,18 @@
 #include <etl/optional.h>
 
 /**
- * @brief PacketBufferBase stores complete packets in a static buffer and tracks
- * fetching data will only return whole packets
+ * @brief CRTP helper for a fixed-capacity FIFO of packet spans.
  *
- * @tparam SIZE       Total size of the internal buffer in bytes.
- * @tparam MAXENTRIES Maximum number of packets that can be tracked at once.
+ * The derived class provides the backing storage and the packet index vector.
+ * This base class:
+ * - copies each packet into the fixed buffer once on insert
+ * - keeps a span for each stored packet
+ * - only returns complete packets from read()/take()
+ * - does not reclaim space automatically; call compact() to move unread data
+ *   back to the front of the buffer
+ *
+ * @tparam Derived Concrete packet buffer type that exposes entriesImpl().
  */
-
 template <typename Derived>
 class PacketBufferBase
 {
@@ -66,8 +71,7 @@ protected:
 public:
     bool setString(const etl::string_view sv)
     {
-        auto s = etl::span<const uint8_t>(reinterpret_cast<const uint8_t *>(sv.data()), sv.size());
-        return set(s);
+        return set({reinterpret_cast<const uint8_t *>(sv.data()), sv.size()});
     }
 
     bool set(const etl::span<const uint8_t> newPacket)
@@ -115,8 +119,11 @@ public:
     }
 
     /**
-     * Read data up untill a maximum length, only whole packets will be returned
-     * Data will stay in the buffer and will not be overwritten unless compact is called
+     * Read the oldest packet or packet group whose total size fits within maxSize.
+     *
+     * The returned span aliases the internal buffer. The packet entries are removed
+     * from the queue, but the bytes remain in place until compact() is called or the
+     * buffer is overwritten by later inserts.
      */
     bool read(etl::span<uint8_t> &output, size_t maxSize = SIZE_MAX)
     {
@@ -130,9 +137,10 @@ public:
     }
 
     /**
-     * @sa bool read(etl::span<uint8_t> &output, size_t maxSize = SIZE_MAX)
-     * When maxSize is set to 1, we will always remove the packet
-     * TODO: Check if we remove a packet if it's larger tgahan maxSize to ensure we always continue
+     * Read and remove the oldest packet group.
+     *
+     * The returned span refers to the internal buffer and contains only complete
+     * packets whose combined size does not exceed maxSize.
      */
     etl::optional<etl::span<uint8_t>> read(size_t maxSize = SIZE_MAX)
     {
@@ -173,8 +181,7 @@ public:
     }
 
     /**
-     * Just take the first item if any
-     * TODO: Make test
+     * Remove and return the oldest stored packet without any size filtering.
      */
     etl::optional<etl::span<uint8_t>> take()
     {
@@ -194,22 +201,17 @@ public:
 };
 
 /**
- * @brief PacketBuffer is a small-footprint buffer to store arbit
+ * @brief Concrete fixed-size packet queue.
  *
- * This implementation is designed for embedded systems:
- *  - Uses a fixed-size static buffer (SIZE) — no dynamic allocation.
- *  - Stores incoming  packets
- *  - Avoids unnecessary memcpy by:
- *      * Using spans to reference existing data.
- *      * Only copy the data once
- *  - Ensures safe handling of packets larger than buffer capacity by discarding
+ * PacketBuffer owns the backing storage and packet index vector for
+ * PacketBufferBase. It is intended for embedded use where dynamic allocation
+ * is undesirable and packets need to be queued as contiguous spans.
  *
- * Typical use case:
- * - When you need to store aribiary sized data in a compact buffer instead of a list like NMEA data
+ * The buffer accepts arbitrary byte sequences, stores them contiguously, and
+ * exposes them again as spans in FIFO order.
  *
- * @tparam SIZE      Fixed internal buffer capacity in bytes, must be minimal the size dataset of some maximum size
- *
- * @tparam MAXENTRIES Maximum entries
+ * @tparam SIZE Fixed internal buffer size in bytes.
+ * @tparam MAXENTRIES Maximum number of packets that can be queued.
  */
 template <size_t SIZE, size_t MAXENTRIES>
 class PacketBuffer : public PacketBufferBase<PacketBuffer<SIZE, MAXENTRIES>>

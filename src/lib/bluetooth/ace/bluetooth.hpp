@@ -10,31 +10,27 @@
 #include "etl/message_bus.h"
 #include "etl/list.h"
 #include "etl/string.h"
-#include "etl/queue_spsc_atomic.h"
-#include "etl/bit_stream.h"
+#include "etl/span.h"
 
 /* GaTas */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
+#include "ace/binarymessages.hpp"
+#include "ace/gulp.hpp"
 #include "ace/messages.hpp"
 #include "ace/packetbuffer.hpp"
-#include "ace/cobsstreamhandler.hpp"
 
 /* BT Stack*/
 #include "btstack.h"
 
 /**
- * Bluetooth protocol for EFB's supports BlueTooth connections
- * Both BLE and Classic are supported
+ * Bluetooth transport for GATAS.
  *
- * For documentation on the btstack see:
- * https://bluekitchen-gmbh.com/btstack/#
- *
- * Note for developers: btStack is single threaded in FreeRTOS. It's not needed to uses mutexes to protect the data structures.
- * The only one that requires a mutex is to see if we need a notification in on_receive(const GATAS::DataPortMsg &msg)
- * The queue is a lock free queue so no mutex needed
+ * The Bluetooth module keeps the NMEA and binary COBS traffic separated into
+ * two characteristics. Binary payloads are carried through GatasConnectTx /
+ * GatasConnectRx while NMEA continues to use DataPortMsg.
  */
-class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg, GATAS::OwnshipPositionMsg>
+class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg, GATAS::OwnshipPositionMsg, GATAS::GatasConnectTx>
 {
     static constexpr uint8_t ATT_READYSTATE = 0b011;
     static constexpr uint8_t CONN_READY = 0b001;
@@ -49,9 +45,13 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
     friend class message_router;
     struct
     {
-        uint32_t dataPortMsgMissedErr = 0;
-        uint32_t cobsErr = 0;
+        uint32_t nmeaPortMsgMissedErr = 0;
+        uint32_t cobsMsgMissedErr = 0;
+        uint32_t cobsMsgReceived = 0;
+        uint32_t nmeaMsgReceived = 0;
     } statistics;
+
+    using TxBuffer = PacketBuffer<CONNECTIONS_BUFFER_SIZE, (CONNECTIONS_BUFFER_SIZE / 32) * 2>;
 
     struct BtContext
     {
@@ -59,26 +59,55 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         {
             hci_con_handle_t hciHandle;
         };
-        uint8_t readyState; // Simple binary state machine, 0b01 = notification enabled, 0b010 = att channel open
+        uint8_t nmeaReadyState;
+        uint8_t binaryReadyState;
         uint16_t mtu;
-        uint16_t attrHandle; // Used for ATT connections only
-        uint16_t bufferOverrunErr;
+        uint16_t nmeaAttrHandle;
+        uint16_t binaryAttrHandle;
+        uint16_t nmeaWriteBufferErr;
+        uint16_t cobsWriteBufferErr;
         uint8_t guardCounter;
         btstack_context_callback_registration_t callBack;
-        // Writebuffer is used because sometimes GATAS bursts positional data without BlueTooth beeing ready
-        PacketBuffer<CONNECTIONS_BUFFER_SIZE, CONNECTIONS_BUFFER_SIZE / GATAS::NMEA_MAX_LENGTH * 2> writeBuffer;
-        // ReadBuffer is used because over BT we get up to btu bytes, give or take 256/26 == 12ish packets (26 being positional message size)
-        PacketBuffer<256, 12> readBuffer;
-        BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void *context)) : hciHandle(hciHandle_),
-                                                                                                                       readyState(readyState_),
-                                                                                                                       mtu(mtu_),
-                                                                                                                       attrHandle(0),
-                                                                                                                       bufferOverrunErr(0),
-                                                                                                                       guardCounter(0)
+
+        // Per-connection NMEA stream splitter; keeps partial sentences across BLE writes.
+        etl::vector<uint8_t, GATAS::NMEA_MAX_LENGTH> nmeaGulpBuffer;
+        Gulp nmeaGulp;
+        TxBuffer nmeaWriteBuffer;
+
+        // Per-connection COBS stream splitter; keeps partial binary frames across BLE writes.
+        etl::vector<uint8_t, BinaryMessages::MAX_COBS_FRAME_SIZE> binaryGulpBuffer;
+        Gulp binaryGulp;
+        TxBuffer cobsWriteBuffer;
+
+        BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void *context))
+            : hciHandle(hciHandle_),
+              nmeaReadyState(readyState_),
+              binaryReadyState(readyState_),
+              mtu(mtu_),
+              nmeaAttrHandle(0),
+              binaryAttrHandle(0),
+              nmeaWriteBufferErr(0),
+              cobsWriteBufferErr(0),
+              guardCounter(0),
+              nmeaGulp{nmeaGulpBuffer, DelimiterBitmap::CRLF()},
+              binaryGulp{binaryGulpBuffer, DelimiterBitmap::Null()}
         {
             callBack.context = this;
             callBack.callback = callBack_;
-        };
+        }
+
+        void getData(etl::string_stream &stream, const etl::string_view path) const
+        {
+            (void)path;
+            stream << "{";
+            stream << "\"hciHandle\":" << hciHandle;
+            stream << ",\"nmeaReadyState\":" << static_cast<uint32_t>(nmeaReadyState);
+            stream << ",\"binaryReadyState\":" << static_cast<uint32_t>(binaryReadyState);
+            stream << ",\"mtu\":" << mtu;
+            stream << ",\"nmeaWriteBufferErr\":" << nmeaWriteBufferErr;
+            stream << ",\"cobsWriteBufferErr\":" << cobsWriteBufferErr;
+            stream << "}";
+        }
 
         // Disallow copy
         BtContext(const BtContext &) = delete;
@@ -91,17 +120,14 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
 
 private:
     virtual GATAS::PostConstruct postConstruct() override;
-
     virtual void start() override;
 
     void on_receive(const GATAS::DataPortMsg &msg);
-
     void on_receive_unknown(const etl::imessage &msg);
-
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
+    void on_receive(const GATAS::GatasConnectTx &msg);
 
     void createAdvData();
-
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
     // START: methods within this block as running within the BLE task
@@ -121,7 +147,7 @@ private:
     // Lists of bluetooth contexts
     using BluetoothConnections = etl::list<BtContext, GATAS_MAX_BLUETOOTH_CONNECTIONS>;
     BluetoothConnections connections;
-    
+
     /**
      * Get the connections context by Bluetooth handle
      */
@@ -129,11 +155,9 @@ private:
     {
         // clang-format off
         return etl::find_if(instance->connections.begin(), instance->connections.end(),
-            [hciHandle](const BtContext &ctx)
-            {
-                return ctx.hciHandle == hciHandle;
-            });
-        // clang-format on 
+                            [hciHandle](const BtContext &ctx)
+                            { return ctx.hciHandle == hciHandle; });
+        // clang-format on
     }
 
     /**
@@ -158,11 +182,12 @@ private:
     GATAS::SsidOrPasswdStr localName;
 
     SemaphoreHandle_t mutex;
-    CobsStreamHandler cobsStreamHandler;
-public:
 
+    static bool sendBuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState);
+
+public:
     static constexpr const char *NAME = "Bluetooth";
-    Bluetooth(etl::imessage_bus &bus,  Configuration &config) : BaseModule(bus, NAME), mutex(nullptr), cobsStreamHandler(CobsStreamHandler(bus, config))
+    Bluetooth(etl::imessage_bus &bus, Configuration &config) : BaseModule(bus, NAME), mutex(nullptr)
     {
         instance = this;
         localName = config.strValueByPath("GaTas", NAME, "localName");

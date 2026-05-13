@@ -515,8 +515,8 @@ class GDLoverUDPConfig extends ModuleConfig {
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
               In addition to ports, up to ${this.ips.length} separate IP addresses can be configured.
-              This is usually only useful if your system connects to an access point and you have a third device connected to teh same accesspoint.
-              By default GA/TAAS will send UDP traffic to the gateway in client mode using teh configured ports.<br />
+              This is usually only useful if your system connects to an access point and you have a third device connected to the same accesspoint.
+              By default GA/TAAS will send UDP traffic to the gateway in client mode using the configured ports.<br />
               Default port is <b>4000</b>
             </p>
           </label>
@@ -789,13 +789,6 @@ class GatasConnectConfig extends ModuleConfig {
     const validator = new JustValidate(this.$refs.form);
 
     validator
-      .addField(this.$refs.ip, [
-        {
-          rule: "required",
-          errorMessage: "IPv4 address or domain name is required",
-        },
-        ...configStringLengthValidator,
-      ])
       .addField(this.$refs.pinCode, [
         {
           rule: "custom",
@@ -815,17 +808,16 @@ class GatasConnectConfig extends ModuleConfig {
   }
 
   _setFormData(data) {
-    this.$refs.ip.value = data.gatasServer.ip;
-//    this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : this.randomIntFromInterval(1000, 999999);
+    //    this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : this.randomIntFromInterval(1000, 999999);
     this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : "0";
+    this.$refs.output.value = data.output !== undefined ? data.output : "udp";
+    this.$refs[`output_${data.output?.toLowerCase()}`].selected = true;
   }
 
   _getFormData() {
     return {
-      gatasServer: {
-        ip: this.$refs.ip.value.trim(),
-      },
       pinCode: this.$refs.pinCode.value.trim(),
+      output: this.$refs.output.value,
     };
   }
 
@@ -833,12 +825,96 @@ class GatasConnectConfig extends ModuleConfig {
     return html`
       <h4>Configuration of GATAS Connect</h4>
       <p>
+        GATAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI or BlueTooth to operate.
+        It fetches traffic around you up to about 100Km.
+        You must enable GatasConnectUDP when you want gatas to directly connect to GatasServer. At your option, you can also use the Gatas Companion application
+        to have GATAS receive additional traffic over bluetooth.
+      </p>
+
+        <div class="alert alert-warning">
+          <div>
+          The Pin Code is used when you use <a href="https://gatas.vantwisk.nl" target="_blank" rel="noopener noreferrer">GATAS Connect</a> online
+          application to connect to your GATAS system to allow to configure your GATAS aircraft you are flying.
+          Instead of using the unique GATAS ID which is differcult to remmeber, you can use the Pin Code with your location.
+          When using 0 as Pin Code, the Pin Code functionality is disabled for added security if you whish to not use it.
+          </div>
+        </div>
+
+      <form ref="form" autocomplete="off" novalidate="novalidate">
+        <div class="row g-0">
+            <div class="col-10" style="margin-top:20px;">
+              <label for="ip">
+                Pin Code:
+                <input type="text" id="pinCode" ref="pinCode" placeholder="0" } />
+              </label>
+            </div>
+            <div class="col-10" style="margin-top:20px;">
+              <label for="output">
+                Output:
+                <select id="output" ref="output">
+                  <option value="udp" ref="output_udp">UDP</option>
+                  <option value="bluetooth" ref="output_bluetooth">Bluetooth</option>
+                </select>
+              </label>
+            </div>
+        </div>
+
+        ${this.buttonArray(html)}
+      </form>
+    `;
+  }
+}
+customElements.define("gatasconnect-config", GatasConnectConfig);
+
+class GatasConnectUDPConfig extends ModuleConfig {
+  created() {
+    this._initForm(store.getModuleData("GatasConnectUDP"));
+  }
+
+  randomIntFromInterval(min, max) { // min and max included
+    return Math.floor(Math.random() * (max - min + 1) + min);
+  }
+  mounted() {
+    const validator = new JustValidate(this.$refs.form);
+
+    validator
+      .addField(this.$refs.ip, [
+        {
+          rule: "required",
+          errorMessage: "IPv4 address or domain name is required",
+        },
+        ...configStringLengthValidator,
+      ])
+      .onSuccess((event) => {
+        const data = this._getFormData();
+        store.updateModuleData("GatasConnectUDP", { ...this.copyOfData, ...data }).then(() => {
+          this.close();
+        });
+      });
+  }
+
+  _setFormData(data) {
+    this.$refs.ip.value = data.gatasServer.ip;
+  }
+
+  _getFormData() {
+    return {
+      gatasServer: {
+        ip: this.$refs.ip.value.trim(),
+      }
+    };
+  }
+
+  render(html) {
+    return html`
+      <h4>Configuration of GATAS Connect UDP</h4>
+      <p>
         GATAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI to operate.
         It fetches traffic around you up to about 50Km away.
         <br/><br/>
         To setup GATAS Connect:
         <ul>
-          <li>Enter the the IP address of your GATAS Connect service you can use <span style="font-style: italic">gatas.vantwisk.nl</span> <a type="button" title="Copy to IP field" style="cursor:pointer;background:none;border:none;padding:0;margin:0;vertical-align:middle;" onclick=${() => { this.$refs.ip.value = 'gatas.vantwisk.nl'; }}>&#x2398;</a> which is free to use:
+          <li>Enter the the IP address of your GATAS Connect service you <button class="btn btn-medium xs" type="button" title="Copy to IP field" style="cursor:pointer" onclick=${() => { this.$refs.ip.value = 'gatas.vantwisk.nl'; }}>can use gatas.vantwisk.nl</button> which is free to use:
           <li>Then setup your WIFI to connect to your mobile hotspot and ensure to enable 'Client Only' in WifiService.
         </ul>
       </p>
@@ -860,12 +936,6 @@ class GatasConnectConfig extends ModuleConfig {
                 <input type="text" id="ip" ref="ip" placeholder="gatas.vantwisk.nl" } />
               </label>
             </div>
-            <div class="col-10" style="margin-top:20px;">
-              <label for="ip">
-                Pin Code:
-                <input type="text" id="pinCode" ref="pinCode" placeholder="0" } />
-              </label>
-            </div>
         </div>
 
         ${this.buttonArray(html)}
@@ -873,8 +943,7 @@ class GatasConnectConfig extends ModuleConfig {
     `;
   }
 }
-customElements.define("gatasconnect-config", GatasConnectConfig);
-
+customElements.define("gatasconnectudp-config", GatasConnectUDPConfig);
 
 class AbstractGnss extends ModuleConfig {
   created() {
@@ -938,5 +1007,4 @@ class UbloxM8N extends AbstractGnss {
 
 customElements.define("l76b-config", L76B);
 customElements.define("ubloxm8n-config", UbloxM8N);
-
 

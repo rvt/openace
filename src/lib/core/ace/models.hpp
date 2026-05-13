@@ -586,4 +586,18 @@ namespace GATAS
         uint32_t usSinceBoot; // Time since boot
     };
 
+    struct GatasConnectOutput
+    {
+        enum enum_type : uint8_t
+        {
+            UDP = 0,
+            Bluetooth = 1,
+        };
+
+        ETL_DECLARE_ENUM_TYPE(GatasConnectOutput, uint8_t)
+        ETL_ENUM_TYPE(UDP, "UDP")
+        ETL_ENUM_TYPE(Bluetooth, "BlueTooth")
+        ETL_END_ENUM_TYPE
+    };
+
 };

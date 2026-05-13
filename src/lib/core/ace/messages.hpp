@@ -224,7 +224,7 @@ namespace GATAS
         RadioControlMsg(const GATAS::RadioParameters &radioParameters_, uint8_t radioNo_) : radioParameters(radioParameters_), radioNo(radioNo_) {};
     };
 
-    struct ConfigUpdatedMsg : public etl::message<20> 
+    struct ConfigUpdatedMsg : public etl::message<20>
     {
         const Configuration &config;
         const GATAS::Modulename moduleName;
@@ -293,5 +293,36 @@ namespace GATAS
     };
     struct Every300SecMsg : public etl::message<34>
     {
+    };
+
+    /**
+     * cobsMessage must be a complet emessage
+     */
+    struct GatasConnectTx : public etl::message<36>
+    {
+        mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> cobsMessage;
+        size_t length;
+        GATAS::GatasConnectOutput output;
+
+        GatasConnectTx(GATAS::GlobalPoolConfiguration &pool, GATAS::GatasConnectOutput output_, uint8_t *cobsMessage_, size_t length_)
+            : cobsMessage(pool, cobsMessage_), length(length_), output(output_) {}
+
+        GatasConnectTx(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&cobsMessage_, size_t length_, GATAS::GatasConnectOutput output_)
+            : cobsMessage(etl::move(cobsMessage_)), length(length_), output(output_) {}
+    };
+
+    /**
+     * cobsMessage must be a complet emessage
+     */
+    struct GatasConnectRx : public etl::message<37>
+    {
+        mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> cobsMessage;
+        size_t length;
+
+        GatasConnectRx(GATAS::GlobalPoolConfiguration &pool, uint8_t *cobsMessage_, size_t length_)
+            : cobsMessage(pool, cobsMessage_), length(length_) {}
+
+        GatasConnectRx(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&cobsMessage_, size_t length_)
+            : cobsMessage(etl::move(cobsMessage_)), length(length_) {}
     };
 }

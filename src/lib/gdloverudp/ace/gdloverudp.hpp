@@ -37,7 +37,6 @@ class GDLoverUDP : public BaseModule, public etl::message_router<GDLoverUDP, GAT
     mutable struct
     {
         uint32_t heartbeatTx = 0;
-        uint32_t bufferAllocErr = 0;
         uint32_t sendFailureErr = 0;
         uint32_t foreFlightBroadcasts = 0;
     } statistics;

@@ -52,6 +52,7 @@
 #include "ace/gdloverudp.hpp"
 #include "ace/dataport.hpp"
 #include "ace/airconnect.hpp"
+#include "ace/gatasconnect.hpp"
 #include "ace/gatasconnectudp.hpp"
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
@@ -107,6 +108,7 @@ void registerModules()
     BaseModule::registerModule(DataPort::NAME, false);
     BaseModule::registerModule(AirConnect::NAME, false);
     BaseModule::registerModule(GatasConnect::NAME, false);
+    BaseModule::registerModule(GatasConnectUDP::NAME, false);
     BaseModule::registerModule(Bluetooth::NAME, false);
     BaseModule::registerModule(FanetAce::NAME, false);
     BaseModule::registerModule(Idle::NAME, false);
@@ -153,6 +155,8 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
         return new AirConnect(bus, config);
     if (name == GatasConnect::NAME)
         return new GatasConnect(bus, config);
+    if (name == GatasConnectUDP::NAME)
+        return new GatasConnectUDP(bus, config);
     if (name == Bluetooth::NAME)
         return new Bluetooth(bus, config);
     if (name == DataPort::NAME)
@@ -324,6 +328,7 @@ static void loadModules(void *arg)
     load(DataPort::NAME, bus, config);
     load(AirConnect::NAME, bus, config);
     load(GatasConnect::NAME, bus, config);
+    load(GatasConnectUDP::NAME, bus, config);
     load(Bmp280::NAME, bus, config);
 
     load(RxDataFrameQueue::NAME, bus, config, true);
