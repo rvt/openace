@@ -70,7 +70,7 @@ TEST_CASE("Lookup First and Last", "[single-file]")
     auto lo = ddb.lookup(0x000000);
 
     REQUIRE(lo != nullptr);
-    REQUIRE(etl::string_view(lo->reg()) == "HA-4403");
+    REQUIRE(etl::string_view(lo->reg()) == "OY-XEL");
 
     lo = ddb.lookup(0xffffff); // Note: Found in FLARM DDB, so expect this one, not the one from OGN
     REQUIRE(lo != nullptr);

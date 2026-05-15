@@ -6,6 +6,7 @@
 #include <etl/span.h>
 #include <etl/absolute.h>
 #include <etl/to_arithmetic.h>
+#include "ace/cobs.hpp"
 #include "lib_crc.hpp"
 #include "coreutils.hpp"
 #include "models.hpp"
@@ -42,6 +43,7 @@ public:
 //          AIRCRAFT_CONFIGURATIONS_V1 = 3,   // Deprecated, see AIRCRAFT_CONFIGURATIONS_V2 Current GATAS COnfiguration 1.0.0-prerelease
             SET_ICAO_ADDRESS_V1 = 4,          // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
             AIRCRAFT_CONFIGURATIONS_V2 = 5,   // Current GATAS COnfiguration V2
+            GDL90_V1 = 6,                      // Packed GDL90 message for bridge transports
         };
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
@@ -50,6 +52,7 @@ public:
 //      ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V1, "Current GATAS Configuration see AIRCRAFT_CONFIGURATIONS_V2")
         ETL_ENUM_TYPE(SET_ICAO_ADDRESS_V1, "Set new aircraft from configuration")
         ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V2, "Current GATAS Configuration")
+        ETL_ENUM_TYPE(GDL90_V1, "GDL90 Message")
         ETL_END_ENUM_TYPE
     };
 
@@ -165,6 +168,33 @@ public:
             .base = 1 + 1 + 4 + 4 + 3 + 4 + 3 + 1 + 1, // By default we will use 4 bytes 10
             .size = 3                                  // For each additional item 3 bytes
         };
+    }
+
+    constexpr static BinaryMessages::SizeType serializeGdl90SizeV1()
+    {
+        return BinaryMessages::SizeType{
+            .base = 1,
+            .size = 1};
+    }
+
+    // TODO: Temove the cobs encoding from here
+    static size_t serializeGdl90V1(uint8_t *out, size_t outSize, const etl::span<const uint8_t> &gdl90Message)
+    {
+        const size_t rawSize = serializeGdl90SizeV1().items(gdl90Message.size());
+        if (outSize < getCOBSBufferSize(rawSize, true))
+        {
+            return 0;
+        }
+
+        uint8_t rawBuffer[MAX_COBS_FRAME_SIZE];
+        if (rawSize > sizeof(rawBuffer))
+        {
+            return 0;
+        }
+
+        rawBuffer[0] = DataType(DataType::GDL90_V1).get_value();
+        etl::copy(gdl90Message.begin(), gdl90Message.end(), rawBuffer + 1);
+        return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
     }
 
     static uint32_t deserializeSetIcaoAddressV1(etl::bit_stream_reader &reader)

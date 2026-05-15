@@ -32,6 +32,7 @@ void GatasConnect::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "{";
     stream << "\"hasGpsFix:b\":" << hasGpsFix;
     stream << ",\"output\":\"" << output.c_str() << "\"";
+    stream << ",\"gdl90BridgeEnabled:b\":" << gdl90BridgeEnabled;
     stream << ",\"localConfigurationUpdateCnt\":" << localConfigurationUpdateCnt;
     stream << ",\"lastRadioTrafficUs\":" << lastRadioTrafficUs;
     stream << "}";
@@ -90,10 +91,39 @@ void GatasConnect::on_receive(const GATAS::GatasConnectRx &msg)
     cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(msg.cobsMessage.get(), msg.length));
 }
 
+void GatasConnect::on_receive(const GATAS::GdlMsg &msg)
+{
+    if (output != GATAS::GatasConnectOutput::Bluetooth || !gdl90BridgeEnabled || msg.msg.empty())
+    {
+        return;
+    }
+
+    const size_t rawSize = BinaryMessages::serializeGdl90SizeV1().items(msg.msg.size());
+    const size_t cobsSize = getCOBSBufferSize(rawSize, true);
+    auto &pool = BaseModule::getGlobalPool();
+    auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(cobsSize));
+    if (cobsPayload == nullptr)
+    {
+        GATAS_WARN("GatasConnect: failed to allocate %u bytes for GDL90 bridge payload", static_cast<unsigned>(cobsSize));
+        return;
+    }
+
+    const size_t encodedSize = BinaryMessages::serializeGdl90V1(cobsPayload, cobsSize, etl::span<const uint8_t>(msg.msg.data(), msg.msg.size()));
+    if (encodedSize == 0)
+    {
+        GATAS_WARN("GatasConnect: failed to encode GDL90 bridge payload");
+        pool.release(cobsPayload);
+        return;
+    }
+
+    getBus().receive(GATAS::GatasConnectTx{pool, GATAS::GatasConnectOutput::Bluetooth, cobsPayload, encodedSize});
+}
+
 void GatasConnect::getConfig(const Configuration &config)
 {
     pinCode = static_cast<uint32_t>(config.valueByPath(0, NAME, "pinCode"));
     pinCode = (pinCode == 0) ? 0 : etl::clamp(pinCode, static_cast<uint32_t>(1000), static_cast<uint32_t>(999999));
+    gdl90BridgeEnabled = config.valueByPath(false, NAME, "enableGdl90Bridge");
 
     auto outputValue = config.strValueByPath("udp", NAME, "output");
     if (outputValue == "bluetooth")
@@ -195,7 +225,7 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(totalCobsSize));
     if (cobsPayload == nullptr)
     {
-        GATAS_WARN("GatasConnect: failed to allocate %u bytes for request payload", static_cast<unsigned>(totalCobsSize));
+        GATAS_WARN("GatasConnect: failed to allocate %u bytes for request payload", totalCobsSize);
         return;
     }
 
@@ -204,16 +234,14 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
         // --- Ownship position: requests surrounding traffic data from server
         writer.restart();
         BinaryMessages::serializeOwnshipPositionV1(writer, ownshipSnap);
-        auto size = encodeCOBS(perCobsBuffer.data(), ownshipSize, cobsPayload + position, totalCobsSize - position, true);
-        position += size;
+        position += encodeCOBS(perCobsBuffer.data(), ownshipSize, cobsPayload + position, totalCobsSize - position, true);
     }
 
     // --- Aircraft configuration (always send)
     writer.restart();
     // > 25 Byte
     BinaryMessages::serializeAircraftConfigurationV2(writer, gatasIdSnap, icaoAddressSnap, allIcaoAddressesSnap, gatasIpSnap, pinCodeSnap);
-    auto size = encodeCOBS(perCobsBuffer.data(), configSize, cobsPayload + position, totalCobsSize - position, true);
-    position += size;
+    position += encodeCOBS(perCobsBuffer.data(), configSize, cobsPayload + position, totalCobsSize - position, true);
 
     getBus().receive(GATAS::GatasConnectTx{pool, output, cobsPayload, position});
 }

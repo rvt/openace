@@ -812,12 +812,14 @@ class GatasConnectConfig extends ModuleConfig {
     this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : "0";
     this.$refs.output.value = data.output !== undefined ? data.output : "udp";
     this.$refs[`output_${data.output?.toLowerCase()}`].selected = true;
+    this.$refs.enableGdl90Bridge.checked = data.enableGdl90Bridge === true;
   }
 
   _getFormData() {
     return {
       pinCode: this.$refs.pinCode.value.trim(),
       output: this.$refs.output.value,
+      enableGdl90Bridge: this.$refs.enableGdl90Bridge.checked,
     };
   }
 
@@ -855,6 +857,12 @@ class GatasConnectConfig extends ModuleConfig {
                   <option value="udp" ref="output_udp">UDP</option>
                   <option value="bluetooth" ref="output_bluetooth">Bluetooth</option>
                 </select>
+              </label>
+            </div>
+            <div class="col-10" style="margin-top:20px;">
+              <label for="enableGdl90Bridge">
+                Enable Gdl90 Bridge:
+                <input type="checkbox" id="enableGdl90Bridge" ref="enableGdl90Bridge" />
               </label>
             </div>
         </div>
@@ -1007,4 +1015,3 @@ class UbloxM8N extends AbstractGnss {
 
 customElements.define("l76b-config", L76B);
 customElements.define("ubloxm8n-config", UbloxM8N);
-

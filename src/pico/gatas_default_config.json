@@ -48,7 +48,8 @@
   },
   "GatasConnect": {
     "pinCode": "0",
-    "output": "udp"
+    "output": "udp",
+    "enableGdl90Bridge": false
   },
   "GatasConnectUDP": {
     "_comment_ip": "IP Address or DNS name of the server running GATAS Server",

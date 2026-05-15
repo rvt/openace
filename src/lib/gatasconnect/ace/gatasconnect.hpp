@@ -23,7 +23,7 @@
  * serializes/deserializes the binary protocol. Transport specific modules
  * subscribe to GatasConnectTx and publish GatasConnectRx.
  */
-class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::IngressAircraftPositionMsg, GATAS::GatasConnectRx>
+class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::IngressAircraftPositionMsg, GATAS::GatasConnectRx, GATAS::GdlMsg>
 {
     friend class message_router;
 
@@ -34,6 +34,7 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     uint8_t localConfigurationUpdateCnt = 0;
     TimerHandle_t requestTimer = nullptr;
     GATAS::GatasConnectOutput output = GATAS::GatasConnectOutput::UDP;
+    bool gdl90BridgeEnabled = false;
 
     uint32_t icaoAddress = 0;
     uint32_t gatasIp = 0;
@@ -57,6 +58,7 @@ private:
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive(const GATAS::IngressAircraftPositionMsg &msg);
     void on_receive(const GATAS::GatasConnectRx &msg);
+    void on_receive(const GATAS::GdlMsg &msg);
 
     static void requestTimerCallbackTrampoline(TimerHandle_t xTimer);
     void requestTimerCallback(TimerHandle_t xTimer);
