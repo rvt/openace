@@ -19,9 +19,9 @@
 #include "ace/spinlockguard.hpp"
 
 /**
- * Core GatasConnect protocol handling. This class only owns the COBS framing and
- * serializes/deserializes the binary protocol. Transport specific modules
- * subscribe to GatasConnectTx and publish GatasConnectRx.
+ * Core GatasConnect protocol handling. This class prepares and consumes the
+ * framed binary protocol while transport specific modules subscribe to
+ * GatasConnectTx and publish GatasConnectRx.
  */
 class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::IngressAircraftPositionMsg, GATAS::GatasConnectRx, GATAS::GdlMsg>
 {
@@ -64,8 +64,6 @@ private:
     void requestTimerCallback(TimerHandle_t xTimer);
 
     void getConfig(const Configuration &config);
-    void publishTx(GATAS::GatasConnectOutput output, const uint8_t *data, size_t length);
-
 public:
     static constexpr const char *NAME = "GatasConnect";
     GatasConnect(etl::imessage_bus &bus, Configuration &config) : BaseModule(bus, NAME), cobsStreamHandler(CobsStreamHandler(bus, config))

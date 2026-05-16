@@ -2,10 +2,8 @@
 
 #include "../gatasconnect.hpp"
 #include "ace/coreutils.hpp"
-#include "ace/cobs.hpp"
 #include "ace/debug.hpp"
 
-#include "etl/array.h"
 #include "etl/algorithm.h"
 
 GATAS::PostConstruct GatasConnect::postConstruct()
@@ -98,8 +96,7 @@ void GatasConnect::on_receive(const GATAS::GdlMsg &msg)
         return;
     }
 
-    const size_t rawSize = BinaryMessages::serializeGdl90SizeV1().items(msg.msg.size());
-    const size_t cobsSize = getCOBSBufferSize(rawSize, true);
+    const size_t cobsSize = BinaryMessages::serializeGdl90FramedSizeV1(msg.msg.size());
     auto &pool = BaseModule::getGlobalPool();
     auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(cobsSize));
     if (cobsPayload == nullptr)
@@ -144,25 +141,6 @@ void GatasConnect::getConfig(const Configuration &config)
     gatasId = config.internalStore()->gatasId;
 }
 
-void GatasConnect::publishTx(GATAS::GatasConnectOutput output_, const uint8_t *data, size_t length)
-{
-    if (length == 0)
-    {
-        return;
-    }
-
-    auto &pool = BaseModule::getGlobalPool();
-    auto *copy = static_cast<uint8_t *>(pool.alloc(length));
-    if (copy == nullptr)
-    {
-        GATAS_WARN("GatasConnect: failed to allocate %u bytes for tx payload", static_cast<unsigned>(length));
-        return;
-    }
-
-    etl::copy(data, data + length, copy);
-    getBus().receive(GATAS::GatasConnectTx(pool, output_, copy, length));
-}
-
 /**
  * Prepare a position request to the connected transport. The transport will
  * forward the COBS payload to the appropriate endpoint.
@@ -170,19 +148,6 @@ void GatasConnect::publishTx(GATAS::GatasConnectOutput output_, const uint8_t *d
 void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 {
     (void)xTimer;
-
-    constexpr size_t COBS_EXTRA_BYTES = 3;
-    constexpr size_t OWN_MAX = BinaryMessages::serializeOwnshipPositionSizeV1().items();
-    constexpr size_t CFG_MAX = BinaryMessages::serializeAircraftConfigurationSizeV2().items(GATAS::MAX_AIRCRAFT_CONFIG);
-    constexpr size_t MAX_MSG = etl::max(OWN_MAX, CFG_MAX);
-
-    const size_t ownshipSize = BinaryMessages::serializeOwnshipPositionSizeV1().items(1);
-    const size_t configSize = BinaryMessages::serializeAircraftConfigurationSizeV2().items(allIcaoAddresses.size());
-    GATAS_ASSERT((etl::max(ownshipSize, configSize) + COBS_EXTRA_BYTES) < 255, "COBS max length exceeded");
-
-    size_t position = 0;
-    etl::array<uint8_t, OWN_MAX + MAX_MSG + COBS_EXTRA_BYTES * 2> perCobsBuffer;
-    etl::bit_stream_writer writer(perCobsBuffer.data(), perCobsBuffer.size(), etl::endian::big);
 
     // Snapshot shared state under lock, then do encoding outside the critical section.
     bool groundStationSnap = false;
@@ -218,30 +183,40 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     // Otherwhise the system would keep fetching traffic for no reason.
     const bool sendOwnship = (hasRecentRadioTraffic || !groundStationSnap) && hasGpsFixSnap;
 
-    const size_t ownshipCobsSize = sendOwnship ? getCOBSBufferSize(ownshipSize, true) : 0;
-    const size_t configCobsSize = getCOBSBufferSize(configSize, true);
-    const size_t totalCobsSize = ownshipCobsSize + configCobsSize;
+    const size_t ownshipFrameSize = sendOwnship ? BinaryMessages::serializeOwnshipPositionFramedSizeV1() : 0;
+    const size_t configFrameSize = BinaryMessages::serializeAircraftConfigurationFramedSizeV2(allIcaoAddressesSnap.size());
+    const size_t totalFrameSize = ownshipFrameSize + configFrameSize;
     auto &pool = BaseModule::getGlobalPool();
-    auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(totalCobsSize));
+    auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(totalFrameSize));
     if (cobsPayload == nullptr)
     {
-        GATAS_WARN("GatasConnect: failed to allocate %u bytes for request payload", totalCobsSize);
+        GATAS_WARN("GatasConnect: failed to allocate %u bytes for request payload", totalFrameSize);
         return;
     }
 
+    size_t position = 0;
     if (sendOwnship)
     {
         // --- Ownship position: requests surrounding traffic data from server
-        writer.restart();
-        BinaryMessages::serializeOwnshipPositionV1(writer, ownshipSnap);
-        position += encodeCOBS(perCobsBuffer.data(), ownshipSize, cobsPayload + position, totalCobsSize - position, true);
+        const size_t written = BinaryMessages::serializeOwnshipPositionV1(cobsPayload + position, totalFrameSize - position, ownshipSnap);
+        if (written == 0)
+        {
+            GATAS_WARN("GatasConnect: failed to encode ownship request payload");
+            pool.release(cobsPayload);
+            return;
+        }
+        position += written;
     }
 
     // --- Aircraft configuration (always send)
-    writer.restart();
-    // > 25 Byte
-    BinaryMessages::serializeAircraftConfigurationV2(writer, gatasIdSnap, icaoAddressSnap, allIcaoAddressesSnap, gatasIpSnap, pinCodeSnap);
-    position += encodeCOBS(perCobsBuffer.data(), configSize, cobsPayload + position, totalCobsSize - position, true);
+    const size_t written = BinaryMessages::serializeAircraftConfigurationV2(cobsPayload + position, totalFrameSize - position, gatasIdSnap, icaoAddressSnap, allIcaoAddressesSnap, gatasIpSnap, pinCodeSnap);
+    if (written == 0)
+    {
+        GATAS_WARN("GatasConnect: failed to encode configuration payload");
+        pool.release(cobsPayload);
+        return;
+    }
+    position += written;
 
     getBus().receive(GATAS::GatasConnectTx{pool, output, cobsPayload, position});
 }

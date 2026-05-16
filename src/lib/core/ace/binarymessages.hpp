@@ -129,12 +129,32 @@ public:
         writer.write_unchecked(static_cast<int16_t>(ownship.verticalSpeed * 100.f), 16U);
     }
 
+    static size_t serializeOwnshipPositionV1(uint8_t *out, size_t outSize, const GATAS::OwnshipPositionInfo &ownship)
+    {
+        const size_t rawSize = serializeOwnshipPositionSizeV1().items(1);
+        const size_t framedSize = serializeOwnshipPositionFramedSizeV1();
+        if (outSize < framedSize || rawSize > MAX_COBS_FRAME_SIZE)
+        {
+            return 0;
+        }
+
+        uint8_t rawBuffer[MAX_COBS_FRAME_SIZE];
+        etl::bit_stream_writer writer(rawBuffer, rawSize, etl::endian::big);
+        serializeOwnshipPositionV1(writer, ownship);
+        return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
+    }
+
     constexpr static BinaryMessages::SizeType serializeOwnshipPositionSizeV1()
     {
         size_t size = 1 + 4 + 3 + 1 + 1 + 4 + 4 + 2 + 1 + 1 + 2 + 2;
         return BinaryMessages::SizeType{
             .base = 0,
             .size = size};
+    }
+
+    static size_t serializeOwnshipPositionFramedSizeV1()
+    {
+        return getCOBSBufferSize(serializeOwnshipPositionSizeV1().items(1), true);
     }
 
     static void serializeAircraftConfigurationV2(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode)
@@ -162,12 +182,32 @@ public:
         }
     }
 
+    static size_t serializeAircraftConfigurationV2(uint8_t *out, size_t outSize, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode)
+    {
+        const size_t rawSize = serializeAircraftConfigurationSizeV2().items(addresses.size());
+        const size_t framedSize = serializeAircraftConfigurationFramedSizeV2(addresses.size());
+        if (outSize < framedSize || rawSize > MAX_COBS_FRAME_SIZE)
+        {
+            return 0;
+        }
+
+        uint8_t rawBuffer[MAX_COBS_FRAME_SIZE];
+        etl::bit_stream_writer writer(rawBuffer, rawSize, etl::endian::big);
+        serializeAircraftConfigurationV2(writer, gatasId, icaoAddressSnap, addresses, gatasIp, pinCode);
+        return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
+    }
+
     constexpr static BinaryMessages::SizeType serializeAircraftConfigurationSizeV2()
     {
         return BinaryMessages::SizeType{
             .base = 1 + 1 + 4 + 4 + 3 + 4 + 3 + 1 + 1, // By default we will use 4 bytes 10
             .size = 3                                  // For each additional item 3 bytes
         };
+    }
+
+    static size_t serializeAircraftConfigurationFramedSizeV2(size_t items)
+    {
+        return getCOBSBufferSize(serializeAircraftConfigurationSizeV2().items(items), true);
     }
 
     constexpr static BinaryMessages::SizeType serializeGdl90SizeV1()
@@ -177,11 +217,16 @@ public:
             .size = 1};
     }
 
-    // TODO: Temove the cobs encoding from here
+    static size_t serializeGdl90FramedSizeV1(size_t items)
+    {
+        return getCOBSBufferSize(serializeGdl90SizeV1().items(items), true);
+    }
+
     static size_t serializeGdl90V1(uint8_t *out, size_t outSize, const etl::span<const uint8_t> &gdl90Message)
     {
         const size_t rawSize = serializeGdl90SizeV1().items(gdl90Message.size());
-        if (outSize < getCOBSBufferSize(rawSize, true))
+        const size_t framedSize = serializeGdl90FramedSizeV1(gdl90Message.size());
+        if (outSize < framedSize)
         {
             return 0;
         }

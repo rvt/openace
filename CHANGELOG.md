@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Initial GATAS Companion support with a new `GatasConnect` core module and a separate `GatasConnectUDP` transport module.
+- Bluetooth transport for GATAS Connect, including dedicated NMEA and binary GATT characteristics for companion-device integration.
+- Optional GDL90-over-Bluetooth bridge using COBS-framed payloads for companion applications.
 
 ### Changed
 
--
+- Split GATAS Connect so COBS framing and request generation live in `GatasConnect`, while UDP transport is handled by `GatasConnectUDP`.
+- Extended the web UI to configure GATAS Connect output, pin code, and GDL90 bridge settings, plus a separate UDP server configuration module.
+- Improved module monitoring to render structured object and array values more clearly.
+- Updated the bundled device database.
 
 ### Deprecated
 
