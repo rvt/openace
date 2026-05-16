@@ -45,29 +45,6 @@ protected:
         return 0;
     }
 
-    // @deprecated
-    void compact2()
-    {
-        if (entries().empty())
-        {
-            writePosition = 0;
-            return;
-        }
-
-        size_t dst = 0;
-        for (auto &sp : entries())
-        {
-            if (sp.data() != bufferData + dst)
-            {
-                etl::move(sp.begin(), sp.end(), bufferData + dst);
-                sp = {bufferData + dst, sp.size()};
-            }
-            dst += sp.size();
-        }
-
-        writePosition = calculateWritePos();
-    }
-
 public:
     bool setString(const etl::string_view sv)
     {

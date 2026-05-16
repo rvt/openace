@@ -19,6 +19,7 @@
 #include "ace/gulp.hpp"
 #include "ace/messages.hpp"
 #include "ace/packetbuffer.hpp"
+#include "ace/circularbuffer.hpp"
 
 /* BT Stack*/
 #include "btstack.h"
@@ -52,6 +53,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
     } statistics;
 
     using TxBuffer = PacketBuffer<CONNECTIONS_BUFFER_SIZE, (CONNECTIONS_BUFFER_SIZE / 32) * 2>;
+    using CobsTxBuffer = CircularBuffer<CONNECTIONS_BUFFER_SIZE>;
 
     struct BtContext
     {
@@ -77,7 +79,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         // Per-connection COBS stream splitter; keeps partial binary frames across BLE writes.
         etl::vector<uint8_t, BinaryMessages::MAX_COBS_FRAME_SIZE> binaryGulpBuffer;
         Gulp binaryGulp;
-        TxBuffer cobsWriteBuffer;
+        CobsTxBuffer cobsWriteBuffer;
 
         BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void *context))
             : hciHandle(hciHandle_),
@@ -155,8 +157,10 @@ private:
     {
         // clang-format off
         return etl::find_if(instance->connections.begin(), instance->connections.end(),
-                            [hciHandle](const BtContext &ctx)
-                            { return ctx.hciHandle == hciHandle; });
+            [hciHandle](const BtContext &ctx)
+            {
+                return ctx.hciHandle == hciHandle;
+            });
         // clang-format on
     }
 
@@ -184,6 +188,8 @@ private:
     SemaphoreHandle_t mutex;
 
     static bool sendBuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState);
+    static bool sendCobsBuffer(BtContext &ctx);
+    static bool hasPendingData(const BtContext &ctx);
 
 public:
     static constexpr const char *NAME = "Bluetooth";

@@ -64,7 +64,7 @@ GATAS::PostConstruct Sx1262::postConstruct()
 
     radioInit();
 
-    if (xTaskCreate(sx1262Trampoline, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
+    if (xTaskCreate(sx1262Trampoline, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
     {
         return GATAS::PostConstruct::TASK_ERROR;
     }
@@ -612,18 +612,18 @@ void Sx1262::sendPacket(const TxPacket &txPacket)
                 return;
             }
             uint8_t manchesterFrame[GATAS::RADIO_MAX_TX_GFSK_FRAME_LENGTH * MANCHESTER];
-            manchesterEncode(manchesterFrame, txPacket.frame, txPacket.length);
+            manchesterEncode(manchesterFrame, txPacket.frame.get(), txPacket.length);
             sendGFSKPacket(txPacket.radioParameters, manchesterFrame, txPacket.length * MANCHESTER);
         }
         else
         {
-            sendGFSKPacket(txPacket.radioParameters, txPacket.frame, txPacket.length);
+            sendGFSKPacket(txPacket.radioParameters, txPacket.frame.get(), txPacket.length);
         }
     }
     else if (txPacket.radioParameters.frequency->mode == GATAS::Modulation::LORA)
     {
         GATAS_MEASURE("sendLORAPacket", 100);
-        sendLORAPacket(txPacket.radioParameters, txPacket.frame, txPacket.length);
+        sendLORAPacket(txPacket.radioParameters, txPacket.frame.get(), txPacket.length);
     }
 }
 

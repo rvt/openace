@@ -73,8 +73,8 @@ void RxDataFrameQueue::radioQueueTask(void *arg)
             if (auto errorFrame = static_cast<uint8_t *>(getGlobalPool().alloc(byteLength)))
             {
                 auto msg = GATAS::RadioRxManchesterMsg{
+                    etl::move(rxFrame.frame),
                     getGlobalPool(),
-                    rxFrame.frame.detach(),
                     errorFrame,
                     byteLength,
                     rxFrame.epochSeconds,
@@ -108,8 +108,7 @@ void RxDataFrameQueue::radioQueueTask(void *arg)
         else
         {
             getBus().receive(GATAS::RadioRxMsg{
-                getGlobalPool(),
-                rxFrame.frame.detach(),
+                etl::move(rxFrame.frame),
                 rxFrame.length,
                 rxFrame.epochSeconds,
                 rxFrame.frequency,

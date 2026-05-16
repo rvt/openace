@@ -2,6 +2,7 @@
 
 #include "../adslace.hpp"
 #include "ace/bitutils.hpp"
+#include "ace/debug.hpp"
 #include "ace/spinlockguard.hpp"
 #include "adsl/adsl.hpp"
 #include "ace/moreutils.hpp"
@@ -16,6 +17,7 @@ GATAS::PostConstruct ADSLAce::postConstruct()
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
+    GATAS_REGISTER_MUTEX(protocolMutex, "ADSLAce_protocolMutex");
 
     return GATAS::PostConstruct::OK;
 }

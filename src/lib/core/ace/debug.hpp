@@ -1,5 +1,9 @@
 #pragma once
 
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "semphr.h"
+
 // 0;30m black      1;30m bold black      0;90m light black
 // 0;31m red        1;31m bold red        0;91m light red
 // 0;32m green      1;32m bold green      0;92m light green
@@ -17,6 +21,14 @@ static constexpr const char *basename(const char *path)
     for (const char *p = path; *p; ++p)
         if (*p == '/' || *p == '\\') last = p + 1;
     return last;
+}
+
+inline void gatasRegisterMutex(SemaphoreHandle_t mutex, const char *name)
+{
+    if (mutex != nullptr)
+    {
+        vQueueAddToRegistry(reinterpret_cast<QueueHandle_t>(mutex), name);
+    }
 }
 
 #define GATAS_INFO(fmt, ...) \
@@ -53,6 +65,8 @@ static constexpr const char *basename(const char *path)
                    msg, basename(__FILE__), __LINE__);                \
     } while (0)
 
+#define GATAS_REGISTER_MUTEX(mutex, name) gatasRegisterMutex((mutex), (name))
+
 #else
 
 #define GATAS_INFO(...)        ((void)0)
@@ -60,5 +74,6 @@ static constexpr const char *basename(const char *path)
 #define GATAS_ASSERT(...)      ((void)0)
 #define GATAS_VERIFY(...)      ((void)0)
 #define GATAS_LOG_IF(...)      ((void)0)
+#define GATAS_REGISTER_MUTEX(...) ((void)0)
 
 #endif

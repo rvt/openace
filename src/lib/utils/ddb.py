@@ -58,13 +58,19 @@ def gen_cpp(rows):
     # Build big string blob
     # ----------------------------------------------------------------------
     string_blob = []
+    string_offsets = {}
     offsets = []
     offset = 0
 
     for hexcode, dev_type, reg in rows:
-        offsets.append(offset)
-        string_blob.append(reg + "\\0")
-        offset += len(reg) + 1
+        if reg not in string_offsets:
+            string_offsets[reg] = offset
+            string_blob.append(reg + "\\0")
+            offset += len(reg) + 1
+        offsets.append(string_offsets[reg])
+
+    if offset >= (1 << 24):
+        raise ValueError(f"String blob too large for 24-bit offsets: {offset} bytes")
 
     # Emit string blob
     out.append("static constexpr char DDB_STRINGS[] __in_flash() =\n")
@@ -78,51 +84,56 @@ def gen_cpp(rows):
     # ----------------------------------------------------------------------
     out.append(
         "struct DDBEntry {\n"
-        "    uint8_t _hex[3];      // 24-bit ICAO\n"
-        "    uint32_t offset;      // offset into DDB_STRINGS\n"
-        "    const char *reg() const { return &DDB_STRINGS[offset]; }\n"
-        "    uint32_t hex() const {\n"
-        "        return (uint32_t(_hex[0]) << 16) |\n"
-        "               (uint32_t(_hex[1]) << 8)  |\n"
-        "               (uint32_t(_hex[2]));\n"
+        "    uint8_t _offset[3];   // 24-bit offset into DDB_STRINGS\n"
+        "    uint32_t offset() const {\n"
+        "        return (uint32_t(_offset[0]) << 16) |\n"
+        "               (uint32_t(_offset[1]) << 8)  |\n"
+        "               (uint32_t(_offset[2]));\n"
         "    }\n"
+        "    const char *reg() const { return &DDB_STRINGS[offset()]; }\n"
         "};\n\n"
+        "static_assert(sizeof(DDBEntry) == 3, \"DDBEntry must remain packed\");\n\n"
     )
 
     # ----------------------------------------------------------------------
-    # DB entries
+    # Search keys and DB entries
     # ----------------------------------------------------------------------
     out.append(f"static constexpr size_t DDB_COUNT = {len(rows)};\n\n")
 
+    out.append("static constexpr uint16_t __in_flash() DDB_KEYS[DDB_COUNT] = {\n")
+    for hexcode, dev_type, reg in rows:
+        h = int(hexcode, 16)
+        out.append(f"    0x{h & 0xFFFF:04X},\n")
+    out.append("};\n\n")
+
     out.append("static constexpr DDBEntry __in_flash() DDB_DB[DDB_COUNT] = {\n")
     for i, (hexcode, dev_type, reg) in enumerate(rows):
-        h = int(hexcode, 16)
-        b0 = (h >> 16) & 0xFF
-        b1 = (h >> 8)  & 0xFF
-        b2 = (h >> 0)  & 0xFF
-        out.append(f"    {{ {{ 0x{b0:02X}, 0x{b1:02X}, 0x{b2:02X} }}, {offsets[i]}u }},\n")
+        string_offset = offsets[i]
+        b0 = (string_offset >> 16) & 0xFF
+        b1 = (string_offset >> 8) & 0xFF
+        b2 = string_offset & 0xFF
+        out.append(f"    {{ {{ 0x{b0:02X}, 0x{b1:02X}, 0x{b2:02X} }} }},\n")
     out.append("};\n\n")
 
     # ----------------------------------------------------------------------
-    # Build 256-bucket index
+    # Build 256-bucket start index
     # ----------------------------------------------------------------------
-    bucket_start = [0] * 256
-    bucket_count = [0] * 256
+    bucket_start = [0] * 257
 
-    # rows are sorted by 24-bit ICAO
-    current_byte = None
-    for i, (hexcode, dev_type, reg) in enumerate(rows):
-        h = int(hexcode, 16)
-        b0 = (h >> 16) & 0xFF
-        if bucket_count[b0] == 0:
-            bucket_start[b0] = i
-        bucket_count[b0] += 1
+    row_index = 0
+    for bucket in range(256):
+        bucket_start[bucket] = row_index
+        while row_index < len(rows):
+            h = int(rows[row_index][0], 16)
+            if ((h >> 16) & 0xFF) != bucket:
+                break
+            row_index += 1
+    bucket_start[256] = row_index
 
-    out.append("struct DDBIndexBucket { uint16_t start; uint16_t count; };\n\n")
-    out.append("static constexpr DDBIndexBucket DDB_INDEX[256] __in_flash() = {\n")
+    out.append("static constexpr uint16_t __in_flash() DDB_BUCKET_START[257] = {\n")
 
-    for i in range(256):
-        out.append(f"    {{ {bucket_start[i]}, {bucket_count[i]} }},\n")
+    for value in bucket_start:
+        out.append(f"    {value},\n")
 
     out.append("};\n")
 
@@ -162,6 +173,15 @@ def merge_flarm_ogn(flarm_data, ogn_data):
         
     return merged_data
 
+def validate_unique_hex(rows):
+    counts = Counter(hexcode for hexcode, _, _ in rows)
+    duplicates = {hexcode: count for hexcode, count in counts.items() if count > 1}
+    if duplicates:
+        raise ValueError(f"Duplicate hex codes found after merge: {duplicates}")
+
+def drop_ogn_source_device_type_o(rows):
+    return [row for row in rows if row[1] != 'O']
+
 def swap_hex(rows):
     swapped_rows = []
     for hexcode, dev_type, reg in rows:
@@ -185,7 +205,12 @@ if __name__ == "__main__":
     #ogn_data = parse_csv(open_csv(DATA_OGN))
     #flarm_data = parse_csv(open_csv(DATA_FLARM))
 
+    # OGN source rows with device type 'O' are mostly gliders, paragliders, drones and
+    # similar devices that are not useful for the FLARM-centric lookup DB.
+    ogn_data = drop_ogn_source_device_type_o(ogn_data)
+
     merged_data = merge_flarm_ogn(flarm_data, ogn_data)
+    validate_unique_hex(merged_data)
     merged_data = swap_hex(merged_data)
 
     # Sort by HEX for fast binary search

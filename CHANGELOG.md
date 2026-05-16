@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial GATAS Companion support with a new `GatasConnect` core module and a separate `GatasConnectUDP` transport module.
 - Bluetooth transport for GATAS Connect, including dedicated NMEA and binary GATT characteristics for companion-device integration.
 - Optional GDL90-over-Bluetooth bridge using COBS-framed payloads for companion applications.
+- Debug-only FreeRTOS queue registry entries for mutexes, to improve visibility in `GATAS_DEBUG` builds.
 
 ### Changed
 
@@ -19,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended the web UI to configure GATAS Connect output, pin code, and GDL90 bridge settings, plus a separate UDP server configuration module.
 - Improved module monitoring to render structured object and array values more clearly.
 - Updated the bundled device database.
+- Reworked `vDiagnosticsTask()` so task runtime statistics are reported from `uxTaskGetSystemState()` directly, with clearer boot-time and recent-window CPU metrics for SMP builds.
+- Refactored `CoreUtils` from a static utility class into a namespace, while keeping mutable internal state private to the implementation file.
 
 ### Deprecated
 
@@ -30,7 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Fixed misleading task runtime reporting in diagnostics, where formatted runtime text could be mismatched against sorted task names.
+- Fixed diagnostics labels and notes so CPU usage on the dual-core RP2040 SMP build is presented more honestly.
 
 ### Security
 

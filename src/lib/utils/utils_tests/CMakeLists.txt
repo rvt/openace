@@ -43,6 +43,7 @@ set( SOURCES_IDIOMATIC_EXAMPLES
       manchester_test.cpp
       EMA_test.cpp
       bitutils_test.cpp
+      circularbuffer_test.cpp
 )
 
 string( REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES "${SOURCES_IDIOMATIC_EXAMPLES}" )

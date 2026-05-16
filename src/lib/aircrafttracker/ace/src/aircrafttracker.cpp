@@ -1,4 +1,5 @@
 #include "../aircrafttracker.hpp"
+#include "ace/debug.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/models.hpp"
 
@@ -11,6 +12,7 @@ GATAS::PostConstruct AircraftTracker::postConstruct()
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
+    GATAS_REGISTER_MUTEX(trackedAircraftMutex, "AircraftTracker_mutex");
     return GATAS::PostConstruct::OK;
 }
 

@@ -376,63 +376,172 @@ static void loadModules(void *arg)
 }
 
 #if configGENERATE_RUN_TIME_STATS == 1 && configSHOW_RUN_TIME_STATS == 1
+namespace
+{
+struct PreviousTaskRuntime
+{
+    TaskHandle_t handle;
+    configRUN_TIME_COUNTER_TYPE runTimeCounter;
+};
+
+const char *taskStateToString(const eTaskState state)
+{
+    switch (state)
+    {
+    case eRunning:
+        return "Run";
+    case eReady:
+        return "Ready";
+    case eBlocked:
+        return "Block";
+    case eSuspended:
+        return "Susp";
+    case eDeleted:
+        return "Del";
+    case eInvalid:
+    default:
+        return "Inv";
+    }
+}
+
+configRUN_TIME_COUNTER_TYPE previousRunTimeForTask(const PreviousTaskRuntime *entries,
+                                                   const UBaseType_t numEntries,
+                                                   const TaskHandle_t handle)
+{
+    for (UBaseType_t i = 0; i < numEntries; i++)
+    {
+        if (entries[i].handle == handle)
+        {
+            return entries[i].runTimeCounter;
+        }
+    }
+
+    return 0;
+}
+
+bool isFreeRtosIdleTask(const char *taskName)
+{
+    return strncmp(taskName, "IDLE", 4) == 0;
+}
+} // namespace
+
 void vDiagnosticsTask(void *pvParameters)
 {
-    constexpr size_t DIAG_STRING_SIZE = 2048; // Adjust based on your needs
     (void)pvParameters;
+    configRUN_TIME_COUNTER_TYPE previousTotalRunTime = 0;
+    PreviousTaskRuntime *previousTaskRuntimes = nullptr;
+    UBaseType_t previousNumTasks = 0;
+
     while (true)
     {
-        char runTimeStats[DIAG_STRING_SIZE] = {0}; // Buffer for runtime stats
-        bool hasRunTimeStats = false;
-
-        // Optional: Get CPU usage stats (needs run time counter)
-        vTaskGetRunTimeStats(runTimeStats);
-        hasRunTimeStats = true;
-
-        // Clear screen and print header
-        puts("\033[2J\033[H");
-        puts("Note: DiagTasks will show high due to teh wai times are measured?");
-        puts("Task Name        Abs Time  %% Time   State  Priority  Stack Left");
-        puts("-----------------------------------------------------------------");
-
-        // Get number of tasks
         UBaseType_t numTasks = uxTaskGetNumberOfTasks();
-        TaskStatus_t *taskStatusArray = (TaskStatus_t *)pvPortMalloc(numTasks * sizeof(TaskStatus_t));
+        TaskStatus_t *taskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(numTasks * sizeof(TaskStatus_t)));
 
         if (taskStatusArray)
         {
-            numTasks = uxTaskGetSystemState(taskStatusArray, numTasks, nullptr);
+            configRUN_TIME_COUNTER_TYPE totalRunTime = 0;
+            numTasks = uxTaskGetSystemState(taskStatusArray, numTasks, &totalRunTime);
 
-            // Sort tasks alphabetically by name
             qsort(taskStatusArray, numTasks, sizeof(TaskStatus_t), [](const void *a, const void *b)
                   { return strcasecmp(((TaskStatus_t *)a)->pcTaskName, ((TaskStatus_t *)b)->pcTaskName); });
 
-            // Parse CPU time stats if available
-            char *line = runTimeStats;
+            const configRUN_TIME_COUNTER_TYPE deltaTotalRunTime =
+                (totalRunTime >= previousTotalRunTime) ? (totalRunTime - previousTotalRunTime) : 0;
+            const double windowSeconds = deltaTotalRunTime / 1000000.0;
+            const double windowCapacitySeconds = windowSeconds * configNUMBER_OF_CORES;
+            configRUN_TIME_COUNTER_TYPE idleWindowRunTime = 0;
+
             for (UBaseType_t i = 0; i < numTasks; i++)
             {
-                char taskName[configMAX_TASK_NAME_LEN + 1] = {0};
-                uint32_t absTime = 0;
-                float percentTime = 0.0;
+                const configRUN_TIME_COUNTER_TYPE previousRunTime =
+                    previousRunTimeForTask(previousTaskRuntimes, previousNumTasks, taskStatusArray[i].xHandle);
+                const configRUN_TIME_COUNTER_TYPE deltaRunTime =
+                    (taskStatusArray[i].ulRunTimeCounter >= previousRunTime)
+                        ? (taskStatusArray[i].ulRunTimeCounter - previousRunTime)
+                        : 0;
 
-                // If runtime stats are available, extract the correct task data
-                if (hasRunTimeStats)
+                if (isFreeRtosIdleTask(taskStatusArray[i].pcTaskName))
                 {
-                    sscanf(line, "%s %lu %f", taskName, &absTime, &percentTime);
-                    line = strchr(line, '\n'); // Move to the next line
-                    if (line)
-                        line++; // Skip newline
+                    idleWindowRunTime += deltaRunTime;
                 }
+            }
 
-                // Print sorted task info in a single line
-                printf("%-16s %-10lu %-7.1f %-6u %-9lu %-10lu\n",
+            const double idleSystemPercent =
+                (deltaTotalRunTime > 0)
+                    ? (100.0 * static_cast<double>(idleWindowRunTime) /
+                       (static_cast<double>(deltaTotalRunTime) * configNUMBER_OF_CORES))
+                    : 0.0;
+            const double busySystemPercent = 100.0 - idleSystemPercent;
+
+            puts("\033[2J\033[H");
+            printf("Task snapshot: %lu tasks | Heap free %lu / %lu bytes | CPU window %.2f s on %u cores (%.2f core-s)\n",
+                   static_cast<unsigned long>(numTasks),
+                   static_cast<unsigned long>(getFreeHeap()),
+                   static_cast<unsigned long>(getTotalHeap()),
+                   windowSeconds,
+                   static_cast<unsigned int>(configNUMBER_OF_CORES),
+                   windowCapacitySeconds);
+            printf("System load: Busy %.2f%% | FreeRTOS idle %.2f%%\n", busySystemPercent, idleSystemPercent);
+            puts("Note: BootC%/WinC% are relative to one core, so totals can exceed 100% on this dual-core SMP build.");
+            puts("      WinSys% is relative to total CPU capacity across both cores. DiagTask can spike when printing.");
+            puts("Task Name        Boot us     BootC%  Win us      WinC%   WinSys% State  Pri  Stack Left");
+            puts("-------------------------------------------------------------------------------------------");
+
+            for (UBaseType_t i = 0; i < numTasks; i++)
+            {
+                const configRUN_TIME_COUNTER_TYPE previousRunTime =
+                    previousRunTimeForTask(previousTaskRuntimes, previousNumTasks, taskStatusArray[i].xHandle);
+                const configRUN_TIME_COUNTER_TYPE deltaRunTime =
+                    (taskStatusArray[i].ulRunTimeCounter >= previousRunTime)
+                        ? (taskStatusArray[i].ulRunTimeCounter - previousRunTime)
+                        : 0;
+                const double bootPercent =
+                    (totalRunTime > 0)
+                        ? (100.0 * static_cast<double>(taskStatusArray[i].ulRunTimeCounter) / static_cast<double>(totalRunTime))
+                        : 0.0;
+                const double windowPercent =
+                    (deltaTotalRunTime > 0)
+                        ? (100.0 * static_cast<double>(deltaRunTime) / static_cast<double>(deltaTotalRunTime))
+                        : 0.0;
+                const double windowSystemPercent =
+                    (deltaTotalRunTime > 0)
+                        ? (100.0 * static_cast<double>(deltaRunTime) /
+                           (static_cast<double>(deltaTotalRunTime) * configNUMBER_OF_CORES))
+                        : 0.0;
+
+                printf("%-16s %-11lu %-7.2f %-11lu %-7.2f %-7.2f %-6s %-4lu %-10lu\n",
                        taskStatusArray[i].pcTaskName,
-                       absTime,
-                       percentTime,
-                       taskStatusArray[i].eCurrentState,
+                       static_cast<unsigned long>(taskStatusArray[i].ulRunTimeCounter),
+                       bootPercent,
+                       static_cast<unsigned long>(deltaRunTime),
+                       windowPercent,
+                       windowSystemPercent,
+                       taskStateToString(taskStatusArray[i].eCurrentState),
                        taskStatusArray[i].uxCurrentPriority,
                        uxTaskGetStackHighWaterMark(taskStatusArray[i].xHandle));
             }
+
+            PreviousTaskRuntime *currentTaskRuntimes =
+                static_cast<PreviousTaskRuntime *>(pvPortMalloc(numTasks * sizeof(PreviousTaskRuntime)));
+
+            if (currentTaskRuntimes)
+            {
+                for (UBaseType_t i = 0; i < numTasks; i++)
+                {
+                    currentTaskRuntimes[i].handle = taskStatusArray[i].xHandle;
+                    currentTaskRuntimes[i].runTimeCounter = taskStatusArray[i].ulRunTimeCounter;
+                }
+
+                if (previousTaskRuntimes)
+                {
+                    vPortFree(previousTaskRuntimes);
+                }
+
+                previousTaskRuntimes = currentTaskRuntimes;
+                previousNumTasks = numTasks;
+                previousTotalRunTime = totalRunTime;
+            }
+
             vPortFree(taskStatusArray);
         }
 

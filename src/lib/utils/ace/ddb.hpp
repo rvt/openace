@@ -15,24 +15,25 @@ class DDB
 {
     const DDBEntry *lookupDb(uint32_t hex)
     {
-        uint8_t hi = (hex >> 16) & 0xFF;
-        const uint32_t start = DDB_INDEX[hi].start;
-        const uint32_t count = DDB_INDEX[hi].count;
+        const uint8_t hi = (hex >> 16) & 0xFF;
+        const uint16_t key = hex & 0xFFFF;
+        const uint32_t start = DDB_BUCKET_START[hi];
+        const uint32_t end = DDB_BUCKET_START[hi + 1];
 
-        if (count == 0)
+        if (start == end)
         {
             return nullptr;
         }
 
         size_t left = start;
-        size_t right = start + count;
+        size_t right = end;
 
         while (left < right)
         {
             size_t mid = (left + right) / 2;
-            uint32_t mid_hex = DDB_DB[mid].hex();
+            const uint16_t mid_key = DDB_KEYS[mid];
 
-            if (mid_hex < hex)
+            if (mid_key < key)
             {
                 left = mid + 1;
             }
@@ -42,7 +43,7 @@ class DDB
             }
         }
 
-        if (left < start + count && DDB_DB[left].hex() == hex)
+        if (left < end && DDB_KEYS[left] == key)
         {
             return &DDB_DB[left];
         }

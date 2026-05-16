@@ -7,6 +7,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "semaphoreguard.hpp"
+#include "debug.hpp"
 #include <cstddef> // For max_alignas_t
 #include <cstring>
 
@@ -64,21 +65,7 @@ public:
         ptr_ = ptr;
     }
 
-    T *detach() const
-    {
-        T *ptr = ptr_;
-        ptr_ = nullptr;
-        return ptr;
-    }
-
-    // TODO: DO we use get() or 
     T *get() const
-    {
-        return ptr_;
-    }
-
-    // TODO: Do we use this (looks like a raw ptr)
-    operator T *() const
     {
         return ptr_;
     }
@@ -100,8 +87,8 @@ public:
     }
 
 private:
-    mutable Pool *pool_ = nullptr;
-    mutable T *ptr_ = nullptr;
+    Pool *pool_ = nullptr;
+    T *ptr_ = nullptr;
 };
 
 // Pool specification
@@ -171,6 +158,7 @@ public:
     {
         mutex = xSemaphoreCreateMutex();
         GATAS_ASSERT(mutex != nullptr, "Failed to create MultiPoolAllocator mutex");
+        GATAS_REGISTER_MUTEX(mutex, "MultiPoolAllocator_mutex");
     }
 
     constexpr size_t maxPoolSize() const {

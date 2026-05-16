@@ -28,16 +28,24 @@ TEST_CASE("Lookup hex above and below mid", "[single-file]")
     //    REQUIRE(ddb.cacheSize() == 2);
 }
 
-TEST_CASE("Unique OGN DB Entry", "[single-file]")
+TEST_CASE("Unique OGN F DB Entry", "[single-file]")
 {
     DDB ddb;
-    auto lo = ddb.lookup(0x066F73);
+    auto lo = ddb.lookup(0x000203);
 
     REQUIRE(lo != nullptr);
-    REQUIRE(etl::string_view(lo->reg()) == "OK-0566");
+    REQUIRE(etl::string_view(lo->reg()) == "SRZ2000");
 }
 
-TEST_CASE("Unique FLARM DB Entry", "[single-file]")
+TEST_CASE("OGN Entry dropped", "[single-file]")
+{
+    DDB ddb;
+    auto lo = ddb.lookup(0x0DA550);
+
+    REQUIRE(lo == nullptr);
+}
+
+TEST_CASE("Prefer FLARM DB Entry", "[single-file]")
 {
     DDB ddb;
     auto lo = ddb.lookup(0xDD4EBE);
@@ -111,15 +119,25 @@ TEST_CASE("Lookup Not Found", "[single-file]")
 
 TEST_CASE("No Duplicates", "[single-file]")
 {
+    size_t bucket = 0;
+    uint32_t previousHex = (uint32_t(bucket) << 16) | DDB_KEYS[0];
+
     for (size_t i = 1; i < DDB_COUNT; ++i)
     {
-        if (DDB_DB[i].hex() == DDB_DB[i - 1].hex())
+        while ((bucket + 1) < 257 && DDB_BUCKET_START[bucket + 1] <= i)
+        {
+            bucket += 1;
+        }
+
+        const uint32_t currentHex = (uint32_t(bucket) << 16) | DDB_KEYS[i];
+        if (currentHex == previousHex)
         {
             std::cout << "Duplicate found: HEX=0x"
-                      << std::hex << DDB_DB[i].hex()
+                      << std::hex << currentHex
                       << " Callsign=" << DDB_DB[i].reg()
                       << "\n";
             REQUIRE_FALSE(true);
         }
+        previousHex = currentHex;
     }
 }

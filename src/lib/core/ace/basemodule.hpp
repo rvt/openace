@@ -5,6 +5,7 @@
 #include "semaphoreguard.hpp"
 #include "poolallocator.hpp"
 #include "constants.hpp"
+#include "debug.hpp"
 
 #include "pico.h"
 
@@ -43,6 +44,7 @@ public:
         {
             panic("Failed to create BaseModule_mutex");
         }
+        GATAS_REGISTER_MUTEX(baseMutex, "BaseModule_mutex");
     }
     using ModuleLoadFunction = etl::delegate<BaseModule *(etl::imessage_bus &, const Configuration &)>;
     struct ModuleStatus

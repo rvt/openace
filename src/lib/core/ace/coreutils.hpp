@@ -12,30 +12,18 @@
 
 #include "etl/string.h"
 
-class CoreUtils
+namespace CoreUtils
 {
+    void init();
 
-    inline static uint64_t CoreUtils_offsetTimeToAbsolute = 0;
-    inline static uint32_t CoreUtils_timeUs32PpsOffset = 0;
-    inline static spin_lock_t *spinLock;
-
-public:
-    static void init()
-    {
-        spinLock = SpinlockGuard::claim();
-    }
-
-    __force_inline static spin_lock_t * sharedSpinLock()
-    {
-        return spinLock;
-    }
+    spin_lock_t *sharedSpinLock();
 
     /**
      * Convert and timestamp to an uint32_t which is synced with GPS time such that at PPS the ms should reppresents (somewhere close) to a ms
      * eg: 45'453'010 = represents 10ms after PPS
      * \deprecated
      */
-    static uint32_t timeToPositionTs(int8_t hours, int8_t minutes, int8_t seconds, int16_t microseconds)
+    inline uint32_t timeToPositionTs(int8_t hours, int8_t minutes, int8_t seconds, int16_t microseconds)
     {
         return hours * 3600 + minutes * 60 + seconds + microseconds;
     }
@@ -47,28 +35,21 @@ public:
      * Use this to measure short time differences of less then 71minutes
      * \sa isReached
      */
-    __force_inline static uint32_t timeUs32()
-    {
-        return time_us_32() - CoreUtils_timeUs32PpsOffset;
-    }
+    uint32_t timeUs32();
 
-    __force_inline static uint32_t timeUs32Raw()
+    inline uint32_t timeUs32Raw()
     {
         return time_us_32();
     }
 
-    __force_inline static uint64_t timeUs64()
-    {
-        // time_us_64 and time_us_32 use the same hardware time, thus offset is also the same
-        return time_us_64() - CoreUtils_timeUs32PpsOffset;
-    }
+    uint64_t timeUs64();
 
     /**
      * Get a timestamp in ms
      * This timestamp monotonically increases from power up and alligned with PPS
      * \sa timeUs32
      */
-    static uint32_t timeMs32()
+    inline uint32_t timeMs32()
     {
         return timeUs64() / 1'000;
     }
@@ -76,7 +57,7 @@ public:
      * Get a timestamp in seconds
      * This timestamp monotonically increases from power up and alligned with PPS
      */
-    static uint32_t timeS32()
+    inline uint32_t timeS32()
     {
         return timeUs64() / 1'000'000;
     }
@@ -85,7 +66,7 @@ public:
      * Calculate the time from referenceUs to us
      * If referenceUs is in the past, the result is negative, eg the event happened
      */
-    __force_inline static int32_t usToReference(uint32_t referenceUs, uint32_t now = timeUs32())
+    inline int32_t usToReference(uint32_t referenceUs, uint32_t now = timeUs32())
     {
         auto diff = static_cast<int32_t>(referenceUs - now);
 #if GATAS_DEBUG == 1
@@ -100,7 +81,7 @@ public:
         return diff;
     }
 
-    __force_inline static int32_t usToReferenceRaw(uint32_t referenceUsRaw, uint32_t us = timeUs32Raw())
+    inline int32_t usToReferenceRaw(uint32_t referenceUsRaw, uint32_t us = timeUs32Raw())
     {
         auto diff = static_cast<int32_t>(referenceUsRaw - us);
 #if GATAS_DEBUG == 1
@@ -116,7 +97,7 @@ public:
         return diff;
     }
 
-    static int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
+    inline int32_t usDiff(uint32_t referenceUs, uint32_t us = timeUs32())
     {
         return etl::absolute(usToReference(referenceUs, us));
     }
@@ -127,11 +108,11 @@ public:
      * It will properly handle wraparounds if the time is less than 35 minutes in difference
      * \sa timeUs32
      */
-    __force_inline static bool isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
+    inline bool isUsReached(uint32_t referenceUs, uint32_t us = timeUs32())
     {
         return usToReference(referenceUs, us) <= 0;
     }
-    __force_inline static bool isUsReachedRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
+    inline bool isUsReachedRaw(uint32_t referenceUs, uint32_t us = timeUs32Raw())
     {
         return usToReferenceRaw(referenceUs, us) <= 0;
     }
@@ -141,21 +122,18 @@ public:
      * When offset is known, the correct time in us in reference to PPS can be calculated
      * @param offsetUs Offset in us to add to the current time_us_32 to align with PPS This can be used for software PPS adjustments
      */
-    static void __time_critical_func(setPPS)(int32_t offsetUs)
-    {
-        CoreUtils_timeUs32PpsOffset = time_us_32() % 1'000'000 - offsetUs;
-    }
+    void __time_critical_func(setPPS)(int32_t offsetUs);
 
     /**
      * Returns the current ms within the current second and alligned with PPS
      * eg: a value of 119 means 119ms since PPS
      */
-    static uint16_t msInSecond()
+    inline uint16_t msInSecond()
     {
         return (timeUs32() / 1'000) % 1'000;
     }
 
-    static uint16_t usInSecond()
+    inline uint16_t usInSecond()
     {
         return (timeUs64()) % 1'000'000;
     }
@@ -169,7 +147,7 @@ public:
      * ms needs to be 0..1000
      * refMsInSecond 0..n
      */
-    static uint16_t msDelayToReference(uint16_t refMsInSecond, uint16_t ms = msInSecond())
+    inline uint16_t msDelayToReference(uint16_t refMsInSecond, uint16_t ms = msInSecond())
     {
         if (refMsInSecond > ms)
         {
@@ -188,24 +166,17 @@ public:
      * and is given the exact epochoffset when received from PPS this will calibrate the epoch function to exact ms
      * See RTC::on_receive(const GATAS::UtcTimeMsg& msg)
      */
-    static void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
-    {
-        const uint64_t nowUs = time_us_64();
-        CoreUtils_offsetTimeToAbsolute = msSinceEpoch - nowUs / 1'000;
-    }
+    void setOffsetMsSinceEpoch(uint64_t msSinceEpoch);
 
     /**
      * Returns the current time in ms since epoch
      */
-    static uint64_t msSinceEpoch()
-    {
-        return (time_us_64() / 1'000) + CoreUtils_offsetTimeToAbsolute;
-    }
+    uint64_t msSinceEpoch();
 
     /**
      * Seconds since EPOCH, like unix time
      */
-    static uint32_t secondsSinceEpoch()
+    inline uint32_t secondsSinceEpoch()
     {
         return msSinceEpoch() / 1000;
     }
@@ -214,34 +185,34 @@ public:
      * Seconds since midnight UTC (0–86399).
      * Uses a dedicated 32-bit offset captured in setOffsetMsSinceEpoch; returns 0 until that is called.
      */
-    static uint32_t secondsSinceMidnight()
+    inline uint32_t secondsSinceMidnight()
     {
         return secondsSinceEpoch() % 86'400;
     }
 
-    static uint32_t msSinceMidnight()
+    inline uint32_t msSinceMidnight()
     {
         return msSinceEpoch() % 86'400'000;
     }
 
-    static tm localTime()
-    {
-        return localTime(msSinceEpoch());
-    }
-
-    static tm localTime(uint64_t msSinceEpoch)
+    inline tm localTime(uint64_t msSinceEpoch)
     {
         time_t secondsSinceEpoch = msSinceEpoch / 1000;
         struct tm timeinfo = {};
         localtime_r(&secondsSinceEpoch, &timeinfo);
         return timeinfo;
     }
+
+    inline tm localTime()
+    {
+        return localTime(msSinceEpoch());
+    }
     //////////////// EPOCH functions ////////////////
 
     /**
      * Get the current time in hours, minutes and seconds since mightnight UTC based on epoch
      */
-    static auto hourMinutesSeconds(uint32_t now = secondsSinceEpoch())
+    inline auto hourMinutesSeconds(uint32_t now = secondsSinceEpoch())
     {
         struct HourMinuteSeconds
         {
@@ -265,7 +236,7 @@ public:
      * Reference: https://geopy.readthedocs.io/en/stable/#module-geopy.distance
      * TODO: Test performance with https://www.eevblog.com/forum/microcontrollers/lightweight-sin(2x)-cos(2x)-for-mcus-with-float-hardware/ ??
      */
-    static float distanceAccurate(float fromLat, float fromLon, float toLat, float toLon)
+    inline float distanceAccurate(float fromLat, float fromLon, float toLat, float toLon)
     {
         fromLat *= DEG_TO_RADS;
         fromLon *= DEG_TO_RADS;
@@ -278,7 +249,7 @@ public:
         return d * DIAMETER_EARTH_M;
     }
 
-    static inline float wrapLonDelta(float dLon)
+    inline float wrapLonDelta(float dLon)
     {
         // Wrap to [-180, +180]
         if (dLon > 180.0f)
@@ -292,7 +263,7 @@ public:
         return dLon;
     }
 
-    static auto northEastDistance(float fromLat, float fromLon, float toLat, float toLon)
+    inline auto northEastDistance(float fromLat, float fromLon, float toLat, float toLon)
     {
         struct RelNorthRelEast
         {
@@ -316,7 +287,7 @@ public:
      * https://jamesloper.com/fastest-way-to-calculate-distance-between-two-coordinates
      * https://www.movable-type.co.uk/scripts/latlong.html
      */
-    static float distanceFast(float fromLat, float fromLon, float toLat, float toLon)
+    inline float distanceFast(float fromLat, float fromLon, float toLat, float toLon)
     {
         auto ne = northEastDistance(fromLat, fromLon, toLat, toLon);
         return sqrtf((ne.north * ne.north) + (ne.east * ne.east));
@@ -328,7 +299,7 @@ public:
      * For short distances you can also use bearingFromInDegShort
      * https://www.movable-type.co.uk/scripts/latlong.html
      */
-    static float bearingFromInRad(float fromLat, float fromLon, float toLat, float toLon)
+    inline float bearingFromInRad(float fromLat, float fromLon, float toLat, float toLon)
     {
         fromLat *= DEG_TO_RADS;
         fromLon *= DEG_TO_RADS;
@@ -343,7 +314,7 @@ public:
     /**
      * Same as bearingFrom but returns in degrees
      */
-    static float bearingFromInDeg(float fromLat, float fromLon, float toLat, float toLon)
+    inline float bearingFromInDeg(float fromLat, float fromLon, float toLat, float toLon)
     {
         return bearingFromInRad(fromLat, fromLon, toLat, toLon) * RADS_TO_DEG;
     }
@@ -352,7 +323,7 @@ public:
      * A faster method than using bearingFromInRad that works with the relative coordinates we have to calculate anyways
      * This works for shorter distances well but cannot be used for long distances (>1000Km)
      */
-    static float __time_critical_func(bearingFromInDegShort)(float east, float north)
+    inline float __time_critical_func(bearingFromInDegShort)(float east, float north)
     {
         float theta = atan2f(east, north);
         float deg = theta * 180.f / M_PI;
@@ -398,12 +369,15 @@ public:
         }
     };
 
-    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const GATAS::AircraftPositionInfo &from, const GATAS::AircraftPositionInfo &to)
+    distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(float fromLat, float fromLon, float toLat, float toLon);
+    distanceRelNorthRelEastFloat getDistanceRelNorthRelEastFloat(float fromLat, float fromLon, float toLat, float toLon);
+
+    inline distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const GATAS::AircraftPositionInfo &from, const GATAS::AircraftPositionInfo &to)
     {
         return getDistanceRelNorthRelEastInt(from.lat, from.lon, to.lat, to.lon);
     }
 
-    static distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const GATAS::OwnshipPositionInfo &from, const GATAS::AircraftPositionInfo &to)
+    inline distanceRelNorthRelEastInt getDistanceRelNorthRelEastInt(const GATAS::OwnshipPositionInfo &from, const GATAS::AircraftPositionInfo &to)
     {
         return getDistanceRelNorthRelEastInt(from.lat, from.lon, to.lat, to.lon);
     }
@@ -412,7 +386,7 @@ public:
      * Calculate the bearing and ensures it's between 0..360
      */
     template <typename T>
-    constexpr static T toBearing(T angle)
+    constexpr T toBearing(T angle)
     {
         while (angle < static_cast<T>(0))
         {
@@ -432,7 +406,7 @@ public:
      *
      * Note: This function takea around 75us..100us to complete
      */
-    static distanceRelNorthRelEastInt __time_critical_func(getDistanceRelNorthRelEastInt)(float fromLat, float fromLon, float toLat, float toLon)
+    inline distanceRelNorthRelEastInt __time_critical_func(getDistanceRelNorthRelEastInt)(float fromLat, float fromLon, float toLat, float toLon)
     {
         auto drne = getDistanceRelNorthRelEastFloat(fromLat, fromLon, toLat, toLon);
         return {
@@ -445,7 +419,7 @@ public:
     /**
      * From two lat/lon points calculate relativeNorth/relativeEast distance and bearing between the two points
      */
-    static distanceRelNorthRelEastFloat __time_critical_func(getDistanceRelNorthRelEastFloat)(float fromLat, float fromLon, float toLat, float toLon)
+    inline distanceRelNorthRelEastFloat __time_critical_func(getDistanceRelNorthRelEastFloat)(float fromLat, float fromLon, float toLat, float toLon)
     {
         auto ne = northEastDistance(fromLat, fromLon, toLat, toLon);
         // float bearing = bearingFromInDegShort(ne.east, ne.north);
@@ -457,7 +431,7 @@ public:
      * Parse an path in the form of /foo/bar/bas.extension
      * returns a vector with foo, bar, bas, extension
      */
-    static const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path, const etl::string_view key = "");
+    const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path, const etl::string_view key = "");
 
     /**
      * Devide a circle in a number of sections.
@@ -465,17 +439,17 @@ public:
      * The resultng value is always 0..(SECTIONS-1)
      */
     template <int SECTIONS>
-    static int getRadialSection(int16_t degree)
+    int getRadialSection(int16_t degree)
     {
         constexpr int16_t sectionSize = 360 / SECTIONS;
-        degree = CoreUtils::toBearing(degree);
+        degree = toBearing(degree);
 
         // Calculate the section
         return static_cast<int>(fmodf((degree + (sectionSize >> 1)) / sectionSize, SECTIONS));
     }
 
     template <int SECTIONS>
-    static int getRadialSectionRad(float rad)
+    int getRadialSectionRad(float rad)
     {
         return getRadialSection<SECTIONS>(rad * RADS_TO_DEG);
     }
@@ -486,9 +460,9 @@ public:
      * See also : https://geographiclib.sourceforge.io/cgi-bin/GeoidEval
      * Note: Only use of the GPS with GGA does nit send the egm96 data
      */
-    static int8_t egmGeoidOffset(float lat, float lon);
+    int8_t egmGeoidOffset(float lat, float lon);
 
-    static uint8_t calculateNMEAChecksum(const etl::istring &nmea)
+    inline uint8_t calculateNMEAChecksum(const etl::istring &nmea)
     {
         uint8_t chk = 0;
         // NMEA checksum starts after '$'
@@ -507,7 +481,7 @@ public:
      * @param nmea example '$PFEC,GPint,RMC05'
      * @return             '$PFEC,GPint,RMC05*2D\r\n'
      */
-    static void addChecksumToNMEA(etl::istring &nmea)
+    inline void addChecksumToNMEA(etl::istring &nmea)
     {
         const char hexChars[] = "0123456789ABCDEF";
 
@@ -535,7 +509,7 @@ public:
         nmea.append(suffix, sizeof(suffix));
     }
 
-    static bool validateNMEAChecksum(const etl::istring &nmea)
+    inline bool validateNMEAChecksum(const etl::istring &nmea)
     {
         const auto starPos = nmea.find('*');
         if (starPos == etl::string_view::npos || starPos + 2 >= nmea.size())
@@ -574,22 +548,22 @@ public:
     }
 
     template <size_t Array_Size>
-    static etl::string<Array_Size + 6> createNmeaChecksum(const char (&text)[Array_Size])
+    etl::string<Array_Size + 6> createNmeaChecksum(const char (&text)[Array_Size])
     {
         etl::string<Array_Size + 6> nmea(text, etl::strlen(text, Array_Size - 1));
         addChecksumToNMEA(nmea);
         return nmea;
     }
 
-    static uint32_t getTotalHeap(void);
-    static uint32_t getFreeHeap(void);
+    uint32_t getTotalHeap(void);
+    uint32_t getFreeHeap(void);
 
     /**
      * Create an textual representation of the aircraftId. FOr the moment it will simply turn the aircraftID as received into a textual HEX representation
      * Later the idea is that it will use DDB to get the registration based on aircraftID and addressType
      *
      */
-    static void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, GATAS::AddressType addressType, etl::string_view callSign = "")
+    inline void streamIcaoAddress(etl::string_stream &stream, uint32_t aircraftID, GATAS::AddressType addressType, etl::string_view callSign = "")
     {
         (void)addressType;
         stream << etl::hex << etl::setw(6) << etl::setfill('0') << etl::uppercase << aircraftID << GATAS::RESET_FORMAT;
@@ -599,7 +573,7 @@ public:
         }
     }
 
-    static uint8_t getHexVal(char hex)
+    inline uint8_t getHexVal(char hex)
     {
         uint8_t val = (uint8_t)hex;
         // For uppercase A-F letters:
@@ -613,7 +587,7 @@ public:
     /**
      * Convert a hex string in the form of 0123FA... to a byte array
      */
-    static void hexStrToByteArray(const char hex[], uint8_t hexLength, uint8_t bytearray[])
+    inline void hexStrToByteArray(const char hex[], uint8_t hexLength, uint8_t bytearray[])
     {
         for (uint8_t i = 0, j = 0; i < hexLength; i += 2, ++j)
         {
@@ -621,7 +595,7 @@ public:
         }
     }
 
-    static void hexStrToByteArray(const char *hex, uint8_t byteArray[])
+    inline void hexStrToByteArray(const char *hex, uint8_t byteArray[])
     {
         auto hexLength = strlen(hex);
         hexStrToByteArray(hex, hexLength, byteArray);
@@ -630,7 +604,7 @@ public:
     /**
      * Convert a byteArray to a hex string, the reverse of hexStrToByteArray
      */
-    static void byteArrayToHexStr(const uint8_t byteArray[], uint8_t byteArrayLength, char hexStr[])
+    inline void byteArrayToHexStr(const uint8_t byteArray[], uint8_t byteArrayLength, char hexStr[])
     {
         const char hexChars[] = "0123456789ABCDEF";
         for (uint8_t i = 0; i < byteArrayLength; ++i)
@@ -644,7 +618,7 @@ public:
     /**
      * Returns the pin number from the pin map, when not found returns -1 to indicate that
      */
-    static int8_t pinValue(const GATAS::PinTypeMap &pm, const GATAS::PinType &pinName, int8_t defaultValue = -1)
+    inline int8_t pinValue(const GATAS::PinTypeMap &pm, const GATAS::PinType &pinName, int8_t defaultValue = -1)
     {
         auto it = pm.find(pinName);
         if (it != pm.end())
@@ -660,7 +634,7 @@ public:
      * This is the same for obstacle or slow moving objects. Some EFB's don't show traffic on 'ground', so to ensure
      * they are indicated, airborn will be set to true
      */
-    static bool isAirborn(GATAS::AircraftCategory cat, float speedMs)
+    inline bool isAirborn(GATAS::AircraftCategory cat, float speedMs)
     {
         switch (cat)
         {
@@ -681,4 +655,4 @@ public:
             return speedMs > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN; // 10 m/s threshold for others
         }
     }
-};
+}

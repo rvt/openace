@@ -141,6 +141,9 @@ namespace GATAS
         RadioRxMsgBase(GATAS::GlobalPoolConfiguration &pool, uint8_t *frame_, size_t lengthBytes_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
             : frame(pool, frame_), lengthBytes(lengthBytes_), epochSeconds(epochSeconds_), frequency(frequency_), dataSource(dataSource_), rssidBm(rssidBm_) {}
 
+        RadioRxMsgBase(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&frame_, size_t lengthBytes_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : frame(etl::move(frame_)), lengthBytes(lengthBytes_), epochSeconds(epochSeconds_), frequency(frequency_), dataSource(dataSource_), rssidBm(rssidBm_) {}
+
         uint32_t *frame32() const
         {
             return reinterpret_cast<uint32_t *>(frame.get());
@@ -163,6 +166,11 @@ namespace GATAS
             : RadioRxMsgBase(pool, data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_)
         {
         }
+
+        explicit RadioRxMsg(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&data_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : RadioRxMsgBase(etl::move(data_), length_, epochSeconds_, frequency_, dataSource_, rssidBm_)
+        {
+        }
     };
 
     struct RadioRxManchesterMsg : public RadioRxMsgBase, public etl::message<201>
@@ -171,6 +179,9 @@ namespace GATAS
 
         explicit RadioRxManchesterMsg(GATAS::GlobalPoolConfiguration &pool, uint8_t *data_, uint8_t *error_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
             : RadioRxMsgBase(pool, data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_), error(pool, error_) {}
+
+        explicit RadioRxManchesterMsg(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&data_, GATAS::GlobalPoolConfiguration &pool, uint8_t *error_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : RadioRxMsgBase(etl::move(data_), length_, epochSeconds_, frequency_, dataSource_, rssidBm_), error(pool, error_) {}
 
         uint32_t *err32()
         {

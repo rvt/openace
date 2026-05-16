@@ -184,6 +184,10 @@ void GatasConnectUDP::receiveUdpMessage(void *arg, struct udp_pcb *pcb,
         return;
     }
 
+    // Receiving traffic means the hotspot/Android path path is healthy again, so restart the
+    // Android small-packet workaround cycle from the low watermark.
+    taskCtx->lastSendCounter = 0;
+
     size_t pos = 0;
     for (struct pbuf *q = pbuf; q != nullptr; q = q->next)
     {

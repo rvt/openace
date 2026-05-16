@@ -57,7 +57,11 @@
 #define configUSE_RECURSIVE_MUTEXES             1
 //#define configUSE_APPLICATION_TASK_TAG          0
 #define configUSE_COUNTING_SEMAPHORES           1
+#if GATAS_DEBUG == 1
+#define configQUEUE_REGISTRY_SIZE               24
+#else
 #define configQUEUE_REGISTRY_SIZE               8
+#endif
 #define configUSE_QUEUE_SETS                    1
 #define configUSE_TIME_SLICING                  1
 #define configUSE_NEWLIB_REENTRANT              0
@@ -92,9 +96,10 @@
 #define configUSE_APPLICATION_TASK_TAG          0
 
 // When configGENERATE_RUN_TIME_STATS is enabled FreeRTOS will collect runtime data
-#define configGENERATE_RUN_TIME_STATS           0
+#define configGENERATE_RUN_TIME_STATS           1
 // When configSHOW_RUN_TIME_STATS is 1, additional data is dumped to the UART when configGENERATE_RUN_TIME_STATS is 1, else it's just collected
-#define configSHOW_RUN_TIME_STATS               0
+#define configSHOW_RUN_TIME_STATS               1
+#define configRECORD_STACK_HIGH_ADDRESS         1
 
 #if configGENERATE_RUN_TIME_STATS == 1
 #define configUSE_TRACE_FACILITY                1
@@ -202,4 +207,3 @@ to exclude the API function. */
 // Aircraft tracker MUST have higher priority (6 currently)
 #define CYW43_TASK_PRIORITY ( tskIDLE_PRIORITY + 5 )
 #endif /* FREERTOS_CONFIG_H */
-
