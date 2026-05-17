@@ -51,6 +51,7 @@ void Bluetooth::start()
     memset(null_addr, 0, 6);
     gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
     gap_advertisements_set_data(advertiseData.size(), advertiseData.data());
+    gap_scan_response_set_data(scanResponseData.size(), scanResponseData.data());
     gap_advertisements_enable(1);
 
     gap_set_local_name(localName.c_str());
@@ -94,7 +95,7 @@ void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path)
     if (auto guard = SemaphoreGuard(10, instance->mutex))
     {
         stream << "{";
-        stream << ",\"nmeaPortMsgMissed:err\":" << statistics.nmeaPortMsgMissedErr;
+        stream << "\"nmeaPortMsgMissed:err\":" << statistics.nmeaPortMsgMissedErr;
         stream << ",\"cobsMsgMissed:err\":" << statistics.cobsMsgMissedErr;
         stream << ",\"connections\":[";
         bool first = true;
@@ -126,6 +127,7 @@ void Bluetooth::createAdvData()
     // clang-format off
     static const uint8_t serviceUUID[16] = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xe0, 0xff, 0x00, 0x00};
     // clang-format on
+    static constexpr size_t adFieldHeaderSize = 2;
 
     advertiseData.clear();
     advertiseData.push_back(2); // length
@@ -138,14 +140,33 @@ void Bluetooth::createAdvData()
     // bit 4 Previously Used
     advertiseData.push_back(0x06);
 
-    uint8_t maxSize = etl::min((size_t)8, localName.size());
-    advertiseData.push_back(static_cast<uint8_t>(1 + maxSize)); // length = type + name length
-    advertiseData.push_back(BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME);
-    advertiseData.insert(advertiseData.end(), localName.begin(), localName.begin() + maxSize);
-
     advertiseData.push_back(1 + sizeof(serviceUUID));
     advertiseData.push_back(BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS);
     advertiseData.insert(advertiseData.end(), std::begin(serviceUUID), std::end(serviceUUID));
+
+    const size_t remainingNameBytes = advertiseData.max_size() - advertiseData.size() - adFieldHeaderSize;
+    const size_t advertisedNameLength = etl::min(remainingNameBytes, localName.size());
+    if (advertisedNameLength > 0)
+    {
+        advertiseData.push_back(static_cast<uint8_t>(1 + advertisedNameLength)); // length = type + name length
+        advertiseData.push_back(advertisedNameLength == localName.size() ? BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME : BLUETOOTH_DATA_TYPE_SHORTENED_LOCAL_NAME);
+        advertiseData.insert(advertiseData.end(), localName.begin(), localName.begin() + advertisedNameLength);
+    }
+}
+
+void Bluetooth::createScanResponseData()
+{
+    static constexpr size_t adFieldHeaderSize = 2;
+    const size_t maxNameLength = scanResponseData.max_size() - adFieldHeaderSize;
+    const size_t scanResponseNameLength = etl::min(maxNameLength, localName.size());
+
+    scanResponseData.clear();
+    if (scanResponseNameLength > 0)
+    {
+        scanResponseData.push_back(static_cast<uint8_t>(1 + scanResponseNameLength)); // length = type + name length
+        scanResponseData.push_back(scanResponseNameLength == localName.size() ? BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME : BLUETOOTH_DATA_TYPE_SHORTENED_LOCAL_NAME);
+        scanResponseData.insert(scanResponseData.end(), localName.begin(), localName.begin() + scanResponseNameLength);
+    }
 }
 
 /**

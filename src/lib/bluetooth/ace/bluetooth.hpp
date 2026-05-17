@@ -40,8 +40,9 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
 
     inline static Bluetooth *instance;
 
-    // advertisement data, MAX 31 byte
+    // advertisement and scan response data, max 31 bytes each
     etl::vector<uint8_t, 31> advertiseData;
+    etl::vector<uint8_t, 31> scanResponseData;
 
     friend class message_router;
     struct
@@ -190,6 +191,7 @@ private:
     static bool sendBuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState);
     static bool sendCobsBuffer(BtContext &ctx);
     static bool hasPendingData(const BtContext &ctx);
+    void createScanResponseData();
 
 public:
     static constexpr const char *NAME = "Bluetooth";
@@ -198,6 +200,7 @@ public:
         instance = this;
         localName = config.strValueByPath("GaTas", NAME, "localName");
         createAdvData();
+        createScanResponseData();
     }
 
     virtual ~Bluetooth() = default;

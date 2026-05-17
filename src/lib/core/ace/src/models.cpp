@@ -56,7 +56,7 @@ namespace GATAS
     constexpr Mapping<DataSource, const char *> dataSourceMappings[] =
         {
             {DataSource::FLARM, "Flarm"},
-            {DataSource::ADSLM, "ADSL"}, // <-- Don;t change to ADSM, this is also used for the frontend
+            {DataSource::ADSLM, "ADSL"}, // <-- Don't change to ADSM, this is also used for the frontend selection
             {DataSource::ADSLO_HDR, "ADSL Hdr"},
             {DataSource::ADSLFLARM, "ADSL FLARM"},
             {DataSource::ADSLOGN, "ADSL OGN"},

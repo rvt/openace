@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated the bundled device database.
 - Reworked `vDiagnosticsTask()` so task runtime statistics are reported from `uxTaskGetSystemState()` directly, with clearer boot-time and recent-window CPU metrics for SMP builds.
 - Refactored `CoreUtils` from a static utility class into a namespace, while keeping mutable internal state private to the implementation file.
+- Bluetooth advertising now splits the local name between the primary advertisement and scan response payloads, improving visibility of longer device names while keeping the custom service UUID advertised.
 
 ### Deprecated
 
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed misleading task runtime reporting in diagnostics, where formatted runtime text could be mismatched against sorted task names.
 - Fixed diagnostics labels and notes so CPU usage on the dual-core RP2040 SMP build is presented more honestly.
+- Fixed aircraft tracker antenna polar output so it only reports radio-backed data sources, avoiding invalid transport-category entries in the UI.
 
 ### Security
 

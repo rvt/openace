@@ -49,7 +49,7 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
     (void)path;
     auto guard = lockTrackedAircraft();
     stream << "{";
-    for (uint8_t i = 0; i < static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS); i++)
+    for (uint8_t i = 0; i < static_cast<uint8_t>(GATAS::DataSource::_RADIO); i++)
     {
         stream << "\"" << GATAS::dataSourceIntToString(i) << ":AntPolar\":";
         antennaRadiationPattern[i].serialize(stream);
