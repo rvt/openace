@@ -60,7 +60,7 @@
 #if GATAS_DEBUG == 1
 #define configQUEUE_REGISTRY_SIZE               24
 #else
-#define configQUEUE_REGISTRY_SIZE               8
+#define configQUEUE_REGISTRY_SIZE               0
 #endif
 #define configUSE_QUEUE_SETS                    1
 #define configUSE_TIME_SLICING                  1
@@ -96,9 +96,9 @@
 #define configUSE_APPLICATION_TASK_TAG          0
 
 // When configGENERATE_RUN_TIME_STATS is enabled FreeRTOS will collect runtime data
-#define configGENERATE_RUN_TIME_STATS           1
+#define configGENERATE_RUN_TIME_STATS           0
 // When configSHOW_RUN_TIME_STATS is 1, additional data is dumped to the UART when configGENERATE_RUN_TIME_STATS is 1, else it's just collected
-#define configSHOW_RUN_TIME_STATS               1
+#define configSHOW_RUN_TIME_STATS               0
 #define configRECORD_STACK_HIGH_ADDRESS         1
 
 #if configGENERATE_RUN_TIME_STATS == 1

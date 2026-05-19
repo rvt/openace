@@ -12,6 +12,14 @@ OpenAce is a multi-protocol aviation conspicuity device (OGN, FLARM, ADS-L, FANE
 - Keep desktop test code and embedded code paths aligned when changing shared module behavior.
 - Use fixed-size ETL containers and avoid introducing dynamic-allocation-heavy patterns into firmware code.
 - Always use braces for control-flow bodies, even when the body is a single line.
+- Handle mutexes with RAII `SemaphoreGuard` scopes. Preferred pattern:
+  ```cpp
+  if (auto guard = SemaphoreGuard(1000, instance->mutex))
+  {
+      buffer.read(data, ctx.mtu);
+  }
+  ```
+  After the guarded block, RAII releases the mutex. Do not replace this with manual `xSemaphoreTake` / `xSemaphoreGive` pairs unless the task explicitly requires it.
 - When changing message routes or module interactions, update [doc/message-bus.md](/Volumes/ext/source/OpenAce/doc/message-bus.md) if the documented flow changed.
 
 ## Build Commands

@@ -8,7 +8,8 @@
 
 /* ETLCPP */
 #include "etl/message_bus.h"
-#include "etl/list.h"
+#include "etl/algorithm.h"
+#include "etl/array.h"
 #include "etl/string.h"
 #include "etl/span.h"
 
@@ -31,12 +32,14 @@
  * two characteristics. Binary payloads are carried through GatasConnectTx /
  * GatasConnectRx while NMEA continues to use DataPortMsg.
  */
-class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg, GATAS::OwnshipPositionMsg, GATAS::GatasConnectTx>
+class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg, GATAS::GatasConnectTx>
 {
     static constexpr uint8_t ATT_READYSTATE = 0b011;
     static constexpr uint8_t CONN_READY = 0b001;
     static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 2048; // TODO: Tune buffer, should be > MTU which is 255 bytes for BLE witj etxnded data length
     static constexpr uint8_t MINIMUM_BLE_PACKET_SIZE = 180;   // Minimum size of a BLE packet, to better use the BLE bandwith
+    static constexpr uint32_t IDLE_HEARTBEAT_MS = 200;
+    static constexpr uint32_t PENDING_HEARTBEAT_MS = 200;
 
     inline static Bluetooth *instance;
 
@@ -58,45 +61,74 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
 
     struct BtContext
     {
-        union
-        {
-            hci_con_handle_t hciHandle;
-        };
-        uint8_t nmeaReadyState;
-        uint8_t binaryReadyState;
-        uint16_t mtu;
-        uint16_t nmeaAttrHandle;
-        uint16_t binaryAttrHandle;
-        uint16_t nmeaWriteBufferErr;
-        uint16_t cobsWriteBufferErr;
-        uint8_t guardCounter;
-        btstack_context_callback_registration_t callBack;
+        bool inUse = false;
+        hci_con_handle_t hciHandle = 0;
+        uint8_t nmeaReadyState = 0;
+        uint8_t binaryReadyState = 0;
+        uint16_t mtu = 0;
+        uint16_t nmeaAttrHandle = 0;
+        uint16_t binaryAttrHandle = 0;
+        uint16_t nmeaWriteBufferErr = 0;
+        uint16_t cobsWriteBufferErr = 0;
+        uint8_t guardCounter = 0;
+        btstack_context_callback_registration_t attCallback;
 
         // Per-connection NMEA stream splitter; keeps partial sentences across BLE writes.
         etl::vector<uint8_t, GATAS::NMEA_MAX_LENGTH> nmeaGulpBuffer;
-        Gulp nmeaGulp;
+        Gulp nmeaGulp{nmeaGulpBuffer, DelimiterBitmap::CRLF()};
         TxBuffer nmeaWriteBuffer;
 
         // Per-connection COBS stream splitter; keeps partial binary frames across BLE writes.
         etl::vector<uint8_t, BinaryMessages::MAX_COBS_FRAME_SIZE> binaryGulpBuffer;
-        Gulp binaryGulp;
+        Gulp binaryGulp{binaryGulpBuffer, DelimiterBitmap::Null()};
         CobsTxBuffer cobsWriteBuffer;
 
-        BtContext(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_, void (*callBack_)(void *context))
-            : hciHandle(hciHandle_),
-              nmeaReadyState(readyState_),
-              binaryReadyState(readyState_),
-              mtu(mtu_),
-              nmeaAttrHandle(0),
-              binaryAttrHandle(0),
-              nmeaWriteBufferErr(0),
-              cobsWriteBufferErr(0),
-              guardCounter(0),
-              nmeaGulp{nmeaGulpBuffer, DelimiterBitmap::CRLF()},
-              binaryGulp{binaryGulpBuffer, DelimiterBitmap::Null()}
+        BtContext()
         {
-            callBack.context = this;
-            callBack.callback = callBack_;
+        }
+
+        void configureCallbacks(void (*attCallback_)(void *context))
+        {
+            attCallback.context = this;
+            attCallback.callback = attCallback_;
+        }
+
+        void activate(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_)
+        {
+            inUse = true;
+            hciHandle = hciHandle_;
+            nmeaReadyState = readyState_;
+            binaryReadyState = readyState_;
+            mtu = mtu_;
+            nmeaAttrHandle = 0;
+            binaryAttrHandle = 0;
+            nmeaWriteBufferErr = 0;
+            cobsWriteBufferErr = 0;
+            guardCounter = 0;
+            nmeaGulpBuffer.clear();
+            nmeaGulp.setRef({});
+            nmeaWriteBuffer.clear();
+            binaryGulpBuffer.clear();
+            binaryGulp.setRef({});
+            cobsWriteBuffer.clear();
+        }
+
+        void deactivate()
+        {
+            inUse = false;
+            hciHandle = 0;
+            nmeaReadyState = 0;
+            binaryReadyState = 0;
+            mtu = 0;
+            nmeaAttrHandle = 0;
+            binaryAttrHandle = 0;
+            guardCounter = 0;
+            nmeaGulpBuffer.clear();
+            nmeaGulp.setRef({});
+            nmeaWriteBuffer.clear();
+            binaryGulpBuffer.clear();
+            binaryGulp.setRef({});
+            cobsWriteBuffer.clear();
         }
 
         void getData(etl::string_stream &stream, const etl::string_view path) const
@@ -126,9 +158,8 @@ private:
     virtual void start() override;
 
     void on_receive(const GATAS::DataPortMsg &msg);
-    void on_receive_unknown(const etl::imessage &msg);
-    void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::GatasConnectTx &msg);
+    void on_receive_unknown(const etl::imessage &msg);
 
     void createAdvData();
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
@@ -136,6 +167,7 @@ private:
     // START: methods within this block as running within the BLE task
     static void smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void attContextCallback(void *context);
+    static void runLoopKickCallback(void *context);
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void hciPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
@@ -145,11 +177,19 @@ private:
     // Remove any old connections
     static void removeConnection(uint16_t handle);
     // END: methods within this block as running within the BLE task
-    static void heartbeat_handler(struct btstack_timer_source *ts);
 
     // Lists of bluetooth contexts
-    using BluetoothConnections = etl::list<BtContext, GATAS_MAX_BLUETOOTH_CONNECTIONS>;
+    using BluetoothConnections = etl::array<BtContext, GATAS_MAX_BLUETOOTH_CONNECTIONS>;
     BluetoothConnections connections;
+
+    static bool hasFreeConnectionSlot()
+    {
+        return etl::any_of(instance->connections.begin(), instance->connections.end(),
+                           [](const BtContext &ctx)
+                           {
+                               return !ctx.inUse;
+                           });
+    }
 
     /**
      * Get the connections context by Bluetooth handle
@@ -160,9 +200,18 @@ private:
         return etl::find_if(instance->connections.begin(), instance->connections.end(),
             [hciHandle](const BtContext &ctx)
             {
-                return ctx.hciHandle == hciHandle;
+                return ctx.inUse && ctx.hciHandle == hciHandle;
             });
         // clang-format on
+    }
+
+    static BluetoothConnections::iterator freeCtx()
+    {
+        return etl::find_if(instance->connections.begin(), instance->connections.end(),
+                            [](const BtContext &ctx)
+                            {
+                                return !ctx.inUse;
+                            });
     }
 
     /**
@@ -181,16 +230,20 @@ private:
 
     btstack_packet_callback_registration_t hciEventCallback;
     btstack_packet_callback_registration_t smEventCallback;
+    btstack_context_callback_registration_t runLoopKickRegistration;
     btstack_timer_source_t heartbeat;
     uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
     GATAS::OwnshipMinimalPositionInfo ownshipPosition;
     GATAS::SsidOrPasswdStr localName;
 
     SemaphoreHandle_t mutex;
+    bool runLoopKickPending = false;
 
-    static bool sendBuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState);
+    static bool sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState);
     static bool sendCobsBuffer(BtContext &ctx);
     static bool hasPendingData(const BtContext &ctx);
+    void scheduleSendOnBtThread();
+    static void requestSendIfPending(BtContext &ctx);
     void createScanResponseData();
 
 public:
@@ -198,6 +251,12 @@ public:
     Bluetooth(etl::imessage_bus &bus, Configuration &config) : BaseModule(bus, NAME), mutex(nullptr)
     {
         instance = this;
+        for (auto &ctx : connections)
+        {
+            ctx.configureCallbacks(&Bluetooth::attContextCallback);
+        }
+        runLoopKickRegistration.context = this;
+        runLoopKickRegistration.callback = &Bluetooth::runLoopKickCallback;
         localName = config.strValueByPath("GaTas", NAME, "localName");
         createAdvData();
         createScanResponseData();
