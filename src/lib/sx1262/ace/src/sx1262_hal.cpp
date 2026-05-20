@@ -4,6 +4,7 @@
 
 /* FreeRTOS. */
 #include "FreeRTOS.h"
+#include "task.h"
 
 /* PICO. */
 #include "hardware/spi.h"
@@ -21,22 +22,39 @@
  */
 uint8_t sx126x_buzy_wait(uint8_t busyPin)
 {
-    constexpr uint8_t checkInterval = 100; // loop cycles per check
     constexpr uint32_t timeoutUs = 250'000;
+    constexpr uint32_t activeSpinUs = 30;
 
-    uint8_t countdown = checkInterval;
-    auto timeoutTime = CoreUtils::timeUs32Raw() + timeoutUs;
+    const uint32_t start = CoreUtils::timeUs32Raw();
+
     while (gpio_get(busyPin))
     {
-        if (--countdown == 0)
+        const uint32_t now = CoreUtils::timeUs32Raw();
+
+        if (CoreUtils::isUsReachedRaw(start + timeoutUs, now))
         {
-            countdown = checkInterval;
-            if (CoreUtils::isUsReachedRaw(timeoutTime))
-            {
-                return 1;
-            }
+            return 1;
+        }
+
+        if (!CoreUtils::isUsReachedRaw(start + activeSpinUs, now))
+        {
+            __asm volatile("nop");
+            continue;
+        }
+
+        if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
+        {
+            taskYIELD();
+
+            // Or use vTaskDelay(1) if long BUSY periods are expected.
+            // vTaskDelay(1);
+        }
+        else
+        {
+            __asm volatile("nop");
         }
     }
+
     return 0;
 }
 

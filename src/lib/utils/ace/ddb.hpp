@@ -3,6 +3,7 @@
 #include "ddb_db.hpp"
 #include <etl/algorithm.h>
 #include "ace/coreutils.hpp"
+#include "ace/measure.hpp"
 
 /**
  * Device Database to lookup CallSign from a HEX code.
