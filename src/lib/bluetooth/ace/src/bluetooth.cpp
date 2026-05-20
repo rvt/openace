@@ -59,6 +59,10 @@ void Bluetooth::start()
     smEventCallback.callback = &smPacketHandler;
     sm_add_event_handler(&smEventCallback);
 
+    instance->heartbeat.process = &heartbeat_handler;
+    btstack_run_loop_set_timer(&instance->heartbeat, IDLE_HEARTBEAT_MS);
+    btstack_run_loop_add_timer(&instance->heartbeat);
+
     // Configuration
 
     // Enable mandatory authentication for GATT Client
@@ -87,28 +91,25 @@ void Bluetooth::start()
 
 void Bluetooth::getData(etl::string_stream &stream, const etl::string_view path) const
 {
-    if (auto guard = SemaphoreGuard(1000, mutex))
+    stream << "{";
+    stream << "\"nmeaPortMsgMissed:err\":" << statistics.nmeaPortMsgMissedErr;
+    stream << ",\"cobsMsgMissed:err\":" << statistics.cobsMsgMissedErr;
+    stream << ",\"connections\":[";
+    bool first = true;
+    for (auto &it : connections)
     {
-        stream << "{";
-        stream << "\"nmeaPortMsgMissed:err\":" << statistics.nmeaPortMsgMissedErr;
-        stream << ",\"cobsMsgMissed:err\":" << statistics.cobsMsgMissedErr;
-        stream << ",\"connections\":[";
-        bool first = true;
-        for (auto &it : connections)
+        if (!it.inUse)
         {
-            if (!it.inUse)
-            {
-                continue;
-            }
-            if (!first)
-            {
-                stream << ",";
-            }
-            it.getData(stream, path);
-            first = false;
+            continue;
         }
-        stream << "]}\n";
+        if (!first)
+        {
+            stream << ",";
+        }
+        it.getData(stream, path);
+        first = false;
     }
+    stream << "]}\n";
 }
 
 void Bluetooth::createAdvData()
@@ -165,7 +166,6 @@ void Bluetooth::createScanResponseData()
  */
 void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 {
-    bool shouldScheduleBtKick = false;
     if (auto guard = SemaphoreGuard(1000, mutex))
     {
         for (auto &ctx : connections)
@@ -179,22 +179,12 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
                 ctx.nmeaWriteBufferErr += 1;
                 continue;
             }
-
-            if (!runLoopKickPending)
-            {
-                runLoopKickPending = true;
-                shouldScheduleBtKick = true;
-            }
+            ctx.txDirty = true;
         }
     }
     else
     {
         statistics.nmeaPortMsgMissedErr += 1;
-    }
-
-    if (shouldScheduleBtKick)
-    {
-        scheduleSendOnBtThread();
     }
 }
 
@@ -205,7 +195,6 @@ void Bluetooth::on_receive(const GATAS::GatasConnectTx &msg)
         return;
     }
 
-    bool shouldScheduleBtKick = false;
     if (auto guard = SemaphoreGuard(1000, mutex))
     {
         etl::span<const uint8_t> payload(msg.cobsMessage.get(), msg.length);
@@ -220,22 +209,12 @@ void Bluetooth::on_receive(const GATAS::GatasConnectTx &msg)
                 ctx.cobsWriteBufferErr += 1;
                 continue;
             }
-
-            if (!runLoopKickPending)
-            {
-                runLoopKickPending = true;
-                shouldScheduleBtKick = true;
-            }
+            ctx.txDirty = true;
         }
     }
     else
     {
         statistics.cobsMsgMissedErr += 1;
-    }
-
-    if (shouldScheduleBtKick)
-    {
-        scheduleSendOnBtThread();
     }
 }
 void Bluetooth::on_receive_unknown(const etl::imessage &msg)
@@ -245,27 +224,21 @@ void Bluetooth::on_receive_unknown(const etl::imessage &msg)
 
 bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
 {
-    if (auto guard = SemaphoreGuard(1000, instance->mutex))
+    auto it = instance->freeCtx();
+    if (it != instance->connections.end())
     {
-        auto it = instance->freeCtx();
-        if (it != instance->connections.end())
-        {
-            it->activate(handle, mtu, readyState);
-            return true;
-        }
+        it->activate(handle, mtu, readyState);
+        return true;
     }
     return false;
 }
 
 void Bluetooth::removeConnection(uint16_t hciHandle)
 {
-    if (auto guard = SemaphoreGuard(1000, instance->mutex))
+    auto it = instance->ctxByHandle(hciHandle);
+    if (it != instance->connections.end())
     {
-        auto it = instance->ctxByHandle(hciHandle);
-        if (it != instance->connections.end())
-        {
-            it->deactivate();
-        }
+        it->deactivate();
     }
 }
 
@@ -283,7 +256,6 @@ bool Bluetooth::sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHa
     }
     else
     {
-        instance->scheduleSendOnBtThread();
         return false;
     }
 
@@ -323,7 +295,6 @@ bool Bluetooth::sendCobsBuffer(BtContext &ctx)
     }
     else
     {
-        instance->scheduleSendOnBtThread();
         return false;
     }
 
@@ -352,16 +323,19 @@ bool Bluetooth::sendCobsBuffer(BtContext &ctx)
 
 bool Bluetooth::hasPendingData(const BtContext &ctx)
 {
-    if ((ctx.binaryReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.binaryAttrHandle != 0 && ctx.cobsWriteBuffer.length() > 0)
+    if (auto guard = SemaphoreGuard(1000, instance->mutex))
     {
-        return true;
-    }
 
-    if ((ctx.nmeaReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.nmeaAttrHandle != 0 && ctx.nmeaWriteBuffer.used() > 0)
-    {
-        return true;
-    }
+        if ((ctx.binaryReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.binaryAttrHandle != 0 && ctx.cobsWriteBuffer.length() > 0)
+        {
+            return true;
+        }
 
+        if ((ctx.nmeaReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.nmeaAttrHandle != 0 && ctx.nmeaWriteBuffer.used() > 0)
+        {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -372,27 +346,11 @@ void Bluetooth::requestSendIfPending(BtContext &ctx)
         return;
     }
 
-    bool pendingData = false;
-    if (auto guard = SemaphoreGuard(1000, instance->mutex))
-    {
-        pendingData = hasPendingData(ctx);
-    }
-    else
-    {
-        instance->scheduleSendOnBtThread();
-        return;
-    }
-
-    if (pendingData)
+    if (hasPendingData(ctx))
     {
         // Call BTstack outside the mutex: it may invoke the callback immediately.
         att_server_request_to_send_notification(&ctx.attCallback, ctx.hciHandle);
     }
-}
-
-void Bluetooth::scheduleSendOnBtThread()
-{
-    btstack_run_loop_execute_on_main_thread(&runLoopKickRegistration);
 }
 
 void Bluetooth::attContextCallback(void *context)
@@ -423,35 +381,28 @@ void Bluetooth::attContextCallback(void *context)
     requestSendIfPending(*btContext);
 }
 
-void Bluetooth::runLoopKickCallback(void *context)
+void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
 {
-    auto bluetooth = static_cast<Bluetooth *>(context);
-    etl::vector<BtContext *, GATAS_MAX_BLUETOOTH_CONNECTIONS> contextsToProcess;
-    if (auto guard = SemaphoreGuard(1000, bluetooth->mutex))
+    (void)ts;
+
+    uint32_t delay = IDLE_HEARTBEAT_MS;
+    for (auto &ctx : instance->connections)
     {
-        bluetooth->runLoopKickPending = false;
-        for (auto &ctx : bluetooth->connections)
+        if (!ctx.inUse)
         {
-            if (!ctx.inUse)
-            {
-                continue;
-            }
-            if (hasPendingData(ctx))
-            {
-                contextsToProcess.push_back(&ctx);
-            }
+            continue;
+        }
+
+        delay = ACTIVE_HEARTBEAT_MS;
+        if (ctx.txDirty)
+        {
+            ctx.txDirty = false;
+            requestSendIfPending(ctx);
         }
     }
-    else
-    {
-        bluetooth->scheduleSendOnBtThread();
-        return;
-    }
 
-    for (auto *ctx : contextsToProcess)
-    {
-        requestSendIfPending(*ctx);
-    }
+    btstack_run_loop_set_timer(&instance->heartbeat, delay);
+    btstack_run_loop_add_timer(&instance->heartbeat);
 }
 
 void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)

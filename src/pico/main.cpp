@@ -581,8 +581,7 @@ void vLaunch(void)
 
     // Dump some CPU diagnostics to terminal of all running tasks
 #if configGENERATE_RUN_TIME_STATS == 1 && configSHOW_RUN_TIME_STATS == 1
-    // TODO: I think this can be reduced from 1024 to 64
-    xTaskCreate(vDiagnosticsTask, "DiagTask", configMINIMAL_STACK_SIZE + 1024, nullptr, tskIDLE_PRIORITY, nullptr);
+    xTaskCreate(vDiagnosticsTask, "DiagTask", configMINIMAL_STACK_SIZE + 64, nullptr, tskIDLE_PRIORITY, nullptr);
 #endif
 
 #if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1

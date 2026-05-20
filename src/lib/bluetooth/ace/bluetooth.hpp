@@ -38,8 +38,8 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
     static constexpr uint8_t CONN_READY = 0b001;
     static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 2048; // TODO: Tune buffer, should be > MTU which is 255 bytes for BLE witj etxnded data length
     static constexpr uint8_t MINIMUM_BLE_PACKET_SIZE = 180;   // Minimum size of a BLE packet, to better use the BLE bandwith
-    static constexpr uint32_t IDLE_HEARTBEAT_MS = 200;
-    static constexpr uint32_t PENDING_HEARTBEAT_MS = 200;
+    static constexpr uint32_t IDLE_HEARTBEAT_MS = 2000;
+    static constexpr uint32_t ACTIVE_HEARTBEAT_MS = 100;
 
     inline static Bluetooth *instance;
 
@@ -62,6 +62,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
     struct BtContext
     {
         bool inUse = false;
+        bool txDirty = false;
         hci_con_handle_t hciHandle = 0;
         uint8_t nmeaReadyState = 0;
         uint8_t binaryReadyState = 0;
@@ -96,6 +97,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         void activate(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_)
         {
             inUse = true;
+            txDirty = false;
             hciHandle = hciHandle_;
             nmeaReadyState = readyState_;
             binaryReadyState = readyState_;
@@ -116,6 +118,7 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         void deactivate()
         {
             inUse = false;
+            txDirty = false;
             hciHandle = 0;
             nmeaReadyState = 0;
             binaryReadyState = 0;
@@ -167,7 +170,6 @@ private:
     // START: methods within this block as running within the BLE task
     static void smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void attContextCallback(void *context);
-    static void runLoopKickCallback(void *context);
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void hciPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
@@ -176,6 +178,7 @@ private:
     static bool createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState);
     // Remove any old connections
     static void removeConnection(uint16_t handle);
+    static void heartbeat_handler(struct btstack_timer_source *ts);
     // END: methods within this block as running within the BLE task
 
     // Lists of bluetooth contexts
@@ -230,19 +233,16 @@ private:
 
     btstack_packet_callback_registration_t hciEventCallback;
     btstack_packet_callback_registration_t smEventCallback;
-    btstack_context_callback_registration_t runLoopKickRegistration;
     btstack_timer_source_t heartbeat;
     uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
     GATAS::OwnshipMinimalPositionInfo ownshipPosition;
     GATAS::SsidOrPasswdStr localName;
 
     SemaphoreHandle_t mutex;
-    bool runLoopKickPending = false;
 
     static bool sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState);
     static bool sendCobsBuffer(BtContext &ctx);
     static bool hasPendingData(const BtContext &ctx);
-    void scheduleSendOnBtThread();
     static void requestSendIfPending(BtContext &ctx);
     void createScanResponseData();
 
@@ -255,8 +255,6 @@ public:
         {
             ctx.configureCallbacks(&Bluetooth::attContextCallback);
         }
-        runLoopKickRegistration.context = this;
-        runLoopKickRegistration.callback = &Bluetooth::runLoopKickCallback;
         localName = config.strValueByPath("GaTas", NAME, "localName");
         createAdvData();
         createScanResponseData();

@@ -75,7 +75,6 @@ private:
 
     enum TaskState : uint32_t
     {
-        TIMER = 1 << 1,
         NEW = 1 << 2,
         MAINTAIN = 1 << 3,
         CLOSEST_10 = 1 << 4
