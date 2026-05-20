@@ -2,7 +2,6 @@
 
 #include "ace/coreutils.hpp"
 #include "ace/constants.hpp"
-#include "ace/measure.hpp"
 #include "ace/models.hpp"
 #include "ace/ddb.hpp"
 
@@ -196,6 +195,32 @@ public:
             return false;
         }
 
+        auto time = CoreUtils::timeUs32Raw();
+        auto it = trackedAircraft.find(position.address);
+        if (it != trackedAircraft.end())
+        {
+            it->second.sendTime = time;
+
+            if (ddbLookupsEnabled)
+            {
+                assignCallsignFromDDB(position);
+            }
+
+            // Prefer MLAT over ADSB for RADIO_PRIORITY_TIMEOUT_US to avoid jumps.
+            // We assume ADSB/MLAT data is less acurate due to delays in the chain
+            // TODO: We should revise this once all timings are validated (they are within a second, bit in finer detail)
+            const bool trackedIsRadio = it->second.position.dataSource != GATAS::DataSource::ADSB;
+            const bool incomingIsMlat = position.dataSource == GATAS::DataSource::ADSB;
+            const bool radioStillFresh = !CoreUtils::isUsReachedRaw(it->second.position.timestamp + RADIO_PRIORITY_TIMEOUT_US, time);
+            if (trackedIsRadio && incomingIsMlat && radioStillFresh)
+            {
+                return false;
+            }
+
+            it->second.position = position;
+            return true;
+        }
+
         if (trackedAircraft.full())
         {
             if (!removeExpired())
@@ -216,30 +241,7 @@ public:
             assignCallsignFromDDB(position);
         }
 
-        auto time = CoreUtils::timeUs32Raw();
-        auto it = trackedAircraft.find(position.address);
-        if (it != trackedAircraft.end())
-        {
-            it->second.sendTime = time;
-
-            // Prefer MLAT over ADSB for RADIO_PRIORITY_TIMEOUT_US to avoid jumps.
-            // We assume ADSB/MLAT data is less acurate due to delays in the chain
-            // TODO: We should revise this once all timings are validated (they are within a second, bit in finer detail)
-            const bool trackedIsRadio = it->second.position.dataSource != GATAS::DataSource::ADSB;
-            const bool incomingIsMlat = position.dataSource == GATAS::DataSource::ADSB;
-            const bool radioStillFresh = !CoreUtils::isUsReachedRaw(it->second.position.timestamp + RADIO_PRIORITY_TIMEOUT_US, time);
-            if (trackedIsRadio && incomingIsMlat && radioStillFresh)
-            {
-                return false;
-            }
-
-            it->second.position = position;
-        }
-        else
-        {
-            trackedAircraft.insert({position.address, TrackerEntry(time, position)});
-        }
-
+        trackedAircraft.insert({position.address, TrackerEntry(time, position)});
         return true;
     }
 

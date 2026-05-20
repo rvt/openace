@@ -62,16 +62,20 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
     struct BtContext
     {
         bool inUse = false;
+        // Best-effort "work pending" hint for streaming TX.
+        // This is intentionally lossy (not a strict synchronization flag):
+        // missing a set/read can delay one cycle, but heartbeat re-checks and
+        // new stream data keeps retriggering sends.
         bool txDirty = false;
-        hci_con_handle_t hciHandle = 0;
         uint8_t nmeaReadyState = 0;
         uint8_t binaryReadyState = 0;
+        uint8_t guardCounter = 0;
+        hci_con_handle_t hciHandle = 0;
         uint16_t mtu = 0;
         uint16_t nmeaAttrHandle = 0;
         uint16_t binaryAttrHandle = 0;
-        uint16_t nmeaWriteBufferErr = 0;
-        uint16_t cobsWriteBufferErr = 0;
-        uint8_t guardCounter = 0;
+        uint32_t nmeaWriteBufferErr = 0;
+        uint32_t cobsWriteBufferErr = 0;
         btstack_context_callback_registration_t attCallback;
 
         // Per-connection NMEA stream splitter; keeps partial sentences across BLE writes.
@@ -238,7 +242,7 @@ private:
     GATAS::OwnshipMinimalPositionInfo ownshipPosition;
     GATAS::SsidOrPasswdStr localName;
 
-    SemaphoreHandle_t mutex;
+    SemaphoreHandle_t bufferMutex;
 
     static bool sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState);
     static bool sendCobsBuffer(BtContext &ctx);
@@ -248,7 +252,7 @@ private:
 
 public:
     static constexpr const char *NAME = "Bluetooth";
-    Bluetooth(etl::imessage_bus &bus, Configuration &config) : BaseModule(bus, NAME), mutex(nullptr)
+    Bluetooth(etl::imessage_bus &bus, Configuration &config) : BaseModule(bus, NAME), bufferMutex(nullptr)
     {
         instance = this;
         for (auto &ctx : connections)

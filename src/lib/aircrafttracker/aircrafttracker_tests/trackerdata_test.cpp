@@ -256,6 +256,30 @@ TEST_CASE("Should update data", "[single-file]")
     REQUIRE(testHandler.callBacks == 1);
 }
 
+TEST_CASE("Updating an existing aircraft must not trigger full-buffer cleanup", "[single-file]")
+{
+    TrackerData<4, 2> trackedAircraft;
+
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        GATAS::AircraftPositionInfo aircraftPosition;
+        aircraftPosition.address = i;
+        aircraftPosition.distanceFromOwn = 1000 + 1000 * i;
+        REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
+    }
+
+    REQUIRE(trackedAircraft.size() == 4);
+    REQUIRE(trackedAircraft.radius() == 75000);
+
+    GATAS::AircraftPositionInfo update;
+    update.address = 0;
+    update.distanceFromOwn = 1500;
+    REQUIRE(trackedAircraft.insert(update) == true);
+
+    REQUIRE(trackedAircraft.size() == 4);
+    REQUIRE(trackedAircraft.radius() == 75000);
+}
+
 TEST_CASE("Radio priority: RADIO 4000000us old, ADSB incoming - should NOT update", "[single-file]")
 {
     TrackerData<100, 4> trackedAircraft;

@@ -20,12 +20,12 @@
 
 GATAS::PostConstruct Bluetooth::postConstruct()
 {
-    mutex = xSemaphoreCreateMutex();
-    if (mutex == nullptr)
+    bufferMutex = xSemaphoreCreateMutex();
+    if (bufferMutex == nullptr)
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
-    GATAS_REGISTER_MUTEX(instance->mutex, "Bluetooth_mutex");
+    GATAS_REGISTER_MUTEX(instance->bufferMutex, "Bluetooth_bufferMutex");
 
     return GATAS::PostConstruct::OK;
 }
@@ -166,7 +166,7 @@ void Bluetooth::createScanResponseData()
  */
 void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 {
-    if (auto guard = SemaphoreGuard(1000, mutex))
+    if (auto guard = SemaphoreGuard(1000, bufferMutex))
     {
         for (auto &ctx : connections)
         {
@@ -195,7 +195,7 @@ void Bluetooth::on_receive(const GATAS::GatasConnectTx &msg)
         return;
     }
 
-    if (auto guard = SemaphoreGuard(1000, mutex))
+    if (auto guard = SemaphoreGuard(1000, bufferMutex))
     {
         etl::span<const uint8_t> payload(msg.cobsMessage.get(), msg.length);
         for (auto &ctx : connections)
@@ -250,7 +250,7 @@ bool Bluetooth::sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHa
     }
 
     etl::span<uint8_t> data;
-    if (auto guard = SemaphoreGuard(1000, instance->mutex))
+    if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
     {
         buffer.read(data, ctx.mtu);
     }
@@ -267,7 +267,7 @@ bool Bluetooth::sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHa
     const uint8_t sendStatus = att_server_notify(ctx.hciHandle, attrHandle, data.data(), data.size());
 
     size_t used = 0;
-    if (auto guard = SemaphoreGuard(1000, instance->mutex))
+    if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
     {
         buffer.compact();
         used = buffer.used();
@@ -289,7 +289,7 @@ bool Bluetooth::sendCobsBuffer(BtContext &ctx)
     }
 
     CircularBuffer<CONNECTIONS_BUFFER_SIZE>::PeekResult peek{};
-    if (auto guard = SemaphoreGuard(1000, instance->mutex))
+    if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
     {
         peek = ctx.cobsWriteBuffer.peek();
     }
@@ -311,7 +311,7 @@ bool Bluetooth::sendCobsBuffer(BtContext &ctx)
 
     if (sendStatus == ERROR_CODE_SUCCESS)
     {
-        if (auto guard = SemaphoreGuard(1000, instance->mutex))
+        if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
         {
             ctx.cobsWriteBuffer.accepted(sendSize);
         }
@@ -323,15 +323,16 @@ bool Bluetooth::sendCobsBuffer(BtContext &ctx)
 
 bool Bluetooth::hasPendingData(const BtContext &ctx)
 {
-    if (auto guard = SemaphoreGuard(1000, instance->mutex))
-    {
+    const size_t minimumSendSize = etl::min(static_cast<size_t>(MINIMUM_BLE_PACKET_SIZE), static_cast<size_t>(ctx.mtu));
 
-        if ((ctx.binaryReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.binaryAttrHandle != 0 && ctx.cobsWriteBuffer.length() > 0)
+    if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
+    {
+        if ((ctx.binaryReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.binaryAttrHandle != 0 && ctx.cobsWriteBuffer.length() >= minimumSendSize)
         {
             return true;
         }
 
-        if ((ctx.nmeaReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.nmeaAttrHandle != 0 && ctx.nmeaWriteBuffer.used() > 0)
+        if ((ctx.nmeaReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.nmeaAttrHandle != 0 && ctx.nmeaWriteBuffer.used() >= minimumSendSize)
         {
             return true;
         }
@@ -348,7 +349,7 @@ void Bluetooth::requestSendIfPending(BtContext &ctx)
 
     if (hasPendingData(ctx))
     {
-        // Call BTstack outside the mutex: it may invoke the callback immediately.
+        // Call BTstack outside the buffer mutex: it may invoke the callback immediately.
         att_server_request_to_send_notification(&ctx.attCallback, ctx.hciHandle);
     }
 }
@@ -394,6 +395,8 @@ void Bluetooth::heartbeat_handler(struct btstack_timer_source *ts)
         }
 
         delay = ACTIVE_HEARTBEAT_MS;
+        // txDirty is a best-effort trigger for streaming data.
+        // If one edge is missed, next heartbeat/new data will pick it up.
         if (ctx.txDirty)
         {
             ctx.txDirty = false;
