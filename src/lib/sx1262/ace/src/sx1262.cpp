@@ -17,7 +17,6 @@
 
 void Sx1262::start()
 {
-    sx126x_reset(this);
     getBus().subscribe(*this);
 };
 
@@ -163,6 +162,8 @@ void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)
 
 void Sx1262::radioInit()
 {
+    sx126x_reset(this);
+
     // .365
     waitBusy(50);
 
@@ -170,7 +171,9 @@ void Sx1262::radioInit()
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
 
     // Must be called before any calibration
-    sx126x_set_dio3_as_tcxo_ctrl(this, SX126X_TCXO_CTRL_1_6V, 5000.f / 15.625);
+    auto rtcSteps = sx126x_convert_timeout_in_ms_to_rtc_step(5);
+    sx126x_set_dio3_as_tcxo_ctrl(this, SX126X_TCXO_CTRL_1_6V, rtcSteps);
+
     sx126x_set_dio2_as_rf_sw_ctrl(this, true);
 
     // Start Calibration
@@ -190,16 +193,17 @@ void Sx1262::radioInit()
     standBy(SX126X_STANDBY_CFG_RC);
 
     // 15.2.2 Better Resistance of the SX1262 Tx to Antenna Mismatch
-    uint8_t clamp;
-    sx126x_read_register(this, 0x08D8, &clamp, 1);
-    clamp |= 0x1E;
-    sx126x_write_register(this, 0x08D8, &clamp, 1);
+    // uint8_t clamp;
+    // sx126x_read_register(this, 0x08D8, &clamp, 1);
+    // clamp |= 0x1E;
+    // sx126x_write_register(this, 0x08D8, &clamp, 1);
+    sx126x_cfg_tx_clamp(this);
 
     // TX Base at 0x00  RX Base at 0x80
     sx126x_set_buffer_base_address(this, 0x00, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE);
 
     sx126x_set_rx_tx_fallback_mode(this, SX126X_FALLBACK_STDBY_XOSC);
-    sx126x_set_cad_params(this, &DEFAULT_CAD_PARAMS);
+    // sx126x_set_cad_params(this, &DEFAULT_CAD_PARAMS);
 
     sx126x_set_pa_cfg(this, &DEFAULT_HIGH_POWER_PA_CFG);
     sx126x_set_ocp_value(this, (uint8_t)(120.0 / 2.5));
@@ -546,7 +550,8 @@ uint8_t Sx1262::receivedPacketLength() const
 
 void Sx1262::waitBusy(uint16_t minimumDelay) const
 {
-    constexpr uint8_t checkInterval = 100; // loop cycles per check
+    GATAS_ASSERT(minimumDelay > 0, "Must be > 0");
+    constexpr uint16_t checkInterval = 100; // loop cycles per check
 
     uint8_t countdown = checkInterval;
     while (gpio_get(busyPin))
