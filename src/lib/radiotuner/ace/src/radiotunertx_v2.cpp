@@ -53,8 +53,8 @@ void RadioTunerTx::getData(etl::string_stream &stream, const etl::string_view pa
         uint16_t maxT = ds.slot->txMaxTime;
 #else
 
-        uint16_t minT = isAirborne ? ds.slot->txMinTime : ds.slot->txStaticMinTime;
-        uint16_t maxT = isAirborne ? ds.slot->txMaxTime : ds.slot->txStaticMaxTime;
+        uint16_t minT = isAirborne ? ds.slot->txMinTime : ds.slot->reducedTxMinTime;
+        uint16_t maxT = isAirborne ? ds.slot->txMaxTime : ds.slot->reducedTxMaxTime;
 #endif
         stream << "{\"ds\":\"" << dsName << "\",\"min\":" << minT << ",\"max\":" << maxT << ",\"slots\":[";
         bool firstSlot = true;
@@ -148,7 +148,7 @@ void RadioTunerTx::radioTuneTask()
                 }
             }
 
-            // Decide the protcol that should be send next
+            // Decide the protocol that should be send next
             auto currentTimeUs = CoreUtils::timeUs32();
             int32_t nextUpIn = 2'000'000;
             for (auto &&ds : dataSourceTxEvents)

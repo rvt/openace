@@ -123,7 +123,7 @@ uint8_t Ogn1::addressTypeToOgn(GATAS::AddressType addressType) const
     return lookupTable[index];
 }
 
-int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
+int8_t Ogn1::parseFrame(OGN1_Packet &packet, uint32_t frequency, int16_t rssiDbm)
 {
     uint32_t timeUs32 = CoreUtils::timeUs32();
     if (packet.Header.NonPos)
@@ -149,6 +149,9 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, int16_t rssiDbm)
         // printf("Distance %2.f > GATAS_FLARM_IGNORE_DISTANCE_ERRORS, ignoring (%.4f, %.4f, %.4f, %.4f)\n",   distance, fLatitude, fLongitude, lastGpsPosition.latitude, lastGpsPosition.longitude);
         return -1;
     }
+
+    // Only add to polar plot for valid packages within distance
+    datasourceTimeStats.addReceiveStat(frequency, CoreUtils::msInSecond());
 
     statistics.receivedAircraftPositions += 1;
     int16_t speed0d1ms = packet.DecodeSpeed();
@@ -281,7 +284,6 @@ void Ogn1::on_receive(const GATAS::RadioRxManchesterMsg &msg)
 {
     if (msg.dataSource == GATAS::DataSource::OGN1)
     {
-        datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
         OGN1_Packet packet;
 
         // Validate packet, and correct if possible
@@ -306,7 +308,7 @@ void Ogn1::on_receive(const GATAS::RadioRxManchesterMsg &msg)
             return;
         }
 
-        parseFrame(packet, msg.rssidBm);
+        parseFrame(packet, msg.frequency, msg.rssidBm);
     }
 }
 

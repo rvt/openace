@@ -106,7 +106,9 @@ void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t ev
             }
             else
             {
-                xTaskNotifyFromISR(iHandler.handler, iHandler.notificationValue, eSetBits, nullptr /* &xHigherPriorityTaskWoken*/);
+                BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+                xTaskNotifyFromISR(iHandler.handler, iHandler.notificationValue, eSetBits, &xHigherPriorityTaskWoken);
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
             }
         }
     }

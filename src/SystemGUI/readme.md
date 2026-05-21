@@ -21,6 +21,12 @@ All files in the `SystemGUI/dist` directory are automatically packaged into `src
 5. To start development, run `npm start`. Changes made to the code will be instantly reflected on the UI.
 6. Once development is complete, run `npm run build` to generate a distribution in the `dist` directory. Rebuilding GATAS with `cmake` will include the necessary UI files.
 
+# Unit Tests
+
+1. Frontend unit tests live in `test/`.
+2. Run tests with `npm test` from `src/SystemGUI`.
+3. Add new tests using the `*.test.mjs` naming pattern.
+
 # Files
 
 - `.proxyrc.js` proxy setting to direct API calls to GATAS for hot re-loading en testing of the UI

@@ -787,6 +787,8 @@ class GatasConnectConfig extends ModuleConfig {
   }
   mounted() {
     const validator = new JustValidate(this.$refs.form);
+    this.$refs.output.addEventListener("change", this._toggleGdl90BridgeVisibility.bind(this));
+    this._toggleGdl90BridgeVisibility();
 
     validator
       .addField(this.$refs.pinCode, [
@@ -807,12 +809,17 @@ class GatasConnectConfig extends ModuleConfig {
       });
   }
 
+  _toggleGdl90BridgeVisibility() {
+    this.$refs.enableGdl90BridgeGroup.style.display = this.$refs.output.value === "udp" ? "none" : "";
+  }
+
   _setFormData(data) {
     //    this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : this.randomIntFromInterval(1000, 999999);
     this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : "0";
     this.$refs.output.value = data.output !== undefined ? data.output : "udp";
     this.$refs[`output_${data.output?.toLowerCase()}`].selected = true;
     this.$refs.enableGdl90Bridge.checked = data.enableGdl90Bridge === true;
+    this._toggleGdl90BridgeVisibility();
   }
 
   _getFormData() {
@@ -838,7 +845,11 @@ class GatasConnectConfig extends ModuleConfig {
           The Pin Code is used when you use <a href="https://gatas.vantwisk.nl" target="_blank" rel="noopener noreferrer">GATAS Connect</a> online
           application to connect to your GATAS system to allow to configure your GATAS aircraft you are flying.
           Instead of using the unique GATAS ID which is differcult to remmeber, you can use the Pin Code with your location.
-          When using 0 as Pin Code, the Pin Code functionality is disabled for added security if you whish to not use it.
+          When using 0 as Pin Code, the Pin Code functionality is disabled for added security if you whish to not use it.<br />
+          GDL90 bridge is used together with the mobile application <i>Gatas Companion</i> and when enabled it will allow
+          to forward GDL90 messages from GATAS via bluetooth to the mobile application that forwards the GDL90 packets to a local UDP server.
+          This is to eliminate any WIFI connection if you whish to your mobile if you whish. You can still let other devices connect to GATAS
+          to benefit from all traffic and GPS data.
           </div>
         </div>
 
@@ -859,7 +870,7 @@ class GatasConnectConfig extends ModuleConfig {
                 </select>
               </label>
             </div>
-            <div class="col-10" style="margin-top:20px;">
+            <div class="col-10" style="margin-top:20px;" ref="enableGdl90BridgeGroup">
               <label for="enableGdl90Bridge">
                 Enable Gdl90 Bridge:
                 <input type="checkbox" id="enableGdl90Bridge" ref="enableGdl90Bridge" />

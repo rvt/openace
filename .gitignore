@@ -30,3 +30,5 @@ package-lock.json
 
 **/.trunk/
 .cache/
+
+build_codex_*/

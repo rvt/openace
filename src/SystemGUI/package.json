@@ -5,7 +5,8 @@
   "scripts": {
     "start": "rm -rf dist && rm -rf .parcel-cache && parcel",
     "build": "rm -rf dist && rm -rf .parcel-cache && parcel build src/*.* --no-source-maps --config .parcelrcrelease && cp captive/* dist/",
-    "prettier": "npx prettier . --write"
+    "prettier": "npx prettier . --write",
+    "test": "node --test test/**/*.test.mjs"
   },
   "devDependencies": {
     "@parcel/compressor-brotli": "2.16.4",

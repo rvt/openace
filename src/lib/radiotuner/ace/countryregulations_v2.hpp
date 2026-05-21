@@ -78,8 +78,8 @@ public:
         uint16_t txMinTime;
         uint16_t txMaxTime;
         // When GATAS is not moving, use these timings
-        uint16_t txStaticMinTime;
-        uint16_t txStaticMaxTime;
+        uint16_t reducedTxMinTime;
+        uint16_t reducedTxMaxTime;
         uint8_t waitAfterCatStart;
         uint8_t waitAfterCatEnd;
     };
@@ -180,17 +180,17 @@ public:
                 return 2;
             }
 
-            if (pts.txStaticMinTime < pts.txMinTime)
+            if (pts.reducedTxMinTime < pts.txMinTime)
             {
                 return 20;
             }
 
-            if (pts.txStaticMaxTime < pts.txMaxTime)
+            if (pts.reducedTxMaxTime < pts.txMaxTime)
             {
                 return 21;
             }
 
-            if (pts.txStaticMinTime > pts.txStaticMaxTime)
+            if (pts.reducedTxMinTime > pts.reducedTxMaxTime)
             {
                 return 18;
             }
@@ -328,10 +328,11 @@ public:
      * txMinTime and txMaxTime are taken from the first entry; all entries in a group
      * must share the same values (enforced by validateProtocolTxTimings).
      *
+     * @param reducedTxRate  when true, slows down TX rate. Used for on ground operations
      * @param timing  Span of one or more ProtocolTxTimeSlot entries for the same datasource.
      * @return Delay in ms, or UINT32_MAX if no suitable slot was found after MAX_TRIES.
      */
-    static uint32_t nextRandomTxTime(bool staticTiming, const CountryRegulations::ProtocolTxTimeSlot &timing);
+    static uint32_t nextRandomTxTime(bool reducedTxRate, const CountryRegulations::ProtocolTxTimeSlot &timing);
 
 public:
     /**

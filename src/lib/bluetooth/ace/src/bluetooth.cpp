@@ -177,8 +177,8 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
             if (!ctx.nmeaWriteBuffer.setString(msg.sentence))
             {
                 ctx.nmeaWriteBufferErr += 1;
-                continue;
             }
+            // We must ensure that as long as the connection is open, we should set teh dirty flag
             ctx.txDirty = true;
         }
     }
@@ -207,8 +207,8 @@ void Bluetooth::on_receive(const GATAS::GatasConnectTx &msg)
             if (!ctx.cobsWriteBuffer.push(reinterpret_cast<const char *>(payload.data()), payload.size()))
             {
                 ctx.cobsWriteBufferErr += 1;
-                continue;
             }
+            // We must ensure that as long as the connection is open, we should set teh dirty flag
             ctx.txDirty = true;
         }
     }
