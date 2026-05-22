@@ -96,9 +96,10 @@
 // https://www.etlcpp.com/mutex.html
 // Malloc in ETL should use FreeRTOS mutexes
 #define ETL_TARGET_OS_FREERTOS ( 1 )
-#define ETL_STRING_TRUNCATION_IS_ERROR ( 1 )
 #define ETL_NO_EXCEPTIONS ( 1 )
 #define ETL_ARRAY_VIEW_IS_MUTABLE ( 1 )
+// #define ETL_STRING_TRUNCATION_IS_ERROR ( 1 )
+#define ETL_HAS_STRING_TRUNCATION_CHECKS ( 1 )
 
 // ***** GaTas configurations
 

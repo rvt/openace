@@ -13,9 +13,9 @@ LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH * 8, 48> Ogn1::decoder; // 1248 bytes, shou
 
 GATAS::PostConstruct Ogn1::postConstruct()
 {
-    if (sizeof(OGN1_Packet) != OGN_PACKET_LENGTH_FEC + 2) // 20byte + FEC == 6 byte + 2 extra for the word that is ignored
+    if (sizeof(OGN_Packet) != OGN_PACKET_LENGTH_FEC + 2) // 20byte + FEC == 6 byte + 2 extra for the word that is ignored
     {
-        panic("OGN1 packet is smaller than expected");
+        panic("OGN packet is smaller than expected");
         return GATAS::PostConstruct::FAILED;
     }
 
@@ -123,7 +123,7 @@ uint8_t Ogn1::addressTypeToOgn(GATAS::AddressType addressType) const
     return lookupTable[index];
 }
 
-int8_t Ogn1::parseFrame(OGN1_Packet &packet, uint32_t frequency, int16_t rssiDbm)
+int8_t Ogn1::parseFrame(OGN_Packet &packet, uint32_t frequency, int16_t rssiDbm)
 {
     uint32_t timeUs32 = CoreUtils::timeUs32();
     if (packet.Header.NonPos)
@@ -163,7 +163,7 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, uint32_t frequency, int16_t rssiDbm
             "",
             packet.Header.Address,
             addressTypeFromOgn(packet.Header.AddrType),
-            GATAS::DataSource::OGN1,
+            GATAS::DataSource::OGN,
             aircrftCat,
             packet.Position.Stealth ? true : false, // Privacy
             false,                                  // noTrack
@@ -185,11 +185,11 @@ int8_t Ogn1::parseFrame(OGN1_Packet &packet, uint32_t frequency, int16_t rssiDbm
 
 void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
-    if (msg.radioParameters.config->isTxDataSource(GATAS::DataSource::OGN1))
+    if (msg.radioParameters.config->isTxDataSource(GATAS::DataSource::OGN))
     {
         auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
 
-        OGN1_Packet packet;
+        OGN_Packet packet;
         packet.Header =
             {
                 .Address = ownship.conspicuity.icaoAddress, // Address
@@ -282,9 +282,9 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 
 void Ogn1::on_receive(const GATAS::RadioRxManchesterMsg &msg)
 {
-    if (msg.dataSource == GATAS::DataSource::OGN1)
+    if (msg.dataSource == GATAS::DataSource::OGN)
     {
-        OGN1_Packet packet;
+        OGN_Packet packet;
 
         // Validate packet, and correct if possible
         uint8_t check = Ogn1::errorCorrect((uint8_t *)&packet, msg.frame.get(), msg.error.get());

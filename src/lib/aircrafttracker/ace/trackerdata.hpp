@@ -60,7 +60,8 @@ private:
     etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
     DDB ddb;
     uint32_t adaptiveRadius;
-    bool ddbLookupsEnabled;
+    bool ddbLookupsEnabled_;
+    bool prefixEnabled_;
 
     bool calculateAdaptiveRadius()
     {
@@ -143,7 +144,7 @@ private:
     }
 
 public:
-    TrackerData() : adaptiveRadius(75000), ddbLookupsEnabled(false) {}
+    TrackerData() : adaptiveRadius(75000), ddbLookupsEnabled_(false), prefixEnabled_(false) {}
 
     template <typename Callback>
     void forEachPosition(const Callback &callback) const
@@ -156,7 +157,12 @@ public:
 
     void ddbEnabled(bool enabled)
     {
-        ddbLookupsEnabled = enabled;
+        ddbLookupsEnabled_ = enabled;
+    }
+
+    void prefixEnabled(bool enabled)
+    {
+        prefixEnabled_ = enabled;
     }
 
     bool full() const
@@ -201,10 +207,8 @@ public:
         {
             it->second.sendTime = time;
 
-            if (ddbLookupsEnabled)
-            {
-                assignCallsignFromDDB(position);
-            }
+            assignCallsignFromDDB(position);
+            assignDataSourcePrefix(position);
 
             // Prefer MLAT over ADSB for RADIO_PRIORITY_TIMEOUT_US to avoid jumps.
             // We assume ADSB/MLAT data is less acurate due to delays in the chain
@@ -236,10 +240,8 @@ public:
             return false;
         }
 
-        if (ddbLookupsEnabled)
-        {
-            assignCallsignFromDDB(position);
-        }
+        assignCallsignFromDDB(position);
+        assignDataSourcePrefix(position);
 
         trackedAircraft.insert({position.address, TrackerEntry(time, position)});
         return true;
@@ -251,7 +253,7 @@ public:
      */
     void assignCallsignFromDDB(GATAS::AircraftPositionInfo &position)
     {
-        if (position.callSign.empty())
+        if (ddbLookupsEnabled_ && position.callSign.empty())
         {
             auto ddbEntry = ddb.lookup(position.address);
             if (ddbEntry)
@@ -259,6 +261,17 @@ public:
                 position.callSign = ddbEntry->reg();
             }
         }
+    }
+
+    void assignDataSourcePrefix(GATAS::AircraftPositionInfo &position)
+    {
+        if (!prefixEnabled_ || position.callSign.empty())
+        {
+            return;
+        }
+
+        GATAS::CallSign prefixedCallSign(GATAS::toShortString(position.dataSource));
+        position.callSign.insert(0, prefixedCallSign);
     }
 
     void sendScheduled(const etl::delegate<void(const GATAS::AircraftPositionInfo &)> &callback)

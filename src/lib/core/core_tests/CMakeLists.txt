@@ -39,6 +39,7 @@ set(SOURCES_IDIOMATIC_EXAMPLES # Tests
     coreutils_test.cpp
     poolallocator_test.cpp
     antennaRadiationPattern_test.cpp
+    models_test.cpp
     )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES

@@ -28,6 +28,10 @@
         "filterAbove": 1500,
         "filterBelow": 1500
     },
+    "AircraftTracker": {
+        "ddbEnabled": 0,
+        "prefixEnabled": 0
+    },
     "Bluetooth": {
         "localName": "GaTas"
     },

@@ -63,7 +63,8 @@
     "filterBelow": 1500
   },
   "AircraftTracker": {
-    "ddbEnabled": 0
+    "ddbEnabled": 0,
+    "prefixEnabled": 0
   },
   "Bluetooth": {
     "_comment_client": "The standard SSD and password when GATAS is in Access Point mode",

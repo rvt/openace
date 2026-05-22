@@ -201,11 +201,10 @@ namespace GATAS
         ADSLM = 1,
         ADSLO_HDR = 2,
         FANET = 3,
-        OGN1 = 4,
+        OGN = 4,
         _RADIO = 5, // ANything beflore Radio can only be received over hardware
         _TRANSPROTOCOLS = 5, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         ADSB = 5,
-        ADSB_MOB = 6,
         ADSLFLARM = 253,     // Combination of ADSL/FLARM, not an acutal protocol but needed for RX of multiple protocols
         ADSLOGN = 254,       // Combination of ADSL/OGN, not an acutal protocol but needed for RX of multiple protocols
         NONE = 255           // Note: Never use this! Unly used for stringToEnum(..)
@@ -214,6 +213,7 @@ namespace GATAS
     // Get a string representation of a datasource
     const char *dataSourceIntToString(uint8_t ds);
     const char *toString(DataSource ds);
+    const char *toShortString(DataSource ds);
     DataSource stringToDataSource(const char *str);
 
     struct DataSourceMode
@@ -465,7 +465,7 @@ namespace GATAS
                 return ds == GATAS::DataSource::FLARM || ds == GATAS::DataSource::ADSLM;
 
             case GATAS::DataSource::ADSLOGN:
-                return ds == GATAS::DataSource::OGN1 || ds == GATAS::DataSource::ADSLM;
+                return ds == GATAS::DataSource::OGN || ds == GATAS::DataSource::ADSLM;
 
             default:
                 return __dataSource == ds;

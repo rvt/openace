@@ -143,7 +143,7 @@ RxDataFrameQueue::DataSourceMatch RxDataFrameQueue::decideDataSource(GATAS::Data
         else if (diffBits<1>(frame, SignOGN32, MaskOGN32) <= 1)
         {
             return {
-                .dataSource = GATAS::DataSource::OGN1,
+                .dataSource = GATAS::DataSource::OGN,
                 .bitsToShift = 21,
                 .frameLength = 26 /*CountryRegulations::PROTOCOL_OGN.packetLength*/};
         }

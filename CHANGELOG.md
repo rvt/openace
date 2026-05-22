@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional GDL90-over-Bluetooth bridge using COBS-framed payloads for companion applications.
 - Debug-only FreeRTOS queue registry entries for mutexes, to improve visibility in `GATAS_DEBUG` builds.
 - Frontend unit-test support for `SystemGUI` via `npm test`.
+- Option to show the datasource in the aicrafts callsign
 
 ### Changed
 

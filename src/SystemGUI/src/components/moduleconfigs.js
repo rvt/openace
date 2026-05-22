@@ -52,11 +52,13 @@ class AircraftTrackerConfig extends ModuleConfig {
 
   _setFormData(data) {
     this.$refs.ddbEnabled.checked = data.ddbEnabled;
+    this.$refs.prefixEnabled.checked = data.prefixEnabled;
   }
 
   _getFormData() {
     return {
       ddbEnabled: this.$refs.ddbEnabled.checked,
+      prefixEnabled: this.$refs.prefixEnabled.checked,
     };
   }
 
@@ -79,11 +81,24 @@ class AircraftTrackerConfig extends ModuleConfig {
             <br />
             <input type="checkbox" id="ddbEnabled" ref="ddbEnabled" placeholder="1" />
           </label>
+          
           <div class="alert alert-warning">
             <svg class="mr-2" style="width: 24px; height: 24px;" viewBox="0 0 24 24"><path fill="currentColor" d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21z"></path></svg>
             Please note that the DDB is created and maintained by aviation enthusiasts and is in no way an official registry.
             Because of this, you may encounter aircraft whose callsign differs from what ATC uses.
           </div>
+        </div>
+        <div class="section">
+          <label for="prefixEnabled">
+            <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
+              Add Data Source Prefix ${html.raw(icon.help)}
+              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
+                Prefix tracked callsigns with the two-letter datasource code, for example <code>OG</code> or <code>FL</code>, so connected EFBs can show how the traffic was received.
+              </p>
+            </label>:
+            <br />
+            <input type="checkbox" id="prefixEnabled" ref="prefixEnabled" placeholder="1" />
+          </label>
         </div>
         <br />
         ${this.buttonArray(html)}

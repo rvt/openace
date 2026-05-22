@@ -25,7 +25,7 @@
 // nRF905, CC1101, SPIRIT1, RFM69 chips actually reverse the bit order within every byte
 // thus on the air the bits appear MSbit first for every byte transmitted
 
-class OGN1_Packet          // Packet structure for the OGN tracker
+class OGN_Packet          // Packet structure for the OGN tracker
 {
 public:
 
@@ -156,7 +156,7 @@ public:
 
     } ;
 
-    OGN1_Packet() : HeaderWord(0) {
+    OGN_Packet() : HeaderWord(0) {
         memset(Data, 0, sizeof(Data));
     }
 
@@ -234,7 +234,7 @@ public:
         return calcTurnRadius(DecodeSpeed(), DecodeTurnRate(), MaxRadius);
     }
 
-    // OGN1_Packet() { Clear(); }
+    // OGN_Packet() { Clear(); }
     void Clear(void)
     {
         HeaderWord=0;

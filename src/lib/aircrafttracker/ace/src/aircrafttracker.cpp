@@ -30,6 +30,7 @@ void AircraftTracker::on_receive(const GATAS::ConfigUpdatedMsg &msg)
         ownshipAddress = gaTasConfig.conspicuity.icaoAddress;
         groundStation_ = gaTasConfig.conspicuity.groundStation;
         trackedAircraft.ddbEnabled(msg.config.valueByPath(false, NAME, "ddbEnabled"));
+        trackedAircraft.prefixEnabled(msg.config.valueByPath(false, NAME, "prefixEnabled"));
     }
 }
 

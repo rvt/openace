@@ -378,51 +378,51 @@ static void loadModules(void *arg)
 #if configGENERATE_RUN_TIME_STATS == 1 && configSHOW_RUN_TIME_STATS == 1
 namespace
 {
-struct PreviousTaskRuntime
-{
-    TaskHandle_t handle;
-    configRUN_TIME_COUNTER_TYPE runTimeCounter;
-};
-
-const char *taskStateToString(const eTaskState state)
-{
-    switch (state)
+    struct PreviousTaskRuntime
     {
-    case eRunning:
-        return "Run";
-    case eReady:
-        return "Ready";
-    case eBlocked:
-        return "Block";
-    case eSuspended:
-        return "Susp";
-    case eDeleted:
-        return "Del";
-    case eInvalid:
-    default:
-        return "Inv";
-    }
-}
+        TaskHandle_t handle;
+        configRUN_TIME_COUNTER_TYPE runTimeCounter;
+    };
 
-configRUN_TIME_COUNTER_TYPE previousRunTimeForTask(const PreviousTaskRuntime *entries,
-                                                   const UBaseType_t numEntries,
-                                                   const TaskHandle_t handle)
-{
-    for (UBaseType_t i = 0; i < numEntries; i++)
+    const char *taskStateToString(const eTaskState state)
     {
-        if (entries[i].handle == handle)
+        switch (state)
         {
-            return entries[i].runTimeCounter;
+        case eRunning:
+            return "Run";
+        case eReady:
+            return "Ready";
+        case eBlocked:
+            return "Block";
+        case eSuspended:
+            return "Susp";
+        case eDeleted:
+            return "Del";
+        case eInvalid:
+        default:
+            return "Inv";
         }
     }
 
-    return 0;
-}
+    configRUN_TIME_COUNTER_TYPE previousRunTimeForTask(const PreviousTaskRuntime *entries,
+                                                       const UBaseType_t numEntries,
+                                                       const TaskHandle_t handle)
+    {
+        for (UBaseType_t i = 0; i < numEntries; i++)
+        {
+            if (entries[i].handle == handle)
+            {
+                return entries[i].runTimeCounter;
+            }
+        }
 
-bool isFreeRtosIdleTask(const char *taskName)
-{
-    return strncmp(taskName, "IDLE", 4) == 0;
-}
+        return 0;
+    }
+
+    bool isFreeRtosIdleTask(const char *taskName)
+    {
+        return strncmp(taskName, "IDLE", 4) == 0;
+    }
 } // namespace
 
 void vDiagnosticsTask(void *pvParameters)
@@ -602,6 +602,14 @@ void overflowTest()
     if (diff != 17)               // Should be 17 if overflow is handled correctly
     {
         panic("Compiler or CPU does not handle overflow correctly");
+    }
+
+    // THis must be enabled because we rely on ETL_HAS_STRING_TRUNCATION_CHECKS
+    etl::string<12> text = "1234567";
+    text += "1234567";
+    if (!text.is_truncated())
+    {
+        panic("String truncate must be enabled");
     }
 }
 
