@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bluetooth advertising now splits the local name between the primary advertisement and scan response payloads, improving visibility of longer device names while keeping the custom service UUID advertised.
 - Refined `GatasConnect` web configuration so the GDL90 bridge option is only shown for Bluetooth output modes, and documented frontend test usage.
 - Optimised SX1262 protocol reconfiguration by tracking the currently programmed protocol and modulation, avoiding unnecessary full radio reconfiguration while keeping explicit standby mode selection.
+- Optimise tracker for performance (about 20%)
+- Allow to add the 2 letter datasource before the callsign
 
 ### Deprecated
 

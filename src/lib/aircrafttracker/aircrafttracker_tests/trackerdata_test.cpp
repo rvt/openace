@@ -358,41 +358,15 @@ TEST_CASE("Radio priority: RADIO 5000000us old, ADSB incoming - should UPDATE", 
     trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifyUpdatedHandler, &VerifyUpdatedHandler::onNext>(handler));
 }
 
-TEST_CASE("Data source prefix is prepended when enabled", "[single-file]")
-{
-    TrackerData<100, 4> trackedAircraft;
-    trackedAircraft.prefixEnabled(true);
-
-    GATAS::AircraftPositionInfo aircraftPosition;
-    aircraftPosition.address = 77;
-    aircraftPosition.distanceFromOwn = 5000;
-    aircraftPosition.dataSource = GATAS::DataSource::OGN;
-    aircraftPosition.callSign = "PH-ABC";
-
-    REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
-
-    class VerifyPrefixHandler
-    {
-    public:
-        void onNext(const GATAS::AircraftPositionInfo &position)
-        {
-            REQUIRE(position.callSign == "OGPH-ABC");
-        }
-    } handler;
-
-    trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifyPrefixHandler, &VerifyPrefixHandler::onNext>(handler));
-}
-
 TEST_CASE("Data source prefix preserves fixed callsign length", "[single-file]")
 {
     TrackerData<100, 4> trackedAircraft;
     trackedAircraft.prefixEnabled(true);
 
     GATAS::AircraftPositionInfo aircraftPosition;
-    aircraftPosition.address = 78;
     aircraftPosition.distanceFromOwn = 5000;
     aircraftPosition.dataSource = GATAS::DataSource::FLARM;
-    aircraftPosition.callSign = "ABCDEFGHIJKL";
+    aircraftPosition.callSign = "PH-ABCDEFGHIJKL";
 
     REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
 
@@ -401,21 +375,19 @@ TEST_CASE("Data source prefix preserves fixed callsign length", "[single-file]")
     public:
         void onNext(const GATAS::AircraftPositionInfo &position)
         {
-            REQUIRE(position.callSign == "FLABCDEFGHIJ");
-            REQUIRE(position.callSign.size() == GATAS::MAX_CALLSIGN_LENGTH);
+            REQUIRE(position.callSign == "FLPH-ABCDEFG");
         }
     } handler;
 
     trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifyPrefixLengthHandler, &VerifyPrefixLengthHandler::onNext>(handler));
 }
 
-TEST_CASE("Data source prefix does not create callsigns for empty values", "[single-file]")
+TEST_CASE("Data source prefix does create callsigns for empty values", "[single-file]")
 {
     TrackerData<100, 4> trackedAircraft;
     trackedAircraft.prefixEnabled(true);
 
     GATAS::AircraftPositionInfo aircraftPosition;
-    aircraftPosition.address = 79;
     aircraftPosition.distanceFromOwn = 5000;
     aircraftPosition.dataSource = GATAS::DataSource::ADSB;
 
@@ -426,7 +398,7 @@ TEST_CASE("Data source prefix does not create callsigns for empty values", "[sin
     public:
         void onNext(const GATAS::AircraftPositionInfo &position)
         {
-            REQUIRE(position.callSign.empty());
+            REQUIRE(position.callSign == "AB");
         }
     } handler;
 

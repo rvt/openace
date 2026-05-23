@@ -5,8 +5,8 @@
 #include "ace/models.hpp"
 #include "ace/ddb.hpp"
 
+#include "etl/array.h"
 #include "etl/unordered_map.h"
-#include "etl/set.h"
 #include "etl/scaled_rounding.h"
 #include "etl/algorithm.h"
 
@@ -63,33 +63,56 @@ private:
     bool ddbLookupsEnabled_;
     bool prefixEnabled_;
 
+    /**
+     * Recalculate the adaptive tracking radius when the tracker is nearly full.
+     *
+     * The algorithm collects the current aircraft distances from ownship,
+     * sorts them from farthest to nearest, removes duplicate distance values,
+     * and then selects a cutoff near the far end of the list. That cutoff is
+     * rounded down to the nearest 500 meters and stored as the new
+     * adaptiveRadius. The effect is that, under pressure, the farthest aircraft
+     * are trimmed first while the majority of nearer traffic is retained.
+     *
+     * @return true if a new adaptive radius was calculated, otherwise false.
+     */
     bool calculateAdaptiveRadius()
     {
         auto size = trackedAircraft.size();
         if (size >= (SIZE - ADAPTIVE_RADIUS_MIN_FREE))
         {
-            // Build a set of all distances
-            etl::set<uint32_t, SIZE, etl::greater<uint32_t>> distances;
+            etl::array<uint32_t, SIZE> distances = {};
+            size_t count = 0;
             for (const auto &pair : trackedAircraft)
             {
-                distances.insert(pair.second.position.distanceFromOwn);
+                distances[count] = pair.second.position.distanceFromOwn;
+                count += 1;
+            }
+
+            etl::sort(distances.begin(), distances.begin() + count, etl::greater<uint32_t>());
+
+            size_t uniqueCount = 0;
+            for (size_t i = 0; i < count; ++i)
+            {
+                if (uniqueCount == 0 || distances[i] != distances[uniqueCount - 1])
+                {
+                    distances[uniqueCount] = distances[i];
+                    uniqueCount += 1;
+                }
             }
 
             // Find the 90% position, that means we remove 10% of the aircraft based on radious
-            int8_t pos;
-            if (distances.size() > SIZE / 2)
+            size_t pos = 1;
+            if (uniqueCount > SIZE / 2)
             {
                 pos = SIZE - SIZE * ADAPTIVE_RADIUS_PERCENTAGE_KEEP / 100;
-            }
-            else
-            {
-                pos = 1;
+                if (pos >= uniqueCount)
+                {
+                    pos = uniqueCount - 1;
+                }
             }
 
             // Calculate new adaptive radious
-            auto it = distances.begin();
-            etl::advance(it, pos);
-            adaptiveRadius = etl::round_floor_scaled<500>(*it);
+            adaptiveRadius = etl::round_floor_scaled<500>(distances[pos]);
             return true;
         }
         else if (size < SIZE - ADAPTIVE_RADIUS_MIN_FREE)
@@ -265,13 +288,11 @@ public:
 
     void assignDataSourcePrefix(GATAS::AircraftPositionInfo &position)
     {
-        if (!prefixEnabled_ || position.callSign.empty())
+        if (prefixEnabled_)
         {
-            return;
+            GATAS::CallSign prefixedCallSign(GATAS::toShortString(position.dataSource));
+            position.callSign.insert(0, prefixedCallSign);
         }
-
-        GATAS::CallSign prefixedCallSign(GATAS::toShortString(position.dataSource));
-        position.callSign.insert(0, prefixedCallSign);
     }
 
     void sendScheduled(const etl::delegate<void(const GATAS::AircraftPositionInfo &)> &callback)
@@ -301,30 +322,60 @@ public:
         increaseAdaptiveRadius();
     }
 
+    /**
+     * Return up to the 10 closest tracked aircraft.
+     *
+     * When fewer than 10 aircraft are currently tracked, all of them are
+     * returned immediately. Otherwise, the algorithm builds a fixed-size heap
+     * of 10 candidate aircraft. The heap root is the farthest aircraft in the
+     * current candidate set. Each additional aircraft only replaces that root
+     * if it is closer, which leaves the 10 closest aircraft in the heap at the
+     * end of the scan. The return order is not significant.
+     *
+     * @return A list containing up to the 10 nearest tracked aircraft.
+     */
     GATAS::AdslObandUplinkAircraft forClosest() const
     {
-        constexpr size_t maxCount = 10;
-        etl::set<const GATAS::AircraftPositionInfo *, 10, ByDistance> closest;
-
-        for (const auto &pair : trackedAircraft)
-        {
-            const auto *e = &pair.second;
-            if (closest.size() < maxCount)
-            {
-                closest.insert(&e->position);
-            }
-            else if (e->position.distanceFromOwn < (*closest.rbegin())->distanceFromOwn)
-            {
-                closest.erase(etl::prev(closest.end()));
-                closest.insert(&e->position);
-            }
-        }
-
+        GATAS_MEASURE("forClosest", 1200);
         GATAS::AdslObandUplinkAircraft result;
-        for (const auto *e : closest)
+
+        // SHortcut with < 10 aircraft
+        if (trackedAircraft.size() <= result.max_size())
         {
-            result.push_back(*e);
+            for (const auto &pair : trackedAircraft)
+            {
+                result.push_back(pair.second.position);
+            }
+            return result;
         }
+
+        etl::array<const GATAS::AircraftPositionInfo *, 10> closest = {};
+        size_t count = 0;
+        auto it = trackedAircraft.begin();
+        for (; it != trackedAircraft.end() && count < closest.size(); ++it)
+        {
+            closest[count] = &it->second.position;
+            count += 1;
+        }
+
+        etl::make_heap(closest.begin(), closest.begin() + count, ByDistance());
+
+        for (; it != trackedAircraft.end(); ++it)
+        {
+            const auto *candidate = &it->second.position;
+            if (ByDistance()(candidate, closest.front()))
+            {
+                etl::pop_heap(closest.begin(), closest.begin() + count, ByDistance());
+                closest[count - 1] = candidate;
+                etl::push_heap(closest.begin(), closest.begin() + count, ByDistance());
+            }
+        }
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            result.push_back(*closest[i]);
+        }
+
         return result;
     }
 };

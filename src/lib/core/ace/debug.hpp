@@ -13,7 +13,7 @@
 // 0;36m cyan       1;36m bold cyan       0;96m light cyan
 // 0;37m white      1;37m bold white      0;97m light white
 
-#if GATAS_DEBUG
+#if GATAS_DEBUG == 1
 
 static constexpr const char *basename(const char *path)
 {
