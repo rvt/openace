@@ -55,8 +55,8 @@ private:
 
     uint8_t handlerIdx=0;
 
-    const int8_t rxPin;
-    const int8_t txPin;
+    const uint8_t rxPin;
+    const uint8_t txPin;
     const uint32_t baudrate;
 
     PIO rxPio;
@@ -80,11 +80,11 @@ public:
         txPin(CoreUtils::pinValue(pins, GATAS::PinType::TX)),
         baudrate(baudrate_),
         rxPio(nullptr),
-        rxSmIndx(-1),
+        rxSmIndx(UINT8_MAX),
         rxOffset(0),
         charIndex(0),
         txPio(nullptr),
-        txSmIndx(-1),
+        txSmIndx(UINT8_MAX),
         txOffset(0),
         handler(nullptr),
         callback(callback_)

@@ -231,7 +231,7 @@ void GDLoverUDP::transmitBuffer()
         return;
     }
 
-    // Calculate how many pbufs 
+    // Calculate how many pbufs
     auto [lconnectedClients, ludpPorts] = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), connectedClients, udpPorts);
 
     uint8_t totalpBufs = lconnectedClients.size() * ludpPorts.size() + gateWayClient ? ludpPorts.size() : 0;
@@ -291,7 +291,7 @@ void GDLoverUDP::transmitBuffer()
     }
 }
 
-void GDLoverUDP::sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data)
+void GDLoverUDP::sendTo(uint32_t ip, uint16_t port, etl::span<uint8_t> data)
 {
     ip_addr_t addr;
     ip4_addr_set_u32(&addr, ip);

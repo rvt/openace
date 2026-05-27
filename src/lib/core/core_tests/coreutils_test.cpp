@@ -25,7 +25,7 @@ TEST_CASE( "msSinceEpoch", "[single-file]" )
 TEST_CASE( "msInSecond", "[single-file]" )
 {
     time_us_Value = 23456623;
-    CoreUtils::setPPS(00);
+    CoreUtils::setPPS(0);
     REQUIRE( CoreUtils::msInSecond() == 0 );
 
     time_us_Value = time_us_Value + 1758'000;
@@ -38,6 +38,23 @@ TEST_CASE( "timeUs32 must be alliged with PPS", "[single-file]" )
     CoreUtils::setPPS(0);
     time_us_Value = time_us_Value+216500;
     REQUIRE( CoreUtils::timeUs32() == 23216500 );
+}
+
+TEST_CASE("setPPS handles signed software offsets", "[single-file]")
+{
+    time_us_Value = 23'000'100;
+    CoreUtils::setPPS(250);
+    REQUIRE(CoreUtils::timeUs32() == 23'000'250);
+    REQUIRE(CoreUtils::timeUs64() == 23'000'250);
+    time_us_Value += 150;
+    REQUIRE(CoreUtils::usInSecond() == 400);
+    REQUIRE(CoreUtils::timeUs32() == 23'000'400);
+
+    time_us_Value = 23'000'250;
+    CoreUtils::setPPS(-100);
+    REQUIRE(CoreUtils::timeUs32() == 22'999'900);
+    REQUIRE(CoreUtils::timeUs64() == 22'999'900);
+    REQUIRE(CoreUtils::usInSecond() == 999'900);
 }
 
 TEST_CASE( "usToReference must handle wraparounds", "[single-file]" )

@@ -92,12 +92,14 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
 
 void __isr __time_critical_func(BaseModule::gpioInterrupt)(uint pin, uint32_t event)
 {
+    const uint8_t pinKey = static_cast<uint8_t>(pin);
+
     // Handle the interrupt and call back over callback or task notification
     // Cannot wrap this in a baseMutex since when there is an interrupt we get an assert on suspend
     // This is in reality only an issue when modules are added/removed which is not expected during normal operation
-    if (pinInterruptHandlers.contains(pin) && pinInterruptHandlers[pin].enabled)
+    if (pinInterruptHandlers.contains(pinKey) && pinInterruptHandlers[pinKey].enabled)
     {
-        pinInterruptHandler &iHandler = pinInterruptHandlers[pin];
+        pinInterruptHandler &iHandler = pinInterruptHandlers[pinKey];
         if ((iHandler.event & event) == iHandler.event)
         {
             if (iHandler.callback.is_valid())

@@ -206,7 +206,7 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         packet.EncodeHeading(ownship.track * 10.f);
         packet.EncodeClimbRate(ownship.verticalSpeed * 10.f);
         packet.EncodeTurnRate(ownship.hTurnRate * 10.f);
-        packet.EncodeAltitude(ownship.heightMsl());
+        packet.EncodeAltitude(etl::clamp(ownship.heightMsl(), static_cast<int32_t>(0),  static_cast<int32_t>(61432)));
         packet.EncodeDOP(gpsStats.pDop + 0.5f);
 
         // TODO: Understand how baro Altitude really works in OGN

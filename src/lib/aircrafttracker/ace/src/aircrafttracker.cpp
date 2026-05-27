@@ -26,7 +26,7 @@ void AircraftTracker::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     {
         auto gaTasConfig = msg.config.gaTasConfig();
         ownshipAddress = gaTasConfig.conspicuity.icaoAddress;
-        groundStation_ = gaTasConfig.conspicuity.groundStation;
+        groundStation = gaTasConfig.conspicuity.groundStation;
         trackedAircraft.ddbEnabled(msg.config.valueByPath(false, NAME, "ddbEnabled"));
     }
 }
@@ -119,12 +119,17 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
 }
 
+void AircraftTracker::on_receive(const GATAS::OwnshipPositionMsg &msg)
+{
+    ownshipTrack = msg.position.track;
+}
+
 void AircraftTracker::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     // radioParameters.id == 1 means O-Band Uplink
     // We do that here, because we neeed to send 10 aircraft instead of just ownship
     // Only function as ADSL uplink in ground station mode
-    if (groundStation_ && msg.radioParameters.config->dataSource() == GATAS::DataSource::ADSLO_HDR && msg.radioParameters.id == 1)
+    if (groundStation && msg.radioParameters.config->dataSource() == GATAS::DataSource::ADSLO_HDR && msg.radioParameters.id == 1)
     {
         if (!tXqueue.full())
         {
@@ -145,7 +150,7 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionMsg &msg)
     uint8_t dataSource = static_cast<uint8_t>(msg.position.dataSource);
     if (dataSource < antennaRadiationPattern.size())
     {
-        antennaRadiationPattern[dataSource].put(msg);
+        antennaRadiationPattern[dataSource].put(msg, ownshipTrack);
     }
 
     if (!queue.full())

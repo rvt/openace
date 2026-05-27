@@ -25,11 +25,11 @@ public:
     }
 
     /**
-     * Request a spinlock. When required is set to value, the function won't panic if no spinlock is available.
+     * Request a spinlock. When required is set to false, the function won't panic if no spinlock is available.
      */
-    static spin_lock_t *claim(bool required = true)
+    static spin_lock_t *claim()
     {
-        return spin_lock_instance(spin_lock_claim_unused(required));
+        return spin_lock_instance((uint)spin_lock_claim_unused(true));
     }
 
     SpinlockGuard(const SpinlockGuard &) = delete;

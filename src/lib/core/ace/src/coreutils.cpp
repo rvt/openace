@@ -34,17 +34,19 @@ const etl::vector<GATAS::Modulename, 7> CoreUtils::parsePath(const etl::string_v
     return tokens;
 }
 
-uint32_t CoreUtils::getTotalHeap(void)
+size_t CoreUtils::getTotalHeap(void)
 {
-#if !defined(__arm__)
-    return 0;
-#else
+#if defined(PICO_RP2040) || defined(PICO_RP2350)
     extern char __StackLimit, __bss_end__;
-    return &__StackLimit - &__bss_end__;
+    return static_cast<size_t>(
+        reinterpret_cast<uintptr_t>(&__StackLimit) -
+        reinterpret_cast<uintptr_t>(&__bss_end__));
+#else
+    return 0;
 #endif
 }
 
-uint32_t CoreUtils::getFreeHeap(void)
+size_t CoreUtils::getFreeHeap(void)
 {
 // We hit this during unit testing, we return 0 because it would
 // properly be useless

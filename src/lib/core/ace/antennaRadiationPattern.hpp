@@ -38,12 +38,17 @@ namespace GATAS
     public:
         AntennaRadiationPattern() : radiationPattern() {};
 
-        void put(const GATAS::IngressAircraftPositionMsg &msg)
+        static float calculateRelativeBearing(int32_t relNorthFromOwn, int32_t relEastFromOwn, float ownTrack)
+        {
+            const float bearingFromOwn = CoreUtils::bearingFromInDegShort(static_cast<float>(relEastFromOwn), static_cast<float>(relNorthFromOwn));
+            return CoreUtils::toBearing(bearingFromOwn - ownTrack);
+        }
+
+        void put(const GATAS::IngressAircraftPositionMsg &msg, float ownTrack)
         {
             auto &position = msg.position;
-            const float bearingFromOwn = CoreUtils::bearingFromInDegShort(position.relEastFromOwn, position.relNorthFromOwn);
-            const float relativeBearing = CoreUtils::toBearing(bearingFromOwn - static_cast<float>(position.track));
-            uint8_t positionInRadial = CoreUtils::getRadialSection<NUM_RADIALS>(relativeBearing);
+            const float relativeBearing = calculateRelativeBearing(position.relNorthFromOwn, position.relEastFromOwn, ownTrack);
+            uint8_t positionInRadial = static_cast<uint8_t>(CoreUtils::getRadialSection<NUM_RADIALS>(static_cast<int16_t>(relativeBearing)));
             Measurement &measurement = radiationPattern[positionInRadial];
 
             if (position.distanceFromOwn > measurement.maxDistance)

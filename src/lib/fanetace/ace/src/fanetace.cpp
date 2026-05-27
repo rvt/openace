@@ -78,7 +78,7 @@ void FanetAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         FANET::TrackingPayload payload;
         payload.latitude(ownship.lat)
             .longitude(ownship.lon)
-            .altitude(ownship.heightMsl())
+            .altitude(static_cast<int16_t>(etl::clamp(ownship.heightMsl(), static_cast<int32_t>(-450), static_cast<int32_t>(5900))))
             .speed(ownship.groundSpeed * MS_TO_KPH)
             .groundTrack(ownship.track)
             .climbRate(ownship.verticalSpeed)

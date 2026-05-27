@@ -11,7 +11,7 @@ etl::array<PioSerial*, 4> PioSerial::interruptHandlers;
 
 GATAS::PostConstruct PioSerial::postConstruct()
 {
-    if (rxPin == -1 || txPin == -1)
+    if (rxPin == UINT8_MAX || txPin == UINT8_MAX)
     {
         return GATAS::PostConstruct::HARDWARE_NOT_CONFIGURED;
     }
@@ -67,7 +67,7 @@ GATAS::PostConstruct PioSerial::postConstruct()
     default:
         return GATAS::PostConstruct::HARDWARE_NOT_FOUND;
     }
-    
+
     bi_decl(bi_2pins_with_func(static_cast<uint32_t>(txPin), static_cast<uint32_t>(rxPin), GPIO_FUNC_UART));
     return GATAS::PostConstruct::OK;
 }

@@ -54,10 +54,10 @@ private:
         {
             auto const &key = pathParsed[depth];
             // TODO: Check if we can do without the PATH index check
-            auto index = etl::to_arithmetic<int>(key);
+            auto index = etl::to_arithmetic<size_t>(key);
             if (index.has_value())
             {
-                variant = variant[(int)index.value()];
+                variant = variant[index.value()];
             }
             else
             {

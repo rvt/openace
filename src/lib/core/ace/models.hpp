@@ -266,7 +266,7 @@ namespace GATAS
         bool airborne; // Is the aircraft airborne
         float lat;
         float lon;
-        int16_t ellipseHeight; // Altitude above the GeoId (MSL) in meters. For aircraft where altitude is based from BARO, this is an estimate
+        int32_t ellipseHeight; // Altitude above the GeoId (MSL) in meters. For aircraft where altitude is based from BARO, this is an estimate
         float verticalSpeed;   // in m/s
         float groundSpeed;     // in m/s
         int16_t track;         // 0..359
@@ -284,7 +284,7 @@ namespace GATAS
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), track(0), hTurnRate(0), distanceFromOwn(INT32_MIN), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN) // , bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), track(0), hTurnRate(0), distanceFromOwn(UINT32_MAX), relNorthFromOwn(INT32_MIN), relEastFromOwn(INT32_MIN) // , bearingFromOwn(INT16_MIN)
         {
         }
 
@@ -377,7 +377,7 @@ namespace GATAS
         AircraftAddress icaoAddress = 0;
         float lat = 0;
         float lon = 0;
-        int16_t ellipseHeight = 0;
+        int32_t ellipseHeight = 0;
     };
 
     struct OwnshipPositionInfo
@@ -385,7 +385,7 @@ namespace GATAS
         uint32_t timestamp; // Timestamp when the position was received
         float lat;
         float lon;
-        int16_t ellipseHeight;           // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
+        int32_t ellipseHeight;           // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
         float verticalSpeed;             // in m/s
         float groundSpeed;               // in m/s
         float track;                     // 0..359
@@ -395,7 +395,7 @@ namespace GATAS
         int16_t geoidSeparation;         // The distance from the surface of an ellipsoid to the surface of the geoid.
         bool airborne;                   // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
         Config::Conspicuity conspicuity; // Configuration for this aircraft, used to send out the correct data
-        int16_t heightMsl() const
+        int32_t heightMsl() const
         {
             return ellipseHeight - geoidSeparation;
         }

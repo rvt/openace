@@ -64,8 +64,8 @@ public:
         uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
         uint8_t addressTypeIdx = reader.read_unchecked<uint8_t>(8U);
         uint8_t dataSourceIdx = reader.read_unchecked<uint8_t>(8U);
-        float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
-        float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7;
+        float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
+        float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
         int16_t heightHAE = reader.read_unchecked<int16_t>(16U) - 100; // Aircraft message needs to be in ellipsoid
         float track = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
         float turnRate = static_cast<float>(reader.read_unchecked<int8_t>(8U)) / 5.0f;

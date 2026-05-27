@@ -5,7 +5,6 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)
 
 gatas_add_module(
     SOURCE_FILES
-        ace/ognpacket.cpp
         ace/src/ogn1.cpp
     TARGET_LINK_LIBS
         utils

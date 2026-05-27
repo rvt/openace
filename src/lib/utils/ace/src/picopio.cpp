@@ -13,7 +13,7 @@ bool add_pio_program(const pio_program_t *program, PIO *pio_hw, int *sm, uint *o
         *pio_hw = pio1;
         if (!pio_can_add_program(*pio_hw, program))
         {
-            *offset = -1;
+            *offset = UINT8_MAX;
             return false;
         }
     }

@@ -23,8 +23,8 @@
 class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
 {
     friend class message_router;
-    static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr int MAX_IGNORE_DISTANCE = 100000;
+    static constexpr uint32_t DEFAULT_IGNORE_DISTANCE = 25000;
+    static constexpr uint32_t MAX_IGNORE_DISTANCE = 100000;
 
 private:
     struct
@@ -47,8 +47,8 @@ public:
     static constexpr const etl::string_view NAME = "Flarm";
     Flarm2024(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
     {
-        auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Flarm", "distanceIgnore");
-        distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
+        uint32_t di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, NAME, "distanceIgnore");
+        distanceIgnore = etl::clamp(di, static_cast<uint32_t>(0), MAX_IGNORE_DISTANCE);
         gaTasConfiguration = config.gaTasConfig();
     }
 

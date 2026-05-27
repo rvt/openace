@@ -17,7 +17,7 @@ static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin,
     // Deeper FIFO as we're not doing any TX
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
     // SM transmits 1 bit per 8 execution cycles.
-    float div = (float)clock_get_hz(clk_sys) / (8 * baudRate);
+    float div = ((float)clock_get_hz(clk_sys)) / (8 * baudRate);
     sm_config_set_clkdiv(&c, div);
 
     pio_sm_init(pio, sm, offset, &c);

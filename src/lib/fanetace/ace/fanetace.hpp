@@ -19,8 +19,8 @@ class FanetAce : public BaseModule, public FANET::Connector, public etl::message
 
 private:
     friend class message_router;
-    static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr int MAX_IGNORE_DISTANCE = 100000;
+    static constexpr uint32_t DEFAULT_IGNORE_DISTANCE = 25000;
+    static constexpr uint32_t MAX_IGNORE_DISTANCE = 100000;
 
     enum TaskState : uint32_t
     {
@@ -71,8 +71,8 @@ public:
     FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), protocol(this), distanceIgnore(DEFAULT_IGNORE_DISTANCE), ownshipPosition{}, gaTasConfiguration(config.gaTasConfig())
     {
         protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.icaoAddress});
-        auto di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, "Fanet", "distanceIgnore");
-        distanceIgnore = etl::max(0, etl::min(di, MAX_IGNORE_DISTANCE));
+        uint32_t di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, NAME, "distanceIgnore");
+        distanceIgnore = etl::clamp(di, static_cast<uint32_t>(0), MAX_IGNORE_DISTANCE);
     }
 
     virtual ~FanetAce() = default;

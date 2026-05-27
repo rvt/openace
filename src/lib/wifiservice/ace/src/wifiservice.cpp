@@ -453,7 +453,10 @@ void WifiService::mDnsInit(int itf)
 void WifiService::mDnsDeinit(int itf)
 {
 #if LWIP_MDNS_RESPONDER == 1
-    mdns_resp_del_service(&cyw43_state.netif[itf], mdnsSlot);
+    if (mdnsSlot >= 0)
+    {
+        mdns_resp_del_service(&cyw43_state.netif[itf], mdnsSlot);
+    }
     mdns_resp_remove_netif(&cyw43_state.netif[itf]);
 #endif
 }

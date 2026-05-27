@@ -65,7 +65,7 @@ private:
     static void gdlOverUDPTask(void *arg);
     static void foreFlightListener(void *arg, udp_pcb *pcb, pbuf *p, const ip_addr_t *addr, u16_t port);
     void transmitBuffer();
-    void sendTo(uint32_t ip, int16_t port, etl::span<uint8_t> data);
+    void sendTo(uint32_t ip, uint16_t port, etl::span<uint8_t> data);
 
 public:
     static constexpr const etl::string_view NAME = "GDLoverUDP";

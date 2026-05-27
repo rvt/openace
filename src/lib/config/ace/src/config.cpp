@@ -11,6 +11,7 @@
 #include "ace/moreutils.hpp"
 
 #include "etl/string.h"
+#include "etl/algorithm.h"
 
 #include "pico/rand.h"
 

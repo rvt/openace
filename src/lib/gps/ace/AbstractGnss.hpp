@@ -22,7 +22,7 @@ private:
     static constexpr uint32_t DEFAULT_GPS_BAUDRATE = 115200;
     // When set to true, it dumps once a while the lag between hardware PPS and software PPS
     // Obviously this requires that softPPS is disabled for this device and the PPS pin is connected
-    // The usecase is to test the delay when a hardware device has or has not PPS connected 
+    // The usecase is to test the delay when a hardware device has or has not PPS connected
     // Only for developers Look at teh output for Software PPS lags XXXXXXus behind .
     // Round down the value, and use that for the init value of the GPS device
     #define ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG ( 0 )
@@ -43,7 +43,7 @@ private:
     static void receiveTask(void *arg);
 
     PioSerial pioSerial;
-    const int8_t ppsPin;
+    const uint8_t ppsPin;
     bool softwarebasedPPS;
     int32_t softPPSlagUs;
     uint32_t measureSoftPPSlag = 0;

@@ -29,7 +29,7 @@ class Idle : public BaseModule, public etl::message_router<Idle, GATAS::WifiConn
 
     friend class message_router;
     TaskHandle_t taskHandle;
-    int8_t ledStatusIndicatorPin;
+    uint ledStatusIndicatorPin;
     bool hasGpsFix;
     GATAS::WifiMode wifiMode;
     uint32_t blinkPattern;                     // Calculate blink Pattern created by /sa calculatePattern()
@@ -48,7 +48,7 @@ public:
     static constexpr const etl::string_view NAME = "Idle";
     Idle(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                 taskHandle(nullptr),
-                                                                ledStatusIndicatorPin(-1),
+                                                                ledStatusIndicatorPin(UINT8_MAX),
                                                                 hasGpsFix(false),
                                                                 wifiMode(GATAS::WifiMode::NC),
                                                                 blinkPattern(0b0000000111000111),
