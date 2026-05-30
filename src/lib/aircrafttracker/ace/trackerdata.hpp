@@ -6,6 +6,8 @@
 #include "ace/models.hpp"
 #include "ace/ddb.hpp"
 
+#include "aircraftpathpredictor.hpp"
+
 #include "etl/unordered_map.h"
 #include "etl/set.h"
 #include "etl/scaled_rounding.h"
@@ -38,10 +40,11 @@ private:
     struct TrackerEntry
     {
         uint32_t sendTime;
+        uint32_t lastSeenTime;
         GATAS::AircraftPositionInfo position;
 
         TrackerEntry(uint32_t time, const GATAS::AircraftPositionInfo &pos)
-            : sendTime(time), position(pos) {}
+            : sendTime(time), lastSeenTime(time), position(pos) {}
 
         TrackerEntry() = default;
     };
@@ -59,9 +62,48 @@ private:
     };
 
     etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
+    AircraftPathPredictor<SIZE> pathPredictor;
     DDB ddb;
     uint32_t adaptiveRadius;
     bool ddbLookupsEnabled;
+    bool pathPredictionEnabled;
+    bool ownshipPositionValid;
+    float ownshipLat;
+    float ownshipLon;
+
+    static bool hasDirectTurnRate(const GATAS::AircraftPositionInfo &position)
+    {
+        switch (position.dataSource)
+        {
+        case GATAS::DataSource::FLARM:
+        case GATAS::DataSource::FANET:
+        case GATAS::DataSource::OGN1:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    void updatePathPredictor(const GATAS::AircraftPositionInfo &position)
+    {
+        if (pathPredictionEnabled)
+        {
+            pathPredictor.update(position, hasDirectTurnRate(position));
+        }
+    }
+
+    void updateRelativeFields(GATAS::AircraftPositionInfo &position) const
+    {
+        if (!ownshipPositionValid)
+        {
+            return;
+        }
+
+        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, position.lat, position.lon);
+        position.distanceFromOwn = fromOwn.distance;
+        position.relNorthFromOwn = fromOwn.relNorth;
+        position.relEastFromOwn = fromOwn.relEast;
+    }
 
     bool calculateAdaptiveRadius()
     {
@@ -114,8 +156,9 @@ private:
 
         for (auto it = trackedAircraft.begin(); it != trackedAircraft.end();)
         {
-            if (CoreUtils::isUsReachedRaw(it->second.position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC, us))
+            if (CoreUtils::isUsReachedRaw(it->second.lastSeenTime + MAX_POSITION_INTERPOLATIONS_USEC, us))
             {
+                pathPredictor.remove(it->first);
                 it = trackedAircraft.erase(it);
                 cleaned = true;
             }
@@ -134,6 +177,7 @@ private:
         {
             if (it->second.position.distanceFromOwn >= adaptiveRadius)
             {
+                pathPredictor.remove(it->first);
                 it = trackedAircraft.erase(it);
             }
             else
@@ -144,7 +188,7 @@ private:
     }
 
 public:
-    TrackerData() : adaptiveRadius(75000), ddbLookupsEnabled(false) {}
+    TrackerData() : adaptiveRadius(75000), ddbLookupsEnabled(false), pathPredictionEnabled(false), ownshipPositionValid(false), ownshipLat(0.0f), ownshipLon(0.0f) {}
 
     template <typename Callback>
     void forEachPosition(const Callback &callback) const
@@ -158,6 +202,18 @@ public:
     void ddbEnabled(bool enabled)
     {
         ddbLookupsEnabled = enabled;
+    }
+
+    void pathPrediction(bool enabled)
+    {
+        pathPredictionEnabled = enabled;
+    }
+
+    void ownshipPosition(const GATAS::OwnshipPositionInfo &position)
+    {
+        ownshipLat = position.lat;
+        ownshipLon = position.lon;
+        ownshipPositionValid = true;
     }
 
     bool full() const
@@ -234,10 +290,13 @@ public:
             }
 
             it->second.position = position;
+            it->second.lastSeenTime = time;
+            updatePathPredictor(position);
         }
         else
         {
             trackedAircraft.insert({position.address, TrackerEntry(time, position)});
+            updatePathPredictor(position);
         }
 
         return true;
@@ -269,7 +328,13 @@ public:
             auto &it = pair.second;
             if (CoreUtils::isUsReachedRaw(it.sendTime, currentTime))
             {
-                callback(it.position);
+                GATAS::AircraftPositionInfo position = it.position;
+                if (pathPredictionEnabled && pathPredictor.extrapolatedPos(currentTime, position))
+                {
+                    updateRelativeFields(position);
+                }
+
+                callback(position);
                 count += 1;
                 it.sendTime = currentTime + HEARTBEAT_TIME;
                 if (count >= maxPerRound)
@@ -283,6 +348,7 @@ public:
     void maintenance()
     {
         removeExpired();
+        pathPredictor.maintenance(CoreUtils::timeUs32Raw());
         increaseAdaptiveRadius();
     }
 

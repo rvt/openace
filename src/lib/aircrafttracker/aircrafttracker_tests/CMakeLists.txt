@@ -32,6 +32,7 @@ endif()
 
 # These examples use the standard separate compilation
 set(SOURCES_IDIOMATIC_EXAMPLES
+    aircraftpathpredictor_test.cpp
     trackerdata_test.cpp 
 )
 

@@ -28,6 +28,7 @@ void AircraftTracker::on_receive(const GATAS::ConfigUpdatedMsg &msg)
         ownshipAddress = gaTasConfig.conspicuity.icaoAddress;
         groundStation = gaTasConfig.conspicuity.groundStation;
         trackedAircraft.ddbEnabled(msg.config.valueByPath(false, NAME, "ddbEnabled"));
+        trackedAircraft.pathPrediction(msg.config.valueByPath(false, NAME, "ppEnabled"));
     }
 }
 
@@ -122,6 +123,7 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
 void AircraftTracker::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     ownshipTrack = msg.position.track;
+    trackedAircraft.ownshipPosition(msg.position);
 }
 
 void AircraftTracker::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)

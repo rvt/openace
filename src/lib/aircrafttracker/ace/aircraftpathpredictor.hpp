@@ -27,9 +27,8 @@
  * kinematic fields needed for prediction. It is intended as a helper that can
  * later be merged into TrackerData rather than as a full aircraft-state cache.
  *
- * The predictor does not carry metadata or recompute ownship-relative fields,
- * so extrapolated positions only provide predicted kinematics, address, and
- * airborne state.
+ * The predictor does not recompute ownship-relative fields, so callers must
+ * refresh distanceFromOwn and relNorth/relEast after extrapolating.
  */
 template <size_t SIZE>
 class AircraftPathPredictor
@@ -413,7 +412,8 @@ public:
      * the configured age limit.
      *
      * Because this standalone predictor has no ownship context, the returned
-     * position invalidates distanceFromOwn and relNorth/relEast values.
+     * position preserves caller-provided metadata but invalidates distanceFromOwn
+     * and relNorth/relEast values.
      *
      * @param timeStampUs Requested prediction timestamp.
      * @param position Input/output prediction object. The caller must set
@@ -468,7 +468,6 @@ public:
             eastMeters = radiusMeters * (cosf(headingRad) - cosf(headingEnd));
         }
 
-        position = {};
         position.timestamp = timeStampUs;
         position.address = address;
         position.lat = latest.lat;
@@ -502,6 +501,11 @@ public:
                 ++it;
             }
         }
+    }
+
+    void remove(GATAS::AircraftAddress address)
+    {
+        tracks_.erase(address);
     }
 
     size_t size() const
