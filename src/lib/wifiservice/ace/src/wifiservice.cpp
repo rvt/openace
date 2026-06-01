@@ -22,7 +22,7 @@ void WifiService::start()
 #if LWIP_MDNS_RESPONDER == 1
     mdns_resp_init();
 #endif
-    xTaskCreate(wifiTask, WifiService::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY, &taskHandle);
+    xTaskCreate(wifiTaskTrampoline, WifiService::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY, &taskHandle);
     getBus().subscribe(*this);
 };
 
@@ -33,7 +33,7 @@ bool WifiService::setData(const etl::string_view data, const etl::string_view pa
 
     if (path.contains("startAp"))
     {
-        connectionState = ConnectionState::APMODESTART;
+        requestedWifiMode = GATAS::WifiMode::AP;
     }
     return true;
 }
@@ -56,175 +56,198 @@ void WifiService::fillScanResultFromConfiguration()
     }
 }
 
-void WifiService::wifiTask(void *arg)
+void WifiService::on_receive(const GATAS::WifiModeRequestMsg &msg)
+{
+    requestedWifiMode = msg.wifiMode;
+}
+
+void WifiService::wifiTaskTrampoline(void *arg)
+{
+    WifiService *wifiService = (WifiService *)arg;
+    wifiService->wifiTask();
+}
+
+void WifiService::wifiTask()
 {
     uint32_t startScan = 0;
     uint8_t secondCounter = 0;
-    WifiService *wifiService = (WifiService *)arg;
     while (true)
     {
         uint32_t notifyValue = 0;
         xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(1'000));
 
-        if (notifyValue != 0)
+        // ----------------------------------------------------------
+        // ClientMode handling
+        switch (connectionState)
         {
-            if (notifyValue & TaskState::SHUTDOWN)
+
+        case ConnectionState::START:
+            getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
+            wifiMode = GATAS::WifiMode::NC;
+
+            if (wifiData.clients.size() == 0)
             {
-                vTaskDelete(nullptr);
-                return;
+                connectionState = ConnectionState::APMODESTART;
             }
-        }
-        else
-        {
-            // printf("State: %d\n", wifiService->connectionState);
-            // ----------------------------------------------------------
-            // ClientMode handling
-            switch (wifiService->connectionState)
+            else
             {
+                connectionState = ConnectionState::ENABLECLIENT;
+                totalScanAttempt = NUMBER_OF_CONNECTION_ATTEMPTS;
+            }
+            break;
 
-            case ConnectionState::START:
-                wifiService->wifiMode = GATAS::WifiMode::NC;
+        case ConnectionState::ENABLECLIENT:
 
-                if (wifiService->wifiData.clients.size() == 0)
-                {
-                    wifiService->connectionState = ConnectionState::APMODESTART;
-                }
-                else
-                {
-                    wifiService->connectionState = ConnectionState::ENABLESTA;
-                    wifiService->totalScanAttempt = NUMBER_OF_CONNECTION_ATTEMPTS;
-                }
+            if (wifiData.clients.empty())
+            {
+                requestedWifiMode = GATAS::WifiMode::AP;
+            }
+
+            enableClientMode();
+            connectionState = ConnectionState::WIFISCAN;
+            break;
+
+        case ConnectionState::WIFISCAN:
+            if (dontScanJustConnectToClient)
+            {
+                // When just connect, fill the scanResult with the configured SSD's
+                fillScanResultFromConfiguration();
+                connectionState = ConnectionState::TRYCLIENTCONNECT;
                 break;
+            }
+            getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
+            startScan = CoreUtils::timeUs32Raw() + (GATAS_WIFISERVICE_MAX_SCAN_TIME_MS * 1'000);
+            startWifiScan();
+            connectionState = ConnectionState::WIFISCANNING;
+            break;
 
-            case ConnectionState::ENABLESTA:
-                wifiService->enableSta();
-                if (wifiService->dontScanJustConnectToClient)
-                {
-                    // When just connect, fill the scanResult with the configured SSD's
-                    wifiService->fillScanResultFromConfiguration();
-                    wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
-                }
-                else
-                {
-                    wifiService->connectionState = ConnectionState::WIFISCAN;
-                }
-                break;
-
-            case ConnectionState::WIFISCAN:
-                wifiService->getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
-                startScan = CoreUtils::timeUs32Raw() + (GATAS_WIFISERVICE_MAX_SCAN_TIME_MS * 1'000);
-                wifiService->startWifiScan();
-                wifiService->connectionState = ConnectionState::WIFISCANNING;
-                break;
-
-            case ConnectionState::WIFISCANNING:
-                if (!wifiService->scanRunning())
-                {
-                    wifiService->connectionState = ConnectionState::TRYCLIENTCONNECT;
-                }
-                // If for whatever reason WIFI scan does not find any network, then stop scanning after GATAS_WIFISERVICE_MAX_SCAN_TIME_MS
-                if (CoreUtils::isUsReachedRaw(startScan))
-                {
-                    cyw43_wifi_leave(&cyw43_state, 0);
-                    wifiService->disableSta();
-                    wifiService->connectionState = ConnectionState::APMODESTART;
-                }
-                break;
-
-            case ConnectionState::TRYCLIENTCONNECT:
-                // wifi_leave seems to be required for more reliable connections, I don't know why...
+        case ConnectionState::WIFISCANNING:
+            if (!scanRunning())
+            {
+                connectionState = ConnectionState::TRYCLIENTCONNECT;
+            }
+            // If for whatever reason WIFI scan does not find any network, then stop scanning after GATAS_WIFISERVICE_MAX_SCAN_TIME_MS
+            if (CoreUtils::isUsReachedRaw(startScan))
+            {
                 cyw43_wifi_leave(&cyw43_state, 0);
+                disableClientMode();
+                connectionState = ConnectionState::APMODESTART;
+            }
+            break;
+
+        case ConnectionState::TRYCLIENTCONNECT:
+            // wifi_leave seems to be required for more reliable connections, I don't know why...
+            cyw43_wifi_leave(&cyw43_state, 0);
+            {
+                if (requestedWifiMode == GATAS::WifiMode::AP)
                 {
+                    connectionState = ConnectionState::CLIENT_TO_AP;
+                    break;
+                }
 
-                    // *  CONNECTED Connection OK
-                    // *  MORE No Connection, more work today
-                    // *  EXHAUSTED No Connection, no more networks
-                    auto cResult = wifiService->connectClient();
-                    if (cResult == CONNECTED)
+                // *  CONNECTED Connection OK
+                // *  MORE No Connection, more work today
+                // *  EXHAUSTED No Connection, no more networks
+                auto cResult = connectClient();
+                successClientConnected = false;
+                if (cResult == CONNECTED)
+                {
+                    mDnsInit(CYW43_ITF_STA);
+                    connectionState = ConnectionState::CLIENTMODESTARTED;
+                    successClientConnected = true;
+                    wifiStatePublishPending = true;
+                    publishWifiState();
+                }
+                else if (cResult == MORE)
+                {
+                    //  *  1 No Connection, same network needs to be retried
+                    //  *  2 No Connection, next network will be attempted if any
+                }
+                else /* EXHAUSTED */
+                {
+                    // When APP mode is disable, go back to scanning for networks
+                    totalScanAttempt -= 1;
+                    if (totalScanAttempt == 0)
                     {
-                        wifiService->mDnsInit(CYW43_ITF_STA);
-                        wifiService->connectionState = ConnectionState::CLIENTMODESTARTED;
-                        wifiService->successClientConnected = true;
+                        connectionState = ConnectionState::ENABLECLIENT;
                     }
-                    else if (cResult == MORE)
+                    else
                     {
-                        //  *  1 No Connection, same network needs to be retried
-                        //  *  2 No Connection, next network will be attempted if any
-                    }
-                    else /* EXHAUSTED */
-                    {
-                        wifiService->disableSta();
-
-                        // When APP mode is disable, go back to scanning for networks
-                        wifiService->totalScanAttempt -= 1;
-                        if (wifiService->totalScanAttempt == 0)
+                        if (wifiData.apDisabled || successClientConnected)
                         {
-                            wifiService->connectionState = ConnectionState::ENABLESTA;
+                            connectionState = ConnectionState::START;
                         }
                         else
                         {
-                            if (wifiService->wifiData.apDisabled || wifiService->successClientConnected)
-                            {
-                                wifiService->connectionState = ConnectionState::START;
-                            }
-                            else
-                            {
-                                wifiService->connectionState = ConnectionState::APMODESTART;
-                            }
+                            connectionState = ConnectionState::CLIENT_TO_AP;
                         }
                     }
                 }
-                break;
+            }
+            break;
 
-            case ConnectionState::CLIENTMODESTARTED:
-                if (!wifiService->checkIfClientActive(CYW43_ITF_STA))
-                {
-                    // NOTE: We must call these two, otherwise DHCP will 'keep' the IP of the previous and we
-                    // won;t notify other services that the IP address has changed, like GDLoverUDP
-                    dhcp_release_and_stop(&cyw43_state.netif[0]);
-                    dhcp_start(&cyw43_state.netif[0]);
-                    wifiService->mDnsDeinit(CYW43_ITF_STA);
-                    wifiService->connectionState = ConnectionState::CLIENTMODESTOPPED;
-                }
-                break;
-
-            case ConnectionState::CLIENTMODESTOPPED:
-                // TODO: If we got bad auth on the current connection try the next connection instead of a WIFI scan
-                // So perhaps we can go to TRYCLIENTCONNECT??
-                wifiService->connectionState = ConnectionState::WIFISCAN; // STA already enabled, so just scan for clients
-                break;
-
-                // ----------------------------------------------------------
-                // AccessPoint handling
-
-            case ConnectionState::APMODESTART:
-                wifiService->disableSta();
-                cyw43_wifi_leave(&cyw43_state, 0);
-                wifiService->startAccessPoint();
-                wifiService->mDnsInit(CYW43_ITF_AP);
-                wifiService->connectionState = ConnectionState::APSTARTED;
-
-                break;
-
-            case ConnectionState::APSTARTED:
-                // every 5 seconds
-                secondCounter += 1;
-                if (secondCounter > 5)
-                {
-                    secondCounter = 0;
-                    wifiService->handleAccesspointClients();
-                }
-                break;
-
-            case ConnectionState::APSTOPPED:
-                wifiService->mDnsDeinit(CYW43_ITF_AP);
-                wifiService->connectionState = ConnectionState::START;
-                break;
-
-            default:
-                // Handle unknown states if needed
+        case ConnectionState::CLIENTMODESTARTED:
+            if (requestedWifiMode == GATAS::WifiMode::AP)
+            {
+                connectionState = ConnectionState::CLIENT_TO_AP;
                 break;
             }
+            if (!checkIfClientActive(CYW43_ITF_STA))
+            {
+                // NOTE: We must call these two, otherwise DHCP will 'keep' the IP of the previous and we
+                // won;t notify other services that the IP address has changed, like GDLoverUDP
+                dhcp_release_and_stop(&cyw43_state.netif[0]);
+                dhcp_start(&cyw43_state.netif[0]);
+                mDnsDeinit(CYW43_ITF_STA);
+                connectionState = ConnectionState::WIFISCAN; // STA already enabled, so just scan for clients
+            }
+            break;
+
+            // ----------------------------------------------------------
+            // AccessPoint handling
+
+        case ConnectionState::APMODESTART:
+            disableClientMode();
+            cyw43_wifi_leave(&cyw43_state, 0);
+            startAccessPoint();
+            mDnsInit(CYW43_ITF_AP);
+            connectionState = ConnectionState::APSTARTED;
+            wifiStatePublishPending = true;
+            publishWifiState();
+            break;
+
+        case ConnectionState::APSTARTED:
+            if (requestedWifiMode == GATAS::WifiMode::CLIENT)
+            {
+                connectionState = ConnectionState::AP_TO_CLIENT;
+                break;
+            }
+            // every 5 seconds handle handleAccesspointClients
+            secondCounter += 1;
+            if (secondCounter > 5)
+            {
+                secondCounter = 0;
+                handleAccesspointClients();
+            }
+            break;
+
+        case ConnectionState::AP_TO_CLIENT:
+            mDnsDeinit(CYW43_ITF_AP);
+            stopAccessPoint();
+            getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
+            wifiMode = GATAS::WifiMode::NC;
+            connectionState = ConnectionState::START;
+            break;
+
+        case ConnectionState::CLIENT_TO_AP:
+            stopClient();
+            getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
+            connectionState = ConnectionState::APMODESTART;
+            break;
+
+        default:
+            // Handle unknown states if needed
+            break;
         }
     }
 }
@@ -262,7 +285,6 @@ void WifiService::startAccessPoint()
     dns_server_init(&dns_server, &gw);
 
     wifiMode = GATAS::WifiMode::AP;
-    showSsidPwdIp(wifiData.ap.ssid, wifiData.ap.password);
 }
 
 void WifiService::stopAccessPoint()
@@ -307,7 +329,7 @@ bool WifiService::scanRunning()
 
 void WifiService::startWifiScan()
 {
-    scanResult.empty();
+    scanResult.clear();
     cyw43_wifi_scan_options_t scan_options;
     scan_options.scan_type = 1;
     memset(&scan_options, 0, sizeof(cyw43_wifi_scan_options_t));
@@ -356,7 +378,6 @@ WifiService::ConnectClientResult WifiService::connectClient()
     {
         nextItem->connectAttempt = 0;
         wifiMode = GATAS::WifiMode::CLIENT;
-        showSsidPwdIp(clientIt->ssid, "<hidden>");
         return CONNECTED;
     }
 
@@ -384,7 +405,7 @@ bool WifiService::checkIfClientActive(int itf)
     return false;
 }
 
-void WifiService::enableSta()
+void WifiService::enableClientMode()
 {
     cyw43_arch_enable_sta_mode();
     // cyw43_wifi_pm(&cyw43_state, cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1));
@@ -392,9 +413,18 @@ void WifiService::enableSta()
     cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
 }
 
-void WifiService::disableSta()
+void WifiService::disableClientMode()
 {
     cyw43_arch_disable_sta_mode();
+}
+
+void WifiService::stopClient()
+{
+    dhcp_release_and_stop(&cyw43_state.netif[0]);
+    dhcp_start(&cyw43_state.netif[0]);
+    mDnsDeinit(CYW43_ITF_STA);
+    cyw43_wifi_leave(&cyw43_state, 0);
+    disableClientMode();
 }
 
 void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const
@@ -418,18 +448,18 @@ void WifiService::showSsidPwdIp(const etl::string_view &ssid, const etl::string_
 
     ip4addr_ntoa_r(&ip, ipStr, IP4ADDR_STRLEN_MAX);
     puts("###################################");
-    printf("## Mode: %s\n## SSID: %s Password: %s IP: %s\n", mode, ssid.begin(), password.begin(), ipStr);
+    if (wifiMode == GATAS::WifiMode::AP)
+    {
+        printf("## Mode: %s\n## SSID: %s Password: %s IP: %s\n", mode, ssid.begin(), password.begin(), ipStr);
+    }
+    else
+    {
+        printf("## Mode: %s\n## SSID: %s IP: %s\n", mode, ssid.begin(), ipStr);
+    }
     puts("###################################");
 }
 
-// static void
-// mdns_example_report(struct netif *netif, u8_t result, s8_t service)
-// {
-//     LWIP_PLATFORM_DIAG(("mdns status[netif %d][service %d]: %d\n", netif->num, service, result));
-// }
-
 #if LWIP_MDNS_RESPONDER == 1
-
 static void
 srv_txt(struct mdns_service *service, void *txt_userdata)
 {
@@ -475,28 +505,16 @@ WifiService::IpGw WifiService::getInterfaceInfo()
     return {0, 0};
 }
 
-void WifiService::on_receive(const GATAS::Every5SecMsg &msg)
+void WifiService::publishWifiState() const
 {
-    (void)msg;
-    bool active = checkIfClientActive(CYW43_ITF_STA) || checkIfClientActive(CYW43_ITF_AP);
-
-    if (active == currentWifiActiveStatus)
-    {
-        return;
-    }
-
-    if (!active)
-    {
-        getBus().receive(GATAS::WifiConnectionStateMsg{GATAS::WifiMode::NC});
-        currentWifiActiveStatus = false;
-        return;
-    }
-
     const auto interface = getInterfaceInfo();
     if (!ip4_addr_isany_val(interface.ip))
     {
-        currentWifiActiveStatus = true;
+        showSsidPwdIp(wifiData.ap.ssid, wifiData.ap.password);
+
+        // char ipStr[IP4ADDR_STRLEN_MAX];
+        // ip4addr_ntoa_r(&interface.ip, ipStr, IP4ADDR_STRLEN_MAX);
+        // GATAS_INFO("WIFI State changed to %s IP:%s", wifiMode.c_str(), ipStr);
         getBus().receive(GATAS::WifiConnectionStateMsg{wifiMode, interface.ip.addr, interface.gateWay.addr});
-        return;
     }
 }

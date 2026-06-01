@@ -43,6 +43,7 @@ void GatasConnect::on_receive_unknown(const etl::imessage &msg)
 
 void GatasConnect::on_receive(const GATAS::WifiConnectionStateMsg &wcs)
 {
+    wifiMode = wcs.wifiMode;
     gatasIp = wcs.gatasIp;
 }
 
@@ -148,29 +149,25 @@ void GatasConnect::getConfig(const Configuration &config)
 void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
 {
     (void)xTimer;
+    sendAircraftConfiguration();
+    sendOwnshipPosition();
+}
 
-    // Snapshot shared state under lock, then do encoding outside the critical section.
+void GatasConnect::sendOwnshipPosition()
+{
     bool groundStationSnap = false;
     bool hasGpsFixSnap = false;
     uint64_t lastRadioTrafficUsSnap = 0;
-    uint64_t gatasIdSnap = 0;
-    uint32_t icaoAddressSnap = 0;
-    uint32_t gatasIpSnap = 0;
-    uint32_t pinCodeSnap = 0;
     GATAS::OwnshipPositionInfo ownshipSnap{};
-    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddressesSnap;
+    GATAS::GatasConnectOutput outputSnap = GATAS::GatasConnectOutput::UDP;
 
     if (auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()})
     {
         groundStationSnap = groundStation;
         hasGpsFixSnap = hasGpsFix;
         lastRadioTrafficUsSnap = lastRadioTrafficUs;
-        gatasIdSnap = gatasId;
-        icaoAddressSnap = icaoAddress;
-        gatasIpSnap = gatasIp;
-        pinCodeSnap = pinCode;
         ownshipSnap = ownshipPosition;
-        allIcaoAddressesSnap = allIcaoAddresses;
+        outputSnap = output;
     }
 
     // Receive traffic for at least 60 seconds more
@@ -182,43 +179,68 @@ void GatasConnect::requestTimerCallback(TimerHandle_t xTimer)
     // In groundstation mode we require that we only fetch traffic when we see actual traffic to reduce load on the gatasServer
     // Otherwhise the system would keep fetching traffic for no reason.
     const bool sendOwnship = (hasRecentRadioTraffic || !groundStationSnap) && hasGpsFixSnap;
-
-    const size_t ownshipFrameSize = sendOwnship ? BinaryMessages::serializeOwnshipPositionFramedSizeV1() : 0;
-    const size_t configFrameSize = BinaryMessages::serializeAircraftConfigurationFramedSizeV2(allIcaoAddressesSnap.size());
-    const size_t totalFrameSize = ownshipFrameSize + configFrameSize;
-    auto &pool = BaseModule::getGlobalPool();
-    auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(totalFrameSize));
-    if (cobsPayload == nullptr)
+    if (!sendOwnship)
     {
-        GATAS_WARN("GatasConnect: failed to allocate %u bytes for request payload", totalFrameSize);
         return;
     }
 
-    size_t position = 0;
-    if (sendOwnship)
+    const size_t ownshipFrameSize = BinaryMessages::serializeOwnshipPositionFramedSizeV1();
+    auto &pool = BaseModule::getGlobalPool();
+    auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(ownshipFrameSize));
+    if (cobsPayload == nullptr)
     {
-        // --- Ownship position: requests surrounding traffic data from server
-        const size_t written = BinaryMessages::serializeOwnshipPositionV1(cobsPayload + position, totalFrameSize - position, ownshipSnap);
-        if (written == 0)
-        {
-            GATAS_WARN("GatasConnect: failed to encode ownship request payload");
-            pool.release(cobsPayload);
-            return;
-        }
-        position += written;
+        GATAS_WARN("GatasConnect: failed to allocate %u bytes for ownship request payload", ownshipFrameSize);
+        return;
     }
 
-    // --- Aircraft configuration (always send)
-    const size_t written = BinaryMessages::serializeAircraftConfigurationV2(cobsPayload + position, totalFrameSize - position, gatasIdSnap, icaoAddressSnap, allIcaoAddressesSnap, gatasIpSnap, pinCodeSnap);
+    const size_t written = BinaryMessages::serializeOwnshipPositionV1(cobsPayload, ownshipFrameSize, ownshipSnap);
+    if (written == 0)
+    {
+        GATAS_WARN("GatasConnect: failed to encode ownship request payload");
+        pool.release(cobsPayload);
+        return;
+    }
+
+    getBus().receive(GATAS::GatasConnectTx{pool, outputSnap, cobsPayload, written});
+}
+
+void GatasConnect::sendAircraftConfiguration()
+{
+    uint64_t gatasIdSnap = 0;
+    uint32_t icaoAddressSnap = 0;
+    uint32_t gatasIpSnap = 0;
+    uint32_t pinCodeSnap = 0;
+    GATAS::WifiMode wifiModeSnap = GATAS::WifiMode::NC;
+    etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddressesSnap;
+
+    if (auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()})
+    {
+        gatasIdSnap = gatasId;
+        icaoAddressSnap = icaoAddress;
+        gatasIpSnap = gatasIp;
+        pinCodeSnap = pinCode;
+        wifiModeSnap = wifiMode;
+        allIcaoAddressesSnap = allIcaoAddresses;
+    }
+
+    const size_t configFrameSize = BinaryMessages::serializeAircraftConfigurationFramedSizeV2(allIcaoAddressesSnap.size());
+    auto &pool = BaseModule::getGlobalPool();
+    auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(configFrameSize));
+    if (cobsPayload == nullptr)
+    {
+        GATAS_WARN("GatasConnect: failed to allocate %u bytes for configuration payload", configFrameSize);
+        return;
+    }
+
+    const size_t written = BinaryMessages::serializeAircraftConfigurationV2(cobsPayload, configFrameSize, gatasIdSnap, icaoAddressSnap, allIcaoAddressesSnap, gatasIpSnap, pinCodeSnap, wifiModeSnap);
     if (written == 0)
     {
         GATAS_WARN("GatasConnect: failed to encode configuration payload");
         pool.release(cobsPayload);
         return;
     }
-    position += written;
 
-    getBus().receive(GATAS::GatasConnectTx{pool, output, cobsPayload, position});
+    getBus().receive(GATAS::GatasConnectTx{pool, GATAS::GatasConnectOutput::Broadcast, cobsPayload, written});
 }
 
 void GatasConnect::requestTimerCallbackTrampoline(TimerHandle_t xTimer)

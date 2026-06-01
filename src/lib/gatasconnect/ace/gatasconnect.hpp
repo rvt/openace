@@ -41,6 +41,7 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     uint32_t pinCode = 0;
     uint64_t gatasId = 0;
     bool groundStation = false;
+    GATAS::WifiMode wifiMode = GATAS::WifiMode::NC;
 
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddresses;
     GATAS::OwnshipPositionInfo ownshipPosition = {};
@@ -62,6 +63,8 @@ private:
 
     static void requestTimerCallbackTrampoline(TimerHandle_t xTimer);
     void requestTimerCallback(TimerHandle_t xTimer);
+    void sendOwnshipPosition();
+    void sendAircraftConfiguration();
 
     void getConfig(const Configuration &config);
 public:

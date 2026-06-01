@@ -284,6 +284,15 @@ namespace GATAS
     };
 
     /**
+     * Request WifiService to move into a specific WiFi mode.
+     */
+    struct WifiModeRequestMsg : public etl::message<27>
+    {
+        GATAS::WifiMode wifiMode;
+        WifiModeRequestMsg(GATAS::WifiMode wifiMode_) : wifiMode(wifiMode_) {}
+    };
+
+    /**
      * Idle Message send at intervals that allows to due small tasks without creating a new task
      * Modules using this message should never block a task
      */
@@ -316,10 +325,16 @@ namespace GATAS
         GATAS::GatasConnectOutput output;
 
         GatasConnectTx(GATAS::GlobalPoolConfiguration &pool, GATAS::GatasConnectOutput output_, uint8_t *cobsMessage_, size_t length_)
-            : cobsMessage(pool, cobsMessage_), length(length_), output(output_) {}
+            : cobsMessage(pool, cobsMessage_), length(length_), output(output_)
+        {
+            GATAS_ASSERT((length != 0 && cobsMessage.get() != nullptr), "Invalid Connect Msg");
+        }
 
         GatasConnectTx(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&cobsMessage_, size_t length_, GATAS::GatasConnectOutput output_)
-            : cobsMessage(etl::move(cobsMessage_)), length(length_), output(output_) {}
+            : cobsMessage(etl::move(cobsMessage_)), length(length_), output(output_)
+        {
+            GATAS_ASSERT((length != 0 && cobsMessage.get() != nullptr), "Invalid Connect Msg");
+        }
     };
 
     /**

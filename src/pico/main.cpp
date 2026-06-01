@@ -307,7 +307,6 @@ static void loadModules(void *arg)
     BaseModule::setModuleStatus(Configuration::NAME, &config);
 
     load(WifiService::NAME, bus, config, true);
-    load(Idle::NAME, bus, config, true);
 
     WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME));
     if (client != nullptr)
@@ -349,6 +348,9 @@ static void loadModules(void *arg)
     load(Flarm2024::NAME, bus, config);
     load(Ogn1::NAME, bus, config);
     load(Dump1090Client::NAME, bus, config);
+
+    // Must be loaded last because some modules uses these to send messages to other modules and we need to ensure that all modules are loaded
+    load(Idle::NAME, bus, config, true);
 
     // SerialADSB messes up the serial terminal, but it will load beyond this point
     // load(SerialADSB::NAME, bus, config);

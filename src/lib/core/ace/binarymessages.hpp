@@ -44,6 +44,7 @@ public:
             SET_ICAO_ADDRESS_V1 = 4,          // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
             AIRCRAFT_CONFIGURATIONS_V2 = 5,   // Current GATAS COnfiguration V2
             GDL90_V1 = 6,                      // Packed GDL90 message for bridge transports
+            SET_WIFI_MODE_V1 = 7,             // Request that OpenAce changes WiFi mode
         };
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
@@ -53,8 +54,11 @@ public:
         ETL_ENUM_TYPE(SET_ICAO_ADDRESS_V1, "Set new aircraft from configuration")
         ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V2, "Current GATAS Configuration")
         ETL_ENUM_TYPE(GDL90_V1, "GDL90 Message")
+        ETL_ENUM_TYPE(SET_WIFI_MODE_V1, "Set WiFi Mode")
         ETL_END_ENUM_TYPE
     };
+
+    static constexpr uint8_t AIRCRAFT_CONFIGURATION_WIFI_MODE_MASK = 0x03U;
 
     /**
      * Read Aircraft Position Info from a bit stream reader
@@ -157,10 +161,11 @@ public:
         return getCOBSBufferSize(serializeOwnshipPositionSizeV1().items(1), true);
     }
 
-    static void serializeAircraftConfigurationV2(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode)
+    static void serializeAircraftConfigurationV2(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode, GATAS::WifiMode wifiMode)
     {
         writer.write_unchecked(DataType(DataType::AIRCRAFT_CONFIGURATIONS_V2).get_value(), 8U);
-        writer.write_unchecked(0, 8U); // Reserved
+        const uint8_t flags = static_cast<uint8_t>(wifiMode) & AIRCRAFT_CONFIGURATION_WIFI_MODE_MASK;
+        writer.write_unchecked(flags, 8U); // Reserved bits, bits 0-1 encode WiFi mode: NC/AP/CLIENT
         writer.write_unchecked(gatasId, 32U);
         writer.write_unchecked(gatasIp, 32U);
         writer.write_unchecked(icaoAddressSnap, 24U);
@@ -182,7 +187,7 @@ public:
         }
     }
 
-    static size_t serializeAircraftConfigurationV2(uint8_t *out, size_t outSize, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode)
+    static size_t serializeAircraftConfigurationV2(uint8_t *out, size_t outSize, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode, GATAS::WifiMode wifiMode)
     {
         const size_t rawSize = serializeAircraftConfigurationSizeV2().items(addresses.size());
         const size_t framedSize = serializeAircraftConfigurationFramedSizeV2(addresses.size());
@@ -193,7 +198,7 @@ public:
 
         uint8_t rawBuffer[MAX_COBS_FRAME_SIZE];
         etl::bit_stream_writer writer(rawBuffer, rawSize, etl::endian::big);
-        serializeAircraftConfigurationV2(writer, gatasId, icaoAddressSnap, addresses, gatasIp, pinCode);
+        serializeAircraftConfigurationV2(writer, gatasId, icaoAddressSnap, addresses, gatasIp, pinCode, wifiMode);
         return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
     }
 
@@ -250,6 +255,36 @@ public:
             return 0x00;
         }
         return reader.read_unchecked<uint32_t>(24U);
+    }
+
+    /**
+     * Deserialize the SET_WIFI_MODE_V1 message. THis wil ignore the WifiMode::NC and return false
+     * @param reader
+     * @param wifiMode
+     * @return
+     */
+    static bool deserializeSetWifiModeV1(etl::bit_stream_reader &reader, GATAS::WifiMode &wifiMode)
+    {
+        auto type = reader.read_unchecked<uint8_t>(8U);
+        if (type != DataType(DataType::SET_WIFI_MODE_V1).get_value())
+        {
+            return false;
+        }
+
+        const auto mode = reader.read_unchecked<uint8_t>(8U);
+        if (mode == GATAS::WifiMode::AP)
+        {
+            wifiMode = GATAS::WifiMode::AP;
+            return true;
+        }
+
+        if (mode == GATAS::WifiMode::CLIENT)
+        {
+            wifiMode = GATAS::WifiMode::CLIENT;
+            return true;
+        }
+
+        return false;
     }
 
     /**

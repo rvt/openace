@@ -100,7 +100,6 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
 
         void activate(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_)
         {
-            inUse = true;
             txDirty = false;
             hciHandle = hciHandle_;
             nmeaReadyState = readyState_;
@@ -117,25 +116,14 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
             binaryGulpBuffer.clear();
             binaryGulp.setRef({});
             cobsWriteBuffer.clear();
+            inUse = true;
         }
 
         void deactivate()
         {
             inUse = false;
             txDirty = false;
-            hciHandle = 0;
-            nmeaReadyState = 0;
-            binaryReadyState = 0;
-            mtu = 0;
-            nmeaAttrHandle = 0;
-            binaryAttrHandle = 0;
-            guardCounter = 0;
-            nmeaGulpBuffer.clear();
-            nmeaGulp.setRef({});
-            nmeaWriteBuffer.clear();
-            binaryGulpBuffer.clear();
-            binaryGulp.setRef({});
-            cobsWriteBuffer.clear();
+            // We won't reset anything else, just set inUse to false if anything is still pending, it still has a chance to finish
         }
 
         void getData(etl::string_stream &stream, const etl::string_view path) const
@@ -244,7 +232,7 @@ private:
 
     SemaphoreHandle_t bufferMutex;
 
-    static bool sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState);
+    static bool sendNMEABuffer(BtContext &ctx);
     static bool sendCobsBuffer(BtContext &ctx);
     static bool hasPendingData(const BtContext &ctx);
     static void requestSendIfPending(BtContext &ctx);

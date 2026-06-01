@@ -73,6 +73,15 @@ public:
                     }
                 }
             }
+
+            if (frameType == BinaryMessages::DataType::SET_WIFI_MODE_V1)
+            {
+                GATAS::WifiMode wifiMode = GATAS::WifiMode::NC;
+                if (BinaryMessages::deserializeSetWifiModeV1(reader, wifiMode))
+                {
+                    bus.receive(GATAS::WifiModeRequestMsg{wifiMode});
+                }
+            }
         }
 
         // Send the left over if any

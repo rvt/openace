@@ -26,6 +26,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
 
 # Add other modules (usually lib or core)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 
 # Add cmake modules
 
@@ -40,6 +41,7 @@ set(SOURCES_IDIOMATIC_EXAMPLES # Tests
     poolallocator_test.cpp
     antennaRadiationPattern_test.cpp
     models_test.cpp
+    binarymessages_test.cpp
     )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES

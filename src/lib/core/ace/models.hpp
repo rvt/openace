@@ -362,9 +362,9 @@ namespace GATAS
     {
         enum enum_type : uint8_t
         {
-            NC,
-            AP,
-            CLIENT
+            NC=0,
+            AP=1,
+            CLIENT=2,
         };
 
         ETL_DECLARE_ENUM_TYPE(WifiMode, uint8_t)
@@ -592,11 +592,13 @@ namespace GATAS
         {
             UDP = 0,
             Bluetooth = 1,
+            Broadcast = 2
         };
 
         ETL_DECLARE_ENUM_TYPE(GatasConnectOutput, uint8_t)
         ETL_ENUM_TYPE(UDP, "UDP")
         ETL_ENUM_TYPE(Bluetooth, "BlueTooth")
+        ETL_ENUM_TYPE(Broadcast, "Broadcast")
         ETL_END_ENUM_TYPE
     };
 

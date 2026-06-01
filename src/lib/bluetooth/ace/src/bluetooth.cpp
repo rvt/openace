@@ -190,7 +190,7 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
 
 void Bluetooth::on_receive(const GATAS::GatasConnectTx &msg)
 {
-    if (msg.output != GATAS::GatasConnectOutput::Bluetooth || !msg.cobsMessage || msg.length == 0)
+    if ((msg.output != GATAS::GatasConnectOutput::Bluetooth && msg.output != GATAS::GatasConnectOutput::Broadcast))
     {
         return;
     }
@@ -230,6 +230,7 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t 
         it->activate(handle, mtu, readyState);
         return true;
     }
+    GATAS_WARN("No Free BLE connections");
     return false;
 }
 
@@ -242,9 +243,9 @@ void Bluetooth::removeConnection(uint16_t hciHandle)
     }
 }
 
-bool Bluetooth::sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHandle, uint8_t readyState)
+bool Bluetooth::sendNMEABuffer(BtContext &ctx)
 {
-    if ((readyState & ATT_READYSTATE) != ATT_READYSTATE || attrHandle == 0)
+    if ((ctx.nmeaReadyState & ATT_READYSTATE) != ATT_READYSTATE || ctx.nmeaAttrHandle == 0)
     {
         return false;
     }
@@ -252,7 +253,7 @@ bool Bluetooth::sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHa
     etl::span<uint8_t> data;
     if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
     {
-        buffer.read(data, ctx.mtu);
+        ctx.nmeaWriteBuffer.read(data, ctx.mtu);
     }
     else
     {
@@ -264,13 +265,13 @@ bool Bluetooth::sendNMEABuffer(BtContext &ctx, TxBuffer &buffer, uint16_t attrHa
         return false;
     }
 
-    const uint8_t sendStatus = att_server_notify(ctx.hciHandle, attrHandle, data.data(), data.size());
+    const uint8_t sendStatus = att_server_notify(ctx.hciHandle, ctx.nmeaAttrHandle, data.data(), data.size());
 
     size_t used = 0;
     if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
     {
-        buffer.compact();
-        used = buffer.used();
+        ctx.nmeaWriteBuffer.compact();
+        used = ctx.nmeaWriteBuffer.used();
     }
 
     (void)used;
@@ -354,6 +355,9 @@ void Bluetooth::requestSendIfPending(BtContext &ctx)
     }
 }
 
+// RecursiveGuard: attContextCallback                                                                                                                                                                                     
+// assertion "pxQueue->uxItemSize == 0" failed: file "/Volumes/ext/pico/FreeRTOS-Kernel/queue.c", line 1351, function: xQueueGiveFromISR    
+
 void Bluetooth::attContextCallback(void *context)
 {
     auto btContext = static_cast<Bluetooth::BtContext *>(context);
@@ -362,7 +366,7 @@ void Bluetooth::attContextCallback(void *context)
     // this functions, when that happens we only allow 8 recursive calls else there will be stack overflow issues.
 
     // 10-05-2026 Lower from 8 to 7 after adding B lueTooth CObs MEssages
-    auto rGuard = RecursiveGuard<7>(btContext->guardCounter, "RecursiveGuard: attContextCallback");
+    auto rGuard = RecursiveGuard<6>(btContext->guardCounter, "RecursiveGuard: attContextCallback");
     if (!rGuard)
     {
         return;
@@ -371,7 +375,7 @@ void Bluetooth::attContextCallback(void *context)
     bool sent = sendCobsBuffer(*btContext);
     if (!sent)
     {
-        sent = sendNMEABuffer(*btContext, btContext->nmeaWriteBuffer, btContext->nmeaAttrHandle, btContext->nmeaReadyState);
+        sent = sendNMEABuffer(*btContext);
     }
 
     if (!sent)
@@ -424,7 +428,7 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
             auto mtu = att_server_get_mtu(handle) - 4;
             if (createConnection(handle, mtu, 0b010))
             {
-                printf("ATT_EVENT_CONNECTED Handle:%d MTU:%d\n", handle, mtu);
+                GATAS_INFO("ATT_EVENT_CONNECTED Handle:%d MTU:%d\n", handle, mtu);
                 // Only re-advertise when it's possible to accept new connections
                 if (instance->hasFreeConnectionSlot())
                 {
@@ -457,7 +461,6 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
         case ATT_EVENT_DISCONNECTED:
         {
             Bluetooth::removeConnection(att_event_disconnected_get_handle(packet));
-            gap_disconnect(att_event_disconnected_get_handle(packet));
         }
         break;
 

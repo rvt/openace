@@ -354,6 +354,7 @@ package "Configuration" {
 
 package "Network" {
     [WifiService]
+    [GatasConnect] as GC4
 }
 
 package "Timer Consumers" {
@@ -414,6 +415,7 @@ package "Wifi Consumers" {
 [Config] --> [Gdl90Service] : ConfigUpdatedMsg
 [Config] --> [BMP2] : ConfigUpdatedMsg
 
+[GC4] --> [WifiService] : WifiModeRequestMsg
 [WifiService] --> [GC3] : WifiConnectionStateMsg
 [WifiService] --> [GU2] : WifiConnectionStateMsg
 [WifiService] --> [GO2] : WifiConnectionStateMsg\nAccessPointClientsMsg
@@ -448,6 +450,7 @@ package "Wifi Consumers" {
 | `GdlMsg` | `Gdl90Service` | `GDLoverUDP`, `GatasConnect` | Packed GDL90 bytes for network and bridge outputs. |
 | `GatasConnectTx` | `GatasConnect` | `GatasConnectUDP`, `Bluetooth` | Framed binary output, transport-agnostic. |
 | `GatasConnectRx` | `GatasConnectUDP`, `Bluetooth` | `GatasConnect` | Framed binary input from transports. |
+| `WifiModeRequestMsg` | `GatasConnect` | `WifiService` | Companion-originated WiFi mode switch request derived from framed binary control traffic. |
 | `WifiConnectionStateMsg` | `WifiService` | `Dump1090Client`, `GDLoverUDP`, `GatasConnect`, `GatasConnectUDP`, `DataPort`, `AirConnect`, `Idle` | Shared network state. |
 | `AccessPointClientsMsg` | `WifiService` | `GDLoverUDP` | AP client list for UDP output policy. |
 | `ConfigUpdatedMsg` | `Config` | `GpsDecoder`, `Bmp280`, `Sx1262`, `Ogn1`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `GDLoverUDP`, `GatasConnect`, `GatasConnectUDP` | Runtime config propagation. |
