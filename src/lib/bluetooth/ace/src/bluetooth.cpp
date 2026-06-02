@@ -263,10 +263,12 @@ bool Bluetooth::sendNMEABuffer(BtContext &ctx)
 
     const uint8_t sendStatus = att_server_notify(ctx.hciHandle, ctx.nmeaAttrHandle, data.data(), data.size());
 
-    if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
-    {
-        ctx.nmeaWriteBuffer.compact();
-        ctx.nmeaWriteBuffer.used();
+    if (sendStatus == ERROR_CODE_SUCCESS) {
+        if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
+        {
+            ctx.nmeaWriteBuffer.compact();
+            ctx.nmeaWriteBuffer.used();
+        }
     }
 
     GATAS_VERIFY(sendStatus == ERROR_CODE_SUCCESS, "Bluetooth: Send Failed");
