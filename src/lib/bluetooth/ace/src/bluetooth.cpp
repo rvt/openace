@@ -16,7 +16,6 @@
 #include "hci_dump_embedded_stdout.h"
 
 #include "etl/algorithm.h"
-#include "etl/set.h"
 
 GATAS::PostConstruct Bluetooth::postConstruct()
 {
@@ -62,8 +61,6 @@ void Bluetooth::start()
     instance->heartbeat.process = &heartbeat_handler;
     btstack_run_loop_set_timer(&instance->heartbeat, IDLE_HEARTBEAT_MS);
     btstack_run_loop_add_timer(&instance->heartbeat);
-
-    // Configuration
 
     // Enable mandatory authentication for GATT Client
     // - if un-encrypted connections are not supported, e.g. when connecting to own device, this enforces authentication
@@ -178,7 +175,7 @@ void Bluetooth::on_receive(const GATAS::DataPortMsg &msg)
             {
                 ctx.nmeaWriteBufferErr += 1;
             }
-            // We must ensure that as long as the connection is open, we should set teh dirty flag
+            // Ensure to always setdirty on incomming data
             ctx.txDirty = true;
         }
     }
@@ -208,7 +205,7 @@ void Bluetooth::on_receive(const GATAS::GatasConnectTx &msg)
             {
                 ctx.cobsWriteBufferErr += 1;
             }
-            // We must ensure that as long as the connection is open, we should set teh dirty flag
+            // Ensure to always setdirty on incomming data
             ctx.txDirty = true;
         }
     }
@@ -222,15 +219,14 @@ void Bluetooth::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState)
+bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu)
 {
     auto it = instance->freeCtx();
     if (it != instance->connections.end())
     {
-        it->activate(handle, mtu, readyState);
+        it->activate(handle, mtu);
         return true;
     }
-    GATAS_WARN("No Free BLE connections");
     return false;
 }
 
@@ -245,7 +241,7 @@ void Bluetooth::removeConnection(uint16_t hciHandle)
 
 bool Bluetooth::sendNMEABuffer(BtContext &ctx)
 {
-    if ((ctx.nmeaReadyState & ATT_READYSTATE) != ATT_READYSTATE || ctx.nmeaAttrHandle == 0)
+    if (ctx.nmeaAttrHandle == 0 || !ctx.inUse)
     {
         return false;
     }
@@ -267,24 +263,19 @@ bool Bluetooth::sendNMEABuffer(BtContext &ctx)
 
     const uint8_t sendStatus = att_server_notify(ctx.hciHandle, ctx.nmeaAttrHandle, data.data(), data.size());
 
-    size_t used = 0;
     if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
     {
         ctx.nmeaWriteBuffer.compact();
-        used = ctx.nmeaWriteBuffer.used();
+        ctx.nmeaWriteBuffer.used();
     }
 
-    (void)used;
-    if (sendStatus != ERROR_CODE_SUCCESS)
-    {
-        GATAS_VERIFY(false, "Bluetooth: Send Failed");
-    }
+    GATAS_VERIFY(sendStatus == ERROR_CODE_SUCCESS, "Bluetooth: Send Failed");
     return true;
 }
 
 bool Bluetooth::sendCobsBuffer(BtContext &ctx)
 {
-    if ((ctx.binaryReadyState & ATT_READYSTATE) != ATT_READYSTATE || ctx.binaryAttrHandle == 0 || !ctx.hciHandle)
+    if (ctx.binaryAttrHandle == 0 || !ctx.inUse)
     {
         return false;
     }
@@ -305,10 +296,7 @@ bool Bluetooth::sendCobsBuffer(BtContext &ctx)
     }
 
     const size_t sendSize = etl::min(static_cast<size_t>(ctx.mtu), peek.size);
-    const uint8_t sendStatus = att_server_notify(ctx.hciHandle,
-                                                 ctx.binaryAttrHandle,
-                                                 reinterpret_cast<const uint8_t *>(peek.part),
-                                                 sendSize);
+    const uint8_t sendStatus = att_server_notify(ctx.hciHandle,  ctx.binaryAttrHandle,  reinterpret_cast<const uint8_t *>(peek.part), sendSize);
 
     if (sendStatus == ERROR_CODE_SUCCESS)
     {
@@ -328,12 +316,12 @@ bool Bluetooth::hasPendingData(const BtContext &ctx)
 
     if (auto guard = SemaphoreGuard(1000, instance->bufferMutex))
     {
-        if ((ctx.binaryReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.binaryAttrHandle != 0 && ctx.cobsWriteBuffer.length() >= minimumSendSize)
+        if (ctx.binaryAttrHandle != 0 && ctx.cobsWriteBuffer.length() >= minimumSendSize)
         {
             return true;
         }
 
-        if ((ctx.nmeaReadyState & ATT_READYSTATE) == ATT_READYSTATE && ctx.nmeaAttrHandle != 0 && ctx.nmeaWriteBuffer.used() >= minimumSendSize)
+        if (ctx.nmeaAttrHandle != 0 && ctx.nmeaWriteBuffer.used() >= minimumSendSize)
         {
             return true;
         }
@@ -343,7 +331,7 @@ bool Bluetooth::hasPendingData(const BtContext &ctx)
 
 void Bluetooth::requestSendIfPending(BtContext &ctx)
 {
-    if (!ctx.inUse || !ctx.hciHandle)
+    if (!ctx.inUse)
     {
         return;
     }
@@ -426,7 +414,7 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
         {
             auto handle = att_event_connected_get_handle(packet);
             auto mtu = att_server_get_mtu(handle) - 4;
-            if (createConnection(handle, mtu, 0b010))
+            if (createConnection(handle, mtu))
             {
                 GATAS_INFO("ATT_EVENT_CONNECTED Handle:%d MTU:%d\n", handle, mtu);
                 // Only re-advertise when it's possible to accept new connections
@@ -443,16 +431,14 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
         break;
         case ATT_EVENT_MTU_EXCHANGE_COMPLETE:
         {
-
             // clang-format off
-            // printf("ATT_EVENT_MTU_EXCHANGE_COMPLETE Handle:%d MTU:%d\n", att_event_mtu_exchange_complete_get_handle(packet), att_event_mtu_exchange_complete_get_MTU(packet));
             Bluetooth::withHandle(att_event_mtu_exchange_complete_get_handle(packet),
-                    etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
-                    {
-                        // We remove minus 16 because of additional header data that needs to fit
-                        // This is different from what I was reading in the documentation, but this worked for us.
-                        ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16;
-                    })
+                etl::delegate<void(BtContext &)>::create([packet](BtContext &ctx)
+                {
+                    // We remove minus 16 because of additional header data that needs to fit
+                    // This is different from what I was reading in the documentation, but this worked for us.
+                    ctx.mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 16;
+                })
             );
             // clang-format on
         }
@@ -460,6 +446,7 @@ void Bluetooth::attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t 
 
         case ATT_EVENT_DISCONNECTED:
         {
+            GATAS_INFO("ATT_EVENT_DISCONNECTED");
             Bluetooth::removeConnection(att_event_disconnected_get_handle(packet));
         }
         break;
@@ -516,28 +503,33 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     case ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_CLIENT_CONFIGURATION_HANDLE:
     {
         // GATAS_INFO("ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_CLIENT_CONFIGURATION_HANDLE");
+        // clang-format off
         Bluetooth::withHandle(con_handle,
-                              etl::delegate<void(BtContext &)>::create([buffer](BtContext &ctx)
-                                                                       {
-                        const bool enabled = little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
-                        ctx.nmeaReadyState = (ctx.nmeaReadyState & ~Bluetooth::CONN_READY) | (enabled ? Bluetooth::CONN_READY : 0);
-                        ctx.nmeaAttrHandle = ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE;
-                        if (enabled)
-                        {
-                            requestSendIfPending(ctx);
-                        } }));
+            etl::delegate<void(BtContext &)>::create([buffer](BtContext &ctx)
+            {
+                const bool enabled = little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
+                if (enabled)
+                {
+                    ctx.nmeaAttrHandle = ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE;
+                } 
+            }));
+        // clang-format on
     }
     break;
     // Binary COBS CCCD: track whether the remote side enabled notifications for the GatasConnect stream.
     case ATT_CHARACTERISTIC_0000ffe2_0000_1000_8000_00805f9b34fb_01_CLIENT_CONFIGURATION_HANDLE:
     {
         // GATAS_INFO("ATT_CHARACTERISTIC_0000ffe2_0000_1000_8000_00805f9b34fb_01_CLIENT_CONFIGURATION_HANDLE");
+        // clang-format off
         Bluetooth::withHandle(con_handle,
-                              etl::delegate<void(BtContext &)>::create([buffer](BtContext &ctx)
-                                                                       {
-                                                                           const bool enabled = little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
-                                                                           ctx.binaryReadyState = (ctx.binaryReadyState & ~Bluetooth::CONN_READY) | (enabled ? Bluetooth::CONN_READY : 0);
-                                                                           ctx.binaryAttrHandle = ATT_CHARACTERISTIC_0000ffe2_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE; }));
+            etl::delegate<void(BtContext &)>::create([buffer](BtContext &ctx)
+            {
+                const bool enabled = little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
+                if (enabled) {
+                    ctx.binaryAttrHandle = ATT_CHARACTERISTIC_0000ffe2_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE; 
+                }
+            }));
+        // clang-format on
     }
     break;
 
@@ -545,33 +537,36 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     case ATT_CHARACTERISTIC_0000ffe2_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE:
     {
         // GATAS_INFO("ATT_CHARACTERISTIC_0000ffe2_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE");
+        // clang-format off
         Bluetooth::withHandle(con_handle,
-                              etl::delegate<void(BtContext &)>::create([buffer, buffer_size](BtContext &ctx)
-                                                                       {
-                                                                           ctx.binaryGulp.setRef(etl::span<uint8_t>(buffer, buffer_size));
+            etl::delegate<void(BtContext &)>::create([buffer, buffer_size](BtContext &ctx)
+            {
+                ctx.binaryGulp.setRef(etl::span<uint8_t>(buffer, buffer_size));
 
-                                                                           etl::span<uint8_t> payload;
-                                                                           while (ctx.binaryGulp.pop_into(payload))
-                                                                           {
-                                                                               if (payload.empty())
-                                                                               {
-                                                                                   continue;
-                                                                               }
+                etl::span<uint8_t> payload;
+                while (ctx.binaryGulp.pop_into(payload))
+                {
+                    if (payload.empty())
+                    {
+                        continue;
+                    }
 
-                                                                               auto &pool = BaseModule::getGlobalPool();
-                                                                               // TODO: We need to add in gatasCompanio a extra 0 to be send
-                                                                               auto *copy = static_cast<uint8_t *>(pool.alloc(payload.size() + 1));
-                                                                               if (copy == nullptr)
-                                                                               {
-                                                                                   Bluetooth::instance->statistics.cobsMsgMissedErr += 1;
-                                                                                   continue;
-                                                                               }
-                                                                               Bluetooth::instance->statistics.cobsMsgReceived +=1;
-                                                                               memcpy(copy, payload.data(), payload.size());
-                                                                               // Adding a null terminator because it's expected downstream
-                                                                               copy[payload.size()] = 0;
-                                                                               Bluetooth::instance->getBus().receive(GATAS::GatasConnectRx(pool, copy, payload.size() + 1));
-                                                                           } }));
+                    auto &pool = BaseModule::getGlobalPool();
+                    // TODO: We need to add in gatasCompanio a extra 0 to be send
+                    auto *copy = static_cast<uint8_t *>(pool.alloc(payload.size() + 1));
+                    if (copy == nullptr)
+                    {
+                        Bluetooth::instance->statistics.cobsMsgMissedErr += 1;
+                        continue;
+                    }
+                    Bluetooth::instance->statistics.cobsMsgReceived +=1;
+                    memcpy(copy, payload.data(), payload.size());
+                    // Adding a null terminator because it's expected downstream
+                    copy[payload.size()] = 0;
+                    Bluetooth::instance->getBus().receive(GATAS::GatasConnectRx(pool, copy, payload.size() + 1));
+                } 
+            }));
+        // clang-format on
     }
     break;
 
@@ -579,26 +574,29 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
     case ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE:
     {
         // GATAS_INFO("ATT_CHARACTERISTIC_0000ffe1_0000_1000_8000_00805f9b34fb_01_VALUE_HANDLE");
+        // clang-format off
         Bluetooth::withHandle(con_handle,
-                              etl::delegate<void(BtContext &)>::create([buffer, buffer_size](BtContext &ctx)
-                                                                       {
-                                                                           ctx.nmeaGulp.setRef(etl::span<uint8_t>(buffer, buffer_size));
+            etl::delegate<void(BtContext &)>::create([buffer, buffer_size](BtContext &ctx)
+            {
+                ctx.nmeaGulp.setRef(etl::span<uint8_t>(buffer, buffer_size));
 
-                                                                           etl::span<uint8_t> sentence;
-                                                                           while (ctx.nmeaGulp.pop_into(sentence))
-                                                                           {
-                                                                               if (sentence.empty())
-                                                                               {
-                                                                                   continue;
-                                                                               }
-                                                                               Bluetooth::instance->statistics.nmeaMsgReceived +=1;
-                                                                               GATAS::NMEAString nmeaSentence;
-                                                                               const auto length = etl::min(sentence.size(), (size_t)GATAS::NMEA_MAX_LENGTH - 3);
-                                                                               const auto *begin = reinterpret_cast<const char *>(sentence.data());
-                                                                               nmeaSentence.assign(begin, begin + length);
-                                                                               GATAS_MEASURE("GATAS::DataPortMsg", 100);
-                                                                               Bluetooth::instance->getBus().receive(GATAS::DataPortMsg{nmeaSentence});
-                                                                           } }));
+                etl::span<uint8_t> sentence;
+                while (ctx.nmeaGulp.pop_into(sentence))
+                {
+                    if (sentence.empty())
+                    {
+                        continue;
+                    }
+                    Bluetooth::instance->statistics.nmeaMsgReceived +=1;
+                    GATAS::NMEAString nmeaSentence;
+                    const auto length = etl::min(sentence.size(), (size_t)GATAS::NMEA_MAX_LENGTH - 3);
+                    const auto *begin = reinterpret_cast<const char *>(sentence.data());
+                    nmeaSentence.assign(begin, begin + length);
+                    GATAS_MEASURE("GATAS::DataPortMsg", 100);
+                    Bluetooth::instance->getBus().receive(GATAS::DataPortMsg{nmeaSentence});
+                } 
+            }));
+        // clang-format on
     }
     break;
     default:
@@ -638,27 +636,27 @@ void Bluetooth::smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *
     switch (hci_event_packet_get_type(packet))
     {
     case SM_EVENT_JUST_WORKS_REQUEST:
-        printf("Just Works requested\n");
+        // printf("Just Works requested\n");
         sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
         break;
     case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-        printf("Confirming numeric comparison: %lu\n", sm_event_numeric_comparison_request_get_passkey(packet));
+        // printf("Confirming numeric comparison: %lu\n", sm_event_numeric_comparison_request_get_passkey(packet));
         sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
         break;
     case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
-        printf("Display Passkey: %lu\n", sm_event_passkey_display_number_get_passkey(packet));
+        // printf("Display Passkey: %lu\n", sm_event_passkey_display_number_get_passkey(packet));
         break;
     case SM_EVENT_IDENTITY_CREATED:
         sm_event_identity_created_get_identity_address(packet, addr);
-        printf("Identity created: type %u address %s\n", sm_event_identity_created_get_identity_addr_type(packet), bd_addr_to_str(addr));
+        // printf("Identity created: type %u address %s\n", sm_event_identity_created_get_identity_addr_type(packet), bd_addr_to_str(addr));
         break;
     case SM_EVENT_IDENTITY_RESOLVING_SUCCEEDED:
         sm_event_identity_resolving_succeeded_get_identity_address(packet, addr);
-        printf("Identity resolved: type %u address %s\n", sm_event_identity_resolving_succeeded_get_identity_addr_type(packet), bd_addr_to_str(addr));
+        // printf("Identity resolved: type %u address %s\n", sm_event_identity_resolving_succeeded_get_identity_addr_type(packet), bd_addr_to_str(addr));
         break;
     case SM_EVENT_IDENTITY_RESOLVING_FAILED:
         sm_event_identity_created_get_address(packet, addr);
-        printf("Identity resolving failed\n");
+        // printf("Identity resolving failed\n");
         break;
     // case SM_EVENT_PAIRING_STARTED:
     //     printf("Pairing started\n");
@@ -684,7 +682,7 @@ void Bluetooth::smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *
     //     break;
     case SM_EVENT_REENCRYPTION_STARTED:
         sm_event_reencryption_complete_get_address(packet, addr);
-        printf("Bonding information exists for addr type %u, identity addr %s -> re-encryption started\n", sm_event_reencryption_started_get_addr_type(packet), bd_addr_to_str(addr));
+        GATAS_INFO("Bonding information exists for addr type %u, identity addr %s -> re-encryption started\n", sm_event_reencryption_started_get_addr_type(packet), bd_addr_to_str(addr));
         break;
     case SM_EVENT_REENCRYPTION_COMPLETE:
         switch (sm_event_reencryption_complete_get_status(packet))
@@ -699,9 +697,9 @@ void Bluetooth::smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *
         //     printf("Re-encryption failed, disconnected\n");
         //     break;
         case ERROR_CODE_PIN_OR_KEY_MISSING:
-            printf("Re-encryption failed, bonding information missing\n\n");
-            printf("Assuming remote lost bonding information\n");
-            printf("Deleting local bonding information to allow for new pairing...\n");
+            GATAS_INFO("Re-encryption failed, bonding information missing");
+            GATAS_INFO("Assuming remote lost bonding information");
+            GATAS_INFO("Deleting local bonding information to allow for new pairing...");
             sm_event_reencryption_complete_get_address(packet, addr);
             addr_type = (bd_addr_type_t)(sm_event_reencryption_started_get_addr_type(packet));
             gap_delete_bonding(addr_type, addr);

@@ -11,7 +11,6 @@
 #include "etl/algorithm.h"
 #include "etl/array.h"
 #include "etl/string.h"
-#include "etl/span.h"
 
 /* GaTas */
 #include "ace/constants.hpp"
@@ -34,8 +33,6 @@
  */
 class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS::DataPortMsg, GATAS::GatasConnectTx>
 {
-    static constexpr uint8_t ATT_READYSTATE = 0b011;
-    static constexpr uint8_t CONN_READY = 0b001;
     static constexpr uint16_t CONNECTIONS_BUFFER_SIZE = 2048; // TODO: Tune buffer, should be > MTU which is 255 bytes for BLE witj etxnded data length
     static constexpr uint8_t MINIMUM_BLE_PACKET_SIZE = 180;   // Minimum size of a BLE packet, to better use the BLE bandwith
     static constexpr uint32_t IDLE_HEARTBEAT_MS = 2000;
@@ -67,8 +64,6 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         // missing a set/read can delay one cycle, but heartbeat re-checks and
         // new stream data keeps retriggering sends.
         bool txDirty = false;
-        uint8_t nmeaReadyState = 0;
-        uint8_t binaryReadyState = 0;
         uint8_t guardCounter = 0;
         hci_con_handle_t hciHandle = 0;
         uint16_t mtu = 0;
@@ -98,12 +93,10 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
             attCallback.callback = attCallback_;
         }
 
-        void activate(hci_con_handle_t hciHandle_, uint16_t mtu_, uint8_t readyState_)
+        void activate(hci_con_handle_t hciHandle_, uint16_t mtu_)
         {
             txDirty = false;
             hciHandle = hciHandle_;
-            nmeaReadyState = readyState_;
-            binaryReadyState = readyState_;
             mtu = mtu_;
             nmeaAttrHandle = 0;
             binaryAttrHandle = 0;
@@ -123,7 +116,19 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         {
             inUse = false;
             txDirty = false;
-            // We won't reset anything else, just set inUse to false if anything is still pending, it still has a chance to finish
+            hciHandle = 0;
+            mtu = 0;
+            nmeaAttrHandle = 0;
+            binaryAttrHandle = 0;
+            nmeaWriteBufferErr = 0;
+            cobsWriteBufferErr = 0;
+            guardCounter = 0;
+            nmeaGulpBuffer.clear();
+            nmeaGulp.setRef({});
+            nmeaWriteBuffer.clear();
+            binaryGulpBuffer.clear();
+            binaryGulp.setRef({});
+            cobsWriteBuffer.clear();
         }
 
         void getData(etl::string_stream &stream, const etl::string_view path) const
@@ -131,8 +136,6 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
             (void)path;
             stream << "{";
             stream << "\"hciHandle\":" << hciHandle;
-            stream << ",\"nmeaReadyState\":" << static_cast<uint32_t>(nmeaReadyState);
-            stream << ",\"binaryReadyState\":" << static_cast<uint32_t>(binaryReadyState);
             stream << ",\"mtu\":" << mtu;
             stream << ",\"nmeaWriteBufferErr\":" << nmeaWriteBufferErr;
             stream << ",\"cobsWriteBufferErr\":" << cobsWriteBufferErr;
@@ -167,7 +170,7 @@ private:
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     static uint16_t attReadCallback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
-    static bool createConnection(hci_con_handle_t handle, uint16_t mtu, uint8_t readyState);
+    static bool createConnection(hci_con_handle_t handle, uint16_t mtu);
     // Remove any old connections
     static void removeConnection(uint16_t handle);
     static void heartbeat_handler(struct btstack_timer_source *ts);
@@ -245,6 +248,7 @@ public:
         instance = this;
         for (auto &ctx : connections)
         {
+            ctx.deactivate();
             ctx.configureCallbacks(&Bluetooth::attContextCallback);
         }
         localName = config.strValueByPath("GaTas", NAME, "localName");
