@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional GDL90-over-Bluetooth bridge using COBS-framed payloads for companion applications.
 - Debug-only FreeRTOS queue registry entries for mutexes, to improve visibility in `GATAS_DEBUG` builds.
 - Frontend unit-test support for `SystemGUI` via `npm test`.
-- Option to show the datasource in the aicrafts callsign
+- Option to prefix aircraft callsigns with a two-letter datasource code.
+- Remote switching between Wi-Fi access-point and client modes from companion/mobile applications.
 
 ### Changed
 
@@ -27,8 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bluetooth advertising now splits the local name between the primary advertisement and scan response payloads, improving visibility of longer device names while keeping the custom service UUID advertised.
 - Refined `GatasConnect` web configuration so the GDL90 bridge option is only shown for Bluetooth output modes, and documented frontend test usage.
 - Optimised SX1262 protocol reconfiguration by tracking the currently programmed protocol and modulation, avoiding unnecessary full radio reconfiguration while keeping explicit standby mode selection.
-- Optimise tracker for performance (about 20%)
-- Allow to add the 2 letter datasource before the callsign
+- Improved aircraft tracker performance by about 20%.
+- Renamed `OGN1` to `OGN` in UI and configuration-facing labels.
 
 ### Deprecated
 
@@ -45,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed aircraft tracker antenna polar output so it only reports radio-backed data sources, avoiding invalid transport-category entries in the UI.
 - Fixed SX1262 LoRa RX bandwidth mapping for 500 kHz channels and capped TX power correctly at the radio maximum.
 - Fixed radio receive statistics for FLARM, OGN so polar/range tracking only counts valid in-range packets.
+- Fixed Bluetooth NMEA notifications so buffered data is only discarded after a successful notify call.
 
 ### Security
 
