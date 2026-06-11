@@ -102,6 +102,23 @@ const _chunkString = (str, size, sep = "'") => {
 }
 
 
+/**
+ * Format a raw metric value according to a unit code used by monitor fields.
+ *
+ * Supported special unit codes:
+ * - `b`: boolean-style output (`✓` when value > 0, otherwise disabled symbol)
+ * - `bin`: 8-bit binary view rendered as dots
+ * - `el`: elapsed seconds as human-readable time
+ * - `dts`: datasource timing bitmap split into 0..500ms and 500..1000ms bands
+ *
+ * For regular units, formatting rules are resolved from `UNIT_TABLE` and use
+ * locale-aware number formatting with fixed fraction digits per rule.
+ *
+ * @param {number|string} value Raw value to format.
+ * @param {string} unit Unit selector (for example `hz`, `m`, `kt`, `b`, `el`).
+ * @param {string} [locale=navigator.language] Locale passed to Intl.NumberFormat.
+ * @returns {string|number} Formatted display value, or the original value when no unit rule exists.
+ */
 const formatUnit = (value, unit, locale = navigator.language) => {
 
     // Binary true or false

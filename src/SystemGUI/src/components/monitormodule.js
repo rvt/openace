@@ -251,9 +251,16 @@ class MonitorModule extends El {
 
     let isNumeric = false;
     let isBitString = false;
+    let isStructured = false;
 
     if (Array.isArray(value)) {
-      value = value.join(", ");
+      if (value.length > 0 && value.some((entry) => entry !== null && typeof entry === "object")) {
+        isStructured = true;
+      } else {
+        value = value.join(", ");
+      }
+    } else if (value && typeof value === "object") {
+      isStructured = true;
     } else if (typeof value === "string" && /^[01]+$/.test(value)) {
       isBitString = true;
     } else if (typeof value === "number") {
@@ -282,7 +289,59 @@ class MonitorModule extends El {
       style += " color: orange;";
     }
 
-    return { value, style };
+    return { value, style, isStructured };
+  }
+
+  _renderStructuredValue(html, value) {
+    if (value === null || value === undefined) {
+      return html`<span style="color:#999">null</span>`;
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return html`<span style="color:#999">[]</span>`;
+      }
+
+      const isFlat = value.every((entry) => entry === null || typeof entry !== "object");
+      if (isFlat) {
+        return html`${value.join(", ")}`;
+      }
+
+      return html`
+        <table style="width:100%; border-collapse:collapse; margin:0">
+          <tbody>
+            ${value.map((entry, index) => html`
+              <tr>
+                <th scope="row" style="width:24px; text-align:left; vertical-align:top; padding:1px 6px 1px 0; color:#777; font-weight:600">${index}</th>
+                <td style="padding:1px 0; vertical-align:top">${this._renderStructuredValue(html, entry)}</td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+      `;
+    }
+
+    if (typeof value === "object") {
+      const entries = Object.entries(value);
+      if (entries.length === 0) {
+        return html`<span style="color:#999">{}</span>`;
+      }
+
+      return html`
+        <table style="width:100%; border-collapse:collapse; margin:0">
+          <tbody>
+            ${entries.map(([key, nestedValue]) => html`
+              <tr>
+                <th scope="row" style="width:33%; text-align:left; vertical-align:top; padding:1px 6px 1px 0; color:#777; font-weight:600; word-break:break-word">${key}</th>
+                <td style="padding:1px 0; vertical-align:top">${this._renderStructuredValue(html, nestedValue)}</td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+      `;
+    }
+
+    return html`${value}`;
   }
 
   _row(html, item) {
@@ -615,7 +674,7 @@ class MonitorModule extends El {
     }
 
     const rendered = this._renderDefault(html, item);
-    const result = formatUnit2(item.name, rendered.value)
+    const result = rendered.isStructured ? { name: item.name, value: this._renderStructuredValue(html, rendered.value) } : formatUnit2(item.name, rendered.value);
     return html`
     <tr>
       <th style="width:33%" scope="row">${result.name}</th>

@@ -1,5 +1,4 @@
 
-#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #define private public
@@ -257,80 +256,28 @@ TEST_CASE("Should update data", "[single-file]")
     REQUIRE(testHandler.callBacks == 1);
 }
 
-TEST_CASE("TrackerData path prediction extrapolates scheduled output", "[single-file]")
+TEST_CASE("Updating an existing aircraft must not trigger full-buffer cleanup", "[single-file]")
 {
-    class PredictedPositionHandler
+    TrackerData<4, 2> trackedAircraft;
+
+    for (uint32_t i = 0; i < 4; ++i)
     {
-    public:
-        int callBacks = 0;
-        GATAS::AircraftPositionInfo position;
-        void onNext(const GATAS::AircraftPositionInfo &received)
-        {
-            position = received;
-            callBacks += 1;
-        }
-    } handler;
+        GATAS::AircraftPositionInfo aircraftPosition;
+        aircraftPosition.address = i;
+        aircraftPosition.distanceFromOwn = 1000 + 1000 * i;
+        REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
+    }
 
-    time_us_Value = 1'000'000;
-    TrackerData<100, 4> trackedAircraft;
-    trackedAircraft.pathPrediction(true);
+    REQUIRE(trackedAircraft.size() == 4);
+    REQUIRE(trackedAircraft.radius() == 75000);
 
-    GATAS::OwnshipPositionInfo ownship{};
-    ownship.lat = 52.0f;
-    ownship.lon = 4.0f;
-    trackedAircraft.ownshipPosition(ownship);
+    GATAS::AircraftPositionInfo update;
+    update.address = 0;
+    update.distanceFromOwn = 1500;
+    REQUIRE(trackedAircraft.insert(update) == true);
 
-    GATAS::AircraftPositionInfo aircraftPosition;
-    aircraftPosition.timestamp = 1'000'000;
-    aircraftPosition.address = 0x123456;
-    aircraftPosition.addressType = GATAS::AddressType::ICAO;
-    aircraftPosition.dataSource = GATAS::DataSource::ADSB;
-    aircraftPosition.aircraftType = GATAS::AircraftCategory::LIGHT;
-    aircraftPosition.lat = 52.0f;
-    aircraftPosition.lon = 4.0f;
-    aircraftPosition.ellipseHeight = 1000;
-    aircraftPosition.verticalSpeed = 5.0f;
-    aircraftPosition.groundSpeed = 50.0f;
-    aircraftPosition.track = 90;
-    aircraftPosition.distanceFromOwn = 10000;
-    REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
-
-    time_us_Value = 3'000'000;
-    trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<PredictedPositionHandler, &PredictedPositionHandler::onNext>(handler));
-
-    REQUIRE(handler.callBacks == 1);
-    REQUIRE(handler.position.address == aircraftPosition.address);
-    REQUIRE(handler.position.addressType == aircraftPosition.addressType);
-    REQUIRE(handler.position.dataSource == aircraftPosition.dataSource);
-    REQUIRE(handler.position.aircraftType == aircraftPosition.aircraftType);
-    REQUIRE(handler.position.timestamp == time_us_Value);
-    REQUIRE(handler.position.ellipseHeight == 1010);
-
-    auto rel = CoreUtils::northEastDistance(aircraftPosition.lat, aircraftPosition.lon, handler.position.lat, handler.position.lon);
-    REQUIRE(rel.north == Catch::Approx(0.0f).margin(1.0f));
-    REQUIRE(rel.east == Catch::Approx(100.0f).margin(1.0f));
-    REQUIRE(handler.position.distanceFromOwn == Catch::Approx(100).margin(1));
-    REQUIRE(handler.position.relNorthFromOwn == Catch::Approx(0).margin(1));
-    REQUIRE(handler.position.relEastFromOwn == Catch::Approx(100).margin(1));
-}
-
-TEST_CASE("TrackerData expires tracks from accepted time, not source timestamp", "[single-file]")
-{
-    time_us_Value = 20'000'000;
-    TrackerData<100, 4> trackedAircraft;
-
-    GATAS::AircraftPositionInfo aircraftPosition;
-    aircraftPosition.timestamp = 0;
-    aircraftPosition.address = 0x123456;
-    aircraftPosition.distanceFromOwn = 5000;
-    REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
-
-    trackedAircraft.maintenance();
-    REQUIRE(trackedAircraft.size() == 1);
-
-    time_us_Value = 30'000'001;
-    trackedAircraft.maintenance();
-    REQUIRE(trackedAircraft.size() == 0);
+    REQUIRE(trackedAircraft.size() == 4);
+    REQUIRE(trackedAircraft.radius() == 75000);
 }
 
 TEST_CASE("Radio priority: RADIO 4000000us old, ADSB incoming - should NOT update", "[single-file]")
@@ -343,7 +290,7 @@ TEST_CASE("Radio priority: RADIO 4000000us old, ADSB incoming - should NOT updat
     radioPosition.address = 42;
     radioPosition.timestamp = 0;
     radioPosition.distanceFromOwn = 5000;
-    radioPosition.dataSource = GATAS::DataSource::OGN1;
+    radioPosition.dataSource = GATAS::DataSource::OGN;
     REQUIRE(trackedAircraft.insert(radioPosition) == true);
 
     // At t=2000000us, incoming ADSB data arrives
@@ -365,7 +312,7 @@ TEST_CASE("Radio priority: RADIO 4000000us old, ADSB incoming - should NOT updat
         void onNext(const GATAS::AircraftPositionInfo &position)
         {
             REQUIRE(position.distanceFromOwn == 5000);  // Should be original radio data
-            REQUIRE(position.dataSource == GATAS::DataSource::OGN1);
+            REQUIRE(position.dataSource == GATAS::DataSource::OGN);
         }
     } handler;
     time_us_Value = 2000100;
@@ -382,7 +329,7 @@ TEST_CASE("Radio priority: RADIO 5000000us old, ADSB incoming - should UPDATE", 
     radioPosition.address = 42;
     radioPosition.timestamp = 0;
     radioPosition.distanceFromOwn = 5000;
-    radioPosition.dataSource = GATAS::DataSource::OGN1;
+    radioPosition.dataSource = GATAS::DataSource::OGN;
     REQUIRE(trackedAircraft.insert(radioPosition) == true);
 
     // At t=5000000us, incoming ADSB data arrives
@@ -409,4 +356,51 @@ TEST_CASE("Radio priority: RADIO 5000000us old, ADSB incoming - should UPDATE", 
     } handler;
     time_us_Value = 5000100;
     trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifyUpdatedHandler, &VerifyUpdatedHandler::onNext>(handler));
+}
+
+TEST_CASE("Data source prefix preserves fixed callsign length", "[single-file]")
+{
+    TrackerData<100, 4> trackedAircraft;
+    trackedAircraft.prefixEnabled(true);
+
+    GATAS::AircraftPositionInfo aircraftPosition;
+    aircraftPosition.distanceFromOwn = 5000;
+    aircraftPosition.dataSource = GATAS::DataSource::FLARM;
+    aircraftPosition.callSign = "PH-ABCDEFGHIJKL";
+
+    REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
+
+    class VerifyPrefixLengthHandler
+    {
+    public:
+        void onNext(const GATAS::AircraftPositionInfo &position)
+        {
+            REQUIRE(position.callSign == "FLPH-ABCDEFG");
+        }
+    } handler;
+
+    trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifyPrefixLengthHandler, &VerifyPrefixLengthHandler::onNext>(handler));
+}
+
+TEST_CASE("Data source prefix does create callsigns for empty values", "[single-file]")
+{
+    TrackerData<100, 4> trackedAircraft;
+    trackedAircraft.prefixEnabled(true);
+
+    GATAS::AircraftPositionInfo aircraftPosition;
+    aircraftPosition.distanceFromOwn = 5000;
+    aircraftPosition.dataSource = GATAS::DataSource::ADSB;
+
+    REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
+
+    class VerifyEmptyHandler
+    {
+    public:
+        void onNext(const GATAS::AircraftPositionInfo &position)
+        {
+            REQUIRE(position.callSign == "AB");
+        }
+    } handler;
+
+    trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifyEmptyHandler, &VerifyEmptyHandler::onNext>(handler));
 }

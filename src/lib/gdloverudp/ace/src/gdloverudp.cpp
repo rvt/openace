@@ -4,6 +4,7 @@
 
 /* GATAS */
 #include "ace/coreutils.hpp"
+#include "ace/debug.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
 #include "ace/lwiplock.hpp"
@@ -79,6 +80,7 @@ GATAS::PostConstruct GDLoverUDP::postConstruct()
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
+    GATAS_REGISTER_MUTEX(mutex, "GDLoverUDP_mutex");
     xTaskCreate(gdlOverUDPTask, GDLoverUDP::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 3, &taskHandle);
 
     return GATAS::PostConstruct::OK;
@@ -161,7 +163,6 @@ void GDLoverUDP::getData(etl::string_stream &stream, const etl::string_view path
     (void)path;
     stream << "{";
     stream << "\"heartbeatTx:k\":" << statistics.heartbeatTx;
-    stream << ",\"bufferAlloc:err\":" << statistics.bufferAllocErr;
     stream << ",\"sendFailure:err\":" << statistics.sendFailureErr;
     stream << ",\"foreFlightBroadcasts:k\":" << statistics.foreFlightBroadcasts;
     stream << ",\"currentAddressesInUse\":" << connectedClients.size();

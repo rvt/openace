@@ -15,6 +15,7 @@
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "pico/btstack_cyw43.h"
+#include "pico/cyw43_driver.h"
 
 /* Vendor. */
 #include "etl/list.h"
@@ -52,6 +53,7 @@
 #include "ace/gdloverudp.hpp"
 #include "ace/dataport.hpp"
 #include "ace/airconnect.hpp"
+#include "ace/gatasconnect.hpp"
 #include "ace/gatasconnectudp.hpp"
 #include "ace/bluetooth.hpp"
 #include "ace/fanetace.hpp"
@@ -107,6 +109,7 @@ void registerModules()
     BaseModule::registerModule(DataPort::NAME, false);
     BaseModule::registerModule(AirConnect::NAME, false);
     BaseModule::registerModule(GatasConnect::NAME, false);
+    BaseModule::registerModule(GatasConnectUDP::NAME, false);
     BaseModule::registerModule(Bluetooth::NAME, false);
     BaseModule::registerModule(FanetAce::NAME, false);
     BaseModule::registerModule(Idle::NAME, false);
@@ -153,6 +156,8 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
         return new AirConnect(bus, config);
     if (name == GatasConnect::NAME)
         return new GatasConnect(bus, config);
+    if (name == GatasConnectUDP::NAME)
+        return new GatasConnectUDP(bus, config);
     if (name == Bluetooth::NAME)
         return new Bluetooth(bus, config);
     if (name == DataPort::NAME)
@@ -303,7 +308,6 @@ static void loadModules(void *arg)
     BaseModule::setModuleStatus(Configuration::NAME, &config);
 
     load(WifiService::NAME, bus, config, true);
-    load(Idle::NAME, bus, config, true);
 
     WifiService *client = (WifiService *)(config.moduleByName(config, WifiService::NAME));
     if (client != nullptr)
@@ -324,6 +328,7 @@ static void loadModules(void *arg)
     load(DataPort::NAME, bus, config);
     load(AirConnect::NAME, bus, config);
     load(GatasConnect::NAME, bus, config);
+    load(GatasConnectUDP::NAME, bus, config);
     load(Bmp280::NAME, bus, config);
 
     load(RxDataFrameQueue::NAME, bus, config, true);
@@ -344,6 +349,9 @@ static void loadModules(void *arg)
     load(Flarm2024::NAME, bus, config);
     load(Ogn1::NAME, bus, config);
     load(Dump1090Client::NAME, bus, config);
+
+    // Must be loaded last because some modules uses these to send messages to other modules and we need to ensure that all modules are loaded
+    load(Idle::NAME, bus, config, true);
 
     // SerialADSB messes up the serial terminal, but it will load beyond this point
     // load(SerialADSB::NAME, bus, config);
@@ -371,63 +379,172 @@ static void loadModules(void *arg)
 }
 
 #if configGENERATE_RUN_TIME_STATS == 1 && configSHOW_RUN_TIME_STATS == 1
+namespace
+{
+    struct PreviousTaskRuntime
+    {
+        TaskHandle_t handle;
+        configRUN_TIME_COUNTER_TYPE runTimeCounter;
+    };
+
+    const char *taskStateToString(const eTaskState state)
+    {
+        switch (state)
+        {
+        case eRunning:
+            return "Run";
+        case eReady:
+            return "Ready";
+        case eBlocked:
+            return "Block";
+        case eSuspended:
+            return "Susp";
+        case eDeleted:
+            return "Del";
+        case eInvalid:
+        default:
+            return "Inv";
+        }
+    }
+
+    configRUN_TIME_COUNTER_TYPE previousRunTimeForTask(const PreviousTaskRuntime *entries,
+                                                       const UBaseType_t numEntries,
+                                                       const TaskHandle_t handle)
+    {
+        for (UBaseType_t i = 0; i < numEntries; i++)
+        {
+            if (entries[i].handle == handle)
+            {
+                return entries[i].runTimeCounter;
+            }
+        }
+
+        return 0;
+    }
+
+    bool isFreeRtosIdleTask(const char *taskName)
+    {
+        return strncmp(taskName, "IDLE", 4) == 0;
+    }
+} // namespace
+
 void vDiagnosticsTask(void *pvParameters)
 {
-    constexpr size_t DIAG_STRING_SIZE = 2048; // Adjust based on your needs
     (void)pvParameters;
+    configRUN_TIME_COUNTER_TYPE previousTotalRunTime = 0;
+    PreviousTaskRuntime *previousTaskRuntimes = nullptr;
+    UBaseType_t previousNumTasks = 0;
+
     while (true)
     {
-        char runTimeStats[DIAG_STRING_SIZE] = {0}; // Buffer for runtime stats
-        bool hasRunTimeStats = false;
-
-        // Optional: Get CPU usage stats (needs run time counter)
-        vTaskGetRunTimeStats(runTimeStats);
-        hasRunTimeStats = true;
-
-        // Clear screen and print header
-        puts("\033[2J\033[H");
-        puts("Note: DiagTasks will show high due to teh wai times are measured?");
-        puts("Task Name        Abs Time  %% Time   State  Priority  Stack Left");
-        puts("-----------------------------------------------------------------");
-
-        // Get number of tasks
         UBaseType_t numTasks = uxTaskGetNumberOfTasks();
-        TaskStatus_t *taskStatusArray = (TaskStatus_t *)pvPortMalloc(numTasks * sizeof(TaskStatus_t));
+        TaskStatus_t *taskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(numTasks * sizeof(TaskStatus_t)));
 
         if (taskStatusArray)
         {
-            numTasks = uxTaskGetSystemState(taskStatusArray, numTasks, nullptr);
+            configRUN_TIME_COUNTER_TYPE totalRunTime = 0;
+            numTasks = uxTaskGetSystemState(taskStatusArray, numTasks, &totalRunTime);
 
-            // Sort tasks alphabetically by name
             qsort(taskStatusArray, numTasks, sizeof(TaskStatus_t), [](const void *a, const void *b)
                   { return strcasecmp(((TaskStatus_t *)a)->pcTaskName, ((TaskStatus_t *)b)->pcTaskName); });
 
-            // Parse CPU time stats if available
-            char *line = runTimeStats;
+            const configRUN_TIME_COUNTER_TYPE deltaTotalRunTime =
+                (totalRunTime >= previousTotalRunTime) ? (totalRunTime - previousTotalRunTime) : 0;
+            const double windowSeconds = deltaTotalRunTime / 1000000.0;
+            const double windowCapacitySeconds = windowSeconds * configNUMBER_OF_CORES;
+            configRUN_TIME_COUNTER_TYPE idleWindowRunTime = 0;
+
             for (UBaseType_t i = 0; i < numTasks; i++)
             {
-                char taskName[configMAX_TASK_NAME_LEN + 1] = {0};
-                uint32_t absTime = 0;
-                float percentTime = 0.0;
+                const configRUN_TIME_COUNTER_TYPE previousRunTime =
+                    previousRunTimeForTask(previousTaskRuntimes, previousNumTasks, taskStatusArray[i].xHandle);
+                const configRUN_TIME_COUNTER_TYPE deltaRunTime =
+                    (taskStatusArray[i].ulRunTimeCounter >= previousRunTime)
+                        ? (taskStatusArray[i].ulRunTimeCounter - previousRunTime)
+                        : 0;
 
-                // If runtime stats are available, extract the correct task data
-                if (hasRunTimeStats)
+                if (isFreeRtosIdleTask(taskStatusArray[i].pcTaskName))
                 {
-                    sscanf(line, "%s %lu %f", taskName, &absTime, &percentTime);
-                    line = strchr(line, '\n'); // Move to the next line
-                    if (line)
-                        line++; // Skip newline
+                    idleWindowRunTime += deltaRunTime;
                 }
+            }
 
-                // Print sorted task info in a single line
-                printf("%-16s %-10lu %-7.1f %-6u %-9lu %-10lu\n",
+            const double idleSystemPercent =
+                (deltaTotalRunTime > 0)
+                    ? (100.0 * static_cast<double>(idleWindowRunTime) /
+                       (static_cast<double>(deltaTotalRunTime) * configNUMBER_OF_CORES))
+                    : 0.0;
+            const double busySystemPercent = 100.0 - idleSystemPercent;
+
+            puts("\033[2J\033[H");
+            printf("Task snapshot: %lu tasks | Heap free %lu / %lu bytes | CPU window %.2f s on %u cores (%.2f core-s)\n",
+                   static_cast<unsigned long>(numTasks),
+                   static_cast<unsigned long>(getFreeHeap()),
+                   static_cast<unsigned long>(getTotalHeap()),
+                   windowSeconds,
+                   static_cast<unsigned int>(configNUMBER_OF_CORES),
+                   windowCapacitySeconds);
+            printf("System load: Busy %.2f%% | FreeRTOS idle %.2f%%\n", busySystemPercent, idleSystemPercent);
+            puts("Note: BootC%/WinC% are relative to one core, so totals can exceed 100% on this dual-core SMP build.");
+            puts("      WinSys% is relative to total CPU capacity across both cores. DiagTask can spike when printing.");
+            puts("Task Name        Boot us     BootC%  Win us      WinC%   WinSys% State  Pri  Stack Left");
+            puts("-------------------------------------------------------------------------------------------");
+
+            for (UBaseType_t i = 0; i < numTasks; i++)
+            {
+                const configRUN_TIME_COUNTER_TYPE previousRunTime =
+                    previousRunTimeForTask(previousTaskRuntimes, previousNumTasks, taskStatusArray[i].xHandle);
+                const configRUN_TIME_COUNTER_TYPE deltaRunTime =
+                    (taskStatusArray[i].ulRunTimeCounter >= previousRunTime)
+                        ? (taskStatusArray[i].ulRunTimeCounter - previousRunTime)
+                        : 0;
+                const double bootPercent =
+                    (totalRunTime > 0)
+                        ? (100.0 * static_cast<double>(taskStatusArray[i].ulRunTimeCounter) / static_cast<double>(totalRunTime))
+                        : 0.0;
+                const double windowPercent =
+                    (deltaTotalRunTime > 0)
+                        ? (100.0 * static_cast<double>(deltaRunTime) / static_cast<double>(deltaTotalRunTime))
+                        : 0.0;
+                const double windowSystemPercent =
+                    (deltaTotalRunTime > 0)
+                        ? (100.0 * static_cast<double>(deltaRunTime) /
+                           (static_cast<double>(deltaTotalRunTime) * configNUMBER_OF_CORES))
+                        : 0.0;
+
+                printf("%-16s %-11lu %-7.2f %-11lu %-7.2f %-7.2f %-6s %-4lu %-10lu\n",
                        taskStatusArray[i].pcTaskName,
-                       absTime,
-                       percentTime,
-                       taskStatusArray[i].eCurrentState,
+                       static_cast<unsigned long>(taskStatusArray[i].ulRunTimeCounter),
+                       bootPercent,
+                       static_cast<unsigned long>(deltaRunTime),
+                       windowPercent,
+                       windowSystemPercent,
+                       taskStateToString(taskStatusArray[i].eCurrentState),
                        taskStatusArray[i].uxCurrentPriority,
                        uxTaskGetStackHighWaterMark(taskStatusArray[i].xHandle));
             }
+
+            PreviousTaskRuntime *currentTaskRuntimes =
+                static_cast<PreviousTaskRuntime *>(pvPortMalloc(numTasks * sizeof(PreviousTaskRuntime)));
+
+            if (currentTaskRuntimes)
+            {
+                for (UBaseType_t i = 0; i < numTasks; i++)
+                {
+                    currentTaskRuntimes[i].handle = taskStatusArray[i].xHandle;
+                    currentTaskRuntimes[i].runTimeCounter = taskStatusArray[i].ulRunTimeCounter;
+                }
+
+                if (previousTaskRuntimes)
+                {
+                    vPortFree(previousTaskRuntimes);
+                }
+
+                previousTaskRuntimes = currentTaskRuntimes;
+                previousNumTasks = numTasks;
+                previousTotalRunTime = totalRunTime;
+            }
+
             vPortFree(taskStatusArray);
         }
 
@@ -467,7 +584,7 @@ void vLaunch(void)
 
     // Dump some CPU diagnostics to terminal of all running tasks
 #if configGENERATE_RUN_TIME_STATS == 1 && configSHOW_RUN_TIME_STATS == 1
-    xTaskCreate(vDiagnosticsTask, "DiagTask", configMINIMAL_STACK_SIZE + 1024, nullptr, tskIDLE_PRIORITY, nullptr);
+    xTaskCreate(vDiagnosticsTask, "DiagTask", configMINIMAL_STACK_SIZE + 64, nullptr, tskIDLE_PRIORITY, nullptr);
 #endif
 
 #if NO_SYS && configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1
@@ -489,14 +606,48 @@ void overflowTest()
     {
         panic("Compiler or CPU does not handle overflow correctly");
     }
+
+    // THis must be enabled because we rely on ETL_HAS_STRING_TRUNCATION_CHECKS
+    etl::string<12> text = "1234567";
+    text += "1234567";
+    if (!text.is_truncated())
+    {
+        panic("String truncate must be enabled");
+    }
+}
+
+constexpr static auto getCyw43PioClockDivisor(uint32_t sysClockMhz)
+{
+    struct Cyw43PioClockDivisor
+    {
+        uint16_t integer;
+        uint8_t fractional;
+    };
+    constexpr uint32_t frac8Denominator = 256;
+    constexpr uint32_t cyw43ReferenceClockMhzTimes2 = 125;
+    const uint32_t divisorFrac8 =
+        ((sysClockMhz * frac8Denominator * 2) + (cyw43ReferenceClockMhzTimes2 / 2)) / cyw43ReferenceClockMhzTimes2;
+
+    Cyw43PioClockDivisor divisor = {
+        static_cast<uint16_t>(divisorFrac8 / frac8Denominator),
+        static_cast<uint8_t>(divisorFrac8 % frac8Denominator)};
+
+    return divisor;
 }
 
 int main()
 {
-    bool at200Mhz = false;
-    if (set_sys_clock_khz(200000, true))
+    bool turboMode = false;
+    constexpr uint32_t defaultSpeedMhz = SYS_CLK_MHZ;
+    constexpr uint32_t speedMhz = 200; // Note 200 is default for RP2040, RP2350 uses 150Mhz we set them both to 200Mhz
+    constexpr auto pioClockDivisor = getCyw43PioClockDivisor(speedMhz);
+
+    if (set_sys_clock_khz(speedMhz * 1000, true))
     {
-        at200Mhz = true;
+#if defined(CYW43_PIO_CLOCK_DIV_DYNAMIC)
+        cyw43_set_pio_clock_divisor(pioClockDivisor.integer, pioClockDivisor.fractional);
+#endif
+        turboMode = true;
     }
     stdio_init_all();
     overflowTest();
@@ -513,15 +664,17 @@ int main()
 #endif
 
 #if (configNUMBER_OF_CORES > 1)
-    printf("        Starting %s on both cores at %dMHZ:\n\n", rtos_name, at200Mhz ? 200 : 125);
+    printf("        Starting %s on both cores at %luMHz:\n\n", rtos_name, static_cast<unsigned long>(turboMode ? speedMhz : defaultSpeedMhz));
     vLaunch();
 #elif (RUN_FREERTOS_ON_CORE == 1)
     printf("        Starting %s on core 1:\n\n", rtos_name);
     multicore_launch_core1(vLaunch);
     while (true)
+    {
         ;
+    }
 #else
-    printf("        Starting %s on core 0 %dMHZ:\n\n", rtos_name, at200Mhz ? 200 : 125);
+    printf("        Starting %s on core 0 %luMHz:\n\n", rtos_name, static_cast<unsigned long>(turboMode ? speedMhz : defaultSpeedMhz));
     vLaunch();
 #endif
 

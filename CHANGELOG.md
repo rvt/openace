@@ -31,6 +31,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -
 
+## [v3.0.0] - 2026-06-11
+
+### Added
+
+- Initial GATAS Companion support with a new `GatasConnect` core module and a separate `GatasConnectUDP` transport module.
+- Bluetooth transport for GATAS Connect, including dedicated NMEA and binary GATT characteristics for companion-device integration.
+- Optional GDL90-over-Bluetooth bridge using COBS-framed payloads for companion applications.
+- Debug-only FreeRTOS queue registry entries for mutexes, to improve visibility in `GATAS_DEBUG` builds.
+- Frontend unit-test support for `SystemGUI` via `npm test`.
+- Option to prefix aircraft callsigns with a two-letter datasource code.
+- Remote switching between Wi-Fi access-point and client modes from companion/mobile applications.
+
+### Changed
+
+- Split GATAS Connect so COBS framing and request generation live in `GatasConnect`, while UDP transport is handled by `GatasConnectUDP`.
+- Extended the web UI to configure GATAS Connect output, pin code, and GDL90 bridge settings, plus a separate UDP server configuration module.
+- Improved module monitoring to render structured object and array values more clearly.
+- Updated the bundled device database.
+- Reworked `vDiagnosticsTask()` so task runtime statistics are reported from `uxTaskGetSystemState()` directly, with clearer boot-time and recent-window CPU metrics for SMP builds.
+- Refactored `CoreUtils` from a static utility class into a namespace, while keeping mutable internal state private to the implementation file.
+- Bluetooth advertising now splits the local name between the primary advertisement and scan response payloads, improving visibility of longer device names while keeping the custom service UUID advertised.
+- Refined `GatasConnect` web configuration so the GDL90 bridge option is only shown for Bluetooth output modes, and documented frontend test usage.
+- Optimised SX1262 protocol reconfiguration by tracking the currently programmed protocol and modulation, avoiding unnecessary full radio reconfiguration while keeping explicit standby mode selection.
+- Improved aircraft tracker performance by about 20%.
+- Renamed `OGN1` to `OGN` in UI and configuration-facing labels.
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+- Fixed misleading task runtime reporting in diagnostics, where formatted runtime text could be mismatched against sorted task names.
+- Fixed diagnostics labels and notes so CPU usage on the dual-core RP2040 SMP build is presented more honestly.
+- Fixed aircraft tracker antenna polar output so it only reports radio-backed data sources, avoiding invalid transport-category entries in the UI.
+- Fixed SX1262 LoRa RX bandwidth mapping for 500 kHz channels and capped TX power correctly at the radio maximum.
+- Fixed radio receive statistics for FLARM, OGN so polar/range tracking only counts valid in-range packets.
+- Fixed Bluetooth NMEA notifications so buffered data is only discarded after a successful notify call.
+
+### Security
+
+-
+
 ## [v2.1.1] - 2026-04-30
 
 ### Added

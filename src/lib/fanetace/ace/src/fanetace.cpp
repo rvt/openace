@@ -8,6 +8,7 @@
 #include "../fanetace.hpp"
 
 #include "ace/coreutils.hpp"
+#include "ace/debug.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
 #include "ace/spinlockguard.hpp"
@@ -26,6 +27,7 @@ GATAS::PostConstruct FanetAce::postConstruct()
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
+    GATAS_REGISTER_MUTEX(mutex, "FanetAce_mutex");
 
     return GATAS::PostConstruct::OK;
 }

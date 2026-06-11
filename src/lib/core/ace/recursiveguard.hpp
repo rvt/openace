@@ -4,8 +4,8 @@
 
 /**
  * @brief Guards against recursive calls. It can potentially prevent stack races, use with care...
- * 
- * @tparam C 
+ *
+ * @tparam C
  */
 template <uint8_t C>
 class RecursiveGuard
@@ -13,6 +13,7 @@ class RecursiveGuard
 private:
     uint8_t &_count;
     const etl::string_view msg_ = "RecursiveGuard: Hit";
+
 public:
     RecursiveGuard(uint8_t &ref) : _count(ref) { _count += 1; }
     RecursiveGuard(uint8_t &ref, etl::string_view msg) : _count(ref), msg_(msg) { _count += 1; }
@@ -28,10 +29,15 @@ public:
 
     operator bool() const
     {
-        if (_count < C) {
+        if (_count < C)
+        {
             return true;
-        } else {
-            GATAS_INFO("%s", msg_.data());
+        }
+        else
+        {
+#if GATAS_DEBUG
+            puts(msg_.data());
+#endif
             return false;
         };
     }

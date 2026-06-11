@@ -1,3 +1,4 @@
+#include "ace/debug.hpp"
 #include "../acespi.hpp"
 
 GATAS::PostConstruct AceSpi::postConstruct()
@@ -7,6 +8,7 @@ GATAS::PostConstruct AceSpi::postConstruct()
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
+    GATAS_REGISTER_MUTEX(mutex, "AceSpi_mutex");
 
     // Reset is active-low, so we'll initialise it to a driven-high state
     gpio_init(rst);

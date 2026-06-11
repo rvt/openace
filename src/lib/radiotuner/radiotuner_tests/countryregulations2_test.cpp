@@ -41,7 +41,7 @@ TEST_CASE("getSlot", "[single-file]")
     REQUIRE(1 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::ADSLM).size());
     REQUIRE(2 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM)[0].radioConfig.pcId);
     REQUIRE(2 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::FLARM)[0].radioConfig.pcId);
-    REQUIRE(3 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE2, GATAS::DataSource::OGN1)[0].radioConfig.pcId);
+    REQUIRE(3 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE2, GATAS::DataSource::OGN)[0].radioConfig.pcId);
 
     // ADSLO_HDR has 2 TX entries for ZONE1: one for TRAFFIC and one for UPLINK
     REQUIRE(2 == CountryRegulations::getProtocolTxTimings(CountryRegulations::Zone::ZONE1, GATAS::DataSource::ADSLO_HDR).size());
@@ -103,7 +103,7 @@ TEST_CASE("getProtocolRxTimingsForZone - returns all ZONE1 slots when all source
 {
     etl::array<GATAS::DataSourceConfig, 4> sources = {{
         {GATAS::DataSource::FLARM, GATAS::DataSourceMode::RX_TX},
-        {GATAS::DataSource::OGN1, GATAS::DataSourceMode::RX_TX},
+        {GATAS::DataSource::OGN, GATAS::DataSourceMode::RX_TX},
         {GATAS::DataSource::ADSLO_HDR, GATAS::DataSourceMode::RX_TX},
         {GATAS::DataSource::FANET, GATAS::DataSourceMode::RX_TX}}};
     auto result = CountryRegulations::getProtocolRxTimingsForZone(
@@ -134,7 +134,7 @@ TEST_CASE("getProtocolRxTimingsForZone - wrong zone returns empty", "[CountryReg
 {
     etl::array<GATAS::DataSourceConfig, 2> sources = {{
         {GATAS::DataSource::FLARM, GATAS::DataSourceMode::RX_TX},
-        {GATAS::DataSource::OGN1, GATAS::DataSourceMode::RX_TX}}};
+        {GATAS::DataSource::OGN, GATAS::DataSourceMode::RX_TX}}};
     auto result = CountryRegulations::getProtocolRxTimingsForZone(
         CountryRegulations::Zone::enum_type::ZONE5, // No ZONE5 entries in protocolRxTimimgs
         etl::span<const GATAS::DataSourceConfig>(sources.data(), sources.size()));

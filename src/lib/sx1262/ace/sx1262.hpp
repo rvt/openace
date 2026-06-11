@@ -149,23 +149,28 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
             .ldro = 0,
         };
 
-    static constexpr GATAS::LinkLayerConfig PROTOCOL_NONE{1, GATAS::DataSource::NONE, false, 0, 16, 64, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
+    static constexpr GATAS::LinkLayerConfig PROTOCOL_NONE{0, GATAS::DataSource::NONE, false, 0, 16, 64, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}}; // NONE
 
     const uint8_t csPin;
     const uint8_t busyPin;
     const uint8_t dio1Pin;
     const uint8_t radioNo;
     bool txEnabled;
+    // We need to know if the current mode is ground station so the correct package length get's set
     bool groundStation;
     uint32_t offsetHz;
     bool hasGpsFix = false;
     SpiModule *spiHall = nullptr;
     TaskHandle_t taskHandle = nullptr;
     RxDataFrameQueue *rxDataFrameQueue = nullptr;
+    // Keep track of the last error when there was an error, for monitoring only
     sx126x_errors_mask_t lastDeviceError=0;
     sx126x_errors_mask_t currentDeviceError=0;
-    etl::queue_spsc_atomic<TxPacket, 4, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
+    uint8_t currentConfiguredPcId = PROTOCOL_NONE.pcId;
+    GATAS::Modulation currentConfiguredModulation = GATAS::Modulation::NONE;
+    etl::queue_spsc_atomic<TxPacket, 3, etl::memory_model::MEMORY_MODEL_SMALL> txQueue;
     GATAS::RadioParameters rxRadioParameters{&PROTOCOL_NONE, nullptr, 868'000'000, 0};
+    // Used when new radioPatemers have arrived during RX requests
     GATAS::RadioParameters newRxRadioParameters{&PROTOCOL_NONE, nullptr, 868'000'000, 0};
 
 public:
@@ -245,7 +250,7 @@ public:
     bool isTxDone();
 
     void listen();
-    void standBy();
+    void standBy(sx126x_standby_cfg_t mode);
 
     static void sx1262Trampoline(void *arg);
     void sx1262Task(void *arg);

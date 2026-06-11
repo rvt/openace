@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "ace/debug.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/spinlockguard.hpp"
 #include "../adsbdecoder.hpp"
@@ -11,6 +12,7 @@ GATAS::PostConstruct ADSBDecoder::postConstruct()
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
+    GATAS_REGISTER_MUTEX(mutex, "ADSBDecoder_mutex");
     state.fix_errors = false;
     mode_s_init(&state);
     ignoredAirplanes.clear();

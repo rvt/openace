@@ -57,7 +57,11 @@
 #define configUSE_RECURSIVE_MUTEXES             1
 #define configUSE_APPLICATION_TASK_TAG          0
 #define configUSE_COUNTING_SEMAPHORES           1
+#if GATAS_DEBUG == 1
+#define configQUEUE_REGISTRY_SIZE               24
+#else
 #define configQUEUE_REGISTRY_SIZE               8
+#endif
 #define configUSE_QUEUE_SETS                    1
 #define configUSE_TIME_SLICING                  1
 #define configUSE_NEWLIB_REENTRANT              0
@@ -148,4 +152,3 @@ to exclude the API function. */
 #define TASK_DELAY_MIN( x )    ( ( x ) * 60 * 1000 / portTICK_PERIOD_MS )
 
 #endif /* FREERTOS_CONFIG_H */
-

@@ -125,13 +125,13 @@ uint32_t CountryRegulations::frequencyByTimestamp(uint32_t timestamp, uint32_t n
     return v9 % nch;
 }
 
-uint32_t CountryRegulations::nextRandomTxTime(bool staticTiming, const CountryRegulations::ProtocolTxTimeSlot &timing)
+uint32_t CountryRegulations::nextRandomTxTime(bool reducedTxRate, const CountryRegulations::ProtocolTxTimeSlot &timing)
 {
     const uint32_t nowInSecond = CoreUtils::msInSecond();
 
     // txMinTime/txMaxTime are the same across all entries in a group (validated at compile time)
-    const uint32_t minDelay = staticTiming ? timing.txStaticMinTime : timing.txMinTime;
-    const uint32_t maxDelay = staticTiming ? timing.txStaticMaxTime : timing.txMaxTime;
+    const uint32_t minDelay = reducedTxRate ? timing.reducedTxMinTime : timing.txMinTime;
+    const uint32_t maxDelay = reducedTxRate ? timing.reducedTxMaxTime : timing.txMaxTime;
     const uint32_t range = maxDelay - minDelay + 1;
 
     constexpr uint32_t MAX_TRIES = 10;

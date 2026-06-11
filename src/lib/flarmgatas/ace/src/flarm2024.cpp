@@ -35,11 +35,9 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
 
     if (msg.dataSource == GATAS::DataSource::FLARM)
     {
-        datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
-        auto epochSeconds = CoreUtils::secondsSinceEpoch();
-
         Flarm2024Packet packet;
 
+        auto epochSeconds = CoreUtils::secondsSinceEpoch();
         auto result = packet.loadFromBuffer(epochSeconds, msg.frameSpan(), msg.errorSpan());
         if (result < 0)
         {
@@ -71,6 +69,9 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
             statistics.outOfDistance += 1;
             return;
         }
+
+        // Only add statistics on valid packets in range
+        datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
 
         auto aircraftCat = toAircraftCategory(packet.aircraftType());
 

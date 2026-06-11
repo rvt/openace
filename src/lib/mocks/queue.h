@@ -63,6 +63,12 @@ inline void vQueueDelete( QueueHandle_t xQueue )
     //printf("vQueueDelete\n");
 }
 
+inline void vQueueAddToRegistry(QueueHandle_t xQueue, const char *pcQueueName)
+{
+    (void)xQueue;
+    (void)pcQueueName;
+}
+
 inline BaseType_t xQueueTakeMutexRecursive( QueueHandle_t xMutex,
     TickType_t xTicksToWait )
 {

@@ -57,6 +57,9 @@
 
 // https://github.com/raspberrypi/pico-sdk/issues/1443
 #define PICO_MAX_SHARED_IRQ_HANDLERS 6
+// Allow setting dynamic cw43 clock division because we set custom clock speeds
+#define CYW43_PIO_CLOCK_DIV_DYNAMIC 1
+#define PICO_USE_FASTEST_SUPPORTED_CLOCK 1
 
 // START: ***** Debugging PICO items
 // https://github.com/raspberrypi/pico-sdk/blob/master/src/boards/include/boards/pico_w.h
@@ -96,9 +99,10 @@
 // https://www.etlcpp.com/mutex.html
 // Malloc in ETL should use FreeRTOS mutexes
 #define ETL_TARGET_OS_FREERTOS ( 1 )
-#define ETL_STRING_TRUNCATION_IS_ERROR ( 1 )
 #define ETL_NO_EXCEPTIONS ( 1 )
 #define ETL_ARRAY_VIEW_IS_MUTABLE ( 1 )
+// #define ETL_STRING_TRUNCATION_IS_ERROR ( 1 )
+#define ETL_HAS_STRING_TRUNCATION_CHECKS ( 1 )
 
 // ***** GaTas configurations
 

@@ -140,6 +140,9 @@ namespace GATAS
         RadioRxMsgBase(GATAS::GlobalPoolConfiguration &pool, uint8_t *frame_, size_t lengthBytes_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
             : frame(pool, frame_), lengthBytes(lengthBytes_), epochSeconds(epochSeconds_), frequency(frequency_), dataSource(dataSource_), rssidBm(rssidBm_) {}
 
+        RadioRxMsgBase(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&frame_, size_t lengthBytes_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : frame(etl::move(frame_)), lengthBytes(lengthBytes_), epochSeconds(epochSeconds_), frequency(frequency_), dataSource(dataSource_), rssidBm(rssidBm_) {}
+
         uint32_t *frame32() const
         {
             return reinterpret_cast<uint32_t *>(frame.get());
@@ -162,6 +165,11 @@ namespace GATAS
             : RadioRxMsgBase(pool, data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_)
         {
         }
+
+        explicit RadioRxMsg(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&data_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : RadioRxMsgBase(etl::move(data_), length_, epochSeconds_, frequency_, dataSource_, rssidBm_)
+        {
+        }
     };
 
     struct RadioRxManchesterMsg : public RadioRxMsgBase, public etl::message<201>
@@ -170,6 +178,9 @@ namespace GATAS
 
         explicit RadioRxManchesterMsg(GATAS::GlobalPoolConfiguration &pool, uint8_t *data_, uint8_t *error_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
             : RadioRxMsgBase(pool, data_, length_, epochSeconds_, frequency_, dataSource_, rssidBm_), error(pool, error_) {}
+
+        explicit RadioRxManchesterMsg(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&data_, GATAS::GlobalPoolConfiguration &pool, uint8_t *error_, size_t length_, uint32_t epochSeconds_, uint32_t frequency_, GATAS::DataSource dataSource_, int8_t rssidBm_)
+            : RadioRxMsgBase(etl::move(data_), length_, epochSeconds_, frequency_, dataSource_, rssidBm_), error(pool, error_) {}
 
         uint32_t *err32()
         {
@@ -272,6 +283,15 @@ namespace GATAS
     };
 
     /**
+     * Request WifiService to move into a specific WiFi mode.
+     */
+    struct WifiModeRequestMsg : public etl::message<27>
+    {
+        GATAS::WifiMode wifiMode;
+        WifiModeRequestMsg(GATAS::WifiMode wifiMode_) : wifiMode(wifiMode_) {}
+    };
+
+    /**
      * Idle Message send at intervals that allows to due small tasks without creating a new task
      * Modules using this message should never block a task
      */
@@ -292,5 +312,42 @@ namespace GATAS
     };
     struct Every300SecMsg : public etl::message<34>
     {
+    };
+
+    /**
+     * cobsMessage must be a complet emessage
+     */
+    struct GatasConnectTx : public etl::message<36>
+    {
+        mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> cobsMessage;
+        size_t length;
+        GATAS::GatasConnectOutput output;
+
+        GatasConnectTx(GATAS::GlobalPoolConfiguration &pool, GATAS::GatasConnectOutput output_, uint8_t *cobsMessage_, size_t length_)
+            : cobsMessage(pool, cobsMessage_), length(length_), output(output_)
+        {
+            GATAS_ASSERT((length != 0 && cobsMessage.get() != nullptr), "Invalid Connect Msg");
+        }
+
+        GatasConnectTx(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&cobsMessage_, size_t length_, GATAS::GatasConnectOutput output_)
+            : cobsMessage(etl::move(cobsMessage_)), length(length_), output(output_)
+        {
+            GATAS_ASSERT((length != 0 && cobsMessage.get() != nullptr), "Invalid Connect Msg");
+        }
+    };
+
+    /**
+     * cobsMessage must be a complet emessage
+     */
+    struct GatasConnectRx : public etl::message<37>
+    {
+        mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> cobsMessage;
+        size_t length;
+
+        GatasConnectRx(GATAS::GlobalPoolConfiguration &pool, uint8_t *cobsMessage_, size_t length_)
+            : cobsMessage(pool, cobsMessage_), length(length_) {}
+
+        GatasConnectRx(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&cobsMessage_, size_t length_)
+            : cobsMessage(etl::move(cobsMessage_)), length(length_) {}
     };
 }

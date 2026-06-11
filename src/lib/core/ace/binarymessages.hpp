@@ -6,6 +6,7 @@
 #include <etl/span.h>
 #include <etl/absolute.h>
 #include <etl/to_arithmetic.h>
+#include "ace/cobs.hpp"
 #include "lib_crc.hpp"
 #include "coreutils.hpp"
 #include "models.hpp"
@@ -14,6 +15,9 @@
 class BinaryMessages
 {
 public:
+    // Upper bound for one framed COBS payload including the trailing zero delimiter.
+    static constexpr size_t MAX_COBS_FRAME_SIZE = 256;
+
     /**
      * Object that can be used by binary messages to indicate how many bytes it will consume
      * A function 'items' is provided to calculate the number of items that can be expected to calculate
@@ -39,6 +43,8 @@ public:
 //          AIRCRAFT_CONFIGURATIONS_V1 = 3,   // Deprecated, see AIRCRAFT_CONFIGURATIONS_V2 Current GATAS COnfiguration 1.0.0-prerelease
             SET_ICAO_ADDRESS_V1 = 4,          // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
             AIRCRAFT_CONFIGURATIONS_V2 = 5,   // Current GATAS COnfiguration V2
+            GDL90_V1 = 6,                      // Packed GDL90 message for bridge transports
+            SET_WIFI_MODE_V1 = 7,             // Request that OpenAce changes WiFi mode
         };
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
@@ -47,8 +53,12 @@ public:
 //      ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V1, "Current GATAS Configuration see AIRCRAFT_CONFIGURATIONS_V2")
         ETL_ENUM_TYPE(SET_ICAO_ADDRESS_V1, "Set new aircraft from configuration")
         ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V2, "Current GATAS Configuration")
+        ETL_ENUM_TYPE(GDL90_V1, "GDL90 Message")
+        ETL_ENUM_TYPE(SET_WIFI_MODE_V1, "Set WiFi Mode")
         ETL_END_ENUM_TYPE
     };
+
+    static constexpr uint8_t AIRCRAFT_CONFIGURATION_WIFI_MODE_MASK = 0x03U;
 
     /**
      * Read Aircraft Position Info from a bit stream reader
@@ -123,6 +133,21 @@ public:
         writer.write_unchecked(static_cast<int16_t>(ownship.verticalSpeed * 100.f), 16U);
     }
 
+    static size_t serializeOwnshipPositionV1(uint8_t *out, size_t outSize, const GATAS::OwnshipPositionInfo &ownship)
+    {
+        const size_t rawSize = serializeOwnshipPositionSizeV1().items(1);
+        const size_t framedSize = serializeOwnshipPositionFramedSizeV1();
+        if (outSize < framedSize || rawSize > MAX_COBS_FRAME_SIZE)
+        {
+            return 0;
+        }
+
+        uint8_t rawBuffer[MAX_COBS_FRAME_SIZE];
+        etl::bit_stream_writer writer(rawBuffer, rawSize, etl::endian::big);
+        serializeOwnshipPositionV1(writer, ownship);
+        return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
+    }
+
     constexpr static BinaryMessages::SizeType serializeOwnshipPositionSizeV1()
     {
         size_t size = 1 + 4 + 3 + 1 + 1 + 4 + 4 + 2 + 1 + 1 + 2 + 2;
@@ -131,10 +156,16 @@ public:
             .size = size};
     }
 
-    static void serializeAircraftConfigurationV2(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode)
+    static size_t serializeOwnshipPositionFramedSizeV1()
+    {
+        return getCOBSBufferSize(serializeOwnshipPositionSizeV1().items(1), true);
+    }
+
+    static void serializeAircraftConfigurationV2(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode, GATAS::WifiMode wifiMode)
     {
         writer.write_unchecked(DataType(DataType::AIRCRAFT_CONFIGURATIONS_V2).get_value(), 8U);
-        writer.write_unchecked(0, 8U); // Reserved
+        const uint8_t flags = static_cast<uint8_t>(wifiMode) & AIRCRAFT_CONFIGURATION_WIFI_MODE_MASK;
+        writer.write_unchecked(flags, 8U); // Reserved bits, bits 0-1 encode WiFi mode: NC/AP/CLIENT
         writer.write_unchecked(gatasId, 32U);
         writer.write_unchecked(gatasIp, 32U);
         writer.write_unchecked(icaoAddressSnap, 24U);
@@ -156,12 +187,64 @@ public:
         }
     }
 
+    static size_t serializeAircraftConfigurationV2(uint8_t *out, size_t outSize, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode, GATAS::WifiMode wifiMode)
+    {
+        const size_t rawSize = serializeAircraftConfigurationSizeV2().items(addresses.size());
+        const size_t framedSize = serializeAircraftConfigurationFramedSizeV2(addresses.size());
+        if (outSize < framedSize || rawSize > MAX_COBS_FRAME_SIZE)
+        {
+            return 0;
+        }
+
+        uint8_t rawBuffer[MAX_COBS_FRAME_SIZE];
+        etl::bit_stream_writer writer(rawBuffer, rawSize, etl::endian::big);
+        serializeAircraftConfigurationV2(writer, gatasId, icaoAddressSnap, addresses, gatasIp, pinCode, wifiMode);
+        return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
+    }
+
     constexpr static BinaryMessages::SizeType serializeAircraftConfigurationSizeV2()
     {
         return BinaryMessages::SizeType{
             .base = 1 + 1 + 4 + 4 + 3 + 4 + 3 + 1 + 1, // By default we will use 4 bytes 10
             .size = 3                                  // For each additional item 3 bytes
         };
+    }
+
+    static size_t serializeAircraftConfigurationFramedSizeV2(size_t items)
+    {
+        return getCOBSBufferSize(serializeAircraftConfigurationSizeV2().items(items), true);
+    }
+
+    constexpr static BinaryMessages::SizeType serializeGdl90SizeV1()
+    {
+        return BinaryMessages::SizeType{
+            .base = 1,
+            .size = 1};
+    }
+
+    static size_t serializeGdl90FramedSizeV1(size_t items)
+    {
+        return getCOBSBufferSize(serializeGdl90SizeV1().items(items), true);
+    }
+
+    static size_t serializeGdl90V1(uint8_t *out, size_t outSize, const etl::span<const uint8_t> &gdl90Message)
+    {
+        const size_t rawSize = serializeGdl90SizeV1().items(gdl90Message.size());
+        const size_t framedSize = serializeGdl90FramedSizeV1(gdl90Message.size());
+        if (outSize < framedSize)
+        {
+            return 0;
+        }
+
+        uint8_t rawBuffer[MAX_COBS_FRAME_SIZE];
+        if (rawSize > sizeof(rawBuffer))
+        {
+            return 0;
+        }
+
+        rawBuffer[0] = DataType(DataType::GDL90_V1).get_value();
+        etl::copy(gdl90Message.begin(), gdl90Message.end(), rawBuffer + 1);
+        return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
     }
 
     static uint32_t deserializeSetIcaoAddressV1(etl::bit_stream_reader &reader)
@@ -172,6 +255,36 @@ public:
             return 0x00;
         }
         return reader.read_unchecked<uint32_t>(24U);
+    }
+
+    /**
+     * Deserialize the SET_WIFI_MODE_V1 message. THis wil ignore the WifiMode::NC and return false
+     * @param reader
+     * @param wifiMode
+     * @return
+     */
+    static bool deserializeSetWifiModeV1(etl::bit_stream_reader &reader, GATAS::WifiMode &wifiMode)
+    {
+        auto type = reader.read_unchecked<uint8_t>(8U);
+        if (type != DataType(DataType::SET_WIFI_MODE_V1).get_value())
+        {
+            return false;
+        }
+
+        const auto mode = reader.read_unchecked<uint8_t>(8U);
+        if (mode == GATAS::WifiMode::AP)
+        {
+            wifiMode = GATAS::WifiMode::AP;
+            return true;
+        }
+
+        if (mode == GATAS::WifiMode::CLIENT)
+        {
+            wifiMode = GATAS::WifiMode::CLIENT;
+            return true;
+        }
+
+        return false;
     }
 
     /**

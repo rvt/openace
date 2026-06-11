@@ -199,19 +199,19 @@ namespace GATAS
         ADSLM = 1,
         ADSLO_HDR = 2,
         FANET = 3,
-        OGN1 = 4,
+        OGN = 4,
         _RADIO = 5, // ANything beflore Radio can only be received over hardware
+        _TRANSPROTOCOLS = 5, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         ADSB = 5,
-        _TRANSPROTOCOLS = 6, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         ADSLFLARM = 253,     // Combination of ADSL/FLARM, not an acutal protocol but needed for RX of multiple protocols
         ADSLOGN = 254,       // Combination of ADSL/OGN, not an acutal protocol but needed for RX of multiple protocols
-        _ITEMS = 9,          // Maximum number of items eg last item + 1
         NONE = 255           // Note: Never use this! Unly used for stringToEnum(..)
     };
 
     // Get a string representation of a datasource
     const char *dataSourceIntToString(uint8_t ds);
     const char *toString(DataSource ds);
+    const char *toShortString(DataSource ds);
     DataSource stringToDataSource(const char *str);
 
     struct DataSourceMode
@@ -360,9 +360,9 @@ namespace GATAS
     {
         enum enum_type : uint8_t
         {
-            NC,
-            AP,
-            CLIENT
+            NC=0,
+            AP=1,
+            CLIENT=2,
         };
 
         ETL_DECLARE_ENUM_TYPE(WifiMode, uint8_t)
@@ -463,7 +463,7 @@ namespace GATAS
                 return ds == GATAS::DataSource::FLARM || ds == GATAS::DataSource::ADSLM;
 
             case GATAS::DataSource::ADSLOGN:
-                return ds == GATAS::DataSource::OGN1 || ds == GATAS::DataSource::ADSLM;
+                return ds == GATAS::DataSource::OGN || ds == GATAS::DataSource::ADSLM;
 
             default:
                 return __dataSource == ds;
@@ -582,6 +582,22 @@ namespace GATAS
     {
         float pressurehPa;    // Preasure in hPa (hectopascal)
         uint32_t usSinceBoot; // Time since boot
+    };
+
+    struct GatasConnectOutput
+    {
+        enum enum_type : uint8_t
+        {
+            UDP = 0,
+            Bluetooth = 1,
+            Broadcast = 2
+        };
+
+        ETL_DECLARE_ENUM_TYPE(GatasConnectOutput, uint8_t)
+        ETL_ENUM_TYPE(UDP, "UDP")
+        ETL_ENUM_TYPE(Bluetooth, "BlueTooth")
+        ETL_ENUM_TYPE(Broadcast, "Broadcast")
+        ETL_END_ENUM_TYPE
     };
 
 };

@@ -1,8 +1,7 @@
 #pragma once
 #include <cstddef>
-#include "cobs.hpp"
-#include "gulp.hpp"
-#include "../old/streambuffer.hpp"
+#include "ace/cobs.hpp"
+#include "ace/gulp.hpp"
 #include "ace/binarymessages.hpp"
 #include "ace/messages.hpp"
 #include "etl/span.h"
@@ -71,6 +70,15 @@ public:
                                 Configuration::NAME,
                             });
                     }
+                }
+            }
+
+            if (frameType == BinaryMessages::DataType::SET_WIFI_MODE_V1)
+            {
+                GATAS::WifiMode wifiMode = GATAS::WifiMode::NC;
+                if (BinaryMessages::deserializeSetWifiModeV1(reader, wifiMode))
+                {
+                    bus.receive(GATAS::WifiModeRequestMsg{wifiMode});
                 }
             }
         }

@@ -78,8 +78,8 @@ public:
         uint16_t txMinTime;
         uint16_t txMaxTime;
         // When GATAS is not moving, use these timings
-        uint16_t txStaticMinTime;
-        uint16_t txStaticMaxTime;
+        uint16_t reducedTxMinTime;
+        uint16_t reducedTxMaxTime;
         uint8_t waitAfterCatStart;
         uint8_t waitAfterCatEnd;
     };
@@ -104,7 +104,7 @@ public:
     //                                                                                                                    skip sync bits in RX mode
     static constexpr GATAS::LinkLayerConfig PROTOCOL_NONE          { 0, GATAS::DataSource::NONE,       true,   0, 16, 64, 0, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}};       // NONE
     static constexpr GATAS::LinkLayerConfig PROTOCOL_FLARM         { 2, GATAS::DataSource::FLARM,      true,  26, 16, 64, 8, {0x55, 0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96}};       // FLARM 0 airtime 6ms
-    static constexpr GATAS::LinkLayerConfig PROTOCOL_OGN           { 3, GATAS::DataSource::OGN1,       true,  26, 16, 64, 8, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}};       // OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
+    static constexpr GATAS::LinkLayerConfig PROTOCOL_OGN           { 3, GATAS::DataSource::OGN,       true,  26, 16, 64, 8, {0xAA, 0x66, 0x55, 0xA5, 0x96, 0x99, 0x96, 0x5A}};       // OGN 1 airtime 6ms <- This seems to be in use 20 Byte packet length :: 6 byte CRC
 
     static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSL          { 4, GATAS::DataSource::ADSLM,      true,  25, 16, 48, 8, {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65}};                   // ADSL on normal 0xA9, 0x6A => 0x18 26Byte first byt elength = 25Byte
     static constexpr GATAS::LinkLayerConfig PROTOCOL_ADSLO_HDR     { 5, GATAS::DataSource::ADSLO_HDR, false,   0, 16, 16, 0, {0x2D, 0xD4}};                                           // ADSL on O band HDR
@@ -180,17 +180,17 @@ public:
                 return 2;
             }
 
-            if (pts.txStaticMinTime < pts.txMinTime)
+            if (pts.reducedTxMinTime < pts.txMinTime)
             {
                 return 20;
             }
 
-            if (pts.txStaticMaxTime < pts.txMaxTime)
+            if (pts.reducedTxMaxTime < pts.txMaxTime)
             {
                 return 21;
             }
 
-            if (pts.txStaticMinTime > pts.txStaticMaxTime)
+            if (pts.reducedTxMinTime > pts.reducedTxMaxTime)
             {
                 return 18;
             }
@@ -328,10 +328,11 @@ public:
      * txMinTime and txMaxTime are taken from the first entry; all entries in a group
      * must share the same values (enforced by validateProtocolTxTimings).
      *
+     * @param reducedTxRate  when true, slows down TX rate. Used for on ground operations
      * @param timing  Span of one or more ProtocolTxTimeSlot entries for the same datasource.
      * @return Delay in ms, or UINT32_MAX if no suitable slot was found after MAX_TRIES.
      */
-    static uint32_t nextRandomTxTime(bool staticTiming, const CountryRegulations::ProtocolTxTimeSlot &timing);
+    static uint32_t nextRandomTxTime(bool reducedTxRate, const CountryRegulations::ProtocolTxTimeSlot &timing);
 
 public:
     /**

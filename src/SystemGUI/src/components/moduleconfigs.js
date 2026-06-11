@@ -52,13 +52,13 @@ class AircraftTrackerConfig extends ModuleConfig {
 
   _setFormData(data) {
     this.$refs.ddbEnabled.checked = data.ddbEnabled;
-    this.$refs.pathPredictionEnabled.checked = data.ppEnabled;
+    this.$refs.prefixEnabled.checked = data.prefixEnabled;
   }
 
   _getFormData() {
     return {
       ddbEnabled: this.$refs.ddbEnabled.checked,
-      ppEnabled: this.$refs.pathPredictionEnabled.checked,
+      prefixEnabled: this.$refs.prefixEnabled.checked,
     };
   }
 
@@ -81,21 +81,24 @@ class AircraftTrackerConfig extends ModuleConfig {
             <br />
             <input type="checkbox" id="ddbEnabled" ref="ddbEnabled" placeholder="1" />
           </label>
-          <label for="pathPredictionEnabled">
-            <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
-              Path prediction ${html.raw(icon.help)}
-              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
-                Extrapolate short gaps between received aircraft positions before forwarding tracker updates to connected clients.
-              </p>
-            </label>:
-            <br />
-            <input type="checkbox" id="pathPredictionEnabled" ref="pathPredictionEnabled" placeholder="1" />
-          </label>
+          
           <div class="alert alert-warning">
             <svg class="mr-2" style="width: 24px; height: 24px;" viewBox="0 0 24 24"><path fill="currentColor" d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21z"></path></svg>
             Please note that the DDB is created and maintained by aviation enthusiasts and is in no way an official registry.
             Because of this, you may encounter aircraft whose callsign differs from what ATC uses.
           </div>
+        </div>
+        <div class="section">
+          <label for="prefixEnabled">
+            <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
+              Add Data Source Prefix ${html.raw(icon.help)}
+              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
+                Prefix tracked callsigns with the two-letter datasource code, for example <code>OG</code> or <code>FL</code>, so connected EFBs can show how the traffic was received.
+              </p>
+            </label>:
+            <br />
+            <input type="checkbox" id="prefixEnabled" ref="prefixEnabled" placeholder="1" />
+          </label>
         </div>
         <br />
         ${this.buttonArray(html)}
@@ -527,8 +530,8 @@ class GDLoverUDPConfig extends ModuleConfig {
             ${html.raw(icon.help)}
             <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
               In addition to ports, up to ${this.ips.length} separate IP addresses can be configured.
-              This is usually only useful if your system connects to an access point and you have a third device connected to teh same accesspoint.
-              By default GA/TAAS will send UDP traffic to the gateway in client mode using teh configured ports.<br />
+              This is usually only useful if your system connects to an access point and you have a third device connected to the same accesspoint.
+              By default GA/TAAS will send UDP traffic to the gateway in client mode using the configured ports.<br />
               Default port is <b>4000</b>
             </p>
           </label>
@@ -799,15 +802,10 @@ class GatasConnectConfig extends ModuleConfig {
   }
   mounted() {
     const validator = new JustValidate(this.$refs.form);
+    this.$refs.output.addEventListener("change", this._toggleGdl90BridgeVisibility.bind(this));
+    this._toggleGdl90BridgeVisibility();
 
     validator
-      .addField(this.$refs.ip, [
-        {
-          rule: "required",
-          errorMessage: "IPv4 address or domain name is required",
-        },
-        ...configStringLengthValidator,
-      ])
       .addField(this.$refs.pinCode, [
         {
           rule: "custom",
@@ -826,18 +824,24 @@ class GatasConnectConfig extends ModuleConfig {
       });
   }
 
+  _toggleGdl90BridgeVisibility() {
+    this.$refs.enableGdl90BridgeGroup.style.display = this.$refs.output.value === "udp" ? "none" : "";
+  }
+
   _setFormData(data) {
-    this.$refs.ip.value = data.gatasServer.ip;
-//    this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : this.randomIntFromInterval(1000, 999999);
+    //    this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : this.randomIntFromInterval(1000, 999999);
     this.$refs.pinCode.value = data.pinCode !== undefined ? data.pinCode : "0";
+    this.$refs.output.value = data.output !== undefined ? data.output : "udp";
+    this.$refs[`output_${data.output?.toLowerCase()}`].selected = true;
+    this.$refs.enableGdl90Bridge.checked = data.enableGdl90Bridge === true;
+    this._toggleGdl90BridgeVisibility();
   }
 
   _getFormData() {
     return {
-      gatasServer: {
-        ip: this.$refs.ip.value.trim(),
-      },
       pinCode: this.$refs.pinCode.value.trim(),
+      output: this.$refs.output.value,
+      enableGdl90Bridge: this.$refs.enableGdl90Bridge.checked,
     };
   }
 
@@ -845,12 +849,106 @@ class GatasConnectConfig extends ModuleConfig {
     return html`
       <h4>Configuration of GATAS Connect</h4>
       <p>
+        GATAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI or BlueTooth to operate.
+        It fetches traffic around you up to about 100Km.
+        You must enable GatasConnectUDP when you want gatas to directly connect to GatasServer. At your option, you can also use the Gatas Companion application
+        to have GATAS receive additional traffic over bluetooth.
+      </p>
+
+        <div class="alert alert-warning">
+          <div>
+          The Pin Code is used when you use <a href="https://gatas.vantwisk.nl" target="_blank" rel="noopener noreferrer">GATAS Connect</a> online
+          application to connect to your GATAS system to allow to configure your GATAS aircraft you are flying.
+          Instead of using the unique GATAS ID which is differcult to remmeber, you can use the Pin Code with your location.
+          When using 0 as Pin Code, the Pin Code functionality is disabled for added security if you whish to not use it.<br />
+          GDL90 bridge is used together with the mobile application <i>Gatas Companion</i> and when enabled it will allow
+          to forward GDL90 messages from GATAS via bluetooth to the mobile application that forwards the GDL90 packets to a local UDP server.
+          This is to eliminate any WIFI connection if you whish to your mobile if you whish. You can still let other devices connect to GATAS
+          to benefit from all traffic and GPS data.
+          </div>
+        </div>
+
+      <form ref="form" autocomplete="off" novalidate="novalidate">
+        <div class="row g-0">
+            <div class="col-10" style="margin-top:20px;">
+              <label for="ip">
+                Pin Code:
+                <input type="text" id="pinCode" ref="pinCode" placeholder="0" } />
+              </label>
+            </div>
+            <div class="col-10" style="margin-top:20px;">
+              <label for="output">
+                Output:
+                <select id="output" ref="output">
+                  <option value="udp" ref="output_udp">UDP</option>
+                  <option value="bluetooth" ref="output_bluetooth">Bluetooth</option>
+                </select>
+              </label>
+            </div>
+            <div class="col-10" style="margin-top:20px;" ref="enableGdl90BridgeGroup">
+              <label for="enableGdl90Bridge">
+                Enable Gdl90 Bridge:
+                <input type="checkbox" id="enableGdl90Bridge" ref="enableGdl90Bridge" />
+              </label>
+            </div>
+        </div>
+
+        ${this.buttonArray(html)}
+      </form>
+    `;
+  }
+}
+customElements.define("gatasconnect-config", GatasConnectConfig);
+
+class GatasConnectUDPConfig extends ModuleConfig {
+  created() {
+    this._initForm(store.getModuleData("GatasConnectUDP"));
+  }
+
+  randomIntFromInterval(min, max) { // min and max included
+    return Math.floor(Math.random() * (max - min + 1) + min);
+  }
+  mounted() {
+    const validator = new JustValidate(this.$refs.form);
+
+    validator
+      .addField(this.$refs.ip, [
+        {
+          rule: "required",
+          errorMessage: "IPv4 address or domain name is required",
+        },
+        ...configStringLengthValidator,
+      ])
+      .onSuccess((event) => {
+        const data = this._getFormData();
+        store.updateModuleData("GatasConnectUDP", { ...this.copyOfData, ...data }).then(() => {
+          this.close();
+        });
+      });
+  }
+
+  _setFormData(data) {
+    this.$refs.ip.value = data.gatasServer.ip;
+  }
+
+  _getFormData() {
+    return {
+      gatasServer: {
+        ip: this.$refs.ip.value.trim(),
+      }
+    };
+  }
+
+  render(html) {
+    return html`
+      <h4>Configuration of GATAS Connect UDP</h4>
+      <p>
         GATAS connect enabled to use of an external server to ingest additional traffic data, but requires a mobile connection via WIFI to operate.
         It fetches traffic around you up to about 50Km away.
         <br/><br/>
         To setup GATAS Connect:
         <ul>
-          <li>Enter the the IP address of your GATAS Connect service you can use <span style="font-style: italic">gatas.vantwisk.nl</span> <a type="button" title="Copy to IP field" style="cursor:pointer;background:none;border:none;padding:0;margin:0;vertical-align:middle;" onclick=${() => { this.$refs.ip.value = 'gatas.vantwisk.nl'; }}>&#x2398;</a> which is free to use:
+          <li>Enter the the IP address of your GATAS Connect service you <button class="btn btn-medium xs" type="button" title="Copy to IP field" style="cursor:pointer" onclick=${() => { this.$refs.ip.value = 'gatas.vantwisk.nl'; }}>can use gatas.vantwisk.nl</button> which is free to use:
           <li>Then setup your WIFI to connect to your mobile hotspot and ensure to enable 'Client Only' in WifiService.
         </ul>
       </p>
@@ -872,12 +970,6 @@ class GatasConnectConfig extends ModuleConfig {
                 <input type="text" id="ip" ref="ip" placeholder="gatas.vantwisk.nl" } />
               </label>
             </div>
-            <div class="col-10" style="margin-top:20px;">
-              <label for="ip">
-                Pin Code:
-                <input type="text" id="pinCode" ref="pinCode" placeholder="0" } />
-              </label>
-            </div>
         </div>
 
         ${this.buttonArray(html)}
@@ -885,8 +977,7 @@ class GatasConnectConfig extends ModuleConfig {
     `;
   }
 }
-customElements.define("gatasconnect-config", GatasConnectConfig);
-
+customElements.define("gatasconnectudp-config", GatasConnectUDPConfig);
 
 class AbstractGnss extends ModuleConfig {
   created() {
@@ -950,4 +1041,3 @@ class UbloxM8N extends AbstractGnss {
 
 customElements.define("l76b-config", L76B);
 customElements.define("ubloxm8n-config", UbloxM8N);
-

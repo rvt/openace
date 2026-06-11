@@ -1,7 +1,10 @@
 #pragma once
 
 #include <stdint.h>
+#include <cstring>
+#include <algorithm>
 #include "etl/array.h"
+#include "ace/debug.hpp"
 
 /**
  * Use the circular buffer if you need to add chunks of data on one end, and read on the other 
@@ -18,6 +21,12 @@ class CircularBuffer
     size_t count = 0;                     // Number of bytes in the buffer
 
 public:
+    struct PeekResult
+    {
+        const char *part;
+        size_t size;
+    };
+
     // 1️⃣ Returns the number of bytes available to write
     size_t available() const
     {
@@ -65,14 +74,8 @@ public:
     }
 
     // Returns a direct pointer to the internal buffer and the length of contiguous data
-    auto peek() const
+    PeekResult peek() const
     {
-        struct PeekResult
-        {
-            const char *part;
-            size_t size;
-        };
-
         if (count == 0)
         {
             return PeekResult{nullptr, 0};

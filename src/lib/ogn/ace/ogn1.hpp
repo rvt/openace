@@ -132,7 +132,7 @@ private:
     GATAS::AircraftCategory ognToGatas(Ogn1::OGNAircraftType o) const;
     Ogn1::OGNAircraftType gatasToOgn(GATAS::AircraftCategory c) const;
 
-    int8_t parseFrame(OGN1_Packet &packet, int16_t rssiDbm);
+    int8_t parseFrame(OGN_Packet &packet, uint32_t frequency, int16_t rssiDbm);
 
     static uint8_t ErrCount(const uint8_t *err, uint8_t length);
     static uint8_t ErrCount(const uint8_t *output, const uint8_t *data, const uint8_t *err, uint8_t length);

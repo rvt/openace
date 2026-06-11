@@ -17,7 +17,6 @@
 
 void Sx1262::start()
 {
-    sx126x_reset(this);
     getBus().subscribe(*this);
 };
 
@@ -64,7 +63,7 @@ GATAS::PostConstruct Sx1262::postConstruct()
 
     radioInit();
 
-    if (xTaskCreate(sx1262Trampoline, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 128, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
+    if (xTaskCreate(sx1262Trampoline, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
     {
         return GATAS::PostConstruct::TASK_ERROR;
     }
@@ -163,6 +162,8 @@ void Sx1262::on_receive(const GATAS::RadioControlMsg &msg)
 
 void Sx1262::radioInit()
 {
+    sx126x_reset(this);
+
     // .365
     waitBusy(50);
 
@@ -170,13 +171,15 @@ void Sx1262::radioInit()
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
 
     // Must be called before any calibration
-    sx126x_set_dio3_as_tcxo_ctrl(this, SX126X_TCXO_CTRL_1_6V, 5000.f / 15.625);
+    auto rtcSteps = sx126x_convert_timeout_in_ms_to_rtc_step(5);
+    sx126x_set_dio3_as_tcxo_ctrl(this, SX126X_TCXO_CTRL_1_6V, rtcSteps);
+
     sx126x_set_dio2_as_rf_sw_ctrl(this, true);
 
     // Start Calibration
 
     // 9.4 Standby (STDBY) Mode DCDC must be set in SX126X_STANDBY_CFG_RC mode
-    // 13.1.12 Calibrate Function must happen in SX126X_STANDBY_CFG_RC
+    // 13.1.12 Calibrate Function and regulator must happen in SX126X_STANDBY_CFG_RC
     sx126x_set_standby(this, SX126X_STANDBY_CFG_RC);
     sx126x_set_reg_mode(this, SX126X_REG_MODE_DCDC);
     sx126x_cal(this, SX126X_CAL_ALL);
@@ -187,19 +190,20 @@ void Sx1262::radioInit()
     checkAndClearDeviceErrors();
 
     // Calibration done, use stanby
-    standBy();
+    standBy(SX126X_STANDBY_CFG_RC);
 
     // 15.2.2 Better Resistance of the SX1262 Tx to Antenna Mismatch
-    uint8_t clamp;
-    sx126x_read_register(this, 0x08D8, &clamp, 1);
-    clamp |= 0x1E;
-    sx126x_write_register(this, 0x08D8, &clamp, 1);
+    // uint8_t clamp;
+    // sx126x_read_register(this, 0x08D8, &clamp, 1);
+    // clamp |= 0x1E;
+    // sx126x_write_register(this, 0x08D8, &clamp, 1);
+    sx126x_cfg_tx_clamp(this);
 
     // TX Base at 0x00  RX Base at 0x80
     sx126x_set_buffer_base_address(this, 0x00, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE);
 
     sx126x_set_rx_tx_fallback_mode(this, SX126X_FALLBACK_STDBY_XOSC);
-    sx126x_set_cad_params(this, &DEFAULT_CAD_PARAMS);
+    // sx126x_set_cad_params(this, &DEFAULT_CAD_PARAMS);
 
     sx126x_set_pa_cfg(this, &DEFAULT_HIGH_POWER_PA_CFG);
     sx126x_set_ocp_value(this, (uint8_t)(120.0 / 2.5));
@@ -214,24 +218,34 @@ void Sx1262::radioInit()
 
 void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_t payloadLength)
 {
-    // 9.8 Transceiver Circuit Modes Graphical Illustration
-    standBy();
-
-    // TX Base at 0x00  RX Base at 0x80
-    sx126x_set_buffer_base_address(this, 0x00, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE);
-
-    if (LOW_POWER_MODE)
+    if (newParameters.config->pcId != currentConfiguredPcId)
     {
-        sx126x_set_pa_cfg(this, &DEFAULT_LOW_POWER_PA_CFG);
-    }
-    else
-    {
-        sx126x_set_pa_cfg(this, &DEFAULT_HIGH_POWER_PA_CFG);
-    }
+        // Table 13-38: PacketType Definition must be in RC mode to switch packert type
+        if (newParameters.frequency->mode != currentConfiguredModulation)
+        {
+            standBy(SX126X_STANDBY_CFG_RC);
+        }
+        else
+        {
+            standBy(SX126X_STANDBY_CFG_XOSC);
+        }
 
-    if (newParameters.config->pcId != rxRadioParameters.config->pcId || true)
-    {
+        // TX Base at 0x00  RX Base at GROUNDSTATION_RX_BASE or DEFAULT_RX_BASE
+        sx126x_set_buffer_base_address(this, 0x00, groundStation ? GROUNDSTATION_RX_BASE : DEFAULT_RX_BASE);
+
+        // Note: Debug only
+        if (LOW_POWER_MODE)
+        {
+            sx126x_set_pa_cfg(this, &DEFAULT_LOW_POWER_PA_CFG);
+        }
+        else
+        {
+            sx126x_set_pa_cfg(this, &DEFAULT_HIGH_POWER_PA_CFG);
+        }
+
         GATAS_MEASURE("configureSx1262", 1600 /* 500 */);
+        currentConfiguredPcId = newParameters.config->pcId;
+        currentConfiguredModulation = newParameters.frequency->mode;
 
         // This routines takes about 250us
         if (newParameters.frequency->mode == GATAS::Modulation::GFSK)
@@ -324,7 +338,7 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
                 auto mod = DEFAULT_MOD_PARAMS_LORA;
                 if (newParameters.frequency->channelBandwidth == 500000)
                 {
-                    mod.bw = SX126X_LORA_BW_250;
+                    mod.bw = SX126X_LORA_BW_500;
                 }
                 else if (newParameters.frequency->channelBandwidth == 250000)
                 {
@@ -352,10 +366,7 @@ void Sx1262::configureSx1262(const GATAS::RadioParameters &newParameters, uint8_
         }
     }
 
-    if (newParameters.hopFrequency != rxRadioParameters.hopFrequency || true)
-    {
-        sx126x_set_rf_freq(this, newParameters.hopFrequency + offsetHz);
-    }
+    sx126x_set_rf_freq(this, newParameters.hopFrequency + offsetHz);
 
     // GATAS_INFO("Radio %d changed frequency from %ld to %ld", radioNo, lastParameters.hopFrequency, newParameters.hopFrequency);
     checkAndClearDeviceErrors();
@@ -382,7 +393,7 @@ void Sx1262::sendGFSKPacket(const GATAS::RadioParameters &parameters, const uint
     enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
 
     // 22Dbm is the max power for sx1262.
-    int8_t powerdBm = LOW_POWER_MODE ? LOW_POWER_DBM : etl::max(static_cast<int8_t>(22), parameters.frequency->powerdBm);
+    int8_t powerdBm = LOW_POWER_MODE ? LOW_POWER_DBM : etl::min(static_cast<int8_t>(22), parameters.frequency->powerdBm);
     sx126x_set_tx_params(this, powerdBm, SX126X_RAMP_200_US);
     sx126x_write_buffer(this, 0x00, data, length);
     // 13.1.14 SetTx
@@ -539,7 +550,8 @@ uint8_t Sx1262::receivedPacketLength() const
 
 void Sx1262::waitBusy(uint16_t minimumDelay) const
 {
-    constexpr uint8_t checkInterval = 100; // loop cycles per check
+    GATAS_ASSERT(minimumDelay > 0, "Must be > 0");
+    constexpr uint16_t checkInterval = 100; // loop cycles per check
 
     uint8_t countdown = checkInterval;
     while (gpio_get(busyPin))
@@ -555,12 +567,12 @@ void Sx1262::waitBusy(uint16_t minimumDelay) const
     vTaskDelay(TASK_DELAY_MS(minimumDelay));
 }
 
-void Sx1262::standBy()
+void Sx1262::standBy(sx126x_standby_cfg_t mode)
 {
     GATAS_MEASURE("standBy", 2000 /* 150 */);
 
     // .715
-    sx126x_set_standby(this, SX126X_STANDBY_CFG_XOSC);
+    sx126x_set_standby(this, mode);
 }
 
 void Sx1262::checkAndClearDeviceErrors()
@@ -612,18 +624,18 @@ void Sx1262::sendPacket(const TxPacket &txPacket)
                 return;
             }
             uint8_t manchesterFrame[GATAS::RADIO_MAX_TX_GFSK_FRAME_LENGTH * MANCHESTER];
-            manchesterEncode(manchesterFrame, txPacket.frame, txPacket.length);
+            manchesterEncode(manchesterFrame, txPacket.frame.get(), txPacket.length);
             sendGFSKPacket(txPacket.radioParameters, manchesterFrame, txPacket.length * MANCHESTER);
         }
         else
         {
-            sendGFSKPacket(txPacket.radioParameters, txPacket.frame, txPacket.length);
+            sendGFSKPacket(txPacket.radioParameters, txPacket.frame.get(), txPacket.length);
         }
     }
     else if (txPacket.radioParameters.frequency->mode == GATAS::Modulation::LORA)
     {
         GATAS_MEASURE("sendLORAPacket", 100);
-        sendLORAPacket(txPacket.radioParameters, txPacket.frame, txPacket.length);
+        sendLORAPacket(txPacket.radioParameters, txPacket.frame.get(), txPacket.length);
     }
 }
 
@@ -684,16 +696,15 @@ void Sx1262::sx1262Task(void *arg)
                 bool _;
                 if (auto guard = aceSpi->getLock(_))
                 {
-                    standBy();
                     if (rxRadioParameters.frequency->mode == GATAS::Modulation::GFSK)
                     {
-                        GATAS_MEASURE("Receive GFSK Packet Radio:", 1800, rxRadioParameters.hopFrequency);
+                        GATAS_MEASURE("Receive GFSK Packet Radio:", 1000, rxRadioParameters.hopFrequency);
                         receiveGFSKPacket();
                         doListen = true;
                     }
                     else if (rxRadioParameters.frequency->mode == GATAS::Modulation::LORA)
                     {
-                        GATAS_MEASURE("Receive Lora Packet Radio:", 0, radioNo);
+                        GATAS_MEASURE("Receive Lora Packet Radio:", 1000, radioNo);
                         receiveLORAPacket();
                         doListen = true;
                     }

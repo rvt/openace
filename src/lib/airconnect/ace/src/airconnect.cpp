@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "../airconnect.hpp"
+#include "ace/debug.hpp"
 #include "ace/lwiplock.hpp"
 
 GATAS::PostConstruct AirConnect::postConstruct()
@@ -10,6 +11,7 @@ GATAS::PostConstruct AirConnect::postConstruct()
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
+    GATAS_REGISTER_MUTEX(mutex, "AirConnect_mutex");
     return GATAS::PostConstruct::OK;
 }
 

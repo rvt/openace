@@ -33,7 +33,7 @@
  * 5) Scan the network for any devices (ping?? openPort??) and send GDL90 to these devices found?
  * 6) When in AP mode, restart client mode with a button
  */
-class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::Every5SecMsg>
+class WifiService : public BaseModule, public etl::message_router<WifiService, GATAS::WifiModeRequestMsg>
 {
 private:
     // 17 Dec Increased from 2 to 4 due to phone of Piet
@@ -52,19 +52,18 @@ private:
     enum ConnectionState
     {
         START,
-        ENABLESTA,
+        ENABLECLIENT,
 
         WIFISCAN,
         WIFISCANNING,
 
         TRYCLIENTCONNECT,
         CLIENTMODESTARTED,
-        CLIENTMODESTOPPED,
-        DISABLESTA,
+        CLIENT_TO_AP,
 
+        AP_TO_CLIENT,
         APMODESTART,
-        APSTARTED,
-        APSTOPPED,
+        APSTARTED
     };
 
     ConnectionState connectionState;
@@ -77,9 +76,10 @@ private:
 
     uint8_t totalScanAttempt;
     GATAS::WifiMode wifiMode;
+    GATAS::WifiMode requestedWifiMode;
     s8_t mdnsSlot;
     // Keep track of current status, to prevent sending messages every XX seconds
-    bool currentWifiActiveStatus;
+    bool wifiStatePublishPending;
     // GATAS will stay in client mode but only after it first successfully connected to an AP
     // When successClientConnected was set to true, a client connection was successful
     bool successClientConnected;
@@ -96,7 +96,8 @@ private:
     };
     etl::list<ScanResultT, 4> scanResult;
 
-    static void wifiTask(void *arg);
+    static void wifiTaskTrampoline(void *arg);
+    void wifiTask();
 
     void startAccessPoint();
     void stopAccessPoint();
@@ -108,8 +109,8 @@ private:
 
     static int scanResultCb(void *env, const cyw43_ev_scan_result_t *result);
     bool scanRunning();
-    void enableSta();
-    void disableSta();
+    void enableClientMode();
+    void disableClientMode();
     void startWifiScan();
     enum ConnectClientResult
     {
@@ -126,7 +127,8 @@ private:
     void showSsidPwdIp(const etl::string_view &ssid, const etl::string_view &password) const;
     void fillScanResultFromConfiguration();
     void on_receive_unknown(const etl::imessage &msg);
-    void on_receive(const GATAS::Every5SecMsg &msg);
+    void publishWifiState() const;
+    void on_receive(const GATAS::WifiModeRequestMsg &msg);
 
     /**
      * Get's the current local IP address
@@ -137,11 +139,6 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "WifiService";
-    enum TaskState : uint8_t
-    {
-        SHUTDOWN = 1 << 0,
-        TIMER = 1 << 1
-    };
 
     WifiService(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
                                                                        wifiData(config.wifiService()),
@@ -150,8 +147,9 @@ public:
                                                                        timerHandle(nullptr),
                                                                        totalScanAttempt(NUMBER_OF_CONNECTION_ATTEMPTS),
                                                                        wifiMode(GATAS::WifiMode::NC),
+                                                                       requestedWifiMode(GATAS::WifiMode::NC),
                                                                        mdnsSlot(0),
-                                                                       currentWifiActiveStatus(false),
+                                                                       wifiStatePublishPending(false),
                                                                        successClientConnected(false),
                                                                        dontScanJustConnectToClient(true)
     {
