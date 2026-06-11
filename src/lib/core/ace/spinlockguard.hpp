@@ -8,6 +8,7 @@
  * @brief Classic Guard based on spinlock
  * Usecase if you now the lock will be very short, like copying of data from configurations changes
  * Don't use this for resources, lock is fast, but should happen only for microseconds
+ * Additional note: Since these spinlocks disable interrups, they are assumed to be safe with FreeRTOS
  */
 class SpinlockGuard
 {
