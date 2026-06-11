@@ -9,7 +9,6 @@
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 
-#include "etl/message_bus.h"
 #include "etl/string.h"
 #include "etl/to_arithmetic.h"
 

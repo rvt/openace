@@ -13,7 +13,6 @@
 #include "lwip/udp.h"
 
 /* ETL CPP */
-#include "etl/message_bus.h"
 #include "etl/set.h"
 #include "etl/list.h"
 

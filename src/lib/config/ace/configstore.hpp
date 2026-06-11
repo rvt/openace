@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "etl/array.h"
+#include <stddef.h>
 
 class ConfigStore
 {

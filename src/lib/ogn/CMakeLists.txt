@@ -1,20 +1,14 @@
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.18)
 
 project(ogn VERSION 0.0.0 LANGUAGES CXX)
-set(MSG_PREFIX "${PROJECT_NAME} |")
-
-set(MODULE_SOURCE_FILES
-    ace/ognpacket.cpp
-        ace/src/ogn1.cpp
-)
-
-set(MODULE_TARGET_LINK
-    utils
-)
-
-set(PICO_EXTRA_LIBS
-    hardware_pio
-)
-
-
 include(${CMAKE_CURRENT_SOURCE_DIR}/../gatas_module.cmake)
+
+gatas_add_module(
+    SOURCE_FILES
+        ace/ognpacket.cpp
+        ace/src/ogn1.cpp
+    TARGET_LINK_LIBS
+        utils
+    PICO_EXTRA_LIBS
+        hardware_pio
+)

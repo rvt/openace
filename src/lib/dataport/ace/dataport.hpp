@@ -10,9 +10,6 @@
 #include "ace/messages.hpp"
 #include "ace/messages.hpp"
 
-#include "etl/map.h"
-#include "etl/message_bus.h"
-
 class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::EgressAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg>
 {
     friend class message_router;

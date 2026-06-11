@@ -12,10 +12,6 @@
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
 
-/* ETL CPP */
-// #include "etl/map.h"
-// #include "etl/message_bus.h"
-
 #include "GDL90.h"
 
 /**

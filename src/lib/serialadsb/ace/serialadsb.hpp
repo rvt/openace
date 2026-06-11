@@ -7,8 +7,6 @@
 #include "ace/messages.hpp"
 #include "ace/pioserial.hpp"
 
-#include "etl/map.h"
-#include "etl/message_bus.h"
 #include "etl/queue_spsc_atomic.h"
 
 class SerialADSB : public BaseModule, public etl::message_router<SerialADSB>

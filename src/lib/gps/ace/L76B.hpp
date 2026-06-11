@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 #include "AbstractGnss.hpp"
-#include "etl/message_router.h"
 
 class L76B : public AbstractGnss, public etl::message_router<L76B>
 {

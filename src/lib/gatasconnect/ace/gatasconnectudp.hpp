@@ -9,9 +9,6 @@
 /* LwIP */
 #include "lwip/udp.h"
 
-/* ETLCPP */
-#include "etl/message_bus.h"
-
 /* GaTas */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"

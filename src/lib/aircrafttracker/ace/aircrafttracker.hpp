@@ -9,9 +9,6 @@
 
 #include "pico/stdlib.h"
 
-#include "etl/message_bus.h"
-#include "etl/list.h"
-#include "etl/forward_list.h"
 #include "etl/queue_spsc_atomic.h"
 
 #include "ace/constants.hpp"

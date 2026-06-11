@@ -1,7 +1,6 @@
 #pragma once
 
 #include "etl/bitset.h"
-#include "etl/vector.h"
 #include "etl/span.h"
 #include "etl/array.h"
 

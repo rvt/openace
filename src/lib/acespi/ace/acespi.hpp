@@ -11,9 +11,6 @@
 #include "hardware/spi.h"
 #include "pico/stdlib.h"
 
-/* Vendor. */
-#include "etl/message_bus.h"
-
 /* GATAS. */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"

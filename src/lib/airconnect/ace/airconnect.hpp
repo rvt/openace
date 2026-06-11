@@ -14,7 +14,6 @@
 #include "pico/cyw43_arch.h"
 
 /* ETLCPP */
-#include "etl/message_bus.h"
 #include "etl/list.h"
 #include "etl/string.h"
 

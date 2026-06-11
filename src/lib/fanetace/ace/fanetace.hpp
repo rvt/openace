@@ -9,7 +9,6 @@
 #include "ace/datasourcetimestatstable.hpp"
 
 #include "etl/map.h"
-#include "etl/message_bus.h"
 #include "etl/queue_spsc_atomic.h"
 
 #include "fanet/fanet.hpp"

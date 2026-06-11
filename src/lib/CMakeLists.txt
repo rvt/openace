@@ -1,5 +1,3 @@
-set_directory_properties(PROPERTIES COMPILE_DEFINITIONS SHOW_MESSAGE=1)
-
 add_subdirectory(core)
 add_subdirectory(config)
 add_subdirectory(adsbdecoder)

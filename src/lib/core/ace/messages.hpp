@@ -11,7 +11,6 @@
 #include "etl/message_bus.h"
 #include "etl/string.h"
 #include "etl/set.h"
-#include "etl/array.h"
 #include "etl/vector.h"
 #include "etl/algorithm.h"
 
