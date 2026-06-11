@@ -7,6 +7,8 @@
 #include "etl/string_stream.h"
 #include "poolallocator.hpp"
 
+constexpr float M_PIF = (float)M_PI;
+constexpr float M_TWOPIF = 2.0f * M_PIF; // 2 x PI
 constexpr float KN_TO_MS = 0.514444444f;            // knots to meter/sec
 constexpr float MS_TO_KN = 1.0f / KN_TO_MS;         // meter/sec to knots
 constexpr float MS_TO_FTPMIN = 196.850394f;         // meter/sec to feet/min
@@ -18,13 +20,9 @@ constexpr float MS_TO_DMPS = 10.f;                  // meter/sec to decmeter/sec
 constexpr float DPMS_TO_MS = 1.f / MS_TO_DMPS;      // decmeter/sec to meter/sec
 constexpr float FT_TO_M = 0.3048f;                  // feet to meter
 constexpr float M_TO_FT = 1.0f / FT_TO_M;           // feet to meter
-constexpr float DEG_TO_RADS = M_PI / 180.f;         // degrees to radians
-constexpr float RADS_TO_DEG = 180.f / M_PI;         // degrees to radians
-constexpr float DIAMETER_EARTH_M = 6371640;         // Radius of the earth in km
-
-#if !defined(M_TWOPI)
-constexpr float M_TWOPI = 2.0f * M_PI; // 2 x PI
-#endif
+constexpr float DEG_TO_RADS = M_PIF / 180.f;         // degrees to radians
+constexpr float RADS_TO_DEG = 180.f / M_PIF;         // degrees to radians
+constexpr float DIAMETER_EARTH_M = 6371640.f;         // Radius of the earth in km
 
 namespace GATAS
 {
@@ -54,12 +52,12 @@ namespace GATAS
     // 32 Byte is a decoded manchester frame
     // 64 is an manchester frame
     // 216 byte are LORA ADSL-H Frames
-    // Maximum size should be 0xC8 (200 bytes) which is ADSL TrafficUplink + 4 byte because we shift a byte 
+    // Maximum size should be 0xC8 (200 bytes) which is ADSL TrafficUplink + 4 byte because we shift a byte
     // 576 for GatasCOnnect
     using GlobalPoolConfiguration = MultiPoolAllocator<PoolSpec<32, 8>, PoolSpec<64, 4>, PoolSpec<0xD0 + 4, 4>, PoolSpec<576, 1>>;
 
     enum class PinType : uint8_t;
-    using PinTypeMap = etl::flat_map<PinType, int8_t, 8>;
+    using PinTypeMap = etl::flat_map<PinType, uint8_t, 8>;
 
     constexpr etl::format_spec ICAO_HEX_FORMAT = etl::format_spec{}.hex().width(6).upper_case(true);
     constexpr etl::format_spec RESET_FORMAT = etl::format_spec{};

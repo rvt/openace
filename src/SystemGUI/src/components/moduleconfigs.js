@@ -52,12 +52,14 @@ class AircraftTrackerConfig extends ModuleConfig {
 
   _setFormData(data) {
     this.$refs.ddbEnabled.checked = data.ddbEnabled;
+    this.$refs.pathPredictionEnabled.checked = data.ppEnabled;
     this.$refs.prefixEnabled.checked = data.prefixEnabled;
   }
 
   _getFormData() {
     return {
       ddbEnabled: this.$refs.ddbEnabled.checked,
+      ppEnabled: this.$refs.pathPredictionEnabled.checked,
       prefixEnabled: this.$refs.prefixEnabled.checked,
     };
   }
@@ -81,7 +83,17 @@ class AircraftTrackerConfig extends ModuleConfig {
             <br />
             <input type="checkbox" id="ddbEnabled" ref="ddbEnabled" placeholder="1" />
           </label>
-          
+          <label for="pathPredictionEnabled">
+            <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
+              Path prediction ${html.raw(icon.help)}
+              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
+                Extrapolate short gaps between received aircraft positions before forwarding tracker updates to connected clients.
+              </p>
+            </label>:
+            <br />
+            <input type="checkbox" id="pathPredictionEnabled" ref="pathPredictionEnabled" placeholder="1" />
+          </label>
+
           <div class="alert alert-warning">
             <svg class="mr-2" style="width: 24px; height: 24px;" viewBox="0 0 24 24"><path fill="currentColor" d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21z"></path></svg>
             Please note that the DDB is created and maintained by aviation enthusiasts and is in no way an official registry.

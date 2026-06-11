@@ -11,7 +11,9 @@
 // #include "pico/binary_info.h"
 
 /* Vendor. */
+#include "etl/message_bus.h"
 #include "etl/string.h"
+#include "etl/bitset.h"
 
 /* GATAS. */
 #include "ace/constants.hpp"
@@ -23,8 +25,8 @@
 class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
 {
     friend class message_router;
-    static constexpr uint32_t DEFAULT_IGNORE_DISTANCE = 25000;
-    static constexpr uint32_t MAX_IGNORE_DISTANCE = 100000;
+    static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
+    static constexpr int MAX_IGNORE_DISTANCE = 100000;
 
 private:
     struct

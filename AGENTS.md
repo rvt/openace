@@ -12,6 +12,7 @@ OpenAce is a multi-protocol aviation conspicuity device (OGN, FLARM, ADS-L, FANE
 - Keep desktop test code and embedded code paths aligned when changing shared module behavior.
 - Use fixed-size ETL containers and avoid introducing dynamic-allocation-heavy patterns into firmware code.
 - Always use braces for control-flow bodies, even when the body is a single line.
+- Do not introduce trailing-underscore variable names by default. Prefer the existing local naming style unless a specific file or API already requires a different convention.
 - Handle mutexes with RAII `SemaphoreGuard` scopes. Preferred pattern:
   ```cpp
   if (auto guard = SemaphoreGuard(1000, instance->mutex))

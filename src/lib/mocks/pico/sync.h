@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../pico.h"
-
 struct spin_lock_t {
 
 };

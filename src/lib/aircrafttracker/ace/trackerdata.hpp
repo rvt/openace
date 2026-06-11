@@ -5,10 +5,12 @@
 #include "ace/models.hpp"
 #include "ace/ddb.hpp"
 
-#include "etl/array.h"
-#include "etl/unordered_map.h"
-#include "etl/scaled_rounding.h"
+#include "aircraftpathpredictor.hpp"
+
 #include "etl/algorithm.h"
+#include "etl/array.h"
+#include "etl/scaled_rounding.h"
+#include "etl/unordered_map.h"
 
 /**
  * A tracker data queue for all aircraft received
@@ -37,10 +39,11 @@ private:
     struct TrackerEntry
     {
         uint32_t sendTime;
+        uint32_t lastSeenTime;
         GATAS::AircraftPositionInfo position;
 
         TrackerEntry(uint32_t time, const GATAS::AircraftPositionInfo &pos)
-            : sendTime(time), position(pos) {}
+            : sendTime(time), lastSeenTime(time), position(pos) {}
 
         TrackerEntry() = default;
     };
@@ -58,10 +61,49 @@ private:
     };
 
     etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
+    AircraftPathPredictor<SIZE> pathPredictor;
     DDB ddb;
     uint32_t adaptiveRadius;
-    bool ddbLookupsEnabled_;
-    bool prefixEnabled_;
+    bool ddbLookupsEnabledFlag;
+    bool prefixEnabledFlag;
+    bool pathPredictionEnabledFlag;
+    bool ownshipPositionValidFlag;
+    float ownshipLat;
+    float ownshipLon;
+
+    static bool hasDirectTurnRate(const GATAS::AircraftPositionInfo &position)
+    {
+        switch (position.dataSource)
+        {
+            case GATAS::DataSource::FLARM:
+            case GATAS::DataSource::FANET:
+            case GATAS::DataSource::OGN:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    void updatePathPredictor(const GATAS::AircraftPositionInfo &position)
+    {
+        if (pathPredictionEnabledFlag)
+        {
+            pathPredictor.update(position, hasDirectTurnRate(position));
+        }
+    }
+
+    void updateRelativeFields(GATAS::AircraftPositionInfo &position) const
+    {
+        if (!ownshipPositionValidFlag)
+        {
+            return;
+        }
+
+        auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, position.lat, position.lon);
+        position.distanceFromOwn = fromOwn.distance;
+        position.relNorthFromOwn = fromOwn.relNorth;
+        position.relEastFromOwn = fromOwn.relEast;
+    }
 
     /**
      * Recalculate the adaptive tracking radius when the tracker is nearly full.
@@ -137,8 +179,9 @@ private:
 
         for (auto it = trackedAircraft.begin(); it != trackedAircraft.end();)
         {
-            if (CoreUtils::isUsReachedRaw(it->second.position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC, us))
+            if (CoreUtils::isUsReachedRaw(it->second.lastSeenTime + MAX_POSITION_INTERPOLATIONS_USEC, us))
             {
+                pathPredictor.remove(it->first);
                 it = trackedAircraft.erase(it);
                 cleaned = true;
             }
@@ -157,6 +200,7 @@ private:
         {
             if (it->second.position.distanceFromOwn >= adaptiveRadius)
             {
+                pathPredictor.remove(it->first);
                 it = trackedAircraft.erase(it);
             }
             else
@@ -167,7 +211,14 @@ private:
     }
 
 public:
-    TrackerData() : adaptiveRadius(75000), ddbLookupsEnabled_(false), prefixEnabled_(false) {}
+    TrackerData()
+        : adaptiveRadius(75000),
+          ddbLookupsEnabledFlag(false),
+          prefixEnabledFlag(false),
+          pathPredictionEnabledFlag(false),
+          ownshipPositionValidFlag(false),
+          ownshipLat(0.0f),
+          ownshipLon(0.0f) {}
 
     template <typename Callback>
     void forEachPosition(const Callback &callback) const
@@ -180,12 +231,24 @@ public:
 
     void ddbEnabled(bool enabled)
     {
-        ddbLookupsEnabled_ = enabled;
+        ddbLookupsEnabledFlag = enabled;
     }
 
     void prefixEnabled(bool enabled)
     {
-        prefixEnabled_ = enabled;
+        prefixEnabledFlag = enabled;
+    }
+
+    void pathPrediction(bool enabled)
+    {
+        pathPredictionEnabledFlag = enabled;
+    }
+
+    void ownshipPosition(const GATAS::OwnshipPositionInfo &position)
+    {
+        ownshipLat = position.lat;
+        ownshipLon = position.lon;
+        ownshipPositionValidFlag = true;
     }
 
     bool full() const
@@ -245,6 +308,8 @@ public:
             }
 
             it->second.position = position;
+            it->second.lastSeenTime = time;
+            updatePathPredictor(position);
             return true;
         }
 
@@ -267,6 +332,7 @@ public:
         assignDataSourcePrefix(position);
 
         trackedAircraft.insert({position.address, TrackerEntry(time, position)});
+        updatePathPredictor(position);
         return true;
     }
 
@@ -276,7 +342,7 @@ public:
      */
     void assignCallsignFromDDB(GATAS::AircraftPositionInfo &position)
     {
-        if (ddbLookupsEnabled_ && position.callSign.empty())
+        if (ddbLookupsEnabledFlag && position.callSign.empty())
         {
             auto ddbEntry = ddb.lookup(position.address);
             if (ddbEntry)
@@ -288,7 +354,7 @@ public:
 
     void assignDataSourcePrefix(GATAS::AircraftPositionInfo &position)
     {
-        if (prefixEnabled_)
+        if (prefixEnabledFlag)
         {
             GATAS::CallSign prefixedCallSign(GATAS::toShortString(position.dataSource));
             position.callSign.insert(0, prefixedCallSign);
@@ -305,7 +371,13 @@ public:
             auto &it = pair.second;
             if (CoreUtils::isUsReachedRaw(it.sendTime, currentTime))
             {
-                callback(it.position);
+                GATAS::AircraftPositionInfo position = it.position;
+                if (pathPredictionEnabledFlag && pathPredictor.extrapolatedPos(currentTime, position))
+                {
+                    updateRelativeFields(position);
+                }
+
+                callback(position);
                 count += 1;
                 it.sendTime = currentTime + HEARTBEAT_TIME;
                 if (count >= maxPerRound)
@@ -319,6 +391,7 @@ public:
     void maintenance()
     {
         removeExpired();
+        pathPredictor.maintenance(CoreUtils::timeUs32Raw());
         increaseAdaptiveRadius();
     }
 

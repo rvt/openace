@@ -4,7 +4,6 @@
 
 /* GATAS */
 #include "ace/coreutils.hpp"
-#include "ace/debug.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
 #include "ace/lwiplock.hpp"

@@ -4,7 +4,6 @@
 #include "flarm/flarm2024packet.hpp"
 #include "ace/spinlockguard.hpp"
 #include "ace/measure.hpp"
-#include "etl/algorithm.h"
 
 GATAS::PostConstruct Flarm2024::postConstruct()
 {
