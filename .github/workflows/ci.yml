@@ -149,7 +149,9 @@ jobs:
           docker pull ghcr.io/${{ steps.lower-repo.outputs.repository }}:latest
           cd src
           docker run --rm \
+            --entrypoint /build-entrypoint.sh \
             -e PICO_PLATFORM=${{ matrix.config.platform }} \
             -e PICO_BOARD=${{ matrix.config.board }} \
+            -e BUILD_DIR_NAME=build_${{ matrix.config.platform }}_${{ matrix.config.board }} \
             -v $(pwd):/opt/src \
             ghcr.io/${{ steps.lower-repo.outputs.repository }}:latest

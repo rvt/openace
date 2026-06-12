@@ -51,6 +51,7 @@ set(TARGETS_IDIOMATIC_EXAMPLES ${BASENAMES_IDIOMATIC_EXAMPLES})
 set(ACE_SOURCE_FILES
         ../../core/ace/src/basemodule.cpp
         ../../core/ace/src/coreutils.cpp
+        ../../core/ace/src/models.cpp
         ../ace/src/adsbdecoder.cpp
         ../ace/src/cpr.cpp)
 
