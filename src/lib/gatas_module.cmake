@@ -45,7 +45,7 @@ function(gatas_add_module)
 
     if(MODULE_CXX_SOURCES)
         set_source_files_properties(${MODULE_CXX_SOURCES} PROPERTIES
-            COMPILE_FLAGS "-Wall -Wextra -Werror -Wvexing-parse"
+            COMPILE_FLAGS "-Wall -Wextra -Werror"
         )
     endif()
 
