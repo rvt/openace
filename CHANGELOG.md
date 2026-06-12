@@ -9,11 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Experimental aircraft path prediction in `AircraftTracker`, using recent position, speed, heading, vertical speed, and turn-rate history to extrapolate short gaps in tracked traffic.
+- Desktop test coverage for aircraft path prediction and updated antenna-radiation bearing behavior.
 
 ### Changed
 
--
+- Added an `AircraftTracker` configuration and web UI option to enable or disable path prediction.
+- `AircraftTracker` now keeps lightweight predictor state for nearby traffic and can forward extrapolated positions during scheduled client updates.
+- Normalized several tracker/core numeric types and math helpers, including 32-bit ellipsoid heights and float-specific angle/CPR calculations.
 
 ### Deprecated
 
@@ -25,7 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Fixed antenna radiation pattern bearing calculation so radial placement is based on ownship track and target position, not the target aircraft track.
+- Fixed protocol/config bounds handling for tracked-aircraft distance and transmitted altitude values in FLARM, FANET, and OGN paths.
 
 ### Security
 

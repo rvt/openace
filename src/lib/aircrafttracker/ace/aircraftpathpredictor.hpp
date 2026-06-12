@@ -27,8 +27,8 @@
  * kinematic fields needed for prediction. It is intended as a helper that can
  * later be merged into TrackerData rather than as a full aircraft-state cache.
  *
- * The predictor does not recompute ownship-relative fields, so callers must
- * refresh distanceFromOwn and relNorth/relEast after extrapolating.
+ * The predictor does not recompute ownship-relative distance, so callers must
+ * refresh distanceFromOwn after extrapolating.
  */
 template <size_t SIZE>
 class AircraftPathPredictor
@@ -113,11 +113,9 @@ private:
         return static_cast<float>(static_cast<int32_t>(toUs - fromUs)) * 1e-6f;
     }
 
-    static void invalidateRelativeFields(GATAS::AircraftPositionInfo &position)
+    static void invalidateRelativeDistance(GATAS::AircraftPositionInfo &position)
     {
         position.distanceFromOwn = static_cast<uint32_t>(INT32_MIN);
-        position.relNorthFromOwn = INT32_MIN;
-        position.relEastFromOwn = INT32_MIN;
     }
 
     static bool isExpired(uint32_t lastTimestampUs, uint32_t nowUs)
@@ -412,8 +410,7 @@ public:
      * the configured age limit.
      *
      * Because this standalone predictor has no ownship context, the returned
-     * position preserves caller-provided metadata but invalidates distanceFromOwn
-     * and relNorth/relEast values.
+     * position preserves caller-provided metadata but invalidates distanceFromOwn.
      *
      * @param timeStampUs Requested prediction timestamp.
      * @param position Input/output prediction object. The caller must set
@@ -479,7 +476,7 @@ public:
         position.track = normalizeTrack(static_cast<float>(latest.track) + turnRateDegPerSec * dt);
         position.hTurnRate = turnRateDegPerSec;
         position.airborne = latest.groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN;
-        invalidateRelativeFields(position);
+        invalidateRelativeDistance(position);
         return true;
     }
 
@@ -506,6 +503,16 @@ public:
     void remove(GATAS::AircraftAddress address)
     {
         tracks_.erase(address);
+    }
+
+    bool contains(GATAS::AircraftAddress address) const
+    {
+        return tracks_.find(address) != tracks_.end();
+    }
+
+    bool full() const
+    {
+        return tracks_.full();
     }
 
     size_t size() const

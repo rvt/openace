@@ -23,6 +23,13 @@ class TrackerData
 private:
     // Try to ensure that XX is minimally free to allow for burst of new aircraft
     static constexpr uint8_t ADAPTIVE_RADIUS_MIN_FREE = 4;
+#if defined(PICO_RP2040)
+    // Running into memory constrains of the RP2040, so only predict the closest 6 aircraft, 
+    / which should be fine under normal condtion. The system would still track the complete size
+    static constexpr uint8_t MAX_PREDICTED_AIRCRAFT = 6;
+#else    
+    static constexpr uint8_t MAX_PREDICTED_AIRCRAFT = SIZE;
+#endif
     // When less than X persentage the buffers is full, start ioncreaing the adaptive radius
     static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_INCREASE = 75;
     // When buffer needs to cleanup because nearly full, keep XX percebtage of all aircraft
@@ -61,7 +68,8 @@ private:
     };
 
     etl::unordered_map<GATAS::AircraftAddress, TrackerEntry, SIZE> trackedAircraft;
-    AircraftPathPredictor<SIZE> pathPredictor;
+    // The predictor can be smaller than trackedAircraft and will keep the N closest tracks.
+    AircraftPathPredictor<MAX_PREDICTED_AIRCRAFT> pathPredictor;
     DDB ddb;
     uint32_t adaptiveRadius;
     bool ddbLookupsEnabledFlag;
@@ -84,15 +92,51 @@ private:
         }
     }
 
+    bool replaceFarthestPredictedIfCloser(const GATAS::AircraftPositionInfo &position)
+    {
+        if (!pathPredictor.full())
+        {
+            return false;
+        }
+
+        const TrackerEntry *farthestPredicted = nullptr;
+        GATAS::AircraftAddress farthestAddress = 0;
+        for (const auto &pair : trackedAircraft)
+        {
+            if (!pathPredictor.contains(pair.first))
+            {
+                continue;
+            }
+
+            if (farthestPredicted == nullptr || farthestPredicted->position.distanceFromOwn < pair.second.position.distanceFromOwn)
+            {
+                farthestPredicted = &pair.second;
+                farthestAddress = pair.first;
+            }
+        }
+
+        if (farthestPredicted == nullptr || position.distanceFromOwn >= farthestPredicted->position.distanceFromOwn)
+        {
+            return false;
+        }
+
+        pathPredictor.remove(farthestAddress);
+        return pathPredictor.update(position, hasDirectTurnRate(position));
+    }
+
     void updatePathPredictor(const GATAS::AircraftPositionInfo &position)
     {
         if (pathPredictionEnabledFlag)
         {
-            pathPredictor.update(position, hasDirectTurnRate(position));
+            if (!pathPredictor.update(position, hasDirectTurnRate(position)) &&
+                !pathPredictor.contains(position.address))
+            {
+                replaceFarthestPredictedIfCloser(position);
+            }
         }
     }
 
-    void updateRelativeFields(GATAS::AircraftPositionInfo &position) const
+    void updateDistanceFromOwn(GATAS::AircraftPositionInfo &position) const
     {
         if (!ownshipPositionValidFlag)
         {
@@ -101,8 +145,6 @@ private:
 
         auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, position.lat, position.lon);
         position.distanceFromOwn = fromOwn.distance;
-        position.relNorthFromOwn = fromOwn.relNorth;
-        position.relEastFromOwn = fromOwn.relEast;
     }
 
     /**
@@ -374,7 +416,7 @@ public:
                 GATAS::AircraftPositionInfo position = it.position;
                 if (pathPredictionEnabledFlag && pathPredictor.extrapolatedPos(currentTime, position))
                 {
-                    updateRelativeFields(position);
+                    updateDistanceFromOwn(position);
                 }
 
                 callback(position);

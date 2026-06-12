@@ -1,8 +1,11 @@
 #pragma once
 
+#include "../pico.h"
+
 struct spin_lock_t {
 
 };
+
 
 inline spin_lock_t* spin_lock_instance(int num) {
     static spin_lock_t t;

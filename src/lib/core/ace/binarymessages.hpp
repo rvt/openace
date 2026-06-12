@@ -108,9 +108,7 @@ public:
             groundSpeed,
             track,
             turnRate,
-            rel.distance,
-            rel.relNorth,
-            rel.relEast);
+            rel.distance);
     }
 
     /**

@@ -139,11 +139,11 @@ public:
         }
     }
 
-    void Input(const float *Data, float RefAmpl=1.0)
+    void Input(const float *Data, float RefAmpl=1.0f)
     {
         for(int Bit=0; Bit<CodeBits; Bit++)
         {
-            int Inp = floor(128*Data[Bit^7]/RefAmpl+0.5);
+            int Inp = static_cast<int>(floorf((128.0f * Data[Bit^7] / RefAmpl) + 0.5f));
             if(Inp>32767) Inp=32767;
             else if(Inp<(-32767)) Inp=(-32767);
             OutBit[Bit] = InpBit[Bit] = Inp;
@@ -275,7 +275,7 @@ public:
     {
         CodeBits=0;
         ParityBits=0;
-        Feedback=0.33;
+        Feedback=Float{0.33f};
     }
 
     void Clear(void)
@@ -359,7 +359,7 @@ public:
         OutBit[Bit] = InpBit[Bit];
     }
 
-    void Input(const uint8_t *Data, const uint8_t *Err, Float Ampl=1.0)   // get bits from series of bytes and the error pattern (from Manchester decoder)
+    void Input(const uint8_t *Data, const uint8_t *Err, Float Ampl=Float{1.0f})   // get bits from series of bytes and the error pattern (from Manchester decoder)
     {
         uint8_t Mask=1;
         int Idx=0;
@@ -386,7 +386,7 @@ public:
         }
     }
 
-    void Input(const uint32_t *Data, Float Ampl=1.0)                      // get bits from a series of 32-bit words
+    void Input(const uint32_t *Data, Float Ampl=Float{1.0f})                      // get bits from a series of 32-bit words
     {
         uint32_t Mask=0;
         int Idx=0;
@@ -544,7 +544,7 @@ public:
     {
         for(int Symb=0; Symb<CodeSymbols; Symb++)
         {
-            Float Ext=1.0/PulsesPerSlot;
+            Float Ext=Float{1.0f}/PulsesPerSlot;
             for(int Pulse=0; Pulse<PulsesPerSlot; Pulse++)
             {
                 InpSymb[Symb][Pulse]=0;
@@ -554,7 +554,7 @@ public:
         }
     }
 
-    void addSymbol(unsigned int Slot, unsigned int Symbol, Float Power=1.0)
+    void addSymbol(unsigned int Slot, unsigned int Symbol, Float Power=Float{1.0f})
     {
         if( (Slot>=CodeSymbols) || (Symbol>=PulsesPerSlot) ) return;
         InpSymb[Slot][Symbol]+=Power;
@@ -603,7 +603,7 @@ public:
         return Gray;
     }
 
-    void NormExtSymb(Float Norm=1.0)
+    void NormExtSymb(Float Norm=Float{1.0f})
     {
         for(int Symb=0; Symb<CodeSymbols; Symb++)
         {
@@ -611,7 +611,7 @@ public:
         }
     }
 
-    void NormExtSymp(int Symb, Float Norm=1.0)
+    void NormExtSymp(int Symb, Float Norm=Float{1.0f})
     {
         Float Sum=0;
         for(int Pulse=0; Pulse<PulsesPerSlot; Pulse++)

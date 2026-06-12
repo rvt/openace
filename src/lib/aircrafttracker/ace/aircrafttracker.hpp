@@ -62,7 +62,10 @@ private:
     TrackerData<MAX_TRACKING_PLANES, TIMESLICES> trackedAircraft;
     GATAS::AircraftAddress ownshipAddress;
     bool groundStation = false;
+    bool ownshipPositionValid = false;
     float ownshipTrack = 0;
+    float ownshipLat = 0;
+    float ownshipLon = 0;
 
     // Producer Consumer queue to handle data between this task and the send task
     etl::queue_spsc_atomic<GATAS::AircraftPositionInfo, 16, etl::memory_model::MEMORY_MODEL_SMALL> queue;

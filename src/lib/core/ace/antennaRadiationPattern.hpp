@@ -44,10 +44,11 @@ namespace GATAS
             return CoreUtils::toBearing(bearingFromOwn - ownTrack);
         }
 
-        void put(const GATAS::IngressAircraftPositionMsg &msg, float ownTrack)
+        void put(const GATAS::IngressAircraftPositionMsg &msg, float ownshipLat, float ownshipLon, float ownTrack)
         {
             auto &position = msg.position;
-            const float relativeBearing = calculateRelativeBearing(position.relNorthFromOwn, position.relEastFromOwn, ownTrack);
+            auto relativeFromOwn = position.relativeFromOwn(ownshipLat, ownshipLon);
+            const float relativeBearing = calculateRelativeBearing(relativeFromOwn.relNorth, relativeFromOwn.relEast, ownTrack);
             uint8_t positionInRadial = static_cast<uint8_t>(CoreUtils::getRadialSection<NUM_RADIALS>(static_cast<int16_t>(relativeBearing)));
             Measurement &measurement = radiationPattern[positionInRadial];
 

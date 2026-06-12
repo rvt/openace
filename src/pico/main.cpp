@@ -450,8 +450,8 @@ void vDiagnosticsTask(void *pvParameters)
 
             const configRUN_TIME_COUNTER_TYPE deltaTotalRunTime =
                 (totalRunTime >= previousTotalRunTime) ? (totalRunTime - previousTotalRunTime) : 0;
-            const double windowSeconds = deltaTotalRunTime / 1000000.0;
-            const double windowCapacitySeconds = windowSeconds * configNUMBER_OF_CORES;
+            const float windowSeconds = static_cast<float>(deltaTotalRunTime) / 1000000.0f;
+            const float windowCapacitySeconds = windowSeconds * static_cast<float>(configNUMBER_OF_CORES);
             configRUN_TIME_COUNTER_TYPE idleWindowRunTime = 0;
 
             for (UBaseType_t i = 0; i < numTasks; i++)
@@ -469,12 +469,12 @@ void vDiagnosticsTask(void *pvParameters)
                 }
             }
 
-            const double idleSystemPercent =
+            const float idleSystemPercent =
                 (deltaTotalRunTime > 0)
-                    ? (100.0 * static_cast<double>(idleWindowRunTime) /
-                       (static_cast<double>(deltaTotalRunTime) * configNUMBER_OF_CORES))
-                    : 0.0;
-            const double busySystemPercent = 100.0 - idleSystemPercent;
+                    ? (100.0f * static_cast<float>(idleWindowRunTime) /
+                       (static_cast<float>(deltaTotalRunTime) * static_cast<float>(configNUMBER_OF_CORES)))
+                    : 0.0f;
+            const float busySystemPercent = 100.0f - idleSystemPercent;
 
             puts("\033[2J\033[H");
             printf("Task snapshot: %lu tasks | Heap free %lu / %lu bytes | CPU window %.2f s on %u cores (%.2f core-s)\n",
@@ -498,19 +498,19 @@ void vDiagnosticsTask(void *pvParameters)
                     (taskStatusArray[i].ulRunTimeCounter >= previousRunTime)
                         ? (taskStatusArray[i].ulRunTimeCounter - previousRunTime)
                         : 0;
-                const double bootPercent =
+                const float bootPercent =
                     (totalRunTime > 0)
-                        ? (100.0 * static_cast<double>(taskStatusArray[i].ulRunTimeCounter) / static_cast<double>(totalRunTime))
-                        : 0.0;
-                const double windowPercent =
+                        ? (100.0f * static_cast<float>(taskStatusArray[i].ulRunTimeCounter) / static_cast<float>(totalRunTime))
+                        : 0.0f;
+                const float windowPercent =
                     (deltaTotalRunTime > 0)
-                        ? (100.0 * static_cast<double>(deltaRunTime) / static_cast<double>(deltaTotalRunTime))
-                        : 0.0;
-                const double windowSystemPercent =
+                        ? (100.0f * static_cast<float>(deltaRunTime) / static_cast<float>(deltaTotalRunTime))
+                        : 0.0f;
+                const float windowSystemPercent =
                     (deltaTotalRunTime > 0)
-                        ? (100.0 * static_cast<double>(deltaRunTime) /
-                           (static_cast<double>(deltaTotalRunTime) * configNUMBER_OF_CORES))
-                        : 0.0;
+                        ? (100.0f * static_cast<float>(deltaRunTime) /
+                           (static_cast<float>(deltaTotalRunTime) * static_cast<float>(configNUMBER_OF_CORES)))
+                        : 0.0f;
 
                 printf("%-16s %-11lu %-7.2f %-11lu %-7.2f %-7.2f %-6s %-4lu %-10lu\n",
                        taskStatusArray[i].pcTaskName,

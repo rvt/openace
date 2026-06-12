@@ -14,10 +14,9 @@ GATAS::PostConstruct DataPort::postConstruct()
 
 void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    (void)msg;
     static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
+    ownshipPosition = msg.position.assignTo();
 
-    //    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position).assignTo();
     // if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
     // {
 
@@ -78,13 +77,14 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
     getPFLAAClimbRate(position, climbRate);
 
     auto CO = etl::make_string(",");
+    auto relativeFromOwn = position.relativeFromOwn(ownshipPosition);
 
     // PFLAA,<AlarmLevel>,<RelativeNorth>,<RelativeEast>,<RelativeVertical>,<IDType>,<ID>,<Track>,<TurnRate>,<GroundSpeed>,<ClimbRate>,<AcftType>[,<NoTrack>[,<Source>,<RSSI>]]
     // Example: $PFLAA,0,10,7,21,0,B1B1B1,0,,,-0.1,1,48,0,*23
     stream << etl::make_string("$PFLAA,"
                                "0,")                                         // Alarm Level
-           << position.relNorthFromOwn << CO                                 // Relative North Meters
-           << position.relEastFromOwn << CO                                  // Relative East Meters
+           << relativeFromOwn.relNorth << CO                                 // Relative North Meters
+           << relativeFromOwn.relEast << CO                                  // Relative East Meters
            << (position.ellipseHeight - ownshipPosition.ellipseHeight) << CO // Relative Vertical Meters
            << getPFLAAAddressType(position.addressType) << CO;               // ID Type
     CoreUtils::streamIcaoAddress(stream, position.address, position.addressType, position.callSign);

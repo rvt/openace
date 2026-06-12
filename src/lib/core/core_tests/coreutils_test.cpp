@@ -69,6 +69,18 @@ TEST_CASE( "usToReference must handle wraparounds", "[single-file]" )
     REQUIRE( CoreUtils::usToReference(0xFFFFFF-750, 0xFFFFFF-1000) == 250);
 }
 
+TEST_CASE( "usToReference must handle true uint32_t rollover", "[single-file]" )
+{
+    constexpr uint32_t justBeforeWrap = UINT32_MAX - 250;
+    constexpr uint32_t justAfterWrap = 500;
+
+    // reference in the past across the 32-bit timer wrap
+    REQUIRE( CoreUtils::usToReference(justBeforeWrap, justAfterWrap) == -751);
+
+    // reference in the future across the 32-bit timer wrap
+    REQUIRE( CoreUtils::usToReference(justAfterWrap, justBeforeWrap) == 751);
+}
+
 TEST_CASE( "usDiff must handle wraparounds", "[single-file]" )
 {
     REQUIRE( CoreUtils::usDiff(1000, 750) ==  250);
@@ -79,6 +91,15 @@ TEST_CASE( "usDiff must handle wraparounds", "[single-file]" )
 
     REQUIRE( CoreUtils::usDiff(0xFFFFFF-1000, 0xFFFFFF-750) == 250);
     REQUIRE( CoreUtils::usDiff(0xFFFFFF-750, 0xFFFFFF-1000) == 250);
+}
+
+TEST_CASE( "usDiff must handle true uint32_t rollover", "[single-file]" )
+{
+    constexpr uint32_t justBeforeWrap = UINT32_MAX - 250;
+    constexpr uint32_t justAfterWrap = 500;
+
+    REQUIRE( CoreUtils::usDiff(justBeforeWrap, justAfterWrap) == 751);
+    REQUIRE( CoreUtils::usDiff(justAfterWrap, justBeforeWrap) == 751);
 }
 
 TEST_CASE( "isUsReached", "[single-file]" )
@@ -92,6 +113,18 @@ TEST_CASE( "isUsReached", "[single-file]" )
 
     time_us_Value = 1000000;
     REQUIRE( CoreUtils::isUsReached(10000) == true );
+}
+
+TEST_CASE( "isUsReached must handle true uint32_t rollover", "[single-file]" )
+{
+    constexpr uint32_t justBeforeWrap = UINT32_MAX - 250;
+    constexpr uint32_t justAfterWrap = 500;
+
+    // Reference is still in the future across the 32-bit timer wrap.
+    REQUIRE( CoreUtils::isUsReached(justAfterWrap, justBeforeWrap) == false );
+
+    // Reference is already in the past across the 32-bit timer wrap.
+    REQUIRE( CoreUtils::isUsReached(justBeforeWrap, justAfterWrap) == true );
 }
 
 TEST_CASE( "msDelayToReference", "[single-file]" )

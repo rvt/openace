@@ -176,13 +176,13 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
 public:
     static constexpr etl::array<etl::string_view, 4> NAMES{"Sx1262_0", "Sx1262_1", "Sx1262_2", "Sx1262_3"};
 
-    Sx1262(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, uint8_t radioNo_, bool txEnabled_, bool groundStation_, uint32_t offsetHz_) : Radio(bus, Radio::NAMES[radioNo_]),
+    Sx1262(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, uint8_t radioNo_, bool txEnabled_, bool groundStation, uint32_t offsetHz_) : Radio(bus, Radio::NAMES[radioNo_]),
                                                                                                                                                 csPin(pins.at(GATAS::PinType::CS)),
                                                                                                                                                 busyPin(pins.at(GATAS::PinType::BUSY)),
                                                                                                                                                 dio1Pin(pins.at(GATAS::PinType::DIO1)),
                                                                                                                                                 radioNo(radioNo_),
                                                                                                                                                 txEnabled(txEnabled_),
-                                                                                                                                                groundStation(groundStation_),
+                                                                                                                                                groundStation(groundStation),
                                                                                                                                                 offsetHz(offsetHz_)
     {
     }

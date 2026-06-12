@@ -92,9 +92,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
                 packet.groundSpeed(),
                 (int16_t)(packet.groundTrack() + 0.5f),
                 packet.turnRate(),
-                fromOwn.distance,
-                fromOwn.relNorth,
-                fromOwn.relEast},
+                fromOwn.distance},
             msg.rssidBm};
 
         statistics.receivedAircraftPositions += 1;

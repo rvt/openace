@@ -200,9 +200,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                  (float)current.velocity * KN_TO_MS,
                  static_cast<int16_t>(current.heading),
                  0.0f,
-                 fromOwn.distance,
-                 fromOwn.relNorth,
-                 fromOwn.relEast}});
+                 fromOwn.distance}});
         }
     }
     else

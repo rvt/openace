@@ -202,9 +202,7 @@ void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
                 groundSpeed,
                 static_cast<int16_t>(tp.groundTrack()),
                 tp.turnRate(),
-                fromOwn.distance,
-                fromOwn.relNorth,
-                fromOwn.relEast},
+                fromOwn.distance},
             msg.rssidBm};
         getBus().receive(aircraftPosition);
     }
@@ -240,9 +238,7 @@ void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)
                 0,
                 0,
                 0,
-                fromOwn.distance,
-                fromOwn.relNorth,
-                fromOwn.relEast},
+                fromOwn.distance},
             msg.rssidBm};
         getBus().receive(aircraftPosition);
     }

@@ -11,9 +11,9 @@
 
 namespace
 {
-uint64_t offsetTimeToAbsolute = 0;
-uint32_t timeUs32PpsOffset = 0;
-spin_lock_t *claimedSpinLock = nullptr;
+  uint64_t offsetTimeToAbsolute = 0;
+  int32_t timeUs32PpsOffset = 0;
+  spin_lock_t *claimedSpinLock = nullptr;
 }
 
 namespace CoreUtils
@@ -80,17 +80,19 @@ const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path, c
     return tokens;
 }
 
-uint32_t getTotalHeap(void)
+size_t getTotalHeap(void)
 {
-#if !defined(__arm__)
-    return 0;
-#else
+#if defined(PICO_RP2040) || defined(PICO_RP2350)
     extern char __StackLimit, __bss_end__;
-    return &__StackLimit - &__bss_end__;
+    return static_cast<size_t>(
+        reinterpret_cast<uintptr_t>(&__StackLimit) -
+        reinterpret_cast<uintptr_t>(&__bss_end__));
+#else
+    return 0;
 #endif
 }
 
-uint32_t getFreeHeap(void)
+size_t getFreeHeap(void)
 {
 // We hit this during unit testing, we return 0 because it would
 // properly be useless

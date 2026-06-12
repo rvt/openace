@@ -113,7 +113,7 @@ TEST_CASE("AircraftPathPredictor treats exact expiry boundary consistently", "[s
     REQUIRE_FALSE(predictor.extrapolatedPos(11'000'000, predicted));
 }
 
-TEST_CASE("AircraftPathPredictor invalidates stale relative fields on extrapolation", "[single-file]")
+TEST_CASE("AircraftPathPredictor invalidates stale relative distance on extrapolation", "[single-file]")
 {
     AircraftPathPredictor<4> predictor;
 
@@ -128,8 +128,6 @@ TEST_CASE("AircraftPathPredictor invalidates stale relative fields on extrapolat
     input.track = 180;
     input.hTurnRate = 0.0f;
     input.distanceFromOwn = 12345;
-    input.relNorthFromOwn = 678;
-    input.relEastFromOwn = -910;
 
     REQUIRE(predictor.update(input, false));
 
@@ -138,8 +136,6 @@ TEST_CASE("AircraftPathPredictor invalidates stale relative fields on extrapolat
     REQUIRE(predictor.extrapolatedPos(3'000'000, predicted));
 
     REQUIRE(predicted.distanceFromOwn == static_cast<uint32_t>(INT32_MIN));
-    REQUIRE(predicted.relNorthFromOwn == INT32_MIN);
-    REQUIRE(predicted.relEastFromOwn == INT32_MIN);
 }
 
 TEST_CASE("AircraftPathPredictor rejects update when track map is full", "[single-file]")

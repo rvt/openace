@@ -2,11 +2,11 @@
 #include <etl/array.h>
 #include <cstdint>
 
-inline constexpr float egm2008_min_lat = -85.000000;
-inline constexpr float egm2008_max_lat = 85.000000;
-inline constexpr float egm2008_min_lon = -180.000000;
-inline constexpr float egm2008_max_lon = 180.000000;
-inline constexpr float egm2008_resolution_deg = 0.500000;
+inline constexpr float egm2008_min_lat = -85.000000f;
+inline constexpr float egm2008_max_lat = 85.000000f;
+inline constexpr float egm2008_min_lon = -180.000000f;
+inline constexpr float egm2008_max_lon = 180.000000f;
+inline constexpr float egm2008_resolution_deg = 0.500000f;
 inline constexpr int egm2008_lat_steps = 341;
 inline constexpr int egm2008_lon_steps = 721;
 

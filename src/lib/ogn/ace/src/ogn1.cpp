@@ -175,9 +175,7 @@ int8_t Ogn1::parseFrame(OGN_Packet &packet, uint32_t frequency, int16_t rssiDbm)
             groundSpeed,
             static_cast<int16_t>(packet.DecodeHeading() * .1f),
             packet.DecodeTurnRate() * .1f,
-            fromOwn.distance,
-            fromOwn.relNorth,
-            fromOwn.relEast},
+            fromOwn.distance},
         rssiDbm};
     getBus().receive(aircraftPosition);
     return 0;

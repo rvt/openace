@@ -110,11 +110,6 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
         {
             continue;
         }
-        uint8_t dataSource = static_cast<uint8_t>(aircraft.dataSource);
-        if (dataSource < antennaRadiationPattern.size())
-        {
-            antennaRadiationPattern[dataSource].put(aircraft);
-        }
         if (!queue.full())
         {
             queue.push(aircraft);
@@ -129,6 +124,15 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
 }
 
+void AircraftTracker::on_receive(const GATAS::OwnshipPositionMsg &msg)
+{
+    ownshipPositionValid = true;
+    ownshipLat = msg.position.lat;
+    ownshipLon = msg.position.lon;
+    ownshipTrack = static_cast<float>(msg.position.track);
+    trackedAircraft.ownshipPosition(msg.position);
+}
+
 void AircraftTracker::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     GATAS_MEASURE("on_receive", 1000);
@@ -136,7 +140,7 @@ void AircraftTracker::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
     // radioParameters.id == 1 means O-Band Uplink
     // We do that here, because we neeed to send 10 aircraft instead of just ownship
     // Only function as ADSL uplink in ground station mode
-    if (groundStation_ && msg.radioParameters.config->dataSource() == GATAS::DataSource::ADSLO_HDR && msg.radioParameters.id == 1)
+    if (groundStation && msg.radioParameters.config->dataSource() == GATAS::DataSource::ADSLO_HDR && msg.radioParameters.id == 1)
     {
         if (!tXqueue.full())
         {
@@ -155,9 +159,9 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionMsg &msg)
     }
 
     uint8_t dataSource = static_cast<uint8_t>(msg.position.dataSource);
-    if (dataSource < antennaRadiationPattern.size())
+    if (ownshipPositionValid && dataSource < antennaRadiationPattern.size())
     {
-        antennaRadiationPattern[dataSource].put(msg);
+        antennaRadiationPattern[dataSource].put(msg, ownshipLat, ownshipLon, ownshipTrack);
     }
 
     if (!queue.full())

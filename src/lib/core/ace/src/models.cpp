@@ -1,4 +1,5 @@
 #include "../models.hpp"
+#include "../coreutils.hpp"
 
 namespace GATAS
 {
@@ -151,5 +152,50 @@ namespace GATAS
     DataSourceMode stringToDataSourceMode(const char *str)
     {
         return stringToEnum(DataSourceModeMapping, str, DataSourceMode::RX_TX);
+    }
+
+    CoreUtils::distanceRelNorthRelEastInt AircraftPositionInfo::relativeFromOwn(float ownshipLat, float ownshipLon) const
+    {
+        return CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, lat, lon);
+    }
+
+    CoreUtils::distanceRelNorthRelEastInt AircraftPositionInfo::relativeFromOwn(const OwnshipMinimalPositionInfo &ownship) const
+    {
+        return relativeFromOwn(ownship.lat, ownship.lon);
+    }
+
+    CoreUtils::distanceRelNorthRelEastInt AircraftPositionInfo::relativeFromOwn(const OwnshipPositionInfo &ownship) const
+    {
+        return relativeFromOwn(ownship.lat, ownship.lon);
+    }
+
+    int32_t AircraftPositionInfo::relNorthFromOwn(float ownshipLat, float ownshipLon) const
+    {
+        return relativeFromOwn(ownshipLat, ownshipLon).relNorth;
+    }
+
+    int32_t AircraftPositionInfo::relNorthFromOwn(const OwnshipMinimalPositionInfo &ownship) const
+    {
+        return relativeFromOwn(ownship).relNorth;
+    }
+
+    int32_t AircraftPositionInfo::relNorthFromOwn(const OwnshipPositionInfo &ownship) const
+    {
+        return relativeFromOwn(ownship).relNorth;
+    }
+
+    int32_t AircraftPositionInfo::relEastFromOwn(float ownshipLat, float ownshipLon) const
+    {
+        return relativeFromOwn(ownshipLat, ownshipLon).relEast;
+    }
+
+    int32_t AircraftPositionInfo::relEastFromOwn(const OwnshipMinimalPositionInfo &ownship) const
+    {
+        return relativeFromOwn(ownship).relEast;
+    }
+
+    int32_t AircraftPositionInfo::relEastFromOwn(const OwnshipPositionInfo &ownship) const
+    {
+        return relativeFromOwn(ownship).relEast;
     }
 }

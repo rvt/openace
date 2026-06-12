@@ -7,12 +7,25 @@
 
 namespace
 {
+    constexpr float OWN_LAT = 52.0f;
+    constexpr float OWN_LON = 4.0f;
+
+    float lonOffsetDegrees(float eastMeters)
+    {
+        float cosLat = cosf(OWN_LAT * DEG_TO_RADS);
+        if (fabsf(cosLat) < 0.01f)
+        {
+            cosLat = cosLat >= 0.0f ? 0.01f : -0.01f;
+        }
+        return eastMeters / (111321.0f * cosLat);
+    }
+
     GATAS::IngressAircraftPositionMsg makeMsg(uint32_t distanceFromOwn, int32_t relNorthFromOwn, int32_t relEastFromOwn, int16_t track, int16_t rssiDbm)
     {
         GATAS::AircraftPositionInfo position{};
         position.distanceFromOwn = distanceFromOwn;
-        position.relNorthFromOwn = relNorthFromOwn;
-        position.relEastFromOwn = relEastFromOwn;
+        position.lat = OWN_LAT + static_cast<float>(relNorthFromOwn) / 111139.0f;
+        position.lon = OWN_LON + lonOffsetDegrees(static_cast<float>(relEastFromOwn));
         position.track = track;
         return GATAS::IngressAircraftPositionMsg(position, rssiDbm);
     }
@@ -22,8 +35,8 @@ TEST_CASE("put stores measurements in the expected radial", "[antennaRadiationPa
 {
     GATAS::AntennaRadiationPattern<8> pattern;
 
-    pattern.put(makeMsg(15620, -10000, -12000, 45, -70), 45.f);
-    pattern.put(makeMsg(200, 100, 0, 90, -60), 90.f);
+    pattern.put(makeMsg(15620, -10000, -12000, 45, -70), OWN_LAT, OWN_LON, 45.f);
+    pattern.put(makeMsg(200, 100, 0, 90, -60), OWN_LAT, OWN_LON, 90.f);
 
     const auto &snapshot = pattern._radiationPattern();
 
@@ -58,7 +71,7 @@ TEST_CASE("put ignores target track when storing measurements", "[antennaRadiati
 {
     GATAS::AntennaRadiationPattern<8> pattern;
 
-    pattern.put(makeMsg(200, 0, 100, 0, -60), 270.f);
+    pattern.put(makeMsg(200, 0, 100, 0, -60), OWN_LAT, OWN_LON, 270.f);
 
     const auto &snapshot = pattern._radiationPattern();
 

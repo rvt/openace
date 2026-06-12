@@ -246,9 +246,7 @@ void ADSLAce::adsl_receivedTraffic(const ADSL::Header &header, const ADSL::Traff
             tp.speed(),
             static_cast<int16_t>(tp.groundTrack()),
             0.f,
-            fromOwn.distance,
-            fromOwn.relNorth,
-            fromOwn.relEast},
+            fromOwn.distance},
         0};
     getBus().receive(aircraftPosition);
     (void)tp;
@@ -304,9 +302,7 @@ void ADSLAce::adsl_receivedUplinkTraffic(const ADSL::Header &header, etl::span<c
             tp.speed(),
             static_cast<int16_t>(tp.groundTrack()),
             0.f,
-            fromOwn.distance,
-            fromOwn.relNorth,
-            fromOwn.relEast});
+            fromOwn.distance});
     }
 
     if (!positions.empty())

@@ -134,9 +134,9 @@ namespace CoreUtils
         return (timeUs32() / 1'000) % 1'000;
     }
 
-    inline uint16_t usInSecond()
+    inline uint32_t usInSecond()
     {
-        return (timeUs64()) % 1'000'000;
+        return timeUs64() % 1'000'000;
     }
 
     /**
@@ -309,7 +309,7 @@ namespace CoreUtils
         float dLon = toLon - fromLon;
         float cosToLat = cosf(toLat);
         float bearingDegrees = atan2f(sinf(dLon) * cosToLat, (cosf(fromLat) * sinf(toLat)) - (sinf(fromLat) * cosToLat * cosf(dLon)));
-        return fmodf((bearingDegrees + M_TWOPI), M_TWOPI);
+        return fmodf((bearingDegrees + M_TWOPIF), M_TWOPIF);
     }
 
     /**
@@ -327,8 +327,9 @@ namespace CoreUtils
     inline float __time_critical_func(bearingFromInDegShort)(float east, float north)
     {
         float theta = atan2f(east, north);
-        float deg = theta * 180.f / M_PI;
-        if (deg < 0.f) {
+        float deg = theta * 180.f / M_PIF;
+        if (deg < 0.f)
+        {
             deg += 360.f;
         }
         return deg;
@@ -350,12 +351,13 @@ namespace CoreUtils
         int32_t relEast;
         uint16_t bearing()
         {
-            auto bearing = bearingFromInDegShort(relEast, relNorth);
-            if (bearing >= 360)
+            float bearing = bearingFromInDegShort(static_cast<float>(relEast), static_cast<float>(relNorth));
+            uint16_t rounded = static_cast<uint16_t>(bearing + 0.5f);
+            if (rounded >= 360)
             {
-                bearing = 0;
+                rounded = 0;
             }
-            return bearing;
+            return rounded;
         }
     };
 
@@ -556,8 +558,8 @@ namespace CoreUtils
         return nmea;
     }
 
-    uint32_t getTotalHeap(void);
-    uint32_t getFreeHeap(void);
+    size_t getTotalHeap(void);
+    size_t getFreeHeap(void);
 
     /**
      * Create an textual representation of the aircraftId. FOr the moment it will simply turn the aircraftID as received into a textual HEX representation
@@ -596,10 +598,16 @@ namespace CoreUtils
         }
     }
 
-    inline void hexStrToByteArray(const char *hex, uint8_t byteArray[])
+    /**
+     * Convert a HEX string to a byte array to a maximum length of 254 characters/
+     */
+    [[maybe_unused]]  static void hexStrToByteArray(const char *hex, uint8_t byteArray[])
     {
         auto hexLength = strlen(hex);
-        hexStrToByteArray(hex, hexLength, byteArray);
+        if (hexLength > 254) {
+            return;
+        }
+        hexStrToByteArray(hex, static_cast<uint8_t>(hexLength), byteArray);
     }
 
     /**
@@ -619,7 +627,7 @@ namespace CoreUtils
     /**
      * Returns the pin number from the pin map, when not found returns -1 to indicate that
      */
-    inline int8_t pinValue(const GATAS::PinTypeMap &pm, const GATAS::PinType &pinName, int8_t defaultValue = -1)
+    inline uint8_t pinValue(const GATAS::PinTypeMap &pm, const GATAS::PinType &pinName, uint8_t defaultValue = UINT8_MAX)
     {
         auto it = pm.find(pinName);
         if (it != pm.end())

@@ -54,9 +54,8 @@ public:
         }
 
         float angle = (position.course - 90.0f) * DEG_TO_RADS;
-        position.latitude = center.latitude + radius / 111000.0 * cosf(angle);
-        position.longitude = center.longitude + radius / (111000.0 * cosf(center.latitude * DEG_TO_RADS)) * sinf(angle);
+        position.latitude = center.latitude + radius / 111000.0f * cosf(angle);
+        position.longitude = center.longitude + radius / (111000.0f * cosf(center.latitude * DEG_TO_RADS)) * sinf(angle);
         return position;
     };
 };
-

@@ -206,7 +206,7 @@ void Sx1262::radioInit()
     // sx126x_set_cad_params(this, &DEFAULT_CAD_PARAMS);
 
     sx126x_set_pa_cfg(this, &DEFAULT_HIGH_POWER_PA_CFG);
-    sx126x_set_ocp_value(this, (uint8_t)(120.0 / 2.5));
+    sx126x_set_ocp_value(this, (uint8_t)(120.0f / 2.5f));
 
     // Add RX gain register to retention
     const uint16_t reg = 0x08AC;
