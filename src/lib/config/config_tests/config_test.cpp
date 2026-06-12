@@ -18,6 +18,7 @@ const uint8_t DEFAULT_GATAS_CONFIG[] = R"=(
 
 #include "inmemorystore.hpp"
 #include "config.hpp"
+#include "ace/acespi.hpp"
 
 GATAS::ThreadSafeBus<50> bus;
 
@@ -92,6 +93,17 @@ TEST_CASE("Fully Configured", "[single-file]")
             REQUIRE(map[GATAS::PinType::BUSY] == 13);
             REQUIRE(map[GATAS::PinType::CS] == 12);
             REQUIRE(map[GATAS::PinType::DIO1] == 19);
+            REQUIRE(map[GATAS::PinType::SPI] == 0);
+        }
+
+        SECTION("AceSpi_0 falls back to legacy AceSpi")
+        {
+            GATAS::PinTypeMap map = AceSpi::pinMap(config, 0);
+            REQUIRE(map.size() == 5);
+            REQUIRE(map[GATAS::PinType::CLK] == 2);
+            REQUIRE(map[GATAS::PinType::MOSI] == 3);
+            REQUIRE(map[GATAS::PinType::MISO] == 4);
+            REQUIRE(map[GATAS::PinType::RST] == 5);
             REQUIRE(map[GATAS::PinType::SPI] == 0);
         }
 

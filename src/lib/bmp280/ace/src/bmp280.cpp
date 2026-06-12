@@ -89,7 +89,7 @@ void Bmp280::read_compensation_parameters()
 
 GATAS::PostConstruct Bmp280::postConstruct()
 {
-    aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
+    aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAMES[device]));
     if (aceSpi == nullptr)
     {
         return GATAS::PostConstruct::DEP_NOT_FOUND;

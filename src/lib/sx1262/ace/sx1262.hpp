@@ -23,6 +23,7 @@
 /* GaTas Libraries */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
+#include "ace/coreutils.hpp"
 #include "ace/messages.hpp"
 #include "rxdataframequeue.hpp"
 
@@ -154,6 +155,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     const uint8_t csPin;
     const uint8_t busyPin;
     const uint8_t dio1Pin;
+    const uint8_t device;
     const uint8_t radioNo;
     bool txEnabled;
     // We need to know if the current mode is ground station so the correct package length get's set
@@ -173,6 +175,17 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     // Used when new radioPatemers have arrived during RX requests
     GATAS::RadioParameters newRxRadioParameters{&PROTOCOL_NONE, nullptr, 868'000'000, 0};
 
+
+    static uint8_t getPin(const GATAS::PinTypeMap &pinMap, GATAS::PinType pin)
+    {
+        auto it = pinMap.find(pin);
+        if (it != pinMap.end())
+        {
+            return static_cast<uint8_t>(it->second);
+        }
+        return 0;
+    }
+
 public:
     static constexpr etl::array<etl::string_view, 4> NAMES{"Sx1262_0", "Sx1262_1", "Sx1262_2", "Sx1262_3"};
 
@@ -180,6 +193,7 @@ public:
                                                                                                                                                 csPin(pins.at(GATAS::PinType::CS)),
                                                                                                                                                 busyPin(pins.at(GATAS::PinType::BUSY)),
                                                                                                                                                 dio1Pin(pins.at(GATAS::PinType::DIO1)),
+                                                                                                                                                device(getPin(pins, GATAS::PinType::DEV)),
                                                                                                                                                 radioNo(radioNo_),
                                                                                                                                                 txEnabled(txEnabled_),
                                                                                                                                                 groundStation(groundStation_),

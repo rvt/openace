@@ -224,9 +224,10 @@ class SpiModule : public BaseModule
 {
 public:
     static constexpr uint32_t SPI_BUS_READY = 1 << 30;
-    static constexpr const etl::string_view NAME = "_SPI";
+    static constexpr uint8_t MAX_SPI_MODULES = 2;
+    static constexpr etl::array<etl::string_view, MAX_SPI_MODULES> NAMES{"_SPI_0", "_SPI_1"};
 
-    SpiModule(etl::imessage_bus &bus) : BaseModule(bus, NAME)
+    SpiModule(etl::imessage_bus &bus, const etl::string_view name) : BaseModule(bus, name)
     {
     }
     virtual ~SpiModule() = default;

@@ -7,6 +7,7 @@
 
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
+#include "ace/coreutils.hpp"
 #include "ace/messages.hpp"
 
 /**
@@ -24,6 +25,7 @@ class Bmp280 : public BaseModule, public etl::message_router<Bmp280, GATAS::Conf
     static constexpr uint8_t READ_BIT = 0x80;
 
     const uint8_t cs;
+    const uint8_t device;
     int16_t compensation;
 
     int32_t t_fine = 0;
@@ -32,7 +34,7 @@ class Bmp280 : public BaseModule, public etl::message_router<Bmp280, GATAS::Conf
     uint16_t dig_P1 = 0;
     int16_t dig_P2 = 0, dig_P3 = 0, dig_P4 = 0, dig_P5 = 0, dig_P6 = 0, dig_P7 = 0, dig_P8 = 0, dig_P9 = 0;
     SpiModule *aceSpi = nullptr;
-    
+
 private:
     /* The following compensation functions are required to convert from the raw ADC
     data from the chip to something usable. Each chip has a different set of
@@ -50,12 +52,27 @@ private:
 
     void on_receive(const GATAS::Every30SecMsg &msg);
 
+    static uint8_t getPin(const GATAS::PinTypeMap &pinMap, GATAS::PinType pin)
+    {
+        auto it = pinMap.find(pin);
+        if (it != pinMap.end())
+        {
+            return static_cast<uint8_t>(it->second);
+        }
+        return 0;
+    }
+
 public:
     static constexpr const etl::string_view NAME = "Bmp280";
-    Bmp280(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                  cs(config.pinMap(NAME).at(GATAS::PinType::CS))
+    Bmp280(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, int16_t compensation_) : BaseModule(bus, NAME),
+                                                                                           cs(pins.at(GATAS::PinType::CS)),
+                                                                                           device(getPin(pins, GATAS::PinType::DEV)),
+                                                                                           compensation(compensation_)
     {
-        compensation = config.valueByPath(0, NAME, "compensation");
+    }
+
+    Bmp280(etl::imessage_bus &bus, const Configuration &config) : Bmp280(bus, config.pinMap(NAME), config.valueByPath(0, NAME, "compensation"))
+    {
     }
 
     virtual ~Bmp280() = default;

@@ -79,7 +79,7 @@ BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_v
         // Look for it's provider name eg: _SPI
         for (auto it = BaseModule::moduleLoaderMap.cbegin(); it != BaseModule::moduleLoaderMap.cend(); it++)
         {
-            if (it->second.module->name() == requesting)
+            if ((it->second.module != nullptr) && (it->second.module->name() == requesting))
             {
                 return it->second.module;
             }

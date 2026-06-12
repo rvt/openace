@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Added support for two named AceSPI instances, `AceSpi_0` and `AceSpi_1`, with matching SPI provider names `_SPI_0` and `_SPI_1`.
 
 ### Changed
 

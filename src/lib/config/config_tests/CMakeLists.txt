@@ -25,6 +25,7 @@ FetchContent_MakeAvailable(Catch2)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../ace")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/acespi")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 

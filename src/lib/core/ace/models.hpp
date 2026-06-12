@@ -49,7 +49,8 @@ namespace GATAS
         P0,
         P1,
         P2,
-        AD0
+        AD0,
+        DEV
     };
 
     // PinType alias to uint8_t

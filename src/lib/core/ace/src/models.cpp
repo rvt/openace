@@ -25,7 +25,8 @@ namespace GATAS
             {PinType::P1, "P1"},
             {PinType::P2, "P2"},
             {PinType::AD0, "AD0"},
-            {PinType::SPI, "SPI"}};
+            {PinType::SPI, "SPI"},
+            {PinType::DEV, "DEV"}};
 
     PinType stringToPinType(const char *str)
     {

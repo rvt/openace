@@ -133,11 +133,12 @@
   "SerialADSB": {},
   "_commentPinMaps": "Hardware specific items are only handled by pinmapping",
   "PICO_2RADIO": {
-    "AceSpi": {
+    "AceSpi_0": {
       "clk": 2,
       "mosi": 3,
       "miso": 4,
       "rst": 5,
+      "_comment_spi": "This indicates the PICO's SPI number, not this device",
       "spi": 0
     },
     "UbloxM8N": {
@@ -171,17 +172,21 @@
       "cs": 22,
       "busy": 11,
       "dio1": 10,
-      "spi": 0
+      "_comment_dev": "This indicates the SPI Device number example AceSpi_0",
+      "dev": 0
     },
     "Sx1262_1": {
       "cs": 12,
       "busy": 13,
       "dio1": 19,
-      "spi": 0
+      "_comment_dev": "This indicates the SPI Device number AceSpi_0",
+      "dev": 0
     },
     "Bmp280": {
       "cs": 14,
-      "busy": 15
+      "busy": 15,
+      "_comment_dev": "This indicates the SPI Device number AceSpi_0",
+      "dev": 0
     },
     "portb": {
       "cs": 20,
@@ -205,14 +210,16 @@
       "cs": 3,
       "busy": 2,
       "dio1": 20,
-      "spi": 1
+      "_comment_dev": "This indicates the SPI Device number AceSpi_0",
+      "dev": 0
     },
-    "_comment_AceSpi": "SPI Port",
-    "AceSpi": {
+    "_comment_AceSpi_1": "SPI Port",
+    "AceSpi_0": {
       "clk": 10,
       "mosi": 11,
       "miso": 12,
       "rst": 15,
+      "_comment_spi": "This indicates the PICO's SPI number, not this device",
       "spi": 1
     },
     "port5": {
