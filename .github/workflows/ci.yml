@@ -115,6 +115,18 @@ jobs:
           push: true
           tags: ghcr.io/${{ steps.lower-repo.outputs.repository }}:latest
 
+      - name: Verify Docker Image Can Build Firmware
+        run: |
+          docker pull ghcr.io/${{ steps.lower-repo.outputs.repository }}:latest
+          cd src
+          docker run --rm \
+            --entrypoint /build-entrypoint.sh \
+            -e PICO_PLATFORM=rp2040 \
+            -e PICO_BOARD=pico_w \
+            -e BUILD_DIR_NAME=build_verify_docker \
+            -v $(pwd):/opt/src \
+            ghcr.io/${{ steps.lower-repo.outputs.repository }}:latest
+
   Docker-Matrix:
     name: Firmware
     needs: Docker

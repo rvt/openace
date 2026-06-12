@@ -34,6 +34,12 @@ private:
     static constexpr uint32_t AUTO_DISTANCE_TRACK_UPPER = (MAX_TRACKING_PLANES * 90) / 100;
     static constexpr uint32_t AUTO_DISTANCE_TRACK_LOWER = (MAX_TRACKING_PLANES * 80) / 100;
     static constexpr uint8_t TIMESLICES = 10;
+#if defined(PICO_RP2040)
+    // RP2040 memory is tight, so only keep path prediction state for the closest tracks.
+    static constexpr uint8_t MAX_PREDICTED_AIRCRAFT = 6;
+#else
+    static constexpr uint8_t MAX_PREDICTED_AIRCRAFT = MAX_TRACKING_PLANES;
+#endif
     struct
     {
         uint32_t queueFullErr = 0; // Might mean ther eis to much pressure on this system and the queue needs to be increased in size. But this will never work if trackedFullErr is also increasing
@@ -59,7 +65,7 @@ private:
     };
 
     TaskHandle_t taskHandle = nullptr;
-    TrackerData<MAX_TRACKING_PLANES, TIMESLICES> trackedAircraft;
+    TrackerData<MAX_TRACKING_PLANES, TIMESLICES, MAX_PREDICTED_AIRCRAFT> trackedAircraft;
     GATAS::AircraftAddress ownshipAddress;
     bool groundStation = false;
     bool ownshipPositionValid = false;

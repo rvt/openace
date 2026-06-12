@@ -17,19 +17,14 @@
  * The more TIMESLICES the more this code will spread the positional information in a second
  * because the code will ensure only a maximum of  trackedAircraft.size() / TIMESLICES will be send per each interval
  **/
-template <size_t SIZE, uint8_t TIMESLICES>
+template <size_t SIZE, uint8_t TIMESLICES, size_t MAX_PREDICTED_AIRCRAFT = SIZE>
 class TrackerData
 {
 private:
+    static_assert(MAX_PREDICTED_AIRCRAFT <= SIZE, "MAX_PREDICTED_AIRCRAFT must not exceed SIZE");
+
     // Try to ensure that XX is minimally free to allow for burst of new aircraft
     static constexpr uint8_t ADAPTIVE_RADIUS_MIN_FREE = 4;
-#if defined(PICO_RP2040)
-    // Running into memory constrains of the RP2040, so only predict the closest 6 aircraft, 
-    / which should be fine under normal condtion. The system would still track the complete size
-    static constexpr uint8_t MAX_PREDICTED_AIRCRAFT = 6;
-#else    
-    static constexpr uint8_t MAX_PREDICTED_AIRCRAFT = SIZE;
-#endif
     // When less than X persentage the buffers is full, start ioncreaing the adaptive radius
     static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_INCREASE = 75;
     // When buffer needs to cleanup because nearly full, keep XX percebtage of all aircraft

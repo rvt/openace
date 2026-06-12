@@ -282,7 +282,7 @@ TEST_CASE("Updating an existing aircraft must not trigger full-buffer cleanup", 
 
 TEST_CASE("Path predictor keeps the closest tracked aircraft when full", "[single-file]")
 {
-    TrackerData<8, 2> trackedAircraft;
+    TrackerData<8, 2, 6> trackedAircraft;
     trackedAircraft.pathPrediction(true);
 
     for (uint32_t i = 0; i < 6; ++i)
@@ -318,6 +318,34 @@ TEST_CASE("Path predictor keeps the closest tracked aircraft when full", "[singl
     REQUIRE_FALSE(trackedAircraft.pathPredictor.contains(21));
     REQUIRE(trackedAircraft.pathPredictor.contains(20));
     REQUIRE(trackedAircraft.pathPredictor.contains(10));
+}
+
+TEST_CASE("Path predictor tracks all aircraft when predictor size matches tracker size", "[single-file]")
+{
+    TrackerData<10, 2, 10> trackedAircraft;
+    trackedAircraft.pathPrediction(true);
+
+    for (uint32_t i = 0; i < 8; ++i)
+    {
+        GATAS::AircraftPositionInfo aircraftPosition;
+        aircraftPosition.address = 30 + i;
+        aircraftPosition.timestamp = 1'000'000 + i;
+        aircraftPosition.distanceFromOwn = 1000 * (i + 1);
+        REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
+        REQUIRE(trackedAircraft.pathPredictor.contains(aircraftPosition.address));
+    }
+
+    REQUIRE(trackedAircraft.pathPredictor.size() == 8);
+
+    GATAS::AircraftPositionInfo fartherNew;
+    fartherNew.address = 50;
+    fartherNew.timestamp = 2'000'000;
+    fartherNew.distanceFromOwn = 9'000;
+    REQUIRE(trackedAircraft.insert(fartherNew) == true);
+
+    REQUIRE(trackedAircraft.pathPredictor.contains(30));
+    REQUIRE(trackedAircraft.pathPredictor.contains(37));
+    REQUIRE(trackedAircraft.pathPredictor.contains(50));
 }
 
 TEST_CASE("Radio priority: RADIO 4000000us old, ADSB incoming - should NOT update", "[single-file]")
