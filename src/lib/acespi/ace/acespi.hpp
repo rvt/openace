@@ -46,6 +46,7 @@ public:
     static constexpr uint8_t MAX_SPI_MODULES = SpiModule::MAX_SPI_MODULES;
     static constexpr etl::array<etl::string_view, MAX_SPI_MODULES> NAMES{"AceSpi_0", "AceSpi_1"};
 
+    // Only fallback to AceSpi for AceSpi_0
     static const GATAS::PinTypeMap pinMap(const Configuration &config, uint8_t device)
     {
         return config.pinMap(NAMES[device], device == 0 ? NAME : etl::string_view());

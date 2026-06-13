@@ -175,7 +175,6 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     // Used when new radioPatemers have arrived during RX requests
     GATAS::RadioParameters newRxRadioParameters{&PROTOCOL_NONE, nullptr, 868'000'000, 0};
 
-
 public:
     static constexpr etl::array<etl::string_view, 4> NAMES{"Sx1262_0", "Sx1262_1", "Sx1262_2", "Sx1262_3"};
 

@@ -18,7 +18,6 @@ const uint8_t DEFAULT_GATAS_CONFIG[] = R"=(
 
 #include "inmemorystore.hpp"
 #include "config.hpp"
-#include "ace/acespi.hpp"
 
 GATAS::ThreadSafeBus<50> bus;
 

@@ -25,7 +25,6 @@ FetchContent_MakeAvailable(Catch2)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/core")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../ace")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/acespi")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/mocks")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/utils")
 
@@ -69,9 +68,9 @@ set(ALL_EXAMPLE_TARGETS
 )
 
 foreach( name ${ALL_EXAMPLE_TARGETS} )
-    target_link_libraries( 
-      ${name} 
-      Catch2WithMain 
+    target_link_libraries(
+      ${name}
+      Catch2WithMain
       etl
       ArduinoJson
 )
