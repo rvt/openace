@@ -231,17 +231,12 @@ volatile static int8_t ledStatusIndicatorPin = -1;
 
 static bool hasHardwareConfiguration(const etl::string_view moduleName, const Configuration &config)
 {
-    if (!config.pinMap(moduleName).empty())
-    {
-        return true;
-    }
-
     if (moduleName.ends_with(etl::string_view("_0")))
     {
-        return !config.pinMap(moduleName.substr(0, moduleName.size() - 2)).empty();
+        return !config.pinMap(moduleName, moduleName.substr(0, moduleName.size() - 2)).empty();
     }
 
-    return false;
+    return !config.pinMap(moduleName).empty();
 }
 
 static void load(const etl::string_view str, etl::imessage_bus &bus, Configuration &config, bool force = false)

@@ -176,16 +176,6 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     GATAS::RadioParameters newRxRadioParameters{&PROTOCOL_NONE, nullptr, 868'000'000, 0};
 
 
-    static uint8_t getPin(const GATAS::PinTypeMap &pinMap, GATAS::PinType pin)
-    {
-        auto it = pinMap.find(pin);
-        if (it != pinMap.end())
-        {
-            return static_cast<uint8_t>(it->second);
-        }
-        return 0;
-    }
-
 public:
     static constexpr etl::array<etl::string_view, 4> NAMES{"Sx1262_0", "Sx1262_1", "Sx1262_2", "Sx1262_3"};
 
@@ -193,7 +183,7 @@ public:
                                                                                                                                                 csPin(pins.at(GATAS::PinType::CS)),
                                                                                                                                                 busyPin(pins.at(GATAS::PinType::BUSY)),
                                                                                                                                                 dio1Pin(pins.at(GATAS::PinType::DIO1)),
-                                                                                                                                                device(getPin(pins, GATAS::PinType::DEV)),
+                                                                                                                                                device(CoreUtils::getPin(pins, GATAS::PinType::DEV, 0)),
                                                                                                                                                 radioNo(radioNo_),
                                                                                                                                                 txEnabled(txEnabled_),
                                                                                                                                                 groundStation(groundStation_),

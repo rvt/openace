@@ -31,7 +31,7 @@ public:
             {{GATAS::DataSource::OGN, GATAS::DataSourceMode::RX_TX}}};
     }
 
-    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName) const override
+    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName, const etl::string_view fallback = etl::string_view()) const override
     {
         GATAS::PinTypeMap m;
         return m;

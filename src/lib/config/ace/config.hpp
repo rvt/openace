@@ -184,7 +184,7 @@ public:
     /**
      * Retreives the pin mapping for a given module, usually used for hardware configurations
      */
-    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName) const override;
+    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName, const etl::string_view fallback = etl::string_view()) const override;
 
     virtual int valueByPath(int defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override;
 

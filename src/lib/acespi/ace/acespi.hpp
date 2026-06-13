@@ -48,16 +48,7 @@ public:
 
     static const GATAS::PinTypeMap pinMap(const Configuration &config, uint8_t device)
     {
-        const auto map = config.pinMap(NAMES[device]);
-        if (!map.empty())
-        {
-            return map;
-        }
-        if (device == 0)
-        {
-            return config.pinMap(NAME);
-        }
-        return map;
+        return config.pinMap(NAMES[device], device == 0 ? NAME : etl::string_view());
     }
 
     AceSpi(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, uint8_t device) : SpiModule(bus, SpiModule::NAMES[device]),

@@ -96,15 +96,26 @@ TEST_CASE("Fully Configured", "[single-file]")
             REQUIRE(map[GATAS::PinType::SPI] == 0);
         }
 
-        SECTION("AceSpi_0 falls back to legacy AceSpi")
+        SECTION("fallback")
         {
-            GATAS::PinTypeMap map = AceSpi::pinMap(config, 0);
+            GATAS::PinTypeMap map = config.pinMap("AceSpi_1", "AceSpi");
             REQUIRE(map.size() == 5);
             REQUIRE(map[GATAS::PinType::CLK] == 2);
             REQUIRE(map[GATAS::PinType::MOSI] == 3);
             REQUIRE(map[GATAS::PinType::MISO] == 4);
             REQUIRE(map[GATAS::PinType::RST] == 5);
             REQUIRE(map[GATAS::PinType::SPI] == 0);
+        }
+
+        SECTION("No fallback")
+        {
+            GATAS::PinTypeMap map = config.pinMap("AceSpi_0", "AceSpi");
+            REQUIRE(map.size() == 5);
+            REQUIRE(map[GATAS::PinType::CLK] == 12);
+            REQUIRE(map[GATAS::PinType::MOSI] == 13);
+            REQUIRE(map[GATAS::PinType::MISO] == 14);
+            REQUIRE(map[GATAS::PinType::RST] == 15);
+            REQUIRE(map[GATAS::PinType::SPI] == 10);
         }
 
         SECTION("NoPort andInvalidPort")

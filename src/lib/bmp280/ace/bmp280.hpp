@@ -52,21 +52,11 @@ private:
 
     void on_receive(const GATAS::Every30SecMsg &msg);
 
-    static uint8_t getPin(const GATAS::PinTypeMap &pinMap, GATAS::PinType pin)
-    {
-        auto it = pinMap.find(pin);
-        if (it != pinMap.end())
-        {
-            return static_cast<uint8_t>(it->second);
-        }
-        return 0;
-    }
-
 public:
     static constexpr const etl::string_view NAME = "Bmp280";
     Bmp280(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, int16_t compensation_) : BaseModule(bus, NAME),
                                                                                            cs(pins.at(GATAS::PinType::CS)),
-                                                                                           device(getPin(pins, GATAS::PinType::DEV)),
+                                                                                           device(CoreUtils::getPin(pins, GATAS::PinType::DEV, 0)),
                                                                                            compensation(compensation_)
     {
     }

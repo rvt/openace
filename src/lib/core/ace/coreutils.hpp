@@ -328,7 +328,8 @@ namespace CoreUtils
     {
         float theta = atan2f(east, north);
         float deg = theta * 180.f / M_PI;
-        if (deg < 0.f) {
+        if (deg < 0.f)
+        {
             deg += 360.f;
         }
         return deg;
@@ -655,5 +656,21 @@ namespace CoreUtils
         default:
             return speedMs > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN; // 10 m/s threshold for others
         }
+    }
+
+    /**
+     * Find a pin number and if not found, return the default
+     * @param pinMap
+     * @param pin
+     * @param defaultNum
+     */
+    inline uint8_t getPin(const GATAS::PinTypeMap &pinMap, GATAS::PinType pin, uint8_t defaultNum)
+    {
+        auto it = pinMap.find(pin);
+        if (it != pinMap.end())
+        {
+            return static_cast<uint8_t>(it->second);
+        }
+        return defaultNum;
     }
 }

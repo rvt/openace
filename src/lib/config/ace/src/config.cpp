@@ -292,12 +292,19 @@ void Config::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-const GATAS::PinTypeMap Config::pinMap(const etl::string_view moduleName) const
+const GATAS::PinTypeMap Config::pinMap(const etl::string_view moduleName, const etl::string_view fallback) const
 {
     GATAS::PinTypeMap map;
     ccharptr hardware = (ccharptr)doc["hardware"]["type"];
-    if (JsonObjectConst moduleConfig = doc[hardware][moduleName]; !moduleConfig.isNull())
+
+    auto loadPinMap = [&](const etl::string_view name) -> bool
     {
+        JsonObjectConst moduleConfig = doc[hardware][name];
+        if (moduleConfig.isNull())
+        {
+            return false;
+        }
+
         for (JsonPairConst kv : moduleConfig)
         {
             auto pinType = GATAS::stringToPinType(kv.key().c_str());
@@ -306,7 +313,14 @@ const GATAS::PinTypeMap Config::pinMap(const etl::string_view moduleName) const
                 map[pinType] = kv.value().as<uint8_t>();
             }
         }
+        return true;
+    };
+
+    if (!loadPinMap(moduleName) && !fallback.empty())
+    {
+        loadPinMap(fallback);
     }
+
     return map;
 }
 
