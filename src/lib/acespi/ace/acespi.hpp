@@ -12,6 +12,7 @@
 #include "pico/stdlib.h"
 
 /* GATAS. */
+#include "ace/coreutils.hpp"
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
@@ -56,7 +57,7 @@ public:
                                                                                    clk(pins.at(GATAS::PinType::CLK)),
                                                                                    mosi(pins.at(GATAS::PinType::MOSI)),
                                                                                    miso(pins.at(GATAS::PinType::MISO)),
-                                                                                   rst(pins.at(GATAS::PinType::RST)),
+                                                                                   rst(CoreUtils::getPin(pins, GATAS::PinType::RST, UINT8_MAX)),
                                                                                    spi(pins.at(GATAS::PinType::SPI)),
                                                                                    lastBusFrequency(GATAS_SPI_DEFAULT_BUS_FREQUENCY)
     {

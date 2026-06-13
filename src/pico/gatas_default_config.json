@@ -137,6 +137,7 @@
       "clk": 2,
       "mosi": 3,
       "miso": 4,
+      "_comment_rst": "Optional, but at least SPI device should perform the reset",
       "rst": 5,
       "_comment_spi": "This indicates the PICO's SPI number, not this device",
       "spi": 0
@@ -218,6 +219,7 @@
       "clk": 10,
       "mosi": 11,
       "miso": 12,
+      "_comment_rst": "Optional, but at least SPI device should perform the reset",
       "rst": 15,
       "_comment_spi": "This indicates the PICO's SPI number, not this device",
       "spi": 1

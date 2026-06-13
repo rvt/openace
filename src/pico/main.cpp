@@ -624,38 +624,12 @@ void overflowTest()
     }
 }
 
-constexpr static auto getCyw43PioClockDivisor(uint32_t sysClockMhz)
-{
-    struct Cyw43PioClockDivisor
-    {
-        uint16_t integer;
-        uint8_t fractional;
-    };
-    constexpr uint32_t frac8Denominator = 256;
-    constexpr uint32_t cyw43ReferenceClockMhzTimes2 = 125;
-    const uint32_t divisorFrac8 =
-        ((sysClockMhz * frac8Denominator * 2) + (cyw43ReferenceClockMhzTimes2 / 2)) / cyw43ReferenceClockMhzTimes2;
-
-    Cyw43PioClockDivisor divisor = {
-        static_cast<uint16_t>(divisorFrac8 / frac8Denominator),
-        static_cast<uint8_t>(divisorFrac8 % frac8Denominator)};
-
-    return divisor;
-}
-
 int main()
 {
-    bool turboMode = false;
-    constexpr uint32_t defaultSpeedMhz = SYS_CLK_MHZ;
-    constexpr uint32_t speedMhz = 200; // Note 200 is default for RP2040, RP2350 uses 150Mhz we set them both to 200Mhz
-    constexpr auto pioClockDivisor = getCyw43PioClockDivisor(speedMhz);
-
-    if (set_sys_clock_khz(speedMhz * 1000, true))
+    bool at200Mhz = false;
+    if (set_sys_clock_khz(200000, true))
     {
-#if defined(CYW43_PIO_CLOCK_DIV_DYNAMIC)
-        cyw43_set_pio_clock_divisor(pioClockDivisor.integer, pioClockDivisor.fractional);
-#endif
-        turboMode = true;
+        at200Mhz = true;
     }
     stdio_init_all();
     overflowTest();
@@ -672,7 +646,7 @@ int main()
 #endif
 
 #if (configNUMBER_OF_CORES > 1)
-    printf("        Starting %s on both cores at %luMHz:\n\n", rtos_name, static_cast<unsigned long>(turboMode ? speedMhz : defaultSpeedMhz));
+    printf("        Starting %s on both cores at %dMHZ:\n\n", rtos_name, at200Mhz ? 200 : 125);
     vLaunch();
 #elif (RUN_FREERTOS_ON_CORE == 1)
     printf("        Starting %s on core 1:\n\n", rtos_name);
@@ -682,7 +656,7 @@ int main()
         ;
     }
 #else
-    printf("        Starting %s on core 0 %luMHz:\n\n", rtos_name, static_cast<unsigned long>(turboMode ? speedMhz : defaultSpeedMhz));
+    printf("        Starting %s on core 0 %dMHZ:\n\n", rtos_name, at200Mhz ? 200 : 125);
     vLaunch();
 #endif
 
