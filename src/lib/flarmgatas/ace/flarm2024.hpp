@@ -13,7 +13,6 @@
 /* Vendor. */
 #include "etl/message_bus.h"
 #include "etl/string.h"
-#include "etl/bitset.h"
 
 /* GATAS. */
 #include "ace/constants.hpp"

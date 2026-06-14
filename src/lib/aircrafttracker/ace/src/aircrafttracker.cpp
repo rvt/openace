@@ -110,6 +110,11 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
         {
             continue;
         }
+        uint8_t dataSource = static_cast<uint8_t>(aircraft.dataSource);
+        if (ownshipPositionValid && dataSource < antennaRadiationPattern.size())
+        {
+            antennaRadiationPattern[dataSource].put(aircraft, ownshipPosition.lat, ownshipPosition.lon, ownshipPosition.track);
+        }
         if (!queue.full())
         {
             queue.push(aircraft);
@@ -127,10 +132,7 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
 void AircraftTracker::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
     ownshipPositionValid = true;
-    ownshipLat = msg.position.lat;
-    ownshipLon = msg.position.lon;
-    ownshipTrack = static_cast<float>(msg.position.track);
-    trackedAircraft.ownshipPosition(msg.position);
+    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(),  msg.position);
 }
 
 void AircraftTracker::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
@@ -159,9 +161,10 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionMsg &msg)
     }
 
     uint8_t dataSource = static_cast<uint8_t>(msg.position.dataSource);
+    auto op = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(),  ownshipPosition);
     if (ownshipPositionValid && dataSource < antennaRadiationPattern.size())
     {
-        antennaRadiationPattern[dataSource].put(msg, ownshipLat, ownshipLon, ownshipTrack);
+        antennaRadiationPattern[dataSource].put(msg, op.lat, op.lon, op.track);
     }
 
     if (!queue.full())
@@ -197,13 +200,13 @@ void AircraftTracker::aircraftTrackerTask(void *arg)
         }
 
         // Handle timers
-        if (notifyValue == 0)
+        if (ownshipPositionValid && notifyValue == 0)
         {
             sendEligibleAircraft();
         }
 
         // Handle timers
-        if (notifyValue & TaskState::CLOSEST_10)
+        if (ownshipPositionValid && (notifyValue & TaskState::CLOSEST_10))
         {
             closest10();
         }
@@ -233,15 +236,18 @@ void AircraftTracker::handleTrackedAircraft(const GATAS::AircraftPositionInfo &p
 
 void AircraftTracker::sendEligibleAircraft()
 {
+    auto op = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(),  ownshipPosition);
+
     trackedAircraft.sendScheduled(
-        etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this));
+        etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this), op);
 }
 
 void AircraftTracker::closest10()
 {
     if (Tx_Struct msg; tXqueue.pop(msg))
     {
-        auto aircraft = trackedAircraft.forClosest();
+        auto op = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(),  ownshipPosition);
+        auto aircraft = trackedAircraft.adslUplinkTrigger(op);
         getBus().receive(GATAS::EgressAircraftPositionsMsg(aircraft, msg.radioParameters, msg.radioNo));
         tXqueue.clear();
     }

@@ -8,11 +8,13 @@
 
 namespace CoreUtils
 {
+    // TODO: CHeck this
     struct distanceRelNorthRelEastInt;
 }
 
 namespace GATAS
 {
+    // TODO: CHeck this
     struct OwnshipMinimalPositionInfo;
     struct OwnshipPositionInfo;
 
