@@ -102,6 +102,13 @@
             "rst": 5,
             "spi": 0
         },
+        "AceSpi_0": {
+            "clk": 12,
+            "mosi": 13,
+            "miso": 14,
+            "rst": 15,
+            "spi": 10
+        },
         "UbloxM8N": {
             "tx": 0,
             "rx": 1,

@@ -224,9 +224,10 @@ class SpiModule : public BaseModule
 {
 public:
     static constexpr uint32_t SPI_BUS_READY = 1 << 30;
-    static constexpr const etl::string_view NAME = "_SPI";
+    static constexpr uint8_t MAX_SPI_MODULES = 2;
+    static constexpr etl::array<etl::string_view, MAX_SPI_MODULES> NAMES{"_SPI_0", "_SPI_1"};
 
-    SpiModule(etl::imessage_bus &bus) : BaseModule(bus, NAME)
+    SpiModule(etl::imessage_bus &bus, const etl::string_view name) : BaseModule(bus, name)
     {
     }
     virtual ~SpiModule() = default;
@@ -276,7 +277,7 @@ public:
     virtual ~Configuration() = default;
 
     virtual const GATAS::Config::GaTasConfiguration gaTasConfig() const = 0;
-    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName) const = 0;
+    virtual const GATAS::PinTypeMap pinMap(const etl::string_view moduleName, const etl::string_view fallback = etl::string_view()) const = 0;
 
     virtual bool deleteData(const etl::string_view fullPath) = 0;
     virtual int valueByPath(int defaultValue, const etl::string_view pathToValue, const etl::string_view key) const = 0;

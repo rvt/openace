@@ -58,7 +58,8 @@
 // https://github.com/raspberrypi/pico-sdk/issues/1443
 #define PICO_MAX_SHARED_IRQ_HANDLERS 6
 // Allow setting dynamic cw43 clock division because we set custom clock speeds
-#define CYW43_PIO_CLOCK_DIV_DYNAMIC 1
+// 13 Jun 2026, this might not work as expected on the RP2350 while ir worked on teh RP2040
+// #define CYW43_PIO_CLOCK_DIV_DYNAMIC 1
 #define PICO_USE_FASTEST_SUPPORTED_CLOCK 1
 
 // START: ***** Debugging PICO items

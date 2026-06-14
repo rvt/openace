@@ -87,9 +87,11 @@ void AceSpi::write_byte(uint8_t cs, uint8_t data, uint8_t delayMs) const
  */
 void AceSpi::resetDevices() const
 {
-    gpio_put(rst, 0);
-    vTaskDelay(TASK_DELAY_MS(100));
-    gpio_put(rst, 1);
+    if (rst != UINT8_MAX) {
+        gpio_put(rst, 0);
+        vTaskDelay(TASK_DELAY_MS(100));
+        gpio_put(rst, 1);
+    }
 }
 
 SpiGuard AceSpi::getLock(bool &locked) {

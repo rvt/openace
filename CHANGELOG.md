@@ -35,6 +35,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -
 
+## [v3.0.1] - 2026-06-13
+
+### Added
+
+- Added support for two named SPI buses devices can communicate with
+
+### Changed
+
+-
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+- New way of setting processor speed did not always work, back to 200Mhz
+
+### Security
+
+-
+
 ## [v3.0.0] - 2026-06-11
 
 ### Added

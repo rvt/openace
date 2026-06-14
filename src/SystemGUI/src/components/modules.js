@@ -17,7 +17,8 @@ class GaTasModules extends El {
     // Modules we want to hide because they where never tested, or don't provide any usefull information now
     this.hide = [
       "Idle", 
-      "AceSpi", 
+      "AceSpi_0", 
+      "AceSpi_1", 
       "SerialADSB"
     ];
 
@@ -97,7 +98,8 @@ class GaTasModules extends El {
       SerialADSB: (html) => html`Receives ADS-B messages from hardware like the GNS5892. Requires an ADSB Decoder to process messages.`,
       Dump1090Client: (html) => html`Receives ADS-B messages from Dump1090. Requires an ADSB Decoder to process messages.`,
       Bmp280: (html) => html`Reads atmospheric pressure using the Bmp280 hardware.`,
-      AceSpi: (html) => html`Core module for controlling SPI access between different modules.`,
+      AceSpi_0: (html) => html`Core module for controlling SPI access between different modules.`,
+      AceSpi_1: (html) => html`Core module for controlling SPI access between different modules.`,
       Config: (html) => html`Core module for receiving and storing configurations.`,
       GpsDecoder: (html) => html`Core module for decoding GPS NMEA messages.`,
       UbloxM8N: (html) => html`Configures uBlox GPS devices`,

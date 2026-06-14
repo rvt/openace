@@ -23,6 +23,7 @@
 /* GaTas Libraries */
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
+#include "ace/coreutils.hpp"
 #include "ace/messages.hpp"
 #include "rxdataframequeue.hpp"
 
@@ -154,6 +155,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     const uint8_t csPin;
     const uint8_t busyPin;
     const uint8_t dio1Pin;
+    const uint8_t device;
     const uint8_t radioNo;
     bool txEnabled;
     // We need to know if the current mode is ground station so the correct package length get's set
@@ -180,6 +182,7 @@ public:
                                                                                                                                                 csPin(pins.at(GATAS::PinType::CS)),
                                                                                                                                                 busyPin(pins.at(GATAS::PinType::BUSY)),
                                                                                                                                                 dio1Pin(pins.at(GATAS::PinType::DIO1)),
+                                                                                                                                                device(CoreUtils::getPin(pins, GATAS::PinType::DEV, 0)),
                                                                                                                                                 radioNo(radioNo_),
                                                                                                                                                 txEnabled(txEnabled_),
                                                                                                                                                 groundStation(groundStation),

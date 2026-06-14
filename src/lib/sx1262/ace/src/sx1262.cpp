@@ -22,7 +22,7 @@ void Sx1262::start()
 
 GATAS::PostConstruct Sx1262::postConstruct()
 {
-    spiHall = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
+    spiHall = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAMES[device]));
 
     if (spiHall == nullptr)
     {
@@ -648,7 +648,7 @@ void Sx1262::sx1262Trampoline(void *arg)
 void Sx1262::sx1262Task(void *arg)
 {
     (void)arg;
-    SpiModule *aceSpi = static_cast<SpiModule *>(BaseModule::moduleByName(*this, SpiModule::NAME));
+    SpiModule *aceSpi = spiHall;
     uint32_t keepTransmittingUntill = 0;
     bool doListen = false;
     while (true)
