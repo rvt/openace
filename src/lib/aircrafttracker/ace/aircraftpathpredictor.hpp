@@ -43,6 +43,11 @@ private:
     static constexpr uint32_t MIN_TURNRATE_DT_US = 200'000;
     static constexpr uint32_t MAX_TURNRATE_DT_US = 5'000'000;
 
+    static int16_t normalizeTrack(float trackDegrees)
+    {
+        return static_cast<int16_t>(CoreUtils::toBearing(trackDegrees + 0.5f));
+    }
+
     struct HistorySample
     {
         uint32_t timestamp = 0;
@@ -52,8 +57,6 @@ private:
 
     struct TrackState
     {
-        static constexpr size_t HISTORY_CAPACITY = HISTORY_SIZE - 1;
-
         struct CachedPrediction
         {
             float lat = 0.0f;
@@ -62,85 +65,60 @@ private:
             int16_t track = 0;
         };
 
-        bool latestValid = false;
-        uint32_t latestTimestamp = 0;
-        float latestLat = 0.0f;
-        float latestLon = 0.0f;
-        int32_t latestEllipseHeight = 0;
-        float latestVerticalSpeed = 0.0f;
-        float latestGroundSpeed = 0.0f;
-        int16_t latestTrack = 0;
-
-        etl::array<HistorySample, HISTORY_CAPACITY> history = {};
-        size_t historyCount = 0;
-        size_t nextHistoryIndex = 0;
-        float estimatedTurnRateDegPerSec = 0.0f;
-        bool estimatedTurnRateValid = false;
-        uint32_t priorityDistance = UINT32_MAX;
-        mutable bool cachedPredictionValid = false;
-        mutable uint32_t cachedPredictionTimestamp = 0;
+        etl::array<HistorySample, HISTORY_SIZE> history = {};
         mutable CachedPrediction cachedPrediction = {};
+        float estimatedTurnRateDegPerSec = 0.0f;
+        uint32_t priorityDistance = UINT32_MAX;
+        mutable uint32_t cachedPredictionTimestamp = 0;
+        uint8_t historyCount = 0;
+        uint8_t nextHistoryIndex = 0;
+        bool estimatedTurnRateValid = false;
+        mutable bool cachedPredictionValid = false;
 
         void push(const GATAS::AircraftPositionInfo &sample)
         {
-            if (latestValid)
+            history[nextHistoryIndex] = toHistorySample(sample);
+            nextHistoryIndex = static_cast<uint8_t>((nextHistoryIndex + 1) % HISTORY_SIZE);
+            if (historyCount < HISTORY_SIZE)
             {
-                history[nextHistoryIndex].timestamp = latestTimestamp;
-                history[nextHistoryIndex].groundSpeed = latestGroundSpeed;
-                history[nextHistoryIndex].track = latestTrack;
-                nextHistoryIndex = (nextHistoryIndex + 1) % HISTORY_CAPACITY;
-                if (historyCount < HISTORY_CAPACITY)
-                {
-                    historyCount += 1;
-                }
+                historyCount += 1;
             }
-
-            latestValid = true;
-            latestTimestamp = sample.timestamp;
-            latestLat = sample.lat;
-            latestLon = sample.lon;
-            latestEllipseHeight = sample.ellipseHeight;
-            latestVerticalSpeed = sample.verticalSpeed;
-            latestGroundSpeed = sample.groundSpeed;
-            latestTrack = normalizeTrack(static_cast<float>(sample.track));
             invalidateCache();
         }
 
         void replaceLatest(const GATAS::AircraftPositionInfo &sample)
         {
-            latestValid = true;
-            latestTimestamp = sample.timestamp;
-            latestLat = sample.lat;
-            latestLon = sample.lon;
-            latestEllipseHeight = sample.ellipseHeight;
-            latestVerticalSpeed = sample.verticalSpeed;
-            latestGroundSpeed = sample.groundSpeed;
-            latestTrack = normalizeTrack(static_cast<float>(sample.track));
+            history[(nextHistoryIndex + HISTORY_SIZE - 1) % HISTORY_SIZE] = toHistorySample(sample);
             invalidateCache();
         }
 
-        HistorySample latestCompact() const
+        const HistorySample &latest() const
         {
-            HistorySample sample;
-            sample.timestamp = latestTimestamp;
-            sample.groundSpeed = latestGroundSpeed;
-            sample.track = latestTrack;
-            return sample;
+            return history[(nextHistoryIndex + HISTORY_SIZE - 1) % HISTORY_SIZE];
         }
 
         const HistorySample *previous(size_t stepsBack) const
         {
-            if (stepsBack == 0 || stepsBack > historyCount)
+            if (stepsBack >= historyCount)
             {
                 return nullptr;
             }
 
-            return &history[(nextHistoryIndex + HISTORY_CAPACITY - stepsBack) % HISTORY_CAPACITY];
+            return &history[(nextHistoryIndex + HISTORY_SIZE - 1 - stepsBack) % HISTORY_SIZE];
         }
 
         void invalidateCache()
         {
             cachedPredictionValid = false;
+        }
+
+        static HistorySample toHistorySample(const GATAS::AircraftPositionInfo &position)
+        {
+            HistorySample sample;
+            sample.timestamp = position.timestamp;
+            sample.groundSpeed = position.groundSpeed;
+            sample.track = normalizeTrack(static_cast<float>(position.track));
+            return sample;
         }
     };
 
@@ -154,11 +132,6 @@ private:
         return etl::clamp(turnRateDegPerSec, -MAX_TURN_RATE_DEG_PER_SEC, MAX_TURN_RATE_DEG_PER_SEC);
     }
 
-    static int16_t normalizeTrack(float trackDegrees)
-    {
-        return static_cast<int16_t>(CoreUtils::toBearing(trackDegrees + 0.5f));
-    }
-
     static float dtSeconds(uint32_t fromUs, uint32_t toUs)
     {
         return static_cast<float>(static_cast<int32_t>(toUs - fromUs)) * 1e-6f;
@@ -170,20 +143,17 @@ private:
     }
 
     static void applyPredictedState(uint32_t timeStampUs,
-                                    GATAS::AircraftAddress address,
-                                    const TrackState &state,
                                     const typename TrackState::CachedPrediction &prediction,
+                                    float hTurnRate,
                                     GATAS::AircraftPositionInfo &position)
     {
+        // Timestamp must match the predicted location, not the original sample.
         position.timestamp = timeStampUs;
-        position.address = address;
         position.lat = prediction.lat;
         position.lon = prediction.lon;
         position.ellipseHeight = prediction.ellipseHeight;
-        position.verticalSpeed = state.latestVerticalSpeed;
-        position.groundSpeed = state.latestGroundSpeed;
+        position.hTurnRate = hTurnRate;
         position.track = prediction.track;
-        position.airborne = state.latestGroundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN;
         invalidateRelativeDistance(position);
     }
 
@@ -197,7 +167,7 @@ private:
         auto it = tracks_.find(address);
         if (it != tracks_.end())
         {
-            if (!it->second.latestValid || isExpired(it->second.latestTimestamp, nowUs))
+            if (it->second.historyCount == 0 || isExpired(it->second.latest().timestamp, nowUs))
             {
                 tracks_.erase(it);
                 return tracks_.end();
@@ -244,14 +214,14 @@ private:
      */
     static void refreshTurnRate(TrackState &state)
     {
-        if (!state.latestValid)
+        if (state.historyCount == 0)
         {
             state.estimatedTurnRateDegPerSec = 0.0f;
             state.estimatedTurnRateValid = false;
             return;
         }
 
-        const HistorySample latest = state.latestCompact();
+        const HistorySample &latest = state.latest();
         float recentRate = 0.0f;
         float olderRate = 0.0f;
         float weightedSum = 0.0f;
@@ -377,9 +347,9 @@ public:
         }
 
         TrackState &state = it->second;
-        if (state.latestValid)
+        if (state.historyCount > 0)
         {
-            int32_t orderUs = static_cast<int32_t>(position.timestamp - state.latestTimestamp);
+            int32_t orderUs = static_cast<int32_t>(position.timestamp - state.latest().timestamp);
             if (orderUs < 0)
             {
                 return false;
@@ -412,64 +382,73 @@ public:
      * constant vertical speed. Predictions are rejected once the track reaches
      * the configured age limit.
      *
-     * Because this standalone predictor has no ownship context, the returned
+     * Because this standalone predictor has no ownship context, a predicted
      * position preserves caller-provided metadata but invalidates distanceFromOwn.
+     * If no prediction can be produced, the input position is returned unchanged.
      *
      * @param timeStampUs Requested prediction timestamp.
-     * @param position Input/output prediction object. The caller must set
-     * position.address to select the aircraft to predict.
-     * @return true when a prediction could be produced, otherwise false.
+     * @param position Latest measured aircraft state.
+     * @return Predicted copy when possible, otherwise the original position.
      */
-    bool extrapolatedPos(uint32_t timeStampUs, GATAS::AircraftPositionInfo &position) const
+    GATAS::AircraftPositionInfo extrapolatedPos(uint32_t timeStampUs, const GATAS::AircraftPositionInfo &position) const
     {
         if (!enabledFlag)
         {
-            return false;
+            // Prediction is disabled, so the measured position is the best available position.
+            return position;
         }
 
         GATAS::AircraftAddress address = position.address;
         auto it = tracks_.find(address);
         if (it == tracks_.end())
         {
-            return false;
+            // No predictor history exists for this aircraft, so keep the measured position.
+            return position;
         }
 
         const TrackState &state = it->second;
-        if (!state.latestValid)
+        if (state.historyCount == 0)
         {
-            return false;
+            // The track has no usable samples, so there is nothing to extrapolate from.
+            return position;
         }
 
-        int32_t ageUs = static_cast<int32_t>(timeStampUs - state.latestTimestamp);
+        const HistorySample &latest = state.latest();
+        int32_t ageUs = static_cast<int32_t>(timeStampUs - latest.timestamp);
         if (ageUs < 0)
         {
-            return false;
+            // The requested time is before the newest sample, so extrapolation would go backward.
+            return position;
         }
 
         if (ageUs < MIN_OUTPUT_PREDICTION_AGE_US)
         {
-            return false;
+            // The sample is recent enough that the measured position is still preferable.
+            return position;
         }
 
-        if (isExpired(state.latestTimestamp, timeStampUs))
+        if (isExpired(latest.timestamp, timeStampUs))
         {
-            return false;
+            // The sample is too old for a trustworthy short-term prediction.
+            return position;
         }
+
+        float turnRateDegPerSec = state.estimatedTurnRateValid ? state.estimatedTurnRateDegPerSec : 0.0f;
 
         if (state.cachedPredictionValid)
         {
             if (state.cachedPredictionTimestamp == timeStampUs)
             {
-                applyPredictedState(timeStampUs, address, state, state.cachedPrediction, position);
-                return true;
+                GATAS::AircraftPositionInfo result = position;
+                applyPredictedState(timeStampUs, state.cachedPrediction, turnRateDegPerSec, result);
+                return result;
             }
         }
 
-        float dt = dtSeconds(state.latestTimestamp, timeStampUs);
-        float turnRateDegPerSec = state.estimatedTurnRateValid ? state.estimatedTurnRateDegPerSec : 0.0f;
+        float dt = dtSeconds(latest.timestamp, timeStampUs);
         float turnRateRadPerSec = turnRateDegPerSec * DEG_TO_RADS;
-        float headingRad = static_cast<float>(state.latestTrack) * DEG_TO_RADS;
-        float groundSpeed = state.latestGroundSpeed;
+        float headingRad = static_cast<float>(latest.track) * DEG_TO_RADS;
+        float groundSpeed = position.groundSpeed;
         float northMeters = 0.0f;
         float eastMeters = 0.0f;
 
@@ -487,16 +466,18 @@ public:
         }
 
         typename TrackState::CachedPrediction prediction;
-        prediction.lat = state.latestLat;
-        prediction.lon = state.latestLon;
-        projectLocal(state.latestLat, state.latestLon, northMeters, eastMeters, prediction.lat, prediction.lon);
-        prediction.ellipseHeight = static_cast<int32_t>(static_cast<float>(state.latestEllipseHeight) + state.latestVerticalSpeed * dt);
-        prediction.track = normalizeTrack(static_cast<float>(state.latestTrack) + turnRateDegPerSec * dt);
-        applyPredictedState(timeStampUs, address, state, prediction, position);
+        prediction.lat = position.lat;
+        prediction.lon = position.lon;
+        projectLocal(position.lat, position.lon, northMeters, eastMeters, prediction.lat, prediction.lon);
+        prediction.ellipseHeight = static_cast<int32_t>(static_cast<float>(position.ellipseHeight) + position.verticalSpeed * dt);
+        prediction.track = normalizeTrack(static_cast<float>(latest.track) + turnRateDegPerSec * dt);
         state.cachedPrediction = prediction;
         state.cachedPredictionTimestamp = timeStampUs;
         state.cachedPredictionValid = true;
-        return true;
+
+        GATAS::AircraftPositionInfo result = position;
+        applyPredictedState(timeStampUs, prediction, turnRateDegPerSec, result);
+        return result;
     }
 
     /**
@@ -508,7 +489,7 @@ public:
     {
         for (auto it = tracks_.begin(); it != tracks_.end();)
         {
-            if (!it->second.latestValid || isExpired(it->second.latestTimestamp, nowUs))
+            if (it->second.historyCount == 0 || isExpired(it->second.latest().timestamp, nowUs))
             {
                 it = tracks_.erase(it);
             }

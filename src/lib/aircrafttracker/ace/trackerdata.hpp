@@ -74,7 +74,8 @@ private:
                          uint32_t currentTime,
                          const GATAS::OwnshipPositionInfo &ownship) const
     {
-        if (pathPredictor.extrapolatedPos(currentTime, position))
+        position = pathPredictor.extrapolatedPos(currentTime, position);
+        if (position.distanceFromOwn == static_cast<uint32_t>(INT32_MIN))
         {
             auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, position.lat, position.lon);
             position.distanceFromOwn = fromOwn.distance;

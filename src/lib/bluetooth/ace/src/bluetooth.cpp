@@ -554,7 +554,7 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
                     }
 
                     auto &pool = BaseModule::getGlobalPool();
-                    // TODO: We need to add in gatasCompanio a extra 0 to be send
+                    // TODO: We need to add in gatasCompanion a extra 0 to be send
                     auto *copy = static_cast<uint8_t *>(pool.alloc(payload.size() + 1));
                     if (copy == nullptr)
                     {

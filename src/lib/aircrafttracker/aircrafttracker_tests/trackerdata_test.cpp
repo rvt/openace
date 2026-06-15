@@ -388,9 +388,7 @@ TEST_CASE("Path predictor derives turn behavior from recent history", "[single-f
     aircraftPosition.track = 10;
     REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = aircraftPosition.address;
-    REQUIRE(trackedAircraft.pathPredictor.extrapolatedPos(3'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = trackedAircraft.pathPredictor.extrapolatedPos(3'000'000, aircraftPosition);
     REQUIRE(predicted.track == 20);
 }
 

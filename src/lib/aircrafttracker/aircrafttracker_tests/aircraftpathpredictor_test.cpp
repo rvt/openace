@@ -31,18 +31,22 @@ TEST_CASE("AircraftPathPredictor extrapolates straight flight", "[single-file]")
     AircraftPathPredictor<4> predictor;
 
     // 5m/s up at 50m/s
-    REQUIRE(predictor.update(makePosition(1'000'000, 0x123456, 52.0f, 4.0f, 1000, 5.0f, 50.0f, 90)));
+    auto latest = makePosition(1'000'000, 0x123456, 52.0f, 4.0f, 1000, 5.0f, 50.0f, 90);
+    REQUIRE(predictor.update(latest));
     REQUIRE(predictor.size() == 1);
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0x123456;
-    REQUIRE(predictor.extrapolatedPos(3'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, latest);
 
     auto rel = CoreUtils::northEastDistance(52.0f, 4.0f, predicted.lat, predicted.lon);
     REQUIRE(rel.north == Catch::Approx(0.0f).margin(1.0f));
     REQUIRE(rel.east == Catch::Approx(100.0f).margin(1.0f));
+    REQUIRE(predicted.timestamp == 3'000'000);
     REQUIRE(predicted.ellipseHeight == 1010); // 1000 + 2*5/2
+    REQUIRE(predicted.hTurnRate == Catch::Approx(0.0f));
     REQUIRE(predicted.track == 90);
+    REQUIRE(latest.timestamp == 1'000'000);
+    REQUIRE(latest.lat == Catch::Approx(52.0f));
+    REQUIRE(latest.lon == Catch::Approx(4.0f));
 }
 
 
@@ -52,16 +56,16 @@ TEST_CASE("AircraftPathPredictor uses derived positive turn rate for curved pred
     AircraftPathPredictor<4> predictor;
 
     REQUIRE(predictor.update(makePosition(9'000'000, 0xABCDEF, 51.99955f, 4.0f, 998, 2.0f, 50.0f, 350)));
-    REQUIRE(predictor.update(makePosition(10'000'000, 0xABCDEF, 52.0f, 4.0f, 1000, 2.0f, 50.0f, 0)));
+    auto latest = makePosition(10'000'000, 0xABCDEF, 52.0f, 4.0f, 1000, 2.0f, 50.0f, 0);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0xABCDEF;
-    REQUIRE(predictor.extrapolatedPos(12'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(12'000'000, latest);
 
     auto rel = CoreUtils::northEastDistance(52.0f, 4.0f, predicted.lat, predicted.lon);
     REQUIRE(rel.north == Catch::Approx(97.98f).margin(1.0f));
     REQUIRE(rel.east == Catch::Approx(17.22f).margin(1.0f));
     REQUIRE(predicted.ellipseHeight == 1004);
+    REQUIRE(predicted.hTurnRate == Catch::Approx(10.0f));
     REQUIRE(predicted.track == 20);
 }
 
@@ -70,16 +74,16 @@ TEST_CASE("AircraftPathPredictor uses derived negative turn rate for right turn 
     AircraftPathPredictor<4> predictor;
 
     REQUIRE(predictor.update(makePosition(9'000'000, 0xABCDF0, 51.99955f, 4.0f, 1002, -2.0f, 50.0f, 10)));
-    REQUIRE(predictor.update(makePosition(10'000'000, 0xABCDF0, 52.0f, 4.0f, 1000, -2.0f, 50.0f, 0)));
+    auto latest = makePosition(10'000'000, 0xABCDF0, 52.0f, 4.0f, 1000, -2.0f, 50.0f, 0);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0xABCDF0;
-    REQUIRE(predictor.extrapolatedPos(12'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(12'000'000, latest);
 
     auto rel = CoreUtils::northEastDistance(52.0f, 4.0f, predicted.lat, predicted.lon);
     REQUIRE(rel.north == Catch::Approx(97.98f).margin(1.0f));
     REQUIRE(rel.east == Catch::Approx(-17.22f).margin(1.0f));
     REQUIRE(predicted.ellipseHeight == 996);
+    REQUIRE(predicted.hTurnRate == Catch::Approx(-10.0f));
     REQUIRE(predicted.track == 340);
 }
 
@@ -87,11 +91,10 @@ TEST_CASE("AircraftPathPredictor preserves int32 altitude range", "[single-file]
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(1'000'000, 0xABCDF1, 52.0f, 4.0f, 40'000, 5.0f, 50.0f, 90)));
+    auto latest = makePosition(1'000'000, 0xABCDF1, 52.0f, 4.0f, 40'000, 5.0f, 50.0f, 90);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0xABCDF1;
-    REQUIRE(predictor.extrapolatedPos(3'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, latest);
 
     REQUIRE(predicted.ellipseHeight == 40'010);
 }
@@ -102,11 +105,10 @@ TEST_CASE("AircraftPathPredictor derives turn rate from recent history", "[singl
 
     REQUIRE(predictor.update(makePosition(0, 0x654321, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 350)));
     REQUIRE(predictor.update(makePosition(1'000'000, 0x654321, 52.00045f, 4.0f, 1000, 0.0f, 50.0f, 0)));
-    REQUIRE(predictor.update(makePosition(2'000'000, 0x654321, 52.00089f, 4.00008f, 1000, 0.0f, 50.0f, 10)));
+    auto latest = makePosition(2'000'000, 0x654321, 52.00089f, 4.00008f, 1000, 0.0f, 50.0f, 10);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0x654321;
-    REQUIRE(predictor.extrapolatedPos(3'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, latest);
 
     REQUIRE(predicted.track == 20);
     auto rel = CoreUtils::northEastDistance(52.00089f, 4.00008f, predicted.lat, predicted.lon);
@@ -118,18 +120,25 @@ TEST_CASE("AircraftPathPredictor rejects out-of-order updates and expires tracks
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(2'000'000, 0x111111, 52.0f, 4.0f, 1000, 0.0f, 40.0f, 180)));
+    auto latest = makePosition(2'000'000, 0x111111, 52.0f, 4.0f, 1000, 0.0f, 40.0f, 180);
+    REQUIRE(predictor.update(latest));
     REQUIRE_FALSE(predictor.update(makePosition(1'000'000, 0x111111, 52.0f, 4.0f, 1000, 0.0f, 40.0f, 180)));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0x111111;
-    REQUIRE_FALSE(predictor.extrapolatedPos(1'500'000, predicted));
-    REQUIRE(predictor.extrapolatedPos(2'500'000, predicted));
+    GATAS::AircraftPositionInfo tooEarly = predictor.extrapolatedPos(1'500'000, latest);
+    REQUIRE(tooEarly.timestamp == latest.timestamp);
+    REQUIRE(tooEarly.lat == Catch::Approx(latest.lat));
+    REQUIRE(tooEarly.lon == Catch::Approx(latest.lon));
+    REQUIRE(tooEarly.hTurnRate == Catch::Approx(latest.hTurnRate));
+
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(2'500'000, latest);
+    REQUIRE(predicted.timestamp == 2'500'000);
 
     predictor.maintenance(12'000'001);
     REQUIRE(predictor.size() == 0);
-    predicted.address = 0x111111;
-    REQUIRE_FALSE(predictor.extrapolatedPos(12'000'001, predicted));
+    GATAS::AircraftPositionInfo expired = predictor.extrapolatedPos(12'000'001, latest);
+    REQUIRE(expired.timestamp == latest.timestamp);
+    REQUIRE(expired.lat == Catch::Approx(latest.lat));
+    REQUIRE(expired.lon == Catch::Approx(latest.lon));
 }
 
 TEST_CASE("AircraftPathPredictor clears stale turn rate when update cannot derive one", "[single-file]")
@@ -137,13 +146,13 @@ TEST_CASE("AircraftPathPredictor clears stale turn rate when update cannot deriv
     AircraftPathPredictor<4> predictor;
 
     REQUIRE(predictor.update(makePosition(0, 0x333333, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 0)));
-    REQUIRE(predictor.update(makePosition(1'000'000, 0x333333, 52.00045f, 4.0f, 1000, 0.0f, 1.0f, 0)));
+    auto latest = makePosition(1'000'000, 0x333333, 52.00045f, 4.0f, 1000, 0.0f, 1.0f, 0);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0x333333;
-    REQUIRE(predictor.extrapolatedPos(2'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(2'000'000, latest);
 
     REQUIRE(predicted.track == 0);
+    REQUIRE(predicted.hTurnRate == Catch::Approx(0.0f));
 
     auto rel = CoreUtils::northEastDistance(52.00045f, 4.0f, predicted.lat, predicted.lon);
     REQUIRE(rel.north == Catch::Approx(1.0f).margin(1.0f));
@@ -154,16 +163,20 @@ TEST_CASE("AircraftPathPredictor treats exact expiry boundary consistently", "[s
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(1'000'000, 0x444444, 52.0f, 4.0f, 1000, 0.0f, 30.0f, 45)));
+    auto latest = makePosition(1'000'000, 0x444444, 52.0f, 4.0f, 1000, 0.0f, 30.0f, 45);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0x444444;
-    REQUIRE_FALSE(predictor.extrapolatedPos(11'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(11'000'000, latest);
+    REQUIRE(predicted.timestamp == latest.timestamp);
+    REQUIRE(predicted.lat == Catch::Approx(latest.lat));
+    REQUIRE(predicted.lon == Catch::Approx(latest.lon));
 
     predictor.maintenance(11'000'000);
     REQUIRE(predictor.size() == 0);
-    predicted.address = 0x444444;
-    REQUIRE_FALSE(predictor.extrapolatedPos(11'000'000, predicted));
+    GATAS::AircraftPositionInfo expired = predictor.extrapolatedPos(11'000'000, latest);
+    REQUIRE(expired.timestamp == latest.timestamp);
+    REQUIRE(expired.lat == Catch::Approx(latest.lat));
+    REQUIRE(expired.lon == Catch::Approx(latest.lon));
 }
 
 TEST_CASE("AircraftPathPredictor invalidates stale relative distance on extrapolation", "[single-file]")
@@ -183,9 +196,7 @@ TEST_CASE("AircraftPathPredictor invalidates stale relative distance on extrapol
 
     REQUIRE(predictor.update(input));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = input.address;
-    REQUIRE(predictor.extrapolatedPos(3'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, input);
 
     REQUIRE(predicted.distanceFromOwn == static_cast<uint32_t>(INT32_MIN));
 }
@@ -194,27 +205,29 @@ TEST_CASE("AircraftPathPredictor cache hit preserves caller metadata", "[single-
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(1'000'000, 0x555556, 52.0f, 4.0f, 1000, 0.0f, 25.0f, 90)));
+    auto latest = makePosition(1'000'000, 0x555556, 52.0f, 4.0f, 1000, 0.0f, 25.0f, 90);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo first;
-    first.address = 0x555556;
+    GATAS::AircraftPositionInfo first = latest;
     first.callSign = "FIRST";
     first.dataSource = GATAS::DataSource::ADSB;
     first.aircraftType = GATAS::AircraftCategory::GLIDER;
-    REQUIRE(predictor.extrapolatedPos(2'000'000, first));
+    first = predictor.extrapolatedPos(2'000'000, first);
 
-    GATAS::AircraftPositionInfo second;
-    second.address = 0x555556;
+    GATAS::AircraftPositionInfo second = latest;
     second.callSign = "SECOND";
     second.dataSource = GATAS::DataSource::OGN;
     second.aircraftType = GATAS::AircraftCategory::LIGHT;
-    REQUIRE(predictor.extrapolatedPos(2'000'000, second));
+    second = predictor.extrapolatedPos(2'000'000, second);
 
     REQUIRE(second.callSign == "SECOND");
     REQUIRE(second.dataSource == GATAS::DataSource::OGN);
     REQUIRE(second.aircraftType == GATAS::AircraftCategory::LIGHT);
+    REQUIRE(first.timestamp == 2'000'000);
+    REQUIRE(second.timestamp == 2'000'000);
     REQUIRE(second.lat == Catch::Approx(first.lat));
     REQUIRE(second.lon == Catch::Approx(first.lon));
+    REQUIRE(second.hTurnRate == Catch::Approx(first.hTurnRate));
     REQUIRE(second.track == first.track);
     REQUIRE(second.distanceFromOwn == static_cast<uint32_t>(INT32_MIN));
 }
@@ -276,11 +289,10 @@ TEST_CASE("AircraftPathPredictor replaces same-timestamp updates", "[single-file
     AircraftPathPredictor<4> predictor;
 
     REQUIRE(predictor.update(makePosition(2'000'000, 0x200001, 52.0f, 4.0f, 1000, 0.0f, 10.0f, 0)));
-    REQUIRE(predictor.update(makePosition(2'000'000, 0x200001, 52.001f, 4.001f, 1500, 3.0f, 30.0f, 90)));
+    auto latest = makePosition(2'000'000, 0x200001, 52.001f, 4.001f, 1500, 3.0f, 30.0f, 90);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0x200001;
-    REQUIRE(predictor.extrapolatedPos(3'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, latest);
 
     auto rel = CoreUtils::northEastDistance(52.001f, 4.001f, predicted.lat, predicted.lon);
     REQUIRE(rel.north == Catch::Approx(0.0f).margin(1.0f));
@@ -293,15 +305,13 @@ TEST_CASE("AircraftPathPredictor tracks multiple aircraft concurrently", "[singl
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(1'000'000, 0x300001, 52.0f, 4.0f, 1000, 0.0f, 20.0f, 0)));
-    REQUIRE(predictor.update(makePosition(1'000'000, 0x300002, 53.0f, 5.0f, 2000, 0.0f, 40.0f, 180)));
+    auto latestNorthbound = makePosition(1'000'000, 0x300001, 52.0f, 4.0f, 1000, 0.0f, 20.0f, 0);
+    auto latestSouthbound = makePosition(1'000'000, 0x300002, 53.0f, 5.0f, 2000, 0.0f, 40.0f, 180);
+    REQUIRE(predictor.update(latestNorthbound));
+    REQUIRE(predictor.update(latestSouthbound));
 
-    GATAS::AircraftPositionInfo northbound;
-    GATAS::AircraftPositionInfo southbound;
-    northbound.address = 0x300001;
-    southbound.address = 0x300002;
-    REQUIRE(predictor.extrapolatedPos(2'000'000, northbound));
-    REQUIRE(predictor.extrapolatedPos(2'000'000, southbound));
+    GATAS::AircraftPositionInfo northbound = predictor.extrapolatedPos(2'000'000, latestNorthbound);
+    GATAS::AircraftPositionInfo southbound = predictor.extrapolatedPos(2'000'000, latestSouthbound);
 
     auto relNorthbound = CoreUtils::northEastDistance(52.0f, 4.0f, northbound.lat, northbound.lon);
     auto relSouthbound = CoreUtils::northEastDistance(53.0f, 5.0f, southbound.lat, southbound.lon);
@@ -314,11 +324,10 @@ TEST_CASE("AircraftPathPredictor wraps longitude across the antimeridian", "[sin
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(1'000'000, 0x400001, 0.0f, 179.99995f, 1000, 0.0f, 20.0f, 90)));
+    auto latest = makePosition(1'000'000, 0x400001, 0.0f, 179.99995f, 1000, 0.0f, 20.0f, 90);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0x400001;
-    REQUIRE(predictor.extrapolatedPos(2'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(2'000'000, latest);
 
     REQUIRE(predicted.lon < -179.0f);
 }
@@ -328,11 +337,10 @@ TEST_CASE("AircraftPathPredictor clamps turn rate and normalizes track", "[singl
     AircraftPathPredictor<4> predictor;
 
     REQUIRE(predictor.update(makePosition(1'000'000, 0x500001, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 370)));
-    REQUIRE(predictor.update(makePosition(2'000'000, 0x500001, 52.00045f, 4.0f, 1000, 0.0f, 50.0f, 60)));
+    auto latest = makePosition(2'000'000, 0x500001, 52.00045f, 4.0f, 1000, 0.0f, 50.0f, 60);
+    REQUIRE(predictor.update(latest));
 
-    GATAS::AircraftPositionInfo predicted;
-    predicted.address = 0x500001;
-    REQUIRE(predictor.extrapolatedPos(3'000'000, predicted));
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, latest);
 
     REQUIRE(predicted.track == 75);
 }

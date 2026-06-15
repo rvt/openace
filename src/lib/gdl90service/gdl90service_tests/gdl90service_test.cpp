@@ -132,8 +132,8 @@ TEST_CASE("ownship position", "[single-file]")
         .groundSpeed = tc.speed,    // ~107 knots, typical light aircraft cruise
         .track = tc.track,          // Heading west
         .hTurnRate = 0.0f,          // Straight and level
-        .velocityNorth = 0.0f,      // Pure westward track
-        .velocityEast = -55.0f,     // Matches groundSpeed westward
+//        .velocityNorth = 0.0f,      // Pure westward track
+//        .velocityEast = -55.0f,     // Matches groundSpeed westward
         .geoidSeparation = 47,      // ~47m for the Netherlands (NL geoid is above WGS84)
         .airborne = true,
         .conspicuity = GATAS::Config::Conspicuity{},

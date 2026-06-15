@@ -108,7 +108,6 @@ size_t getCOBSBufferSize(size_t input_size, bool with_trailing_zero)
 }
 
 // Macro for reducing code duplication. Only used in function encodeCOBS().
-// ToDo: Use lambda expression?
 #define FinishBlock(X) (*code_ptr = (X), code_ptr = outptr++, code = 0x01)
 
 /**

@@ -611,7 +611,7 @@ bool Sx1262::isTxDone()
 void Sx1262::sendPacket(const TxPacket &txPacket)
 {
     // GATAS_INFO("Radio %d TX %s timeMs:%d", radioNo, GATAS::toString(command.txPacket.radioParameters.config->dataSource), CoreUtils::msInSecond());
-    // TODO: Sometimes configuration can take a few msmeven we don;t change protocol
+    // TODO: Sometimes configuration can take a few msmeven we don't change protocol
 
     if (txPacket.radioParameters.frequency->mode == GATAS::Modulation::GFSK)
     {

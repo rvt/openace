@@ -167,16 +167,16 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
                     return;
                 }
 
-                float prevLatitude = latitude;
-                float prevLongitude = longitude;
+                // float prevLatitude = latitude;
+                // float prevLongitude = longitude;
 
                 latitude = (minmea_tocoord(&frame.latitude));
                 longitude = (minmea_tocoord(&frame.longitude));
 
                 // TODO: Perhaps use Speed over ground/course over ground?
-                auto const relNorthrelEast = CoreUtils::northEastDistance(prevLatitude, prevLongitude, latitude, longitude);
-                velocityNorth = relNorthrelEast.north;
-                velocityEast = relNorthrelEast.east;
+//                auto const relNorthrelEast = CoreUtils::northEastDistance(prevLatitude, prevLongitude, latitude, longitude);
+//                velocityNorth = relNorthrelEast.north;
+//                velocityEast = relNorthrelEast.east;
 
                 groundSpeed = getFloat(frame.speed, groundSpeed) * KN_TO_MS;
 
@@ -321,8 +321,8 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .groundSpeed = groundSpeed,                 // Ground Speed
                     .track = course(),
                     .hTurnRate = course.perSecond(), // hTurnRate   // degrees per second
-                    .velocityNorth = velocityNorth,
-                    .velocityEast = velocityEast,
+//                    .velocityNorth = velocityNorth,
+//                    .velocityEast = velocityEast,
                     .geoidSeparation = static_cast<int16_t>(geoidSeparation),
                     .airborne = CoreUtils::isAirborn(conspicuity.category, groundSpeed),
                     .conspicuity = conspicuity}});

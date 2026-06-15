@@ -184,7 +184,6 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
     ownship.lat = 52.1;
     ownship.lon = 4.8;
     ownship.ellipseHeight = 10000;
-//    bus.receive(GATAS::OwnshipPositionMsg{ownship}); // TODO: Find out why this does not work
     adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
 
     uint8_t data[14];

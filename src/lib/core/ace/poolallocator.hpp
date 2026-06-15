@@ -75,11 +75,10 @@ public:
         return *ptr_;
     }
 
-    // TODO: Do we use this (looks like a raw ptr)
-    T *operator->() const
-    {
-        return ptr_;
-    }
+    // T *operator->() const
+    // {
+    //     return ptr_;
+    // }
 
     explicit operator bool() const
     {

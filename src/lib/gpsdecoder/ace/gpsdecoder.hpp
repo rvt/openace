@@ -31,8 +31,8 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
         uint32_t startTime = CoreUtils::timeS32();
     } statistics;
 
-    float velocityNorth = 0;
-    float velocityEast = 0;
+//    float velocityNorth = 0;
+//    float velocityEast = 0;
     RatePerSecond altitudeGeoid{GATAS_EMAFLOAT_K_FACTOR_2PS, 2}; // Field 9
     float geoidSeparation = 0;                                   // Field 11
     float groundSpeed = 0;

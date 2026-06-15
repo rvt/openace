@@ -390,7 +390,7 @@ void ADSLAce::adsl_buildStatusPayload(const void *ctx, ADSL::StatusPayload &sp)
     sp.oBandHdrReceiveCapability(ADSL::StatusPayload::ReceiveCapability::Partial);
     sp.adslTrafficUplinkClient(true);
 
-    // TODO: Find a way to correctly know what
+    // TODO: Find a way to correctly know what is ocnfigured for the current aircraft
     sp.eReceiveConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_FANET);
     sp.eReceiveConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_FLARM);
     sp.eReceiveConspicuityBits(ADSL::StatusPayload::EConspicuityBits::EC_OGN);
