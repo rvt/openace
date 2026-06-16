@@ -54,8 +54,8 @@ auto ownship = GATAS::OwnshipPositionInfo{
     50,   // in m/s
     0,    // 0..359
     0,    // deg/s Turn rate in the horizontal plane
-    50,   // North velocity in m/s
-    0,    // East velocity in m/s
+    // 50,   // North velocity in m/s
+    // 0,    // East velocity in m/s
     20,    // Height of geoid above WGS84 ellipsoid
     true,
     {
