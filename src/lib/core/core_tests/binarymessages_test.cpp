@@ -61,18 +61,18 @@ TEST_CASE("WiFi mode control frame only accepts AP and CLIENT requests", "[binar
     }
 }
 
-TEST_CASE("Aircraft position V2 uses second-of-minute in the local PPS-aligned frame", "[binarymessages]")
+TEST_CASE("Aircraft position V2 uses ms-in-minute in the local PPS-aligned frame", "[binarymessages]")
 {
     time_us_Value = 20'000'000;
     CoreUtils::setPPS(0);
     CoreUtils::setOffsetMsSinceEpoch(20'000);
 
-    constexpr size_t rawSize = 25;
+    constexpr size_t rawSize = 25 + 1;
     uint8_t buffer[rawSize] = {};
 
     etl::bit_stream_writer writer(buffer, rawSize, etl::endian::big);
     writer.write_unchecked(BinaryMessages::DataType(BinaryMessages::DataType::AIRCRAFT_POSITION_TYPE_V2).get_value(), 8U);
-    writer.write_unchecked(19U, 8U);
+    writer.write_unchecked(19'000U, 16U);
     writer.write_unchecked(0x010203U, 24U);
     writer.write_unchecked(0U, 8U);
     writer.write_unchecked(0U, 8U);

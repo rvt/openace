@@ -123,8 +123,8 @@ public:
         {
             return GATAS::AircraftPositionInfo();
         }
-        uint16_t msSecondsInMinute = reader.read_unchecked<uint16_t>(8U);
-        uint32_t timeStamp = CoreUtils::timeUs32FromMsInMinute(msSecondsInMinute);
+        uint16_t msInMinute = reader.read_unchecked<uint16_t>(16U);
+        uint32_t timeStamp = CoreUtils::timeUs32FromMsInMinute(msInMinute);
         uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
         uint8_t addressTypeIdx = reader.read_unchecked<uint8_t>(8U);
         uint8_t dataSourceIdx = reader.read_unchecked<uint8_t>(8U);
