@@ -79,6 +79,7 @@ rectangle "Infrastructure" {
 [GpsDecoder] --> [ADSLAce] : OwnshipPositionMsg
 [GpsDecoder] --> [FanetAce] : OwnshipPositionMsg
 [GpsDecoder] --> [ADSBDecoder] : OwnshipPositionMsg
+[GpsDecoder] --> [AircraftTracker] : OwnshipPositionMsg
 [GpsDecoder] --> [RadioTunerRx] : OwnshipPositionMsg
 [GpsDecoder] --> [RadioTunerTx] : OwnshipPositionMsg
 [GpsDecoder] --> [GatasConnect] : OwnshipPositionMsg\nGpsStatsMsg
@@ -156,6 +157,7 @@ package "Consumers" {
 [GpsDecoder] --> [ADSLAce] : OwnshipPositionMsg\nGpsStatsMsg
 [GpsDecoder] --> [FanetAce] : OwnshipPositionMsg
 [GpsDecoder] --> [ADSBDecoder] : OwnshipPositionMsg
+[GpsDecoder] --> [AircraftTracker] : OwnshipPositionMsg
 [GpsDecoder] --> [RadioTunerRx] : OwnshipPositionMsg
 [GpsDecoder] --> [RadioTunerTx] : OwnshipPositionMsg
 [GpsDecoder] --> [Gdl90Service] : OwnshipPositionMsg\nGpsStatsMsg
@@ -222,6 +224,7 @@ package "Monitoring" {
 [ADSLAce] --> [AircraftTracker] : IngressAircraftPositionMsg\nIngressAircraftPositionsMsg
 [FanetAce] --> [AircraftTracker] : IngressAircraftPositionMsg
 [ADSBDecoder] --> [AircraftTracker] : IngressAircraftPositionMsg
+[GpsDecoder] --> [AircraftTracker] : OwnshipPositionMsg
 
 note bottom of GatasConnect : GatasConnect also receives\nIngressAircraftPositionMsg\nfor radio-traffic awareness
 
@@ -432,7 +435,7 @@ package "Wifi Consumers" {
 | Message | Publisher(s) | Subscriber(s) | Notes |
 | --- | --- | --- | --- |
 | `GPSSentenceMsg` | `AbstractGnss` | `GpsDecoder`, `DataPort` | Raw NMEA ingress. |
-| `OwnshipPositionMsg` | `GpsDecoder` | `Ogn1`, `Flarm2024`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `DataPort`, `Bluetooth`, `GatasConnect` | Main ownship state fan-out. |
+| `OwnshipPositionMsg` | `GpsDecoder` | `Ogn1`, `Flarm2024`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `DataPort`, `Bluetooth`, `GatasConnect` | Main ownship state fan-out. |
 | `UtcTimeMsg` | `GpsDecoder` | `PicoRtc` | RTC synchronization. |
 | `GpsStatsMsg` | `GpsDecoder` | `Ogn1`, `ADSLAce`, `Sx1262`, `Gdl90Service`, `GatasConnect`, `Idle` | GPS fix and DOP status. |
 | `BarometricPressureMsg` | `Bmp280` | `Ogn1` | OGN transmission enhancement. |

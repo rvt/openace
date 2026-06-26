@@ -3,6 +3,7 @@
 #include <etl/array.h>
 
 #include "binarymessages.hpp"
+#include "pico/time.h"
 
 TEST_CASE("Aircraft configuration exposes wifi mode in reserved byte", "[binarymessages]")
 {
@@ -58,4 +59,36 @@ TEST_CASE("WiFi mode control frame only accepts AP and CLIENT requests", "[binar
         GATAS::WifiMode wifiMode = GATAS::WifiMode::AP;
         REQUIRE_FALSE(BinaryMessages::deserializeSetWifiModeV1(reader, wifiMode));
     }
+}
+
+TEST_CASE("Aircraft position V2 uses second-of-minute in the local PPS-aligned frame", "[binarymessages]")
+{
+    time_us_Value = 20'000'000;
+    CoreUtils::setPPS(0);
+    CoreUtils::setOffsetMsSinceEpoch(20'000);
+
+    constexpr size_t rawSize = 25;
+    uint8_t buffer[rawSize] = {};
+
+    etl::bit_stream_writer writer(buffer, rawSize, etl::endian::big);
+    writer.write_unchecked(BinaryMessages::DataType(BinaryMessages::DataType::AIRCRAFT_POSITION_TYPE_V2).get_value(), 8U);
+    writer.write_unchecked(19U, 8U);
+    writer.write_unchecked(0x010203U, 24U);
+    writer.write_unchecked(0U, 8U);
+    writer.write_unchecked(0U, 8U);
+    writer.write_unchecked(0, 32U);
+    writer.write_unchecked(0, 32U);
+    writer.write_unchecked(100, 16U);
+    writer.write_unchecked(0U, 8U);
+    writer.write_unchecked(0, 8U);
+    writer.write_unchecked(0U, 16U);
+    writer.write_unchecked(0, 16U);
+    writer.write_unchecked(0U, 8U);
+    writer.write_unchecked(0U, 8U);
+
+    etl::bit_stream_reader reader(buffer, rawSize, etl::endian::big);
+    auto position = BinaryMessages::deserializeAircraftPositionV2(0.0f, 0.0f, reader);
+
+    REQUIRE(position.timestamp == 19'000'000);
+    REQUIRE(position.address == 0x010203U);
 }

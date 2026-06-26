@@ -73,10 +73,11 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
         datasourceTimeStats.addReceiveStat(msg.frequency, CoreUtils::msInSecond());
 
         auto aircraftCat = toAircraftCategory(packet.aircraftType());
+        uint32_t timeStamp = CoreUtils::timeUs32FromMsInMinute(static_cast<uint16_t>((epochSeconds % 60U) * 1'000U), 15'000);
 
         GATAS::IngressAircraftPositionMsg aircraftPosition{
             GATAS::AircraftPositionInfo{
-                CoreUtils::timeUs32(),
+                timeStamp,
                 "",
                 packet.aircraftId(),
                 addressTypeFromFlarm(packet.addressType()),

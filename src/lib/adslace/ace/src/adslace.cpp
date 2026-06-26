@@ -227,7 +227,7 @@ void ADSLAce::adsl_receivedTraffic(const ADSL::Header &header, const ADSL::Traff
     // printf("ADSL: address:%06X latitude:%0.6f longitude:%0.6f altitude:%ld climbRate:%0.2f speed:%0.2f heading:%0.2f \n",
     // packet.address, fLatitude, fLongitude, packet.getaltitudeGeoid(), packet.getVerticalRate(), packet.getGroundSpeed(), packet.getTrack());
     auto epochMs = CoreUtils::msSinceEpoch();
-    auto msElapsed = etl::max(static_cast<uint32_t>(0), static_cast<uint32_t>(epochMs - tp.timestampRestored(epochMs)));
+    auto msElapsed = static_cast<int32_t>(epochMs - tp.timestampRestored(epochMs));
     GATAS::IngressAircraftPositionMsg aircraftPosition{
         GATAS::AircraftPositionInfo{
             CoreUtils::timeUs32() - (msElapsed * 1000),
@@ -279,7 +279,7 @@ void ADSLAce::adsl_receivedUplinkTraffic(const ADSL::Header &header, etl::span<c
         //     continue;
         // }
         auto epochMs = CoreUtils::msSinceEpoch();
-        auto msElapsed = etl::max(static_cast<uint32_t>(0), static_cast<uint32_t>(epochMs - tp.timestampRestored(epochMs)));
+        auto msElapsed = static_cast<int32_t>(epochMs - tp.timestampRestored(epochMs));
 
         if (positions.full())
         {

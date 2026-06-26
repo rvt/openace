@@ -222,21 +222,33 @@ TEST_CASE("TrafficPayload serialize", "[single-file]")
   REQUIRE(packet == makeVector({0x00, 0x04, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFE, 0x00, 0x00, 0x00}));
 }
 
-TEST_CASE("Timestamp Restore Should not round up, received in future", "single-file")
+TEST_CASE("Timestamp Restore keeps received timestamps in the past", "single-file")
 {
   TrafficPayload payload;
-  auto timestamp = 1771009961749ULL;
-  payload.timestamp(timestamp);
+  auto receiveTimestamp = 1771009961749ULL;
+  auto sendTimestamp = receiveTimestamp - 5600ULL;
+  payload.timestamp(sendTimestamp);
 
-  REQUIRE(1771009961500LL == payload.timestampRestored(timestamp + 5600));
+  REQUIRE(1771009956000LL == payload.timestampRestored(receiveTimestamp));
 }
 
-TEST_CASE("Timestamp Restore restore in past", "single-file")
+TEST_CASE("Timestamp Restore rolls numerically future ticks to previous cycle", "single-file")
 {
   TrafficPayload payload;
-  auto timestamp = 1771009961749ULL;
-  payload.timestamp(timestamp);
+  auto receiveTimestamp = 1771009965500ULL;
+  auto sendTimestamp = receiveTimestamp - 1000ULL;
+  payload.timestamp(sendTimestamp);
 
-  REQUIRE(1771009961500LL == payload.timestampRestored(timestamp - 2000));
+  REQUIRE(1771009964500LL == payload.timestampRestored(receiveTimestamp));
 }
 
+TEST_CASE("Timestamp Restore rolls a candidate 2000ms in the future to the previous cycle", "single-file")
+{
+  TrafficPayload payload;
+  auto receiveTimestamp = 1771009962500ULL;
+  auto sendTimestamp = 1771009949623ULL;
+  payload.timestamp(sendTimestamp);
+
+  REQUIRE(1771009949500LL == payload.timestampRestored(receiveTimestamp));
+}
+  

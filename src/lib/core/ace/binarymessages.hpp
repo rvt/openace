@@ -38,13 +38,14 @@ public:
     {
         enum enum_type : uint8_t
         {
-            AIRCRAFT_POSITION_TYPE_V1 = 1,    // BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
+            AIRCRAFT_POSITION_TYPE_V1 = 1,    // Deprecated BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
             AIRCRAFT_POSITION_REQUEST_V1 = 2, // Binary message of a request for other aircraft from gatasConnect
 //          AIRCRAFT_CONFIGURATIONS_V1 = 3,   // Deprecated, see AIRCRAFT_CONFIGURATIONS_V2 Current GATAS COnfiguration 1.0.0-prerelease
             SET_ICAO_ADDRESS_V1 = 4,          // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
             AIRCRAFT_CONFIGURATIONS_V2 = 5,   // Current GATAS COnfiguration V2
             GDL90_V1 = 6,                      // Packed GDL90 message for bridge transports
             SET_WIFI_MODE_V1 = 7,             // Request that OpenAce changes WiFi mode
+            AIRCRAFT_POSITION_TYPE_V2 = 8,    // BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
         };
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
@@ -55,6 +56,7 @@ public:
         ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V2, "Current GATAS Configuration")
         ETL_ENUM_TYPE(GDL90_V1, "GDL90 Message")
         ETL_ENUM_TYPE(SET_WIFI_MODE_V1, "Set WiFi Mode")
+        ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V2, "Aircraft Data")
         ETL_END_ENUM_TYPE
     };
 
@@ -71,6 +73,58 @@ public:
         {
             return GATAS::AircraftPositionInfo();
         }
+        uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
+        uint8_t addressTypeIdx = reader.read_unchecked<uint8_t>(8U);
+        uint8_t dataSourceIdx = reader.read_unchecked<uint8_t>(8U);
+        float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
+        float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
+        int16_t heightHAE = reader.read_unchecked<int16_t>(16U) - 100; // Aircraft message needs to be in ellipsoid
+        float track = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
+        float turnRate = static_cast<float>(reader.read_unchecked<int8_t>(8U)) / 5.0f;
+        float groundSpeed = static_cast<float>(reader.read_unchecked<uint16_t>(16U)) / 100.f;
+        float verticalRate = static_cast<float>(reader.read_unchecked<int16_t>(16U)) / 1024.f;
+        uint8_t aircraftCategoryIdx = reader.read_unchecked<uint8_t>(8U);
+
+        uint8_t callSignLen = etl::min(GATAS::MAX_CALLSIGN_LENGTH, reader.read_unchecked<uint8_t>(8U));
+        char callSignBuffer[GATAS::MAX_CALLSIGN_LENGTH + 1] = {0};
+        for (int i = 0; i < callSignLen; ++i)
+        {
+            callSignBuffer[i] = static_cast<char>(reader.read_unchecked<uint8_t>(8));
+        }
+        auto rel = CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, lat, lon);
+
+        return GATAS::AircraftPositionInfo(
+            timeStamp,
+            GATAS::CallSign(callSignBuffer),
+            static_cast<GATAS::AircraftAddress>(addressRaw),
+            static_cast<GATAS::AddressType>(addressTypeIdx),
+            static_cast<GATAS::DataSource>(dataSourceIdx),
+            static_cast<GATAS::AircraftCategory>(aircraftCategoryIdx),
+            false, // stealth
+            false, // noTrack
+            true,  // airborne
+            lat,
+            lon,
+            heightHAE,
+            verticalRate,
+            groundSpeed,
+            track,
+            turnRate,
+            rel.distance);
+    }
+
+    /**
+     * Read Aircraft Position Info from a bit stream reader
+     */
+    static GATAS::AircraftPositionInfo deserializeAircraftPositionV2(float ownshipLat, float ownshipLon, etl::bit_stream_reader &reader)
+    {
+        auto type = reader.read_unchecked<uint8_t>(8U);
+        if (type != DataType(DataType::AIRCRAFT_POSITION_TYPE_V2).get_value())
+        {
+            return GATAS::AircraftPositionInfo();
+        }
+        uint16_t msSecondsInMinute = reader.read_unchecked<uint16_t>(8U);
+        uint32_t timeStamp = CoreUtils::timeUs32FromMsInMinute(msSecondsInMinute);
         uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
         uint8_t addressTypeIdx = reader.read_unchecked<uint8_t>(8U);
         uint8_t dataSourceIdx = reader.read_unchecked<uint8_t>(8U);

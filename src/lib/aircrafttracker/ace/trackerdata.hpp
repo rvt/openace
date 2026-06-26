@@ -152,11 +152,11 @@ private:
     bool removeExpired()
     {
         bool cleaned = false;
-        uint32_t us = CoreUtils::timeUs32Raw();
+        uint32_t us = CoreUtils::timeUs32();
 
         for (auto it = trackedAircraft.begin(); it != trackedAircraft.end();)
         {
-            if (CoreUtils::isUsReachedRaw(it->second.position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC, us))
+            if (CoreUtils::isUsReached(it->second.position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC, us))
             {
                 pathPredictor.remove(it->first);
                 it = trackedAircraft.erase(it);
@@ -242,7 +242,7 @@ public:
         {
             const auto &it = pair.second;
             printf("%3d icao:%6lX sendTime:%8ld time:%8ld  dist:%ld lat:%.6f lon:%.6f\n",
-                   c, it.position.address, it.sendTime, CoreUtils::timeUs32Raw(),
+                   c, it.position.address, it.sendTime, CoreUtils::timeUs32(),
                    it.position.distanceFromOwn, it.position.lat, it.position.lon);
             c += 1;
         }
@@ -256,7 +256,7 @@ public:
             return false;
         }
 
-        auto time = CoreUtils::timeUs32Raw();
+        auto time = CoreUtils::timeUs32();
         auto it = trackedAircraft.find(position.address);
         if (it != trackedAircraft.end())
         {
@@ -270,7 +270,7 @@ public:
             // TODO: We should revise this once all timings are validated (they are within a second, bit in finer detail)
             const bool trackedIsRadio = it->second.position.dataSource != GATAS::DataSource::ADSB;
             const bool incomingIsMlat = position.dataSource == GATAS::DataSource::ADSB;
-            const bool radioStillFresh = !CoreUtils::isUsReachedRaw(it->second.position.timestamp + RADIO_PRIORITY_TIMEOUT_US, time);
+            const bool radioStillFresh = !CoreUtils::isUsReached(it->second.position.timestamp + RADIO_PRIORITY_TIMEOUT_US, time);
             if (trackedIsRadio && incomingIsMlat && radioStillFresh)
             {
                 return false;
@@ -332,13 +332,13 @@ public:
     void sendScheduled(const etl::delegate<void(const GATAS::AircraftPositionInfo &)> &callback,
                        const GATAS::OwnshipPositionInfo &ownship)
     {
-        auto currentTime = CoreUtils::timeUs32Raw();
+        auto currentTime = CoreUtils::timeUs32();
         size_t count = 0;
         size_t maxPerRound = (trackedAircraft.size() + TIMESLICES - 1) / TIMESLICES;
         for (auto &pair : trackedAircraft)
         {
             auto &it = pair.second;
-            if (CoreUtils::isUsReachedRaw(it.sendTime, currentTime))
+            if (CoreUtils::isUsReached(it.sendTime, currentTime))
             {
                 GATAS::AircraftPositionInfo position = it.position;
                 predictPosition(position, currentTime, ownship);
@@ -356,7 +356,7 @@ public:
     void maintenance()
     {
         removeExpired();
-        pathPredictor.maintenance(CoreUtils::timeUs32Raw());
+        pathPredictor.maintenance(CoreUtils::timeUs32());
         increaseAdaptiveRadius();
     }
 
@@ -376,7 +376,7 @@ public:
     {
         GATAS_MEASURE("adslUplinkTrigger", 1200);
         GATAS::AdslObandUplinkAircraft result;
-        uint32_t currentTime = CoreUtils::timeUs32Raw();
+        uint32_t currentTime = CoreUtils::timeUs32();
 
         if (trackedAircraft.size() <= result.max_size())
         {

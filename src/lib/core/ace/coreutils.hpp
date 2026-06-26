@@ -20,16 +20,6 @@ namespace CoreUtils
     spin_lock_t *sharedSpinLock();
 
     /**
-     * Convert and timestamp to an uint32_t which is synced with GPS time such that at PPS the ms should reppresents (somewhere close) to a ms
-     * eg: 45'453'010 = represents 10ms after PPS
-     * \deprecated
-     */
-    inline uint32_t timeToPositionTs(int8_t hours, int8_t minutes, int8_t seconds, int16_t microseconds)
-    {
-        return hours * 3600 + minutes * 60 + seconds + microseconds;
-    }
-
-    /**
      * Get a timestamp in us aligned on PPS so that for example45000 is at the exact pps
      * This timestamp monotonically increases from power up
      * this works together with isReached to measure time differences
@@ -43,6 +33,12 @@ namespace CoreUtils
         return time_us_32();
     }
 
+    /**
+     * Get a 64-bit timestamp in us aligned on PPS.
+     * This uses the same hardware time base as timeUs32(), but preserves the full
+     * 64-bit range for long-running intervals and epoch-related calculations.
+     * The timestamp monotonically increases from power up.
+     */
     uint64_t timeUs64();
 
     /**
@@ -54,6 +50,7 @@ namespace CoreUtils
     {
         return timeUs64() / 1'000;
     }
+
     /**
      * Get a timestamp in seconds
      * This timestamp monotonically increases from power up and alligned with PPS
@@ -195,6 +192,13 @@ namespace CoreUtils
     {
         return msSinceEpoch() % 86'400'000;
     }
+
+    /**
+     * Convert a UTC millisecond-in-minute hint into the local PPS-aligned
+     * timeUs32() frame. Falls back to timeUs32() if epoch sync is unavailable
+     * or if the hint is too far from the current time.
+     */
+    uint32_t timeUs32FromMsInMinute(uint16_t msInMinute, uint16_t maxAbsDeltaMs = 10'000);
 
     inline tm localTime(uint64_t msSinceEpoch)
     {
@@ -601,10 +605,11 @@ namespace CoreUtils
     /**
      * Convert a HEX string to a byte array to a maximum length of 254 characters/
      */
-    [[maybe_unused]]  static void hexStrToByteArray(const char *hex, uint8_t byteArray[])
+    [[maybe_unused]] static void hexStrToByteArray(const char *hex, uint8_t byteArray[])
     {
         auto hexLength = strlen(hex);
-        if (hexLength > 254) {
+        if (hexLength > 254)
+        {
             return;
         }
         hexStrToByteArray(hex, static_cast<uint8_t>(hexLength), byteArray);

@@ -11,9 +11,29 @@
 
 namespace
 {
-  uint64_t offsetTimeToAbsolute = 0;
-  int32_t timeUs32PpsOffset = 0;
-  spin_lock_t *claimedSpinLock = nullptr;
+    // Packet timestamps carry a millisecond offset inside the current minute.
+    // Received aircraft positions were sent before or at the receive time, so
+    // the packet time must resolve to now or the previous minute. A numerically
+    // larger millisecond value is therefore previous-minute rollover, not a
+    // future timestamp: now xx:xx:00.000 and packet 59'000 returns -1000.
+    int32_t minuteMsDelta(uint16_t msInMinute, uint64_t nowMsSinceEpoch)
+    {
+        const int32_t currentMsInMinute = static_cast<int32_t>(nowMsSinceEpoch % 60'000ULL);
+        int32_t deltaMs = static_cast<int32_t>(msInMinute) - currentMsInMinute;
+
+        if (deltaMs > 0)
+        {
+            deltaMs -= 60'000;
+        }
+
+        return deltaMs;
+    }
+
+    // Time Keeping
+    uint64_t offsetTimeToAbsolute = 0;
+    int32_t timeUs32PpsOffset = 0;
+    bool epochTimeValid = false;
+    spin_lock_t *claimedSpinLock = nullptr;
 }
 
 namespace CoreUtils
@@ -46,13 +66,35 @@ void __time_critical_func(setPPS)(int32_t offsetUs)
 
 void setOffsetMsSinceEpoch(uint64_t msSinceEpoch)
 {
-    const uint64_t nowUs = time_us_64();
-    offsetTimeToAbsolute = msSinceEpoch - nowUs / 1'000;
+    const uint64_t nowUsRaw = time_us_64();
+    offsetTimeToAbsolute = msSinceEpoch - nowUsRaw / 1'000;
+    epochTimeValid = true;
 }
 
 uint64_t msSinceEpoch()
 {
     return (time_us_64() / 1'000) + offsetTimeToAbsolute;
+}
+
+uint32_t timeUs32FromMsInMinute(uint16_t msInMinute, uint16_t maxAbsDeltaMs)
+{
+    GATAS_ASSERT(msInMinute < 60'000, "msInMinute must be < 60000");
+    if (!epochTimeValid)
+    {
+        return timeUs32();
+    }
+
+    const int32_t deltaMs = minuteMsDelta(msInMinute, msSinceEpoch());
+
+    if (deltaMs < -static_cast<int32_t>(maxAbsDeltaMs))
+    {
+        return timeUs32();
+    }
+
+    const uint32_t nowUs = timeUs32();
+    const uint32_t currentMsBoundaryUs = nowUs - (nowUs % 1'000UL);
+    const uint32_t deltaUs = static_cast<uint32_t>(deltaMs * 1'000);
+    return currentMsBoundaryUs + deltaUs;
 }
 
 const etl::vector<GATAS::Modulename, 7> parsePath(const etl::string_view path, const etl::string_view key)

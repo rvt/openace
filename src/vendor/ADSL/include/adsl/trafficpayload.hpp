@@ -475,14 +475,13 @@ namespace ADSL
 
     uint64_t timestampRestored(uint64_t epochms) const
     {
-      constexpr uint32_t MARGIN = 3000;
       const uint64_t nowTick = epochms / 250ULL;
       const uint64_t rxTick = timestampQms();
 
       const uint64_t base = nowTick - (nowTick % 60ULL);
       uint64_t candidate = base + rxTick;
 
-      if (candidate > nowTick + (MARGIN / 250ULL))
+      if (candidate > nowTick)
       {
         candidate -= 60ULL;
       }

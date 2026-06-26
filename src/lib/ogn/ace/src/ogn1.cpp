@@ -125,7 +125,6 @@ uint8_t Ogn1::addressTypeToOgn(GATAS::AddressType addressType) const
 
 int8_t Ogn1::parseFrame(OGN_Packet &packet, uint32_t frequency, int16_t rssiDbm)
 {
-    uint32_t timeUs32 = CoreUtils::timeUs32();
     if (packet.Header.NonPos)
     {
         statistics.nonPositional += 1;
@@ -157,6 +156,7 @@ int8_t Ogn1::parseFrame(OGN_Packet &packet, uint32_t frequency, int16_t rssiDbm)
     int16_t speed0d1ms = packet.DecodeSpeed();
     auto aircrftCat = ognToGatas(static_cast<Ogn1::OGNAircraftType>(packet.Position.AcftType));
     auto groundSpeed = speed0d1ms * .1f;
+    uint32_t timeUs32 = CoreUtils::timeUs32FromMsInMinute(static_cast<uint16_t>(packet.Position.Time * 1'000U));
     GATAS::IngressAircraftPositionMsg aircraftPosition{
         GATAS::AircraftPositionInfo{
             timeUs32,

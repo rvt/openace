@@ -159,7 +159,7 @@ private:
 
     static bool isExpired(uint32_t lastTimestampUs, uint32_t nowUs)
     {
-        return CoreUtils::isUsReachedRaw(lastTimestampUs + MAX_PREDICTION_AGE_US, nowUs);
+        return CoreUtils::isUsReached(lastTimestampUs + MAX_PREDICTION_AGE_US, nowUs);
     }
 
     typename TrackMap::iterator findActiveTrack(GATAS::AircraftAddress address, uint32_t nowUs)

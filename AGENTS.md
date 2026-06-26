@@ -169,6 +169,13 @@ When adding or wiring a new module, update the `[Modules]` section accordingly.
 
 Firmware code favors fixed-size containers and predictable memory behavior. Prefer ETL types such as `etl::unordered_map`, `etl::string`, and `etl::vector` with explicit compile-time limits.
 
+## Aircraft Timestamp Model
+
+- `AircraftPositionInfo.timestamp` is a local relative timestamp in microseconds and should be in the `CoreUtils::timeUs32()` frame.
+- Received aircraft packet timestamps represent the remote send time, not the local receive time. By the time a packet is received, the restored packet timestamp is expected to be less than or equal to the local 64-bit epoch timestamp from `CoreUtils::msSinceEpoch()`.
+- For packet formats that only encode time within a minute, resolve the timestamp as now-or-past, never as a future timestamp. Use a small max-delta window to reject ambiguous or stale data.
+- When converting packet send time to `AircraftPositionInfo.timestamp`, compute elapsed time against `CoreUtils::msSinceEpoch()` and subtract that elapsed duration from `CoreUtils::timeUs32()`.
+
 ## Testing Notes
 
 - Desktop tests use Catch2 with mocks in `src/lib/mocks/` for FreeRTOS, pico-sdk, and hardware APIs.
