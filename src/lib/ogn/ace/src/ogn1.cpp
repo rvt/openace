@@ -3,6 +3,7 @@
 #include "../ogn1.hpp"
 #include "../ognpacket.hpp"
 #include "ace/bitutils.hpp"
+#include "ace/debug.hpp"
 #include "ace/spinlockguard.hpp"
 #include "etl/algorithm.h"
 
@@ -156,10 +157,17 @@ int8_t Ogn1::parseFrame(OGN_Packet &packet, uint32_t frequency, int16_t rssiDbm)
     int16_t speed0d1ms = packet.DecodeSpeed();
     auto aircrftCat = ognToGatas(static_cast<Ogn1::OGNAircraftType>(packet.Position.AcftType));
     auto groundSpeed = speed0d1ms * .1f;
-    uint32_t timeUs32 = CoreUtils::timeUs32FromMsInMinute(static_cast<uint16_t>(packet.Position.Time * 1'000U));
+    const uint16_t msInMinute = static_cast<uint16_t>(packet.Position.Time * 1'000U);
+    auto timeUs32 = CoreUtils::timeUs32FromMsInMinute(msInMinute);
+    if (!timeUs32.has_value())
+    {
+        GATAS_WARN("Ignoring OGN position with invalid timestamp: msInMinute=%u",
+                   static_cast<unsigned int>(msInMinute));
+        return -1;
+    }
     GATAS::IngressAircraftPositionMsg aircraftPosition{
         GATAS::AircraftPositionInfo{
-            timeUs32,
+            timeUs32.value(),
             "",
             packet.Header.Address,
             addressTypeFromOgn(packet.Header.AddrType),

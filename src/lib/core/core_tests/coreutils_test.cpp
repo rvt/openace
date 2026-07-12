@@ -158,26 +158,43 @@ TEST_CASE("timeUs32FromMsInMinute maps packet time to local PPS-aligned time", "
     CoreUtils::setPPS(321'000);
     CoreUtils::setOffsetMsSinceEpoch(43'210'321);
 
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(9'000) == 69'000'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(10'000) == 70'000'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(10'123) == 70'123'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(5'000) == 65'000'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(11'000) == 70'321'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(55'000) == 70'321'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(55'321, 15'000) == 55'321'000);
+    auto timestampUs = CoreUtils::timeUs32FromMsInMinute(9'000);
+    REQUIRE(timestampUs.has_value());
+    REQUIRE(timestampUs.value() == 69'000'000);
+    timestampUs = CoreUtils::timeUs32FromMsInMinute(10'000);
+    REQUIRE(timestampUs.has_value());
+    REQUIRE(timestampUs.value() == 70'000'000);
+    timestampUs = CoreUtils::timeUs32FromMsInMinute(10'123);
+    REQUIRE(timestampUs.has_value());
+    REQUIRE(timestampUs.value() == 70'123'000);
+    timestampUs = CoreUtils::timeUs32FromMsInMinute(5'000);
+    REQUIRE(timestampUs.has_value());
+    REQUIRE(timestampUs.value() == 65'000'000);
+
+    REQUIRE_FALSE(CoreUtils::timeUs32FromMsInMinute(11'000).has_value());
+    REQUIRE_FALSE(CoreUtils::timeUs32FromMsInMinute(55'000).has_value());
+    timestampUs = CoreUtils::timeUs32FromMsInMinute(55'321, 15'000);
+    REQUIRE(timestampUs.has_value());
+    REQUIRE(timestampUs.value() == 55'321'000);
 }
 
-TEST_CASE("timeUs32FromMsInMinute handles minute rollover with fallback", "[single-file]")
+TEST_CASE("timeUs32FromMsInMinute handles minute rollover and rejects stale timestamps", "[single-file]")
 {
     time_us_Value = 59'800'000;
     CoreUtils::setPPS(800'000);
     CoreUtils::setOffsetMsSinceEpoch(59'800);
 
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(59'000) == 59'000'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(59'123) == 59'123'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(0) == 59'800'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(55'000) == 55'000'000);
-    REQUIRE(CoreUtils::timeUs32FromMsInMinute(48'000) == 59'800'000);
+    auto timestampUs = CoreUtils::timeUs32FromMsInMinute(59'000);
+    REQUIRE(timestampUs.has_value());
+    REQUIRE(timestampUs.value() == 59'000'000);
+    timestampUs = CoreUtils::timeUs32FromMsInMinute(59'123);
+    REQUIRE(timestampUs.has_value());
+    REQUIRE(timestampUs.value() == 59'123'000);
+    REQUIRE_FALSE(CoreUtils::timeUs32FromMsInMinute(0).has_value());
+    timestampUs = CoreUtils::timeUs32FromMsInMinute(55'000);
+    REQUIRE(timestampUs.has_value());
+    REQUIRE(timestampUs.value() == 55'000'000);
+    REQUIRE_FALSE(CoreUtils::timeUs32FromMsInMinute(48'000).has_value());
 }
 
 TEST_CASE( "distanceAccurate", "[single-file]" )

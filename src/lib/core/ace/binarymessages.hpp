@@ -5,6 +5,7 @@
 #include <etl/algorithm.h>
 #include <etl/span.h>
 #include <etl/absolute.h>
+#include <etl/optional.h>
 #include <etl/to_arithmetic.h>
 #include "ace/cobs.hpp"
 #include "lib_crc.hpp"
@@ -116,15 +117,20 @@ public:
     /**
      * Read Aircraft Position Info from a bit stream reader
      */
-    static GATAS::AircraftPositionInfo deserializeAircraftPositionV2(float ownshipLat, float ownshipLon, etl::bit_stream_reader &reader)
+    static etl::optional<GATAS::AircraftPositionInfo> deserializeAircraftPositionV2(float ownshipLat, float ownshipLon,
+                                                                                    etl::bit_stream_reader &reader)
     {
         auto type = reader.read_unchecked<uint8_t>(8U);
         if (type != DataType(DataType::AIRCRAFT_POSITION_TYPE_V2).get_value())
         {
-            return GATAS::AircraftPositionInfo();
+            return etl::nullopt;
         }
         uint16_t msInMinute = reader.read_unchecked<uint16_t>(16U);
-        uint32_t timeStamp = CoreUtils::timeUs32FromMsInMinute(msInMinute);
+        auto timeStamp = CoreUtils::timeUs32FromMsInMinute(msInMinute);
+        if (!timeStamp.has_value())
+        {
+            return etl::nullopt;
+        }
         uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
         uint8_t addressTypeIdx = reader.read_unchecked<uint8_t>(8U);
         uint8_t dataSourceIdx = reader.read_unchecked<uint8_t>(8U);
@@ -147,7 +153,7 @@ public:
         auto rel = CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, lat, lon);
 
         return GATAS::AircraftPositionInfo(
-            timeStamp,
+            timeStamp.value(),
             GATAS::CallSign(callSignBuffer),
             static_cast<GATAS::AircraftAddress>(addressRaw),
             static_cast<GATAS::AddressType>(addressTypeIdx),

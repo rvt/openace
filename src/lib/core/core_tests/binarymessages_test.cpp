@@ -90,7 +90,13 @@ TEST_CASE("Aircraft position V2 uses ms-in-minute in the local PPS-aligned frame
     etl::bit_stream_reader reader(buffer, rawSize, etl::endian::big);
     auto position = BinaryMessages::deserializeAircraftPositionV2(0.0f, 0.0f, reader);
 
-    REQUIRE(position.timestamp == 19'000'000);
-    REQUIRE(position.address == 0x010203U);
-    REQUIRE(position.squawk == 7000);
+    REQUIRE(position.has_value());
+    REQUIRE(position.value().timestamp == 19'000'000);
+    REQUIRE(position.value().address == 0x010203U);
+    REQUIRE(position.value().squawk == 7000);
+
+    buffer[1] = 0x00;
+    buffer[2] = 0x00;
+    etl::bit_stream_reader staleReader(buffer, rawSize, etl::endian::big);
+    REQUIRE_FALSE(BinaryMessages::deserializeAircraftPositionV2(0.0f, 0.0f, staleReader).has_value());
 }

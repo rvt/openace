@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed antenna radiation pattern bearing calculation so radial placement is based on ownship track and target position, not the target aircraft track.
 - Fixed protocol/config bounds handling for tracked-aircraft distance and transmitted altitude values in FLARM, FANET, and OGN paths.
+- OGN, FLARM, and binary V2 aircraft positions with unavailable or out-of-window minute-relative timestamps are now logged and discarded instead of being treated as current.
+- `AircraftTracker` now rejects out-of-order position updates before they can replace newer coordinates or desynchronize predictor history.
+- Restored timer-driven `AircraftTracker` scheduling so continuous position notifications cannot suppress heartbeat and predicted-position output.
+- Added timer-driven SX1262 TX timeout recovery so a missing `DIO1_TX_DONE` interrupt cannot leave the radio stuck waiting for another task notification.
+- Aircraft already tracked are now removed immediately when a current position places them outside the adaptive tracking radius.
+- Aircraft path prediction now prefers protocol-provided horizontal turn rates, with heading-history derivation retained as a fallback.
 
 ### Security
 

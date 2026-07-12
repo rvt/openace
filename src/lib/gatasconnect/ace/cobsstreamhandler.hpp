@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include "ace/cobs.hpp"
+#include "ace/debug.hpp"
 #include "ace/gulp.hpp"
 #include "ace/binarymessages.hpp"
 #include "ace/messages.hpp"
@@ -50,12 +51,17 @@ public:
             if (frameType == BinaryMessages::DataType::AIRCRAFT_POSITION_TYPE_V2)
             {
                 auto aircraftPosition = BinaryMessages::deserializeAircraftPositionV2(ownShipLat, ownShipLon, reader);
+                if (!aircraftPosition.has_value())
+                {
+                    GATAS_WARN("Ignoring binary V2 aircraft position with invalid timestamp");
+                    continue;
+                }
                 if (positionMessages.full())
                 {
                     bus.receive(GATAS::IngressAircraftPositionsMsg(positionMessages));
                     positionMessages.clear();
                 }
-                positionMessages.push_back(aircraftPosition);
+                positionMessages.push_back(aircraftPosition.value());
             }
 
             /**

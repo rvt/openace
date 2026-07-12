@@ -64,6 +64,26 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
         REQUIRE(trackedAircraft.size() == 1);
     }
 
+    SECTION("A tracked aircraft is removed immediately when it leaves the adaptive radius")
+    {
+        REQUIRE(trackedAircraft.pathPredictor.contains(aircraftPosition.address));
+
+        aircraftPosition.timestamp = 860'000;
+        aircraftPosition.distanceFromOwn = OUT_OF_ADAPTIVE_RANGE;
+        REQUIRE_FALSE(trackedAircraft.insert(aircraftPosition));
+        REQUIRE(trackedAircraft.size() == 0);
+        REQUIRE_FALSE(trackedAircraft.pathPredictor.contains(aircraftPosition.address));
+    }
+
+    SECTION("An older out-of-range position cannot remove a newer tracked aircraft")
+    {
+        aircraftPosition.timestamp = 559'999;
+        aircraftPosition.distanceFromOwn = OUT_OF_ADAPTIVE_RANGE;
+        REQUIRE_FALSE(trackedAircraft.insert(aircraftPosition));
+        REQUIRE(trackedAircraft.size() == 1);
+        REQUIRE(trackedAircraft.pathPredictor.contains(aircraftPosition.address));
+    }
+
     SECTION("next Called, first one.. but not next one ")
     {
         TestHandler testHandler;
@@ -375,6 +395,7 @@ TEST_CASE("Path predictor derives turn behavior from recent history", "[single-f
     aircraftPosition.distanceFromOwn = 1000;
     aircraftPosition.timestamp = 0;
     aircraftPosition.track = 350;
+    aircraftPosition.hTurnRate = NAN;
     REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
 
     aircraftPosition.timestamp = 1'000'000;
@@ -475,6 +496,39 @@ TEST_CASE("Predicted output does not mutate stored original distance", "[single-
     REQUIRE(it != trackedAircraft.trackedAircraft.end());
     REQUIRE(it->second.position.timestamp == 0);
     REQUIRE(it->second.position.distanceFromOwn == 0);
+}
+
+TEST_CASE("TrackerData rejects out-of-order position updates", "[single-file]")
+{
+    time_us_Value = 2'000'000;
+    TrackerData<10, 2, 10> trackedAircraft;
+    trackedAircraft.pathPrediction(true);
+
+    GATAS::AircraftPositionInfo latest;
+    latest.address = 73;
+    latest.timestamp = 2'000'000;
+    latest.lat = 52.0f;
+    latest.lon = 4.0f;
+    latest.groundSpeed = 50.0f;
+    latest.track = 90;
+    latest.distanceFromOwn = 1'000;
+    REQUIRE(trackedAircraft.insert(latest));
+
+    time_us_Value = 2'500'000;
+    GATAS::AircraftPositionInfo older = latest;
+    older.timestamp = 1'000'000;
+    older.lat = 51.0f;
+    older.lon = 3.0f;
+    older.distanceFromOwn = 2'000;
+    REQUIRE_FALSE(trackedAircraft.insert(older));
+
+    auto stored = trackedAircraft.trackedAircraft.find(latest.address);
+    REQUIRE(stored != trackedAircraft.trackedAircraft.end());
+    REQUIRE(stored->second.position.timestamp == latest.timestamp);
+    REQUIRE(stored->second.position.lat == latest.lat);
+    REQUIRE(stored->second.position.lon == latest.lon);
+    REQUIRE(stored->second.position.distanceFromOwn == latest.distanceFromOwn);
+    REQUIRE(stored->second.sendTime == 2'000'000);
 }
 
 TEST_CASE("Radio priority: RADIO 4000000us old, ADSB incoming - should NOT update", "[single-file]")

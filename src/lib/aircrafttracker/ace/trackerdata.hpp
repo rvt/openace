@@ -258,15 +258,27 @@ public:
     bool insert(GATAS::AircraftPositionInfo &position)
     {
         GATAS_MEASURE("insert", 400);
-        if (position.distanceFromOwn > adaptiveRadius)
-        {
-            return false;
-        }
-
         auto time = CoreUtils::timeUs32();
         auto it = trackedAircraft.find(position.address);
         if (it != trackedAircraft.end())
         {
+            // Keep the stored measurement and predictor history on the same timeline;
+            // older coordinates combined with newer history produce invalid extrapolation.
+            const int32_t sampleOrderUs = static_cast<int32_t>(position.timestamp - it->second.position.timestamp);
+            if (sampleOrderUs < 0)
+            {
+                return false;
+            }
+
+            // A current position outside the active radius supersedes the old
+            // in-range position; retaining it would predict an aircraft that has left.
+            if (position.distanceFromOwn > adaptiveRadius)
+            {
+                pathPredictor.remove(position.address);
+                trackedAircraft.erase(it);
+                return false;
+            }
+
             it->second.sendTime = time;
 
             assignCallsignFromDDB(position);
@@ -287,6 +299,11 @@ public:
             it->second.position = position;
             pathPredictor.update(position);
             return true;
+        }
+
+        if (position.distanceFromOwn > adaptiveRadius)
+        {
+            return false;
         }
 
         if (trackedAircraft.full())

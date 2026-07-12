@@ -392,7 +392,7 @@ namespace GATAS
         float verticalSpeed;   // in m/s
         float groundSpeed;     // in m/s
         int16_t track;         // 0..359
-        float hTurnRate;       // deg/s Turn rate in the horizontal plane
+        float hTurnRate;       // deg/s horizontal turn rate; 0 means straight flight, not unknown
 
         // These can be used by received to understand where the target is relative to ownship
         uint32_t distanceFromOwn; // Distance to ownship in meters,

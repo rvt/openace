@@ -8,7 +8,10 @@ OpenAce is a multi-protocol aviation conspicuity device (OGN, FLARM, ADS-L, FANE
 
 ## Working Rules
 
+- Prefix every shell command with `rtk`. Use the matching `rtk` subcommand when available, or `rtk run` for commands without a dedicated wrapper.
 - Prefer targeted edits. Do not touch `src/vendor/` unless the task explicitly requires it.
+- Prefer `etl::optional<T>` when a function may not produce a value. Avoid boolean return values combined with output references.
+- For richer or multi-value results, return a small struct declared next to the API so callers can use `auto result = function();` instead of passing output references.
 - Keep desktop test code and embedded code paths aligned when changing shared module behavior.
 - Use fixed-size ETL containers and avoid introducing dynamic-allocation-heavy patterns into firmware code.
 - Always use braces for control-flow bodies, even when the body is a single line.

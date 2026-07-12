@@ -36,6 +36,7 @@
 class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFrameMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::RadioControlMsg>
 {
     static constexpr uint8_t MANCHESTER = 2;               // Used to just clarify why we sometime multiply by 2
+    static constexpr uint32_t TX_TIMEOUT_MS = 55;
 #if GATAS_DEBUG == 1
     static constexpr bool LOW_POWER_MODE = true;
 #else
@@ -55,6 +56,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
         DIO1_RX_DONE = 2,
         HANDLETX = 4,
         HANDLE_RX_CONFIG = 8,
+        TX_TIMEOUT = 16,
     };
 
     struct TxPacket
@@ -164,6 +166,7 @@ class Sx1262 : public Radio, public etl::message_router<Sx1262, GATAS::RadioTxFr
     bool hasGpsFix = false;
     SpiModule *spiHall = nullptr;
     TaskHandle_t taskHandle = nullptr;
+    TimerHandle_t txTimerHandle = nullptr;
     RxDataFrameQueue *rxDataFrameQueue = nullptr;
     // Keep track of the last error when there was an error, for monitoring only
     sx126x_errors_mask_t lastDeviceError=0;
@@ -256,6 +259,7 @@ public:
     void standBy(sx126x_standby_cfg_t mode);
 
     static void sx1262Trampoline(void *arg);
+    static void txTimerCallback(TimerHandle_t timer);
     void sx1262Task(void *arg);
 
     uint8_t receivedPacketLength() const;

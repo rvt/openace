@@ -65,6 +65,7 @@ private:
     };
 
     TaskHandle_t taskHandle = nullptr;
+    TimerHandle_t sendTimerHandle = nullptr;
     TrackerData<MAX_TRACKING_PLANES, TIMESLICES, MAX_PREDICTED_AIRCRAFT> trackedAircraft;
     GATAS::AircraftAddress ownshipAddress;
     bool groundStation = false;
@@ -80,6 +81,7 @@ private:
 
     enum TaskState : uint32_t
     {
+        TIMER = 1 << 1,
         NEW = 1 << 2,
         MAINTAIN = 1 << 3,
         CLOSEST_10 = 1 << 4
@@ -93,6 +95,7 @@ private:
     void on_receive(const GATAS::Every5SecMsg &msg);
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
     static void aircraftTrackerTrampoline(void *arg);
+    static void sendTimerCallback(TimerHandle_t timer);
     void aircraftTrackerTask(void *arg);
     void handleNew();
     void sendEligibleAircraft();

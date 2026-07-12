@@ -63,6 +63,12 @@ GATAS::PostConstruct Sx1262::postConstruct()
 
     radioInit();
 
+    txTimerHandle = xTimerCreate(NAMES[radioNo].cbegin(), TASK_DELAY_MS(TX_TIMEOUT_MS), pdFALSE, this, txTimerCallback);
+    if (txTimerHandle == nullptr)
+    {
+        return GATAS::PostConstruct::TIMER_ERROR;
+    }
+
     if (xTaskCreate(sx1262Trampoline, NAMES[radioNo].cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY + 4, &taskHandle) != pdPASS)
     {
         return GATAS::PostConstruct::TASK_ERROR;
@@ -645,16 +651,25 @@ void Sx1262::sx1262Trampoline(void *arg)
     sx1262->sx1262Task(arg);
 }
 
+void Sx1262::txTimerCallback(TimerHandle_t timer)
+{
+    auto sx1262 = static_cast<Sx1262 *>(pvTimerGetTimerID(timer));
+    if (sx1262 != nullptr && sx1262->taskHandle != nullptr)
+    {
+        xTaskNotify(sx1262->taskHandle, TaskState::TX_TIMEOUT, eSetBits);
+    }
+}
+
 void Sx1262::sx1262Task(void *arg)
 {
     (void)arg;
     SpiModule *aceSpi = spiHall;
-    uint32_t keepTransmittingUntill = 0;
+    bool transmitting = false;
     bool doListen = false;
     while (true)
     {
         uint32_t notifyValue = 0;
-        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, TASK_DELAY_MS(2000));
+        xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyValue, portMAX_DELAY);
 
         if (notifyValue)
         {
@@ -671,22 +686,22 @@ void Sx1262::sx1262Task(void *arg)
             {
                 statistics.transmittedPackets += 1;
                 doListen = true;
-                keepTransmittingUntill = 0;
+                transmitting = false;
+                xTimerStop(txTimerHandle, 0);
             }
 
-            // When in TX mode, the transceiver cannot be reconfigured and we need to wait for the TX to finish
-            if (keepTransmittingUntill)
+            if ((notifyValue & TaskState::TX_TIMEOUT) && transmitting)
             {
-                // Keep listening
-                if (!CoreUtils::isUsReachedRaw(keepTransmittingUntill))
-                {
-                    // TX still in progress — normal, skip queue and wait for DIO1_TX_DONE
-                    continue;
-                }
-                // 55ms elapsed without DIO1_TX_DONE — hardware likely stuck, fall through to recover
-                GATAS_WARN("TX timeout - no DIO1_TX_DONE received within 55ms");
-                keepTransmittingUntill = 0;
+                GATAS_WARN("TX timeout - no DIO1_TX_DONE received within %dms", TX_TIMEOUT_MS);
+                // TODO: Capture IRQ status and device errors here to diagnose missing TX completion interrupts.
+                transmitting = false;
                 doListen = true;
+            }
+
+            // The transceiver cannot be reconfigured or start another packet while TX is active.
+            if (transmitting)
+            {
+                continue;
             }
 
             // When a packet is received, receive it and directly reconfigure the transceiver.. then send it to the bus
@@ -719,9 +734,14 @@ void Sx1262::sx1262Task(void *arg)
                 {
                     GATAS_MEASURE("Send Radio:", 1500, radioNo);
                     // GATAS_INFO("%8ld TX Packet ds:%s", CoreUtils::timeUs32Raw() / 1000, GATAS::toString(txPacket.radioParameters.config->dataSource()));
-                    keepTransmittingUntill = CoreUtils::timeUs32Raw() + 55000; // 55ms is longest packet expect (LORA)
                     configureSx1262(txPacket.radioParameters, txPacket.length);
                     sendPacket(txPacket);
+                    transmitting = true;
+                    if (xTimerStart(txTimerHandle, portMAX_DELAY) != pdPASS)
+                    {
+                        GATAS_WARN("Failed to start TX timeout timer");
+                        xTaskNotify(taskHandle, TaskState::TX_TIMEOUT, eSetBits);
+                    }
                     continue; // Need to wait for TX done
                 }
             }

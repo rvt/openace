@@ -18,7 +18,7 @@
  * The predictor keeps up to three recent samples per aircraft and extrapolates
  * only over a short horizon. The covered prediction modes are:
  * - straight horizontal motion with constant ground speed
- * - derived horizontal constant-turn motion from recent heading history
+ * - protocol-provided or derived horizontal constant-turn motion
  * - constant vertical-speed climb or descent
  *
  * To keep memory use down on embedded targets, the predictor stores only the
@@ -52,6 +52,7 @@ private:
     {
         uint32_t timestamp = 0;
         float groundSpeed = 0.0f;
+        float hTurnRate = 0.0f;
         int16_t track = 0;
     };
 
@@ -117,6 +118,7 @@ private:
             HistorySample sample;
             sample.timestamp = position.timestamp;
             sample.groundSpeed = position.groundSpeed;
+            sample.hTurnRate = position.hTurnRate;
             sample.track = normalizeTrack(static_cast<float>(position.track));
             return sample;
         }
@@ -205,10 +207,9 @@ private:
     /**
      * Refresh the effective turn-rate estimate for one aircraft track.
      *
-     * The estimate is derived from the most recent one or two history segments
-     * and applies a simple weighted average biased toward the newest segment.
-     * If no segment is usable, the estimate is cleared so stale curvature cannot
-     * leak into later predictions.
+     * A finite turn rate supplied by the protocol takes priority. By contract,
+     * zero means straight flight. Only a non-finite value means unavailable and
+     * enables derivation from recent heading segments.
      *
      * @param state Track history and estimated motion state for one aircraft.
      */
@@ -222,6 +223,13 @@ private:
         }
 
         const HistorySample &latest = state.latest();
+        if (isfinite(latest.hTurnRate))
+        {
+            state.estimatedTurnRateDegPerSec = clampTurnRate(latest.hTurnRate);
+            state.estimatedTurnRateValid = true;
+            return;
+        }
+
         float recentRate = 0.0f;
         float olderRate = 0.0f;
         float weightedSum = 0.0f;

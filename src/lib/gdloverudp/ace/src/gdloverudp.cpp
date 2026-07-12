@@ -231,10 +231,11 @@ void GDLoverUDP::transmitBuffer()
         return;
     }
 
-    // Calculate how many pbufs
-    auto [lconnectedClients, ludpPorts] = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), connectedClients, udpPorts);
+    auto [connectedClientsSnapshot, udpPortsSnapshot] =
+        SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), connectedClients, udpPorts);
 
-    uint8_t totalpBufs = lconnectedClients.size() * ludpPorts.size() + gateWayClient ? ludpPorts.size() : 0;
+    uint8_t totalpBufs = connectedClientsSnapshot.size() * udpPortsSnapshot.size() +
+                         (gateWayClient ? udpPortsSnapshot.size() : 0);
     for (const auto &client : customClients)
     {
         if ((client.ip & 0xFFFFFF) == networkAddress)
@@ -262,11 +263,11 @@ void GDLoverUDP::transmitBuffer()
     LwipLock lock;
 
     // Send to the connect clients and the defined ports
-    for (auto ip : lconnectedClients)
+    for (auto ip : connectedClientsSnapshot)
     {
         // Connected clients are always on the accesspoint,
         // thus we don't need to test for the networkAddress
-        for (auto port : ludpPorts)
+        for (auto port : udpPortsSnapshot)
         {
             sendTo(ip, port, data);
         }
@@ -275,7 +276,7 @@ void GDLoverUDP::transmitBuffer()
     // Send to the gateway client, which is most lickly running a EFB
     if (gateWayClient)
     {
-        for (auto port : ludpPorts)
+        for (auto port : udpPortsSnapshot)
         {
             sendTo(gateWayClient, port, data);
         }

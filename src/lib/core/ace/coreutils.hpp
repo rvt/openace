@@ -11,6 +11,7 @@
 #include "spinlockguard.hpp"
 
 #include "etl/string.h"
+#include "etl/optional.h"
 #include "etl/vector.h"
 
 namespace CoreUtils
@@ -195,10 +196,12 @@ namespace CoreUtils
 
     /**
      * Convert a UTC millisecond-in-minute hint into the local PPS-aligned
-     * timeUs32() frame. Falls back to timeUs32() if epoch sync is unavailable
-     * or if the hint is too far from the current time.
+     * timeUs32() frame.
+     *
+     * @return The converted timestamp, or etl::nullopt when epoch sync is
+     * unavailable or the hint is outside the allowed age window.
      */
-    uint32_t timeUs32FromMsInMinute(uint16_t msInMinute, uint16_t maxAbsDeltaMs = 10'000);
+    etl::optional<uint32_t> timeUs32FromMsInMinute(uint16_t msInMinute, uint16_t maxAbsDeltaMs = 10'000);
 
     inline tm localTime(uint64_t msSinceEpoch)
     {

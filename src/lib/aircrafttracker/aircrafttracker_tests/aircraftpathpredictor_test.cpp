@@ -41,12 +41,64 @@ TEST_CASE("AircraftPathPredictor extrapolates straight flight", "[single-file]")
     REQUIRE(rel.north == Catch::Approx(0.0f).margin(1.0f));
     REQUIRE(rel.east == Catch::Approx(100.0f).margin(1.0f));
     REQUIRE(predicted.timestamp == 3'000'000);
-    REQUIRE(predicted.ellipseHeight == 1010); // 1000 + 2*5/2
+    REQUIRE(predicted.ellipseHeight == 1010); // 1000m + 2s * 5m/s
     REQUIRE(predicted.hTurnRate == Catch::Approx(0.0f));
     REQUIRE(predicted.track == 90);
     REQUIRE(latest.timestamp == 1'000'000);
     REQUIRE(latest.lat == Catch::Approx(52.0f));
     REQUIRE(latest.lon == Catch::Approx(4.0f));
+}
+
+TEST_CASE("AircraftPathPredictor uses protocol-provided turn rate from the first sample", "[single-file]")
+{
+    AircraftPathPredictor<4> predictor;
+
+    auto latest = makePosition(1'000'000, 0x123457, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 0);
+    latest.hTurnRate = 5.0f;
+    REQUIRE(predictor.update(latest));
+
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, latest);
+
+    REQUIRE(predicted.hTurnRate == Catch::Approx(5.0f));
+    REQUIRE(predicted.track == 10);
+    auto rel = CoreUtils::northEastDistance(52.0f, 4.0f, predicted.lat, predicted.lon);
+    REQUIRE(rel.north == Catch::Approx(99.49f).margin(1.0f));
+    REQUIRE(rel.east == Catch::Approx(8.70f).margin(1.0f));
+}
+
+TEST_CASE("AircraftPathPredictor prefers protocol-provided turn rate over derived history", "[single-file]")
+{
+    AircraftPathPredictor<4> predictor;
+
+    REQUIRE(predictor.update(makePosition(9'000'000, 0x123458, 51.99955f, 4.0f, 1000, 0.0f, 50.0f, 350)));
+    auto latest = makePosition(10'000'000, 0x123458, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 0);
+    latest.hTurnRate = -4.0f;
+    REQUIRE(predictor.update(latest));
+
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(12'000'000, latest);
+
+    REQUIRE(predicted.hTurnRate == Catch::Approx(-4.0f));
+    REQUIRE(predicted.track == 352);
+}
+
+TEST_CASE("AircraftPathPredictor treats zero protocol turn rate as straight flight", "[single-file]")
+{
+    AircraftPathPredictor<4> predictor;
+
+    auto previous = makePosition(9'000'000, 0x123459, 51.99955f, 4.0f, 1000, 0.0f, 50.0f, 350);
+    previous.hTurnRate = NAN;
+    REQUIRE(predictor.update(previous));
+    auto latest = makePosition(10'000'000, 0x123459, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 0);
+    latest.hTurnRate = 0.0f;
+    REQUIRE(predictor.update(latest));
+
+    GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(12'000'000, latest);
+
+    REQUIRE(predicted.hTurnRate == Catch::Approx(0.0f));
+    REQUIRE(predicted.track == 0);
+    auto rel = CoreUtils::northEastDistance(52.0f, 4.0f, predicted.lat, predicted.lon);
+    REQUIRE(rel.north == Catch::Approx(100.0f).margin(1.0f));
+    REQUIRE(rel.east == Catch::Approx(0.0f).margin(1.0f));
 }
 
 
@@ -55,8 +107,11 @@ TEST_CASE("AircraftPathPredictor uses derived positive turn rate for curved pred
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(9'000'000, 0xABCDEF, 51.99955f, 4.0f, 998, 2.0f, 50.0f, 350)));
+    auto previous = makePosition(9'000'000, 0xABCDEF, 51.99955f, 4.0f, 998, 2.0f, 50.0f, 350);
+    previous.hTurnRate = NAN;
+    REQUIRE(predictor.update(previous));
     auto latest = makePosition(10'000'000, 0xABCDEF, 52.0f, 4.0f, 1000, 2.0f, 50.0f, 0);
+    latest.hTurnRate = NAN;
     REQUIRE(predictor.update(latest));
 
     GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(12'000'000, latest);
@@ -73,8 +128,11 @@ TEST_CASE("AircraftPathPredictor uses derived negative turn rate for right turn 
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(9'000'000, 0xABCDF0, 51.99955f, 4.0f, 1002, -2.0f, 50.0f, 10)));
+    auto previous = makePosition(9'000'000, 0xABCDF0, 51.99955f, 4.0f, 1002, -2.0f, 50.0f, 10);
+    previous.hTurnRate = NAN;
+    REQUIRE(predictor.update(previous));
     auto latest = makePosition(10'000'000, 0xABCDF0, 52.0f, 4.0f, 1000, -2.0f, 50.0f, 0);
+    latest.hTurnRate = NAN;
     REQUIRE(predictor.update(latest));
 
     GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(12'000'000, latest);
@@ -103,9 +161,14 @@ TEST_CASE("AircraftPathPredictor derives turn rate from recent history", "[singl
 {
     AircraftPathPredictor<4> predictor;
 
-    REQUIRE(predictor.update(makePosition(0, 0x654321, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 350)));
-    REQUIRE(predictor.update(makePosition(1'000'000, 0x654321, 52.00045f, 4.0f, 1000, 0.0f, 50.0f, 0)));
+    auto first = makePosition(0, 0x654321, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 350);
+    first.hTurnRate = NAN;
+    REQUIRE(predictor.update(first));
+    auto second = makePosition(1'000'000, 0x654321, 52.00045f, 4.0f, 1000, 0.0f, 50.0f, 0);
+    second.hTurnRate = NAN;
+    REQUIRE(predictor.update(second));
     auto latest = makePosition(2'000'000, 0x654321, 52.00089f, 4.00008f, 1000, 0.0f, 50.0f, 10);
+    latest.hTurnRate = NAN;
     REQUIRE(predictor.update(latest));
 
     GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, latest);
@@ -141,7 +204,7 @@ TEST_CASE("AircraftPathPredictor rejects out-of-order updates and expires tracks
     REQUIRE(expired.lon == Catch::Approx(latest.lon));
 }
 
-TEST_CASE("AircraftPathPredictor clears stale turn rate when update cannot derive one", "[single-file]")
+TEST_CASE("AircraftPathPredictor keeps straight flight at low ground speed", "[single-file]")
 {
     AircraftPathPredictor<4> predictor;
 
@@ -338,6 +401,7 @@ TEST_CASE("AircraftPathPredictor clamps turn rate and normalizes track", "[singl
 
     REQUIRE(predictor.update(makePosition(1'000'000, 0x500001, 52.0f, 4.0f, 1000, 0.0f, 50.0f, 370)));
     auto latest = makePosition(2'000'000, 0x500001, 52.00045f, 4.0f, 1000, 0.0f, 50.0f, 60);
+    latest.hTurnRate = 50.0f;
     REQUIRE(predictor.update(latest));
 
     GATAS::AircraftPositionInfo predicted = predictor.extrapolatedPos(3'000'000, latest);

@@ -76,19 +76,19 @@ uint64_t msSinceEpoch()
     return (time_us_64() / 1'000) + offsetTimeToAbsolute;
 }
 
-uint32_t timeUs32FromMsInMinute(uint16_t msInMinute, uint16_t maxAbsDeltaMs)
+etl::optional<uint32_t> timeUs32FromMsInMinute(uint16_t msInMinute, uint16_t maxAbsDeltaMs)
 {
     GATAS_ASSERT(msInMinute < 60'000, "msInMinute must be < 60000");
     if (!epochTimeValid)
     {
-        return timeUs32();
+        return etl::nullopt;
     }
 
     const int32_t deltaMs = minuteMsDelta(msInMinute, msSinceEpoch());
 
     if (deltaMs < -static_cast<int32_t>(maxAbsDeltaMs))
     {
-        return timeUs32();
+        return etl::nullopt;
     }
 
     const uint32_t nowUs = timeUs32();
