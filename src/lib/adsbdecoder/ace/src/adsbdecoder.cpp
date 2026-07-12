@@ -61,7 +61,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     // Two phase decoder to first decode the address.. when not in ignoredAirplanes continue decoding
     mode_s_decode_phase1(&state, &mm, data);
 
-    if (mm.msgtype != 17)
+    if (mm.msgtype != 17 && mm.msgtype != 5 && mm.msgtype != 21)
     {
         return;
     }
@@ -88,6 +88,17 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         if (!adsbDataCollector.start(mm.aa, usTime))
         {
             statistics.knownAircraftFull += 1;
+            return;
+        }
+
+        if (mm.msgtype == 5 || mm.msgtype == 21)
+        {
+            adsbDataCollector.updateSquawk(mm.identity);
+            return;
+        }
+
+        if (mm.msgtype != 17)
+        {
             return;
         }
 
@@ -201,7 +212,8 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
                  (float)current.velocity * KN_TO_MS,
                  static_cast<int16_t>(current.heading),
                  0.0f,
-                 fromOwn.distance}});
+                 fromOwn.distance,
+                 current.squawk}});
         }
     }
     else

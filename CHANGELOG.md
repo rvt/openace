@@ -11,12 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Experimental aircraft path prediction in `AircraftTracker`, using recent position, speed, heading, vertical speed, and turn-rate history to extrapolate short gaps in tracked traffic.
 - Desktop test coverage for aircraft path prediction and updated antenna-radiation bearing behavior.
+- Squawk code tracking on `AircraftPositionInfo`, including ADS-B squawk capture and an `AircraftTracker` option to show known squawk codes instead of callsigns.
 
 ### Changed
 
 - Added an `AircraftTracker` configuration and web UI option to enable or disable path prediction.
 - `AircraftTracker` now keeps lightweight predictor state for nearby traffic and can forward extrapolated positions during scheduled client updates.
 - Normalized several tracker/core numeric types and math helpers, including 32-bit ellipsoid heights and float-specific angle/CPR calculations.
+- `AIRCRAFT_POSITION_TYPE_V2` binary messages now include a signed 16-bit squawk field after aircraft category; `-1` means unknown.
 
 ### Deprecated
 

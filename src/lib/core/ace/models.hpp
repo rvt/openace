@@ -377,6 +377,7 @@ namespace GATAS
     {
         uint32_t timestamp;
         GATAS::CallSign callSign;
+        int16_t squawk;
 
         AircraftAddress address;
         AddressType addressType;
@@ -407,12 +408,12 @@ namespace GATAS
         int32_t relEastFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
         int32_t relEastFromOwn(const OwnshipPositionInfo &ownship) const;
 
-        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t track_, float hTurnRate_, uint32_t distanceFromOwn_ /*, int16_t bearingFromOwn_*/)
-            : timestamp(timestamp_), callSign(callSign_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), track(track_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_) // , bearingFromOwn(bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t track_, float hTurnRate_, uint32_t distanceFromOwn_, int16_t squawk_ = -1 /*, int16_t bearingFromOwn_*/)
+            : timestamp(timestamp_), callSign(callSign_), squawk(squawk_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), track(track_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_) // , bearingFromOwn(bearingFromOwn_)
         {
         }
         // Default constructor
-        AircraftPositionInfo() : timestamp(0), callSign(""), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), track(0), hTurnRate(0), distanceFromOwn(UINT32_MAX) // , bearingFromOwn(INT16_MIN)
+        AircraftPositionInfo() : timestamp(0), callSign(""), squawk(-1), address(0), addressType(AddressType::RANDOM), dataSource(DataSource::NONE), aircraftType(AircraftCategory::UNKNOWN), stealth(false), noTrack(false), airborne(false), lat(0), lon(0), ellipseHeight(0), verticalSpeed(0), groundSpeed(0), track(0), hTurnRate(0), distanceFromOwn(UINT32_MAX) // , bearingFromOwn(INT16_MIN)
         {
         }
 

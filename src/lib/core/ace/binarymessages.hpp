@@ -136,6 +136,7 @@ public:
         float groundSpeed = static_cast<float>(reader.read_unchecked<uint16_t>(16U)) / 100.f;
         float verticalRate = static_cast<float>(reader.read_unchecked<int16_t>(16U)) / 1024.f;
         uint8_t aircraftCategoryIdx = reader.read_unchecked<uint8_t>(8U);
+        int16_t squawk = reader.read_unchecked<int16_t>(16U);
 
         uint8_t callSignLen = etl::min(GATAS::MAX_CALLSIGN_LENGTH, reader.read_unchecked<uint8_t>(8U));
         char callSignBuffer[GATAS::MAX_CALLSIGN_LENGTH + 1] = {0};
@@ -162,7 +163,8 @@ public:
             groundSpeed,
             track,
             turnRate,
-            rel.distance);
+            rel.distance,
+            squawk);
     }
 
     /**

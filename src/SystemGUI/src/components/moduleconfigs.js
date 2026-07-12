@@ -54,6 +54,7 @@ class AircraftTrackerConfig extends ModuleConfig {
     this.$refs.ddbEnabled.checked = data.ddbEnabled;
     this.$refs.pathPredictionEnabled.checked = data.ppEnabled;
     this.$refs.prefixEnabled.checked = data.prefixEnabled;
+    this.$refs.showSquawk.checked = data.showSquawk;
   }
 
   _getFormData() {
@@ -61,6 +62,7 @@ class AircraftTrackerConfig extends ModuleConfig {
       ddbEnabled: this.$refs.ddbEnabled.checked,
       ppEnabled: this.$refs.pathPredictionEnabled.checked,
       prefixEnabled: this.$refs.prefixEnabled.checked,
+      showSquawk: this.$refs.showSquawk.checked,
     };
   }
 
@@ -120,6 +122,19 @@ class AircraftTrackerConfig extends ModuleConfig {
             </label>:
             <br />
             <input type="checkbox" id="prefixEnabled" ref="prefixEnabled" placeholder="1" />
+          </label>
+        </div>
+
+        <div class="section">
+          <label for="showSquawk">
+            <label class="btn sm btn-medium btn-link p-0 circle mt-n1">
+              Show Squawk ${html.raw(icon.help)}
+              <p class="tooltip rounded shadow o-90 p-2 bg-dark color-light mw-300 sm outset-bottom inset-left text-left mh-200 overflow-auto">
+                Show a known squawk code instead of the aircraft callsign.
+              </p>
+            </label>:
+            <br />
+            <input type="checkbox" id="showSquawk" ref="showSquawk" placeholder="1" />
           </label>
         </div>
         <br />

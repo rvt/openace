@@ -30,7 +30,8 @@
     },
     "AircraftTracker": {
         "ddbEnabled": 0,
-        "prefixEnabled": 0
+        "prefixEnabled": 0,
+        "showSquawk": 0
     },
     "Bluetooth": {
         "localName": "GaTas"

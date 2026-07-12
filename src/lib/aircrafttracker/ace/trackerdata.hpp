@@ -69,6 +69,7 @@ private:
     uint32_t adaptiveRadius;
     bool ddbLookupsEnabledFlag;
     bool prefixEnabledFlag;
+    bool showSquawkFlag;
 
     void predictPosition(GATAS::AircraftPositionInfo &position,
                          uint32_t currentTime,
@@ -191,7 +192,8 @@ public:
     TrackerData()
         : adaptiveRadius(75000),
           ddbLookupsEnabledFlag(false),
-          prefixEnabledFlag(false)
+          prefixEnabledFlag(false),
+          showSquawkFlag(false)
     {
         pathPredictor.enabled(false);
     }
@@ -213,6 +215,11 @@ public:
     void prefixEnabled(bool enabled)
     {
         prefixEnabledFlag = enabled;
+    }
+
+    void showSquawk(bool enabled)
+    {
+        showSquawkFlag = enabled;
     }
 
     void pathPrediction(bool enabled)
@@ -264,6 +271,7 @@ public:
 
             assignCallsignFromDDB(position);
             assignDataSourcePrefix(position);
+            assignSquawkCallsign(position);
 
             // Prefer MLAT over ADSB for RADIO_PRIORITY_TIMEOUT_US to avoid jumps.
             // We assume ADSB/MLAT data is less acurate due to delays in the chain
@@ -298,6 +306,7 @@ public:
 
         assignCallsignFromDDB(position);
         assignDataSourcePrefix(position);
+        assignSquawkCallsign(position);
 
         trackedAircraft.insert({position.address, TrackerEntry(time, position)});
         pathPredictor.update(position);
@@ -326,6 +335,19 @@ public:
         {
             GATAS::CallSign prefixedCallSign(GATAS::toShortString(position.dataSource));
             position.callSign.insert(0, prefixedCallSign);
+        }
+    }
+
+    void assignSquawkCallsign(GATAS::AircraftPositionInfo &position)
+    {
+        if (showSquawkFlag && position.squawk != -1)
+        {
+            const uint16_t squawk = static_cast<uint16_t>(position.squawk);
+            position.callSign = "0000";
+            position.callSign[0] = static_cast<char>('0' + (squawk / 1000U) % 10U);
+            position.callSign[1] = static_cast<char>('0' + (squawk / 100U) % 10U);
+            position.callSign[2] = static_cast<char>('0' + (squawk / 10U) % 10U);
+            position.callSign[3] = static_cast<char>('0' + squawk % 10U);
         }
     }
 

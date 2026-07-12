@@ -67,6 +67,8 @@
     "ddbEnabled": 0,
     "_comment_prefixEnabled": "Add a prefix to indicate what the datasource is of this aircraft",
     "prefixEnabled": 0,
+    "_comment_showSquawk": "Show known squawk codes instead of callsigns",
+    "showSquawk": 0,
     "_comment_ppEnabled": "Enable or Disable experimental Path PRediction",
     "ppEnabled": 0
   },

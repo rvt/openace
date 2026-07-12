@@ -32,6 +32,7 @@ void AircraftTracker::on_receive(const GATAS::ConfigUpdatedMsg &msg)
         trackedAircraft.ddbEnabled(msg.config.valueByPath(false, NAME, "ddbEnabled"));
         trackedAircraft.pathPrediction(msg.config.valueByPath(false, NAME, "ppEnabled"));
         trackedAircraft.prefixEnabled(msg.config.valueByPath(false, NAME, "prefixEnabled"));
+        trackedAircraft.showSquawk(msg.config.valueByPath(false, NAME, "showSquawk"));
     }
 }
 

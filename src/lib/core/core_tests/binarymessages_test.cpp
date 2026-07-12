@@ -67,7 +67,7 @@ TEST_CASE("Aircraft position V2 uses ms-in-minute in the local PPS-aligned frame
     CoreUtils::setPPS(0);
     CoreUtils::setOffsetMsSinceEpoch(20'000);
 
-    constexpr size_t rawSize = 25 + 1;
+    constexpr size_t rawSize = 25 + 3;
     uint8_t buffer[rawSize] = {};
 
     etl::bit_stream_writer writer(buffer, rawSize, etl::endian::big);
@@ -84,6 +84,7 @@ TEST_CASE("Aircraft position V2 uses ms-in-minute in the local PPS-aligned frame
     writer.write_unchecked(0U, 16U);
     writer.write_unchecked(0, 16U);
     writer.write_unchecked(0U, 8U);
+    writer.write_unchecked(7000, 16U);
     writer.write_unchecked(0U, 8U);
 
     etl::bit_stream_reader reader(buffer, rawSize, etl::endian::big);
@@ -91,4 +92,5 @@ TEST_CASE("Aircraft position V2 uses ms-in-minute in the local PPS-aligned frame
 
     REQUIRE(position.timestamp == 19'000'000);
     REQUIRE(position.address == 0x010203U);
+    REQUIRE(position.squawk == 7000);
 }
