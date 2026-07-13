@@ -662,6 +662,7 @@ TEST_CASE("Data source prefix does create callsigns for empty values", "[single-
 
 TEST_CASE("Squawk display replaces callsign when squawk is known", "[single-file]")
 {
+    time_us_Value = 0;
     TrackerData<100, 4> trackedAircraft;
     trackedAircraft.prefixEnabled(true);
     trackedAircraft.showSquawk(true);
@@ -678,11 +679,24 @@ TEST_CASE("Squawk display replaces callsign when squawk is known", "[single-file
     class VerifySquawkHandler
     {
     public:
+        uint8_t callCount = 0;
+
         void onNext(const GATAS::AircraftPositionInfo &position)
         {
-            REQUIRE(position.callSign == "0042");
+            REQUIRE(position.callSign == "AB0042");
+            callCount += 1;
         }
     } handler;
 
-    trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifySquawkHandler, &VerifySquawkHandler::onNext>(handler), ownship);
+    auto callback = etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifySquawkHandler, &VerifySquawkHandler::onNext>(handler);
+    trackedAircraft.sendScheduled(callback, ownship);
+    REQUIRE(handler.callCount == 1);
+
+    aircraftPosition.timestamp = 1;
+    aircraftPosition.callSign = "PH-DEF";
+    time_us_Value = 1'100'000;
+
+    REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
+    trackedAircraft.sendScheduled(callback, ownship);
+    REQUIRE(handler.callCount == 2);
 }

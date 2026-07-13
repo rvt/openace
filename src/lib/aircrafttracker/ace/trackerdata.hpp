@@ -322,8 +322,8 @@ public:
         }
 
         assignCallsignFromDDB(position);
-        assignDataSourcePrefix(position);
         assignSquawkCallsign(position);
+        assignDataSourcePrefix(position);
 
         trackedAircraft.insert({position.address, TrackerEntry(time, position)});
         pathPredictor.update(position);
