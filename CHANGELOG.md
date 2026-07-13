@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+-
+
+### Security
+
+-
+
+## [v3.1.0] - 2026-07-31
+
+### Added
+
 - Experimental aircraft path prediction in `AircraftTracker`, using recent position, speed, heading, vertical speed, and turn-rate history to extrapolate short gaps in tracked traffic.
 - Desktop test coverage for aircraft path prediction and updated antenna-radiation bearing behavior.
 - Squawk code tracking on `AircraftPositionInfo`, including ADS-B squawk capture and an `AircraftTracker` option to show known squawk codes instead of callsigns.

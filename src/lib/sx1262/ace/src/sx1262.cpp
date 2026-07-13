@@ -692,7 +692,7 @@ void Sx1262::sx1262Task(void *arg)
 
             if ((notifyValue & TaskState::TX_TIMEOUT) && transmitting)
             {
-                GATAS_WARN("TX timeout - no DIO1_TX_DONE received within %dms", TX_TIMEOUT_MS);
+                GATAS_WARN("TX timeout - no DIO1_TX_DONE received within %ldms", TX_TIMEOUT_MS);
                 // TODO: Capture IRQ status and device errors here to diagnose missing TX completion interrupts.
                 transmitting = false;
                 doListen = true;

@@ -282,8 +282,8 @@ public:
             it->second.sendTime = time;
 
             assignCallsignFromDDB(position);
-            assignDataSourcePrefix(position);
             assignSquawkCallsign(position);
+            assignDataSourcePrefix(position);
 
             // Prefer MLAT over ADSB for RADIO_PRIORITY_TIMEOUT_US to avoid jumps.
             // We assume ADSB/MLAT data is less acurate due to delays in the chain
