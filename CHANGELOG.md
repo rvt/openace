@@ -25,6 +25,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+-
+
+### Security
+
+-
+
+## [v3.2.1] - 2026-08-06
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
 - Fixed the aircraft selector showing the last configured aircraft after a webpage reload instead of the active aircraft saved in the device configuration.
 
 ### Security
