@@ -9,7 +9,6 @@ gatas_add_module(
         ace/src/L76B.cpp
         ace/src/AbstractGnss.cpp
         ace/src/StaticGPS.cpp
-        ace/src/StaticGPSNmea.cpp
     TARGET_LINK_LIBS
         pioserial
         utils

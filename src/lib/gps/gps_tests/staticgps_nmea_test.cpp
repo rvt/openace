@@ -2,7 +2,6 @@
 
 #include <string>
 
-#include "StaticGPSNmea.hpp"
 #include "minmea.h"
 
 namespace

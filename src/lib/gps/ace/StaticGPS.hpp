@@ -5,17 +5,17 @@
 #include "AbstractGnss.hpp"
 
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "timers.h"
 
 #include "etl/message_router.h"
-
 #include "lwip/ip_addr.h"
 
 struct pbuf;
 struct udp_pcb;
 
 class StaticGPS : public AbstractGnss,
-                  public etl::message_router<StaticGPS, GATAS::WifiConnectionStateMsg>
+                  public etl::message_router<StaticGPS, GATAS::WifiConnectionStateMsg, GATAS::ConfigUpdatedMsg>
 {
 private:
     static constexpr uint32_t SEND_INTERVAL_MS = 500;
@@ -31,6 +31,7 @@ private:
         NTP_RESULT = 1 << 1,
         NETWORK_CHANGED = 1 << 2,
         NTP_FAILED = 1 << 3,
+        CONFIG_UPDATED = 1 << 4,
     };
 
     struct
@@ -43,10 +44,12 @@ private:
 
     friend class message_router;
 
-    const float latitude;
-    const float longitude;
-    const float altitudeMeters;
-    const GATAS::ConfigString ntpServer;
+    float latitude;
+    float longitude;
+    float altitudeMeters;
+    float geoidSeparationMeters;
+    GATAS::ConfigString ntpServer;
+    SemaphoreHandle_t configurationMutex = nullptr;
 
     TaskHandle_t staticTaskHandle = nullptr;
     TimerHandle_t sendTimerHandle = nullptr;
@@ -59,6 +62,12 @@ private:
     bool ntpRequestActive = false;
     bool ntpResultPending = false;
 
+    struct Coordinate
+    {
+        etl::string<11> text;
+        char hemisphere;
+    };
+
     static float configFloat(const Configuration &config, const etl::string_view key, const char *defaultValue);
     static void taskTrampoline(void *arg);
     static void timerCallback(TimerHandle_t timer);
@@ -66,13 +75,17 @@ private:
     static void ntpReceiveCallback(void *arg, udp_pcb *pcb, pbuf *packet, const ip_addr_t *address, uint16_t port);
 
     void task();
+    Coordinate coordinate(float value, bool latitude);
+    void publishSentence(GATAS::NMEAString &sentence);
     void publishSentences();
     void beginNtpRequest();
     void sendNtpRequest(const ip_addr_t *address);
     void cancelNtpRequest();
     void applyNtpResult();
+    void applyConfigurationUpdate();
 
     void on_receive(const GATAS::WifiConnectionStateMsg &msg);
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
     void on_receive_unknown(const etl::imessage &msg);
 
     bool configureGnss() override;

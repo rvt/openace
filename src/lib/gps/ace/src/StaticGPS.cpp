@@ -3,10 +3,9 @@
 #include <cmath>
 #include <cstring>
 
-#include "../StaticGPSNmea.hpp"
-
 #include "ace/coreutils.hpp"
 #include "ace/lwiplock.hpp"
+#include "ace/semaphoreguard.hpp"
 
 #include "etl/to_arithmetic.h"
 
@@ -40,6 +39,7 @@ StaticGPS::StaticGPS(etl::imessage_bus &bus, float latitude_, float longitude_, 
       latitude(latitude_),
       longitude(longitude_),
       altitudeMeters(altitudeMeters_),
+      geoidSeparationMeters(static_cast<float>(CoreUtils::egmGeoidOffset(latitude_, longitude_))),
       ntpServer(ntpServer_)
 {
 }
@@ -55,12 +55,16 @@ StaticGPS::StaticGPS(etl::imessage_bus &bus, const Configuration &config)
 
 GATAS::PostConstruct StaticGPS::postConstruct()
 {
-    if (!std::isfinite(latitude) || latitude < -90.0F || latitude > 90.0F ||
-        !std::isfinite(longitude) || longitude < -180.0F || longitude > 180.0F ||
-        !std::isfinite(altitudeMeters) || altitudeMeters < -1000.0F || altitudeMeters > 20000.0F ||
-        ntpServer.empty())
+    configurationMutex = xSemaphoreCreateMutex();
+    if (configurationMutex == nullptr)
     {
-        setStatus("Config error");
+        return GATAS::PostConstruct::MUTEX_ERROR;
+    }
+    GATAS_REGISTER_MUTEX(configurationMutex, "StaticGPS_configurationMutex");
+
+    if (ntpServer.empty())
+    {
+        setStatus("No NTP Server");
         return GATAS::PostConstruct::CONFIG_ERROR;
     }
 
@@ -70,6 +74,7 @@ GATAS::PostConstruct StaticGPS::postConstruct()
         setStatus("No RTC");
         return GATAS::PostConstruct::DEP_NOT_FOUND;
     }
+    setRtcModule(rtc);
 
     setStatus("Waiting NTP");
     return GATAS::PostConstruct::OK;
@@ -77,7 +82,7 @@ GATAS::PostConstruct StaticGPS::postConstruct()
 
 void StaticGPS::start()
 {
-    getBus().subscribe(*this);
+    startReceiveTask();
 
     if (xTaskCreate(taskTrampoline, NAME.cbegin(), configMINIMAL_STACK_SIZE + 1024, this, tskIDLE_PRIORITY + 3, &staticTaskHandle) != pdPASS)
     {
@@ -92,7 +97,8 @@ void StaticGPS::start()
         return;
     }
 
-    nextNtpAttemptUs = time_us_64();
+    getBus().subscribe(*this);
+    nextNtpAttemptUs = CoreUtils::timeUs64();
     xTaskNotify(staticTaskHandle, NETWORK_CHANGED, eSetBits);
 }
 
@@ -122,18 +128,23 @@ void StaticGPS::task()
             applyNtpResult();
         }
 
+        if ((notification & CONFIG_UPDATED) != 0)
+        {
+            applyConfigurationUpdate();
+        }
+
         if ((notification & NETWORK_CHANGED) != 0)
         {
-            nextNtpAttemptUs = time_us_64();
+            nextNtpAttemptUs = CoreUtils::timeUs64();
         }
 
         if ((notification & NTP_FAILED) != 0)
         {
             staticStatistics.ntpErrors += 1;
-            nextNtpAttemptUs = time_us_64() + NTP_RETRY_INTERVAL_US;
+            nextNtpAttemptUs = CoreUtils::timeUs64() + NTP_RETRY_INTERVAL_US;
         }
 
-        const uint64_t nowUs = time_us_64();
+        const uint64_t nowUs = CoreUtils::timeUs64();
         if (ntpRequestActive && nowUs - ntpRequestStartedUs >= NTP_TIMEOUT_US)
         {
             cancelNtpRequest();
@@ -153,8 +164,55 @@ void StaticGPS::task()
     }
 }
 
+StaticGPS::Coordinate StaticGPS::coordinate(float value, bool latitude)
+{
+    Coordinate coordinate;
+    coordinate.hemisphere = latitude ? (value < 0.0F ? 'S' : 'N') : (value < 0.0F ? 'W' : 'E');
+    const float absolute = std::fabs(value);
+    int degrees = static_cast<int>(absolute);
+    float minutes = std::round((absolute - static_cast<float>(degrees)) * 60.0F * 100000.0F) / 100000.0F;
+    if (minutes >= 60.0F)
+    {
+        minutes = 0.0F;
+        degrees += 1;
+    }
+
+    etl::string_stream stream(coordinate.text);
+    stream << etl::format_spec{}.width(latitude ? 2 : 3).fill('0') << degrees
+           << etl::format_spec{}.precision(5).width(8).fill('0') << minutes;
+    return coordinate;
+}
+
+void StaticGPS::publishSentence(GATAS::NMEAString &sentence)
+{
+    processNewSentence({sentence.data(), sentence.size()});
+}
+
 void StaticGPS::publishSentences()
 {
+    float currentLatitude = 0.0F;
+    float currentLongitude = 0.0F;
+    float currentAltitudeMeters = 0.0F;
+    float currentGeoidSeparationMeters = 0.0F;
+    if (auto guard = SemaphoreGuard(1000, configurationMutex))
+    {
+        currentLatitude = latitude;
+        currentLongitude = longitude;
+        currentAltitudeMeters = altitudeMeters;
+        currentGeoidSeparationMeters = geoidSeparationMeters;
+    }
+    else
+    {
+        return;
+    }
+
+    if (!std::isfinite(currentLatitude) || currentLatitude < -90.0F || currentLatitude > 90.0F ||
+        !std::isfinite(currentLongitude) || currentLongitude < -180.0F || currentLongitude > 180.0F ||
+        !std::isfinite(currentAltitudeMeters) || currentAltitudeMeters < -1000.0F || currentAltitudeMeters > 20000.0F)
+    {
+        return;
+    }
+
     // Until NTP or another source has established epoch time, emitting 1970
     // would falsely claim a valid GNSS time and date.
     const uint64_t epochMs = CoreUtils::msSinceEpoch();
@@ -164,22 +222,98 @@ void StaticGPS::publishSentences()
         return;
     }
 
-    auto sentences = StaticGPSNmea::create(latitude, longitude, altitudeMeters, epochMs);
-    if (!sentences)
+    const Coordinate latitudeCoordinate = coordinate(currentLatitude, true);
+    const Coordinate longitudeCoordinate = coordinate(currentLongitude, false);
+
+    const time_t seconds = static_cast<time_t>(epochMs / 1000);
+    struct tm utc = {};
+    if (gmtime_r(&seconds, &utc) == nullptr)
     {
-        setStatus("NMEA error");
         return;
     }
 
-    publishSentence(sentences->gll);
-    publishSentence(sentences->rmc);
-    publishSentence(sentences->vtg);
-    publishSentence(sentences->gga);
-    publishSentence(sentences->gsa);
+    etl::string<9> timeText;
+    etl::string_stream timeStream(timeText);
+    const uint32_t centiseconds = static_cast<uint32_t>((epochMs % 1000) / 10);
+    timeStream << etl::format_spec{}.width(2).fill('0') << utc.tm_hour
+               << etl::format_spec{}.width(2).fill('0') << utc.tm_min
+               << etl::format_spec{}.width(2).fill('0') << utc.tm_sec
+               << GATAS::RESET_FORMAT << "."
+               << etl::format_spec{}.width(2).fill('0') << centiseconds;
+
+    etl::string<6> dateText;
+    etl::string_stream dateStream(dateText);
+    dateStream << etl::format_spec{}.width(2).fill('0') << utc.tm_mday
+               << etl::format_spec{}.width(2).fill('0') << utc.tm_mon + 1
+               << etl::format_spec{}.width(2).fill('0') << (utc.tm_year + 1900) % 100;
+
+    GATAS::NMEAString nmeaString;
+
+    // $GPGLL
+    {
+        etl::string_stream nmeaStream(nmeaString);
+        nmeaStream << "$GPGLL," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
+                   << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
+                   << "," << timeText << ",A";
+    }
+    CoreUtils::addChecksumToNMEA(nmeaString);
+    publishSentence(nmeaString);
+
+    // $GPRMC
+    nmeaString.clear();
+    {
+        etl::string_stream nmeaStream(nmeaString);
+        nmeaStream << "$GPRMC," << timeText << ",A," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
+                   << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
+                   << ",0.000,0.00," << dateText << ",,";
+    }
+    CoreUtils::addChecksumToNMEA(nmeaString);
+    publishSentence(nmeaString);
+
+    // // $GPVTG
+    // nmeaString = "$GPVTG,0.00,T,,M,0.000,N,0.000,K";
+    // CoreUtils::addChecksumToNMEA(nmeaString);
+    // publishSentence(nmeaString);
+
+    // $GPGGA
+    nmeaString.clear();
+    etl::string_stream nmeaStream(nmeaString);
+    nmeaStream << "$GPGGA," << timeText << "," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
+               << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
+               << ",1,08,1.0," << etl::format_spec{}.precision(1) << currentAltitudeMeters
+               << GATAS::RESET_FORMAT << ",M," << etl::format_spec{}.precision(1) << currentGeoidSeparationMeters
+               << GATAS::RESET_FORMAT << ",M,,";
+    CoreUtils::addChecksumToNMEA(nmeaString);
+    publishSentence(nmeaString);
+
+    // $GPGSA
+    nmeaString = "$GPGSA,A,3,03,04,08,10,13,16,21,27,,,,,1.0,1.0,1.0";
+    CoreUtils::addChecksumToNMEA(nmeaString);
+    publishSentence(nmeaString);
+
+    // $GPGSV
+    nmeaString = "$GPGSV,2,1,08,03,45,111,42,04,50,272,43,08,35,046,40,10,60,151,45";
+    CoreUtils::addChecksumToNMEA(nmeaString);
+    publishSentence(nmeaString);
+
+    // $GPGSV
+    nmeaString = "$GPGSV,2,2,08,13,25,210,38,16,40,315,41,21,55,080,44,27,30,180,39";
+    CoreUtils::addChecksumToNMEA(nmeaString);
+    publishSentence(nmeaString);
 }
 
 void StaticGPS::beginNtpRequest()
 {
+    GATAS::ConfigString currentNtpServer;
+    if (auto guard = SemaphoreGuard(1000, configurationMutex))
+    {
+        currentNtpServer = ntpServer;
+    }
+    else
+    {
+        return;
+    }
+
     cancelNtpRequest();
 
     LwipLock lock;
@@ -187,17 +321,17 @@ void StaticGPS::beginNtpRequest()
     if (ntpPcb == nullptr)
     {
         staticStatistics.ntpErrors += 1;
-        nextNtpAttemptUs = time_us_64() + NTP_RETRY_INTERVAL_US;
+        nextNtpAttemptUs = CoreUtils::timeUs64() + NTP_RETRY_INTERVAL_US;
         return;
     }
 
     udp_recv(ntpPcb, ntpReceiveCallback, this);
     ntpRequestActive = true;
-    ntpRequestStartedUs = time_us_64();
+    ntpRequestStartedUs = CoreUtils::timeUs64();
     staticStatistics.ntpRequests += 1;
 
     ip_addr_t address;
-    const err_t error = dns_gethostbyname(ntpServer.c_str(), &address, dnsCallback, this);
+    const err_t error = dns_gethostbyname(currentNtpServer.c_str(), &address, dnsCallback, this);
     if (error == ERR_OK)
     {
         sendNtpRequest(&address);
@@ -208,7 +342,7 @@ void StaticGPS::beginNtpRequest()
         ntpPcb = nullptr;
         ntpRequestActive = false;
         staticStatistics.ntpErrors += 1;
-        nextNtpAttemptUs = time_us_64() + NTP_RETRY_INTERVAL_US;
+        nextNtpAttemptUs = CoreUtils::timeUs64() + NTP_RETRY_INTERVAL_US;
     }
 }
 
@@ -281,8 +415,8 @@ void StaticGPS::ntpReceiveCallback(void *arg, udp_pcb *pcb, pbuf *packet, const 
                        packet->tot_len >= NTP_PACKET_SIZE &&
                        pbuf_copy_partial(packet, response, sizeof(response), 0) == sizeof(response) &&
                        (response[0] & 0x07) == 4 && // server mode
-                       (response[0] >> 6) != 3 &&  // clock is synchronized
-                       response[1] != 0;           // valid stratum
+                       (response[0] >> 6) != 3 &&   // clock is synchronized
+                       response[1] != 0;            // valid stratum
     pbuf_free(packet);
 
     if (!valid)
@@ -300,7 +434,7 @@ void StaticGPS::ntpReceiveCallback(void *arg, udp_pcb *pcb, pbuf *packet, const 
                                      ? static_cast<uint64_t>(ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS)
                                      : (1ULL << 32) + ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS;
 
-    const uint64_t receiveUs = time_us_64();
+    const uint64_t receiveUs = CoreUtils::timeUs64();
     const uint64_t roundTripMs = (receiveUs - staticGps->ntpRequestStartedUs) / 1'000ULL;
     const uint64_t unixMs = unixSeconds * 1'000ULL +
                             ((static_cast<uint64_t>(ntpFraction) * 1'000ULL) >> 32) +
@@ -350,7 +484,7 @@ void StaticGPS::applyNtpResult()
         return;
     }
 
-    const uint64_t nowUs = time_us_64();
+    const uint64_t nowUs = CoreUtils::timeUs64();
     const uint64_t epochNowMs = epochAtReceiveMs + (nowUs - receivedAtUs) / 1'000ULL;
     // NTP gives the current fractional UTC second. Feeding that phase through
     // RtcModule keeps PicoRtc's PPS state and CoreUtils' software PPS aligned.
@@ -361,11 +495,59 @@ void StaticGPS::applyNtpResult()
     setStatus("Configured");
 }
 
+void StaticGPS::applyConfigurationUpdate()
+{
+    cancelNtpRequest();
+    nextNtpAttemptUs = CoreUtils::timeUs64();
+    setStatus("Waiting NTP");
+}
+
 void StaticGPS::on_receive(const GATAS::WifiConnectionStateMsg &msg)
 {
     if (msg.wifiMode == GATAS::WifiMode::CLIENT && staticTaskHandle != nullptr)
     {
         xTaskNotify(staticTaskHandle, NETWORK_CHANGED, eSetBits);
+    }
+}
+
+void StaticGPS::on_receive(const GATAS::ConfigUpdatedMsg &msg)
+{
+    if (msg.moduleName != StaticGPS::NAME && msg.moduleName != Configuration::NAME)
+    {
+        return;
+    }
+
+    const float updatedLatitude = configFloat(msg.config, "latitude", "0.0");
+    const float updatedLongitude = configFloat(msg.config, "longitude", "0.0");
+    const float updatedAltitudeMeters = configFloat(msg.config, "altitude", "0.0");
+    const GATAS::ConfigString updatedNtpServer = msg.config.strValueByPath("pool.ntp.org", NAME, "ntpServer");
+
+    if (!std::isfinite(updatedLatitude) || updatedLatitude < -90.0F || updatedLatitude > 90.0F ||
+        !std::isfinite(updatedLongitude) || updatedLongitude < -180.0F || updatedLongitude > 180.0F ||
+        !std::isfinite(updatedAltitudeMeters) || updatedAltitudeMeters < -1000.0F || updatedAltitudeMeters > 20000.0F ||
+        updatedNtpServer.empty())
+    {
+        return;
+    }
+
+    bool ntpServerChanged = false;
+    if (auto guard = SemaphoreGuard(1000, configurationMutex))
+    {
+        ntpServerChanged = ntpServer != updatedNtpServer;
+        latitude = updatedLatitude;
+        longitude = updatedLongitude;
+        altitudeMeters = updatedAltitudeMeters;
+        geoidSeparationMeters = static_cast<float>(CoreUtils::egmGeoidOffset(latitude, longitude));
+        ntpServer = updatedNtpServer;
+    }
+    else
+    {
+        return;
+    }
+
+    if (ntpServerChanged && staticTaskHandle != nullptr)
+    {
+        xTaskNotify(staticTaskHandle, CONFIG_UPDATED, eSetBits);
     }
 }
 
@@ -383,12 +565,20 @@ void StaticGPS::getData(etl::string_stream &stream, const etl::string_view path)
 {
     (void)path;
     stream << "{";
-    stream << "\"latitude\":" << etl::format_spec{}.precision(7) << latitude;
-    stream << ",\"longitude\":" << longitude;
-    stream << ",\"altitude:m\":" << altitudeMeters;
-    stream << ",\"status\":\"" << getStatus() << "\"";
-    stream << ",\"totalReceived:k\":" << getTotalReceived();
-    stream << ",\"ntpServer\":\"" << ntpServer << "\"";
+    if (auto guard = SemaphoreGuard(1000, configurationMutex))
+    {
+        stream << "\"latitude\":" << etl::format_spec{}.precision(7) << latitude;
+        stream << ",\"longitude\":" << longitude;
+        stream << ",\"altitude:m\":" << altitudeMeters;
+        stream << ",\"geoidSeparation:m\":" << geoidSeparationMeters;
+        stream << ",\"ntpServer\":\"" << ntpServer << "\"";
+    }
+    else
+    {
+        stream << "\"configReadError:err\":1";
+    }
+    stream << ",\"status\":\"" << statistics.status << "\"";
+    stream << ",\"totalReceived:k\":" << statistics.totalReceived;
     stream << ",\"ntpRequests:k\":" << staticStatistics.ntpRequests;
     stream << ",\"ntpSyncs:k\":" << staticStatistics.ntpSyncs;
     stream << ",\"ntpErrors:err\":" << staticStatistics.ntpErrors;

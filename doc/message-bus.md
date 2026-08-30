@@ -76,6 +76,7 @@ rectangle "Infrastructure" {
 
 [AbstractGnss] --> [GpsDecoder] : GPSSentenceMsg
 [StaticGPS] --> [GpsDecoder] : GPSSentenceMsg
+[Config] --> [StaticGPS] : ConfigUpdatedMsg
 [StaticGPS] ..> [PicoRtc] : ppsEvent (NTP phase)\n(direct call)
 [GpsDecoder] --> [Ogn1] : OwnshipPositionMsg
 [GpsDecoder] --> [Flarm2024] : OwnshipPositionMsg
@@ -157,6 +158,7 @@ package "Consumers" {
 
 [AbstractGnss] --> [GpsDecoder] : GPSSentenceMsg
 [StaticGPS] --> [GpsDecoder] : GPSSentenceMsg
+[Config] --> [StaticGPS] : ConfigUpdatedMsg
 [StaticGPS] ..> [PicoRtc] : ppsEvent (NTP phase)\n(direct call)
 [GpsDecoder] --> [Ogn1] : OwnshipPositionMsg\nGpsStatsMsg
 [GpsDecoder] --> [Flarm2024] : OwnshipPositionMsg
@@ -417,6 +419,7 @@ package "Wifi Consumers" {
 [Config] --> [FanetAce] : ConfigUpdatedMsg
 [Config] --> [AD2] : ConfigUpdatedMsg
 [Config] --> [GpsDecoder] : ConfigUpdatedMsg
+[Config] --> [StaticGPS] : ConfigUpdatedMsg
 [Config] --> [GC2] : ConfigUpdatedMsg
 [Config] --> [GatasConnectUDP] : ConfigUpdatedMsg
 [Config] --> [RadioTunerRx] : ConfigUpdatedMsg
@@ -461,9 +464,9 @@ package "Wifi Consumers" {
 | `GatasConnectTx` | `GatasConnect` | `GatasConnectUDP`, `Bluetooth` | Framed binary output, transport-agnostic. |
 | `GatasConnectRx` | `GatasConnectUDP`, `Bluetooth` | `GatasConnect` | Framed binary input from transports. |
 | `WifiModeRequestMsg` | `GatasConnect` | `WifiService` | Companion-originated WiFi mode switch request derived from framed binary control traffic. |
-| `WifiConnectionStateMsg` | `WifiService` | `Dump1090Client`, `GDLoverUDP`, `GatasConnect`, `GatasConnectUDP`, `DataPort`, `AirConnect`, `Idle` | Shared network state. |
+| `WifiConnectionStateMsg` | `WifiService` | `Dump1090Client`, `GDLoverUDP`, `GatasConnect`, `GatasConnectUDP`, `DataPort`, `AirConnect`, `StaticGPS`, `Idle` | Shared network state. |
 | `AccessPointClientsMsg` | `WifiService` | `GDLoverUDP` | AP client list for UDP output policy. |
-| `ConfigUpdatedMsg` | `Config` | `GpsDecoder`, `Bmp280`, `Sx1262`, `Ogn1`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `GDLoverUDP`, `GatasConnect`, `GatasConnectUDP` | Runtime config propagation. |
+| `ConfigUpdatedMsg` | `Config` | `GpsDecoder`, `StaticGPS`, `Bmp280`, `Sx1262`, `Ogn1`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `GDLoverUDP`, `GatasConnect`, `GatasConnectUDP` | Runtime config propagation. |
 | `Every5SecMsg` | `Idle` | `WifiService`, `AirConnect`, `ADSBDecoder`, `AircraftTracker` | Periodic maintenance. |
 | `Every30SecMsg` | `Idle` | `Bmp280`, `DataPort` | Slow periodic maintenance. |
 

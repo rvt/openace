@@ -138,8 +138,8 @@
   },
   "StaticGPS": {
     "_comment": "Disabled by default. Enable StaticGPS instead of a hardware GPS to publish this fixed position.",
-    "latitude": "52.8925725",
-    "longitude": "4.7362312",
+    "latitude": "0.0",
+    "longitude": "0.0",
     "altitude": "0.0",
     "ntpServer": "pool.ntp.org"
   },

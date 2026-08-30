@@ -16,6 +16,15 @@
 
 class AbstractGnss : public BaseModule
 {
+protected:
+    struct
+    {
+        uint32_t totalReceived = 0;
+        uint32_t baudrate = 0;
+        uint32_t queueFullErr = 0;
+        etl::string<16> status;
+    } statistics;
+
 private:
     static constexpr uint8_t QUEUE_SIZE = 6;
      // If you change this, you need to change the baudrate in attached GPS configurations
@@ -32,13 +41,6 @@ private:
     {
         NEW = 1 << 2,
     };
-    struct
-    {
-        uint32_t totalReceived = 0;
-        uint32_t baudrate = 0;
-        uint32_t queueFullErr = 0;
-        etl::string<16> status;
-    } statistics;
 
     static void receiveTask(void *arg);
 
@@ -58,12 +60,6 @@ protected:
     }
     void processNewSentence(const etl::array_view<char> &sentence);
 
-    void publishSentence(const GATAS::NMEAString &sentence)
-    {
-        getBus().receive(GATAS::GPSSentenceMsg{sentence});
-        statistics.totalReceived += 1;
-    }
-
     /** What a implementation needs to override */
     void setStatus(const etl::string_view &status)
     {
@@ -73,16 +69,6 @@ protected:
     void setStatusBaud(uint32_t baud)
     {
         statistics.baudrate = baud;
-    }
-
-    const etl::string<16> &getStatus() const
-    {
-        return statistics.status;
-    }
-
-    uint32_t getTotalReceived() const
-    {
-        return statistics.totalReceived;
     }
 
     bool isSoftwarePPS() const
