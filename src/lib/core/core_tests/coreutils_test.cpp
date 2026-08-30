@@ -350,6 +350,16 @@ TEST_CASE( "addChecksumToNMEA", "[single-file]" )
     REQUIRE( pflau == "$1234*04\r\n" );
 }
 
+TEST_CASE("addChecksumToNMEA without CRLF", "[single-file]")
+{
+    GATAS::NMEAString sentence = "$GPRMC,183205.50,A,5253.55446,N,00444.17388,E,0.000,0.00,260826,,";
+    CoreUtils::addChecksumToNMEA(sentence, false);
+
+    REQUIRE(sentence.find('*') == sentence.size() - 3);
+    REQUIRE_FALSE(sentence.ends_with("\r\n"));
+    REQUIRE(CoreUtils::validateNMEAChecksum(sentence));
+}
+
 TEST_CASE( "createNmeaChecksum", "[single-file]" )
 {
     // Empty string stays empty
@@ -376,6 +386,13 @@ TEST_CASE("egmGeoidOffset Example case (51, 4)", "[altitude]") {
     float result = CoreUtils::egmGeoidOffset(51, 4);
 
     REQUIRE(result  == 45);
+}
+
+TEST_CASE("egmGeoidOffset StaticGPS default position", "[altitude]")
+{
+    const float result = CoreUtils::egmGeoidOffset(52.8925725F, 4.7362312F);
+
+    REQUIRE(result == 42.0F);
 }
 
 TEST_CASE("egmGeoidOffset Example case (72, -15.5)", "[altitude]") {

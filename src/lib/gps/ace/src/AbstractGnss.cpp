@@ -30,7 +30,7 @@ void __time_critical_func(AbstractGnss_pps_callback)(uint32_t events)
 
 GATAS::PostConstruct AbstractGnss::postConstruct()
 {
-    if (pioSerial.postConstruct() != GATAS::PostConstruct::OK)
+    if (usePioSerial && pioSerial.postConstruct() != GATAS::PostConstruct::OK)
     {
         return GATAS::PostConstruct::HARDWARE_ERROR;
     }
@@ -59,7 +59,11 @@ GATAS::PostConstruct AbstractGnss::postConstruct()
 
 void AbstractGnss::start()
 {
-    pioSerial.start();
+    if (usePioSerial)
+    {
+        pioSerial.start();
+    }
+
     if (!softwarebasedPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG)
     {
         registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, pinIntrCallback_t::create<AbstractGnss_pps_callback>());

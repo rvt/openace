@@ -59,6 +59,7 @@ private:
     uint64_t nextNtpAttemptUs = 0;
     uint64_t ntpEpochAtReceiveMs = 0;
     uint64_t ntpReceivedAtUs = 0;
+    bool wifiConnected = false;
     bool ntpRequestActive = false;
     bool ntpResultPending = false;
 
@@ -68,7 +69,6 @@ private:
         char hemisphere;
     };
 
-    static float configFloat(const Configuration &config, const etl::string_view key, const char *defaultValue);
     static void taskTrampoline(void *arg);
     static void timerCallback(TimerHandle_t timer);
     static void dnsCallback(const char *name, const ip_addr_t *address, void *arg);
@@ -76,7 +76,6 @@ private:
 
     void task();
     Coordinate coordinate(float value, bool latitude);
-    void publishSentence(GATAS::NMEAString &sentence);
     void publishSentences();
     void beginNtpRequest();
     void sendNtpRequest(const ip_addr_t *address);

@@ -155,6 +155,13 @@ TEST_CASE("Fully Configured", "[single-file]")
         REQUIRE(12 == config.valueByPath(0, "ADSBDecoder", "filterAbove"));
         config.setValueBypath("/ADSBDecoder/filterAbove", 15);
         REQUIRE(15 == config.valueByPath(0, "ADSBDecoder", "filterAbove"));
+        REQUIRE(config.floatValueByPath(0.0f, "ADSBDecoder", "filterAbove") == 15.0f);
+
+        config.setValueBypath("/test/position", "53.123456");
+        REQUIRE(config.floatValueByPath(0.0f, "test", "position") == 53.123456f);
+        config.setValueBypath("/test/position", "position");
+        REQUIRE(config.floatValueByPath(12.5f, "test", "position") == 12.5f);
+        REQUIRE(config.floatValueByPath(7.5f, "test", "missing") == 7.5f);
     }
 
     SECTION("Config status includes gatasId")

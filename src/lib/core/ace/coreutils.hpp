@@ -489,9 +489,10 @@ namespace CoreUtils
      * When the capacity is not enough, the result is undefined
      * Note: Must start with the prefix character $
      * @param nmea example '$PFEC,GPint,RMC05'
-     * @return             '$PFEC,GPint,RMC05*2D\r\n'
+     * @param appendCRLF append the NMEA line terminator when true
+     * @return             '$PFEC,GPint,RMC05*2D\r\n' when appendCRLF is true
      */
-    inline void addChecksumToNMEA(etl::istring &nmea)
+    inline void addChecksumToNMEA(etl::istring &nmea, bool appendCRLF = true)
     {
         const char hexChars[] = "0123456789ABCDEF";
 
@@ -504,7 +505,8 @@ namespace CoreUtils
             nmea.resize(starPos);
         }
 
-        if (nmea.capacity() - nmea.size() < 5)
+        const size_t suffixSize = appendCRLF ? 5 : 3;
+        if (nmea.capacity() - nmea.size() < 5) // Keep 5, just in case when /r/l needs to be appended again
         {
             return; // not enough space
         }
@@ -516,7 +518,7 @@ namespace CoreUtils
             '\r',
             '\n'};
 
-        nmea.append(suffix, sizeof(suffix));
+        nmea.append(suffix, suffixSize);
     }
 
     inline bool validateNMEAChecksum(const etl::istring &nmea)

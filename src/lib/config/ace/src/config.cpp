@@ -1,6 +1,7 @@
 
 #include "../config.hpp"
 
+#include <cmath>
 #include <cstring>
 
 #include "hardware/watchdog.h"
@@ -562,6 +563,32 @@ int Config::valueByPath(int defaultValue, const etl::string_view pathToValue, co
     {
         return src.as<int>();
     }
+}
+
+float Config::floatValueByPath(float defaultValue, const etl::string_view pathToValue, const etl::string_view key) const
+{
+    const auto path = CoreUtils::parsePath(pathToValue, key);
+    const auto src = configValueBypath<JsonVariantConst>(path);
+
+    if (src.isNull())
+    {
+        return defaultValue;
+    }
+
+    if (src.is<float>())
+    {
+        const float value = src.as<float>();
+        return std::isfinite(value) ? value : defaultValue;
+    }
+
+    const char *text = src.as<const char *>();
+    if (text != nullptr)
+    {
+        const auto value = etl::to_arithmetic<float>(etl::string_view(text));
+        return value && std::isfinite(value.value()) ? value.value() : defaultValue;
+    }
+
+    return defaultValue;
 }
 
 const GATAS::ConfigString Config::strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const

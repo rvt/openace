@@ -46,6 +46,7 @@ private:
 
     PioSerial pioSerial;
     const uint8_t ppsPin;
+    const bool usePioSerial;
     bool softwarebasedPPS;
     int32_t softPPSlagUs;
     uint32_t measureSoftPPSlag = 0;
@@ -98,11 +99,13 @@ protected:
     }
 
 public:
-    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins, bool softPPS, int32_t softPPSlagUs_) : BaseModule(bus, name),
-                                                                                                       pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
-                                                                                                       ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
-                                                                                                       softwarebasedPPS(softPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG),
-                                                                                                       softPPSlagUs(softPPSlagUs_)
+    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins, bool softPPS, int32_t softPPSLagUs_, bool usePioSerial_ = true)
+        : BaseModule(bus, name),
+          pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
+          ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
+          usePioSerial(usePioSerial_),
+          softwarebasedPPS(softPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG),
+          softPPSlagUs(softPPSLagUs_)
     {
     }
 

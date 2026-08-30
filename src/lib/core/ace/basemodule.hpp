@@ -286,6 +286,12 @@ public:
         return valueByPath(defaultValue, pathToValue, "");
     };
 
+    virtual float floatValueByPath(float defaultValue, const etl::string_view pathToValue, const etl::string_view key) const = 0;
+    float floatValueByPath(float defaultValue, const etl::string_view pathToValue) const
+    {
+        return floatValueByPath(defaultValue, pathToValue, "");
+    };
+
     /**
      * Returns a value from path
      * example: auto value = config.strValueByPath("-", "GDLoverUDP/ips/0", "ip");

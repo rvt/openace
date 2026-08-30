@@ -47,6 +47,11 @@ public:
         return 0;
     };
 
+    virtual float floatValueByPath(float defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override
+    {
+        return defaultValue;
+    }
+
     virtual const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override
     {
         return "";

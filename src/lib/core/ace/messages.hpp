@@ -33,7 +33,7 @@ namespace GATAS
      */
     struct GPSSentenceMsg : public etl::message<3>
     {
-        const NMEAString sentence; // Received NMEA sentence
+        const NMEAString sentence; // Received NMEA sentence, without LR/LF
         GPSSentenceMsg(const NMEAString &sentence_) : sentence(sentence_) {}
     };
 
