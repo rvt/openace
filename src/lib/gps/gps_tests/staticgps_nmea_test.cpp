@@ -26,7 +26,7 @@ TEST_CASE("StaticGPS NMEA sentences are accepted by the GPS decoder parser")
         "$GPGLL,5253.55446,N,00444.17388,E,183205.50,A",
         "$GPRMC,183205.50,A,5253.55446,N,00444.17388,E,0.000,0.00,260826,,",
         "$GPGGA,183205.50,5253.55446,N,00444.17388,E,1,08,1.0,12.3,M,42.0,M,,",
-        "$GPGSA,A,3,03,04,08,10,13,16,21,27,,,,,1.0,1.0,1.0",
+        "$GPGSA,M,3,03,04,08,10,13,16,21,27,,,,,1.0,1.0,1.0",
         "$GPGSV,2,1,08,03,45,111,42,04,50,272,43,08,35,046,40,10,60,151,45",
         "$GPGSV,2,2,08,13,25,210,38,16,40,315,41,21,55,080,44,27,30,180,39"};
 
@@ -56,9 +56,39 @@ TEST_CASE("StaticGPS NMEA sentences are accepted by the GPS decoder parser")
     REQUIRE(rmc.course.value == 0);
     REQUIRE(gga.fix_quality == 1);
     REQUIRE(gga.satellites_tracked == 8);
+    REQUIRE(gsa.mode == 'M');
     REQUIRE(gsa.fix_type == 3);
     REQUIRE(gsvPage1.total_sats == 8);
     REQUIRE(gsvPage2.total_sats == 8);
+}
+
+TEST_CASE("StaticGPS NMEA sentences report no fix before time synchronization")
+{
+    GATAS::NMEAString gll = "$GPGLL,5253.55446,N,00444.17388,E,000012.50,V";
+    GATAS::NMEAString rmc = "$GPRMC,000012.50,V,5253.55446,N,00444.17388,E,0.000,0.00,010170,,";
+    GATAS::NMEAString gga = "$GPGGA,000012.50,5253.55446,N,00444.17388,E,0,00,1.0,12.3,M,42.0,M,,";
+    GATAS::NMEAString gsa = "$GPGSA,M,1,,,,,,,,,,,,,1.0,1.0,1.0";
+
+    addChecksum(gll);
+    addChecksum(rmc);
+    addChecksum(gga);
+    addChecksum(gsa);
+
+    minmea_sentence_gll gllFrame = {};
+    minmea_sentence_rmc rmcFrame = {};
+    minmea_sentence_gga ggaFrame = {};
+    minmea_sentence_gsa gsaFrame = {};
+
+    REQUIRE(minmea_parse_gll(&gllFrame, gll.c_str()));
+    REQUIRE(minmea_parse_rmc(&rmcFrame, rmc.c_str()));
+    REQUIRE(minmea_parse_gga(&ggaFrame, gga.c_str()));
+    REQUIRE(minmea_parse_gsa(&gsaFrame, gsa.c_str()));
+    REQUIRE(gllFrame.status == 'V');
+    REQUIRE_FALSE(rmcFrame.valid);
+    REQUIRE(ggaFrame.fix_quality == 0);
+    REQUIRE(ggaFrame.satellites_tracked == 0);
+    REQUIRE(gsaFrame.mode == 'M');
+    REQUIRE(gsaFrame.fix_type == 1);
 }
 
 TEST_CASE("StaticGPS NMEA contract supports southern and western coordinates")

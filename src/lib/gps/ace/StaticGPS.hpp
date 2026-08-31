@@ -14,6 +14,15 @@
 struct pbuf;
 struct udp_pcb;
 
+/**
+ * Generates NMEA sentences for a configured fixed position.
+ *
+ * The position is deliberately presented as simulated GNSS input instead of
+ * injecting ownship messages directly. This keeps the normal GPS decoder,
+ * time handling, message-bus routing, and DataPort/Bluetooth output paths in
+ * use, so downstream modules and external devices see the same data flow as
+ * they do with a hardware GNSS receiver.
+ */
 class StaticGPS : public AbstractGnss,
                   public etl::message_router<StaticGPS, GATAS::WifiConnectionStateMsg, GATAS::ConfigUpdatedMsg>
 {
@@ -31,7 +40,7 @@ private:
         NTP_RESULT = 1 << 1,
         NETWORK_CHANGED = 1 << 2,
         NTP_FAILED = 1 << 3,
-        CONFIG_UPDATED = 1 << 4,
+        CONFIG_NTP_UPDATED = 1 << 4,
     };
 
     struct
@@ -75,6 +84,7 @@ private:
     static void ntpReceiveCallback(void *arg, udp_pcb *pcb, pbuf *packet, const ip_addr_t *address, uint16_t port);
 
     void task();
+    void readConfiguration(const Configuration &config);
     Coordinate coordinate(float value, bool latitude);
     void publishSentences();
     void beginNtpRequest();
@@ -92,7 +102,6 @@ private:
 public:
     static constexpr const etl::string_view NAME = "StaticGPS";
 
-    StaticGPS(etl::imessage_bus &bus, float latitude, float longitude, float altitudeMeters, const etl::string_view ntpServer);
     StaticGPS(etl::imessage_bus &bus, const Configuration &config);
     ~StaticGPS() override = default;
 

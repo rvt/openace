@@ -20,23 +20,42 @@ namespace
     constexpr uint32_t NTP_TO_UNIX_EPOCH_SECONDS = 2'208'988'800UL;
 }
 
-StaticGPS::StaticGPS(etl::imessage_bus &bus, float latitude_, float longitude_, float altitudeMeters_, const etl::string_view ntpServer_)
+StaticGPS::StaticGPS(etl::imessage_bus &bus, const Configuration &config)
     : AbstractGnss(bus, NAME, GATAS::PinTypeMap{}, true, 0, false),
-      latitude(latitude_),
-      longitude(longitude_),
-      altitudeMeters(altitudeMeters_),
-      geoidSeparationMeters(static_cast<float>(CoreUtils::egmGeoidOffset(latitude_, longitude_))),
-      ntpServer(ntpServer_)
+      latitude(0.0F),
+      longitude(0.0F),
+      altitudeMeters(0.0F),
+      geoidSeparationMeters(0.0F),
+      ntpServer("pool.ntp.org")
 {
+    readConfiguration(config);
 }
 
-StaticGPS::StaticGPS(etl::imessage_bus &bus, const Configuration &config)
-    : StaticGPS(bus,
-                config.floatValueByPath(0.0F, NAME, "latitude"),
-                config.floatValueByPath(0.0F, NAME, "longitude"),
-                config.floatValueByPath(0.0F, NAME, "altitude"),
-                config.strValueByPath("pool.ntp.org", NAME, "ntpServer"))
+void StaticGPS::readConfiguration(const Configuration &config)
 {
+    latitude = config.floatValueByPath(0.0F, NAME, "latitude");
+    longitude = config.floatValueByPath(0.0F, NAME, "longitude");
+    altitudeMeters = config.floatValueByPath(0.0F, NAME, "altitude");
+    ntpServer = config.strValueByPath("pool.ntp.org", NAME, "ntpServer");
+
+    if (!std::isfinite(latitude) || latitude < -90.0F || latitude > 90.0F)
+    {
+        latitude = 0.0F;
+    }
+    if (!std::isfinite(longitude) || longitude < -180.0F || longitude > 180.0F)
+    {
+        longitude = 0.0F;
+    }
+    if (!std::isfinite(altitudeMeters) || altitudeMeters < -1000.0F || altitudeMeters > 20000.0F)
+    {
+        altitudeMeters = 0.0F;
+    }
+    if (ntpServer.empty())
+    {
+        ntpServer = "pool.ntp.org";
+    }
+
+    geoidSeparationMeters = static_cast<float>(CoreUtils::egmGeoidOffset(latitude, longitude));
 }
 
 GATAS::PostConstruct StaticGPS::postConstruct()
@@ -53,12 +72,6 @@ GATAS::PostConstruct StaticGPS::postConstruct()
         return GATAS::PostConstruct::MUTEX_ERROR;
     }
     GATAS_REGISTER_MUTEX(configurationMutex, "StaticGPS_configurationMutex");
-
-    if (ntpServer.empty())
-    {
-        setStatus("No NTP Server");
-        return GATAS::PostConstruct::CONFIG_ERROR;
-    }
 
     rtc = static_cast<RtcModule *>(moduleByName(*this, RtcModule::NAME));
     if (rtc == nullptr)
@@ -111,13 +124,14 @@ void StaticGPS::task()
     {
         uint32_t notification = 0;
         xTaskNotifyWait(pdFALSE, ULONG_MAX, &notification, portMAX_DELAY);
+        const uint64_t nowUs = CoreUtils::timeUs64();
 
         if ((notification & NTP_RESULT) != 0)
         {
             applyNtpResult();
         }
 
-        if ((notification & CONFIG_UPDATED) != 0)
+        if ((notification & CONFIG_NTP_UPDATED) != 0)
         {
             applyConfigurationUpdate();
         }
@@ -127,7 +141,7 @@ void StaticGPS::task()
             cancelNtpRequest();
             if (wifiConnected)
             {
-                nextNtpAttemptUs = CoreUtils::timeUs64();
+                nextNtpAttemptUs = nowUs;
                 setStatus("Waiting NTP");
             }
             else
@@ -139,10 +153,9 @@ void StaticGPS::task()
         if ((notification & NTP_FAILED) != 0)
         {
             staticStatistics.ntpErrors += 1;
-            nextNtpAttemptUs = CoreUtils::timeUs64() + NTP_RETRY_INTERVAL_US;
+            nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
         }
 
-        const uint64_t nowUs = CoreUtils::timeUs64();
         if (ntpRequestActive && nowUs - ntpRequestStartedUs >= NTP_TIMEOUT_US)
         {
             cancelNtpRequest();
@@ -183,10 +196,10 @@ StaticGPS::Coordinate StaticGPS::coordinate(float value, bool latitude)
 
 void StaticGPS::publishSentences()
 {
-    float currentLatitude = 0.0F;
-    float currentLongitude = 0.0F;
-    float currentAltitudeMeters = 0.0F;
-    float currentGeoidSeparationMeters = 0.0F;
+    float currentLatitude;
+    float currentLongitude;
+    float currentAltitudeMeters;
+    float currentGeoidSeparationMeters;
     if (auto guard = SemaphoreGuard(1000, configurationMutex))
     {
         currentLatitude = latitude;
@@ -199,20 +212,11 @@ void StaticGPS::publishSentences()
         return;
     }
 
-    if (!std::isfinite(currentLatitude) || currentLatitude < -90.0F || currentLatitude > 90.0F ||
-        !std::isfinite(currentLongitude) || currentLongitude < -180.0F || currentLongitude > 180.0F ||
-        !std::isfinite(currentAltitudeMeters) || currentAltitudeMeters < -1000.0F || currentAltitudeMeters > 20000.0F)
-    {
-        return;
-    }
-
-    // Until NTP or another source has established epoch time, emitting 1970
-    // would falsely claim a valid GNSS time and date.
     const uint64_t epochMs = CoreUtils::msSinceEpoch();
-    if (epochMs < 1'000'000'000'000ULL)
+    const bool valid = epochMs >= 1'000'000'000'000ULL;
+    if (!valid)
     {
         staticStatistics.invalidTime += 1;
-        return;
     }
 
     const Coordinate latitudeCoordinate = coordinate(currentLatitude, true);
@@ -247,7 +251,7 @@ void StaticGPS::publishSentences()
         etl::string_stream nmeaStream(nmeaString);
         nmeaStream << "$GPGLL," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
                    << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
-                   << "," << timeText << ",A";
+                   << "," << timeText << "," << (valid ? "A" : "V");
     }
     CoreUtils::addChecksumToNMEA(nmeaString, false);
     processNewSentence({nmeaString.data(), nmeaString.size()});
@@ -256,7 +260,8 @@ void StaticGPS::publishSentences()
     nmeaString.clear();
     {
         etl::string_stream nmeaStream(nmeaString);
-        nmeaStream << "$GPRMC," << timeText << ",A," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
+        nmeaStream << "$GPRMC," << timeText << "," << (valid ? "A" : "V")
+                   << "," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
                    << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
                    << ",0.000,0.00," << dateText << ",,";
     }
@@ -273,14 +278,16 @@ void StaticGPS::publishSentences()
     etl::string_stream nmeaStream(nmeaString);
     nmeaStream << "$GPGGA," << timeText << "," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
                << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
-               << ",1,08,1.0," << etl::format_spec{}.precision(1) << currentAltitudeMeters
+               << "," << (valid ? "1,08" : "0,00") << ",1.0," << etl::format_spec{}.precision(1) << currentAltitudeMeters
                << GATAS::RESET_FORMAT << ",M," << etl::format_spec{}.precision(1) << currentGeoidSeparationMeters
                << GATAS::RESET_FORMAT << ",M,,";
     CoreUtils::addChecksumToNMEA(nmeaString, false);
     processNewSentence({nmeaString.data(), nmeaString.size()});
 
     // $GPGSA
-    nmeaString = "$GPGSA,A,3,03,04,08,10,13,16,21,27,,,,,1.0,1.0,1.0";
+    nmeaString = valid
+                     ? "$GPGSA,M,3,03,04,08,10,13,16,21,27,,,,,1.0,1.0,1.0"
+                     : "$GPGSA,M,1,,,,,,,,,,,,,1.0,1.0,1.0";
     CoreUtils::addChecksumToNMEA(nmeaString, false);
     processNewSentence({nmeaString.data(), nmeaString.size()});
 
@@ -508,28 +515,12 @@ void StaticGPS::on_receive(const GATAS::ConfigUpdatedMsg &msg)
         return;
     }
 
-    const float updatedLatitude = msg.config.floatValueByPath(0.0F, NAME, "latitude");
-    const float updatedLongitude = msg.config.floatValueByPath(0.0F, NAME, "longitude");
-    const float updatedAltitudeMeters = msg.config.floatValueByPath(0.0F, NAME, "altitude");
-    const GATAS::ConfigString updatedNtpServer = msg.config.strValueByPath("pool.ntp.org", NAME, "ntpServer");
-
-    if (!std::isfinite(updatedLatitude) || updatedLatitude < -90.0F || updatedLatitude > 90.0F ||
-        !std::isfinite(updatedLongitude) || updatedLongitude < -180.0F || updatedLongitude > 180.0F ||
-        !std::isfinite(updatedAltitudeMeters) || updatedAltitudeMeters < -1000.0F || updatedAltitudeMeters > 20000.0F ||
-        updatedNtpServer.empty())
-    {
-        return;
-    }
-
     bool ntpServerChanged = false;
     if (auto guard = SemaphoreGuard(1000, configurationMutex))
     {
-        ntpServerChanged = ntpServer != updatedNtpServer;
-        latitude = updatedLatitude;
-        longitude = updatedLongitude;
-        altitudeMeters = updatedAltitudeMeters;
-        geoidSeparationMeters = static_cast<float>(CoreUtils::egmGeoidOffset(latitude, longitude));
-        ntpServer = updatedNtpServer;
+        const GATAS::ConfigString previousNtpServer = ntpServer;
+        readConfiguration(msg.config);
+        ntpServerChanged = ntpServer != previousNtpServer;
     }
     else
     {
@@ -538,7 +529,7 @@ void StaticGPS::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 
     if (ntpServerChanged && staticTaskHandle != nullptr)
     {
-        xTaskNotify(staticTaskHandle, CONFIG_UPDATED, eSetBits);
+        xTaskNotify(staticTaskHandle, CONFIG_NTP_UPDATED, eSetBits);
     }
 }
 
