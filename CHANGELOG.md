@@ -5,12 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v3.3.0] - 2026-09-01
 
 ### Added
 
 - Added once-per-second DataPort PFLAU heartbeats with tracked-aircraft RX counts and GPS-derived TX/GPS status.
 - Bluetooth also sends on Nordic GATT
+- RB Avionics (https://www.rbavionics.com) compatibility thanks to Duke306 (https://github.com/duke306)
 
 ### Changed
 
