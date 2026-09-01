@@ -115,6 +115,7 @@ public:
 
     /**
      * Return a non-owning view of all queued packet data.
+     * Deprecated
      */
     etl::span<const uint8_t> data() const
     {
