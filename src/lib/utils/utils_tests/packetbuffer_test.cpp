@@ -79,6 +79,24 @@ TEST_CASE("StreamBuffer basic append and read", "[StreamBuffer]")
     REQUIRE_FALSE(buf.read(out));
 }
 
+TEST_CASE("PacketBuffer data view does not consume packets", "[StreamBuffer]")
+{
+    PacketBuffer<16, 4> buf;
+    const auto packet1 = etl::make_array<uint8_t>(1, 2, 3);
+    const auto packet2 = etl::make_array<uint8_t>(4, 5);
+
+    REQUIRE(buf.set(packet1));
+    REQUIRE(buf.set(packet2));
+
+    const auto data = buf.data();
+    REQUIRE(span_equal(etl::make_array<uint8_t>(1, 2, 3, 4, 5), data));
+    REQUIRE(buf.packets() == 2);
+
+    etl::span<uint8_t> out;
+    REQUIRE(buf.read(out));
+    REQUIRE(span_equal(etl::make_array<uint8_t>(1, 2, 3, 4, 5), out));
+}
+
 TEST_CASE("StreamBuffer clear", "[StreamBuffer]")
 {
     PacketBuffer<32, 2> buf;
@@ -207,4 +225,3 @@ TEST_CASE("StreamBuffer set with etl::string_view")
     // Buffer should now be empty
     REQUIRE_FALSE(buf.read(out));
 }
-

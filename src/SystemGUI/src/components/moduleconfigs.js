@@ -147,6 +147,66 @@ class AircraftTrackerConfig extends ModuleConfig {
 }
 customElements.define("aircrafttracker-config", AircraftTrackerConfig);
 
+class DataPortConfig extends ModuleConfig {
+  created() {
+    this._initForm(store.getModuleData("DataPort"));
+  }
+
+  mounted() {
+    const validator = new JustValidate(this.$refs.form);
+
+    validator.onSuccess(() => {
+      const data = this._getFormData();
+      store.updateModuleData("DataPort", { ...this.copyOfData, ...data }).then(() => {
+        this.close();
+      });
+    });
+  }
+
+  _setFormData(data) {
+    this.$refs.pflauEnabled.checked = data.pflauEnabled === true || data.pflauEnabled === 1;
+  }
+
+  _getFormData() {
+    return {
+      pflauEnabled: this.$refs.pflauEnabled.checked,
+    };
+  }
+
+  render(html) {
+    return html`
+      <h4>Configuration of the DataPort Module</h4>
+      <p>DataPort generates NMEA-compatible sentences for connected electronic flight bags.</p>
+      <form ref="form" autocomplete="off" novalidate="novalidate">
+        <div class="page-section">
+          <div class="config-field-heading">
+            <label for="pflauEnabled">Send PFLAU heartbeat</label>
+            <span class="help-label" tabindex="0" aria-label="About sending PFLAU">
+              ${html.raw(icon.help)}
+              <span class="app-tooltip" role="tooltip">
+                Send FLARM heartbeat, receiver count, transmission status, and GPS status once per second.
+              </span>
+            </span>
+          </div>
+          <input type="checkbox" id="pflauEnabled" ref="pflauEnabled" />
+          <div class="notice notice--warning">
+            <div>
+              Users of the RB Avionics RB05 module must enable PFLAU. It might show INOP in the display otherwise.<br />
+              SkyDemon users may need to disable PFLAU; see the
+              <a href="http://forums.skydemon.aero/Topic32128.aspx" target="_blank" rel="noopener noreferrer">
+                SkyDemon forum discussion
+              </a>
+              for more information.
+            </div>
+          </div>
+        </div>
+        ${this.buttonArray(html)}
+      </form>
+    `;
+  }
+}
+customElements.define("dataport-config", DataPortConfig);
+
 class WifiServiceConfig extends ModuleConfig {
   created() {
     this._initForm(store.getModuleData("WifiService"));

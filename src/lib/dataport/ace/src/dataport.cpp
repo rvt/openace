@@ -14,7 +14,6 @@ GATAS::PostConstruct DataPort::postConstruct()
 
 void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
 {
-    static Every<uint32_t, 500'000, 1'000'000> sendValidGps{0};
     ownshipPosition = msg.position.assignTo();
 
     // if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
@@ -27,15 +26,39 @@ void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
         // sendGPGGA(ownshipPosition);
         // sendPGRMZ(msg.position);
 
-        // For SkyDemon we disable sendPFLAU
-        // http://forums.skydemon.aero/Topic32128.aspx
-        // sendPFLAU(msg.position);
     // }
 }
 
 void DataPort::on_receive(const GATAS::EgressAircraftPositionMsg &msg)
 {
     sendPFLAA(msg.position);
+}
+
+void DataPort::on_receive(const GATAS::GpsStatsMsg &msg)
+{
+    hasGpsFix = msg.gpsStats.gpsFix.hasFix;
+}
+
+void DataPort::on_receive(const GATAS::TrackerStatsMsg &msg)
+{
+    noTrackedAircraft = msg.noTrackedAircraft;
+}
+
+void DataPort::on_receive(const GATAS::Every1SecMsg &msg)
+{
+    (void)msg;
+    if (pflauEnabled)
+    {
+        sendPFLAU();
+    }
+}
+
+void DataPort::on_receive(const GATAS::ConfigUpdatedMsg &msg)
+{
+    if (msg.moduleName == DataPort::NAME || msg.moduleName == Configuration::NAME)
+    {
+        pflauEnabled = msg.config.valueByPath(false, DataPort::NAME, "pflauEnabled");
+    }
 }
 
 void DataPort::on_receive(const GATAS::GPSSentenceMsg &msg)
@@ -193,22 +216,23 @@ etl::string_view DataPort::getPFLAAAircraftCategory(const GATAS::AircraftPositio
  *
  * Periodicity:
  * Sent once every second (1.8 s at maximum)
+ * For skydemon see: http://forums.skydemon.aero/Topic32128.aspx
  */
 
-void DataPort::sendPFLAU(const GATAS::OwnshipPositionInfo &position)
+void DataPort::sendPFLAU()
 {
-    (void)position;
     GATAS::NMEAString pflau;
     etl::string_stream stream(pflau);
+    const uint8_t txGpsStatus = hasGpsFix ? 1 : 0;
 
     // PFLAU,<RX>,<TX>,<GPS>,<Power>,<AlarmLevel>,<RelativeBearing>,<AlarmType>,<RelativeVertical>,<RelativeDistance>[,<ID>]
     // $PFLAU,5,1,1,1,0,,0,,,*
-    stream << etl::make_string("$PFLAU,"
-                               "0"   // Num RX
-                               ",1"  // Num TX
-                               ",1"  // GPS 1 == 3D
-                               ",1"  // Power 1 == OK
-                               ",0"  // 0 Alerm level
+    stream << etl::make_string("$PFLAU,")
+           << static_cast<uint8_t>(noTrackedAircraft) // Num RX
+           << "," << static_cast<uint16_t>(txGpsStatus) // TX
+           << "," << static_cast<uint16_t>(txGpsStatus) // GPS: 1 with fix, 0 without
+           << etl::make_string(",1"  // Power 1 == OK
+                               ",0"  // 0 Alarm level
                                ","   // RelativeBearing
                                ",0"  // AlarmType
                                ","   // RelativeVertical
@@ -434,6 +458,7 @@ void DataPort::getData(etl::string_stream &stream, const etl::string_view path) 
     (void)path;
     stream << "{";
     stream << "\"messages:k\":" << statistics.messages;
+    stream << ",\"pflauEnabled:b\":" << pflauEnabled;
     stream << "}";
 }
 

@@ -93,6 +93,12 @@ namespace GATAS
             : positions(positions_), radioParameters(radioParameters_), radioNo(radioNo_) {}
     };
 
+    struct TrackerStatsMsg : public etl::message<38>
+    {
+        uint8_t noTrackedAircraft;
+        TrackerStatsMsg(uint8_t noTrackedAircraft_) : noTrackedAircraft(noTrackedAircraft_) {}
+    };
+
     /**
      * Aircraft Position of our ownship
      */

@@ -10,10 +10,13 @@
 #include "ace/messages.hpp"
 #include "ace/messages.hpp"
 
-class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::EgressAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg>
+class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::EgressAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg, GATAS::GpsStatsMsg, GATAS::TrackerStatsMsg, GATAS::Every1SecMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg, GATAS::ConfigUpdatedMsg>
 {
     friend class message_router;
     GATAS::OwnshipMinimalPositionInfo ownshipPosition;
+    uint8_t noTrackedAircraft = 0;
+    bool hasGpsFix = false;
+    bool pflauEnabled = false;
 
     virtual void getData(etl::string_stream &stream, const etl::string_view path) const override;
 
@@ -28,7 +31,7 @@ public:
     static constexpr const etl::string_view NAME = "DataPort";
     DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), /*spinLock(0),*/ gatasIp(0)
     {
-        (void)config;
+        pflauEnabled = config.valueByPath(false, NAME, "pflauEnabled");
     }
 
     virtual ~DataPort() = default;
@@ -45,6 +48,14 @@ public:
     void on_receive(const GATAS::OwnshipPositionMsg &msg);
 
     void on_receive(const GATAS::GPSSentenceMsg &msg);
+
+    void on_receive(const GATAS::GpsStatsMsg &msg);
+
+    void on_receive(const GATAS::TrackerStatsMsg &msg);
+
+    void on_receive(const GATAS::Every1SecMsg &msg);
+
+    void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
     void on_receive(const GATAS::WifiConnectionStateMsg &msg);
 
@@ -79,7 +90,7 @@ public:
      * Sent once every second (1.8 s at maximum)
      */
 
-    void sendPFLAU(const GATAS::OwnshipPositionInfo &position);
+    void sendPFLAU();
 
     /**
      * PFLAE – Self-test result and errors codes

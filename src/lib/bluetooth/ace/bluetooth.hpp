@@ -166,9 +166,9 @@ private:
     static void smPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void attContextCallback(void *context);
     static void attPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
+    static void gattClientPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void hciPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
-    static uint16_t attReadCallback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
     static bool createConnection(hci_con_handle_t handle, uint16_t mtu);
     // Remove any old connections
@@ -237,6 +237,7 @@ private:
 
     static bool sendNMEABuffer(BtContext &ctx);
     static bool sendCobsBuffer(BtContext &ctx);
+    static void receiveNMEA(BtContext &ctx, uint8_t *buffer, uint16_t bufferSize);
     static bool hasPendingData(const BtContext &ctx);
     static void requestSendIfPending(BtContext &ctx);
     void createScanResponseData();
