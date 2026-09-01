@@ -69,7 +69,6 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
         uint16_t mtu = 0;
         uint16_t nmeaAttrHandle = 0;
         uint16_t binaryAttrHandle = 0;
-        bool testGreetingPending = false;
         uint32_t nmeaWriteBufferErr = 0;
         uint32_t cobsWriteBufferErr = 0;
         btstack_context_callback_registration_t attCallback;
@@ -101,7 +100,6 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
             mtu = mtu_;
             nmeaAttrHandle = 0;
             binaryAttrHandle = 0;
-            testGreetingPending = false;
             nmeaWriteBufferErr = 0;
             cobsWriteBufferErr = 0;
             guardCounter = 0;
@@ -122,7 +120,6 @@ class Bluetooth : public BaseModule, public etl::message_router<Bluetooth, GATAS
             mtu = 0;
             nmeaAttrHandle = 0;
             binaryAttrHandle = 0;
-            testGreetingPending = false;
             nmeaWriteBufferErr = 0;
             cobsWriteBufferErr = 0;
             guardCounter = 0;
@@ -172,7 +169,6 @@ private:
     static void gattClientPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static void hciPacketHandler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
     static int attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
-    static uint16_t attReadCallback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
     // Create a new connection in the connections list
     static bool createConnection(hci_con_handle_t handle, uint16_t mtu);
     // Remove any old connections
@@ -239,13 +235,7 @@ private:
 
     SemaphoreHandle_t bufferMutex;
 
-    enum class NmeaSendMethod : uint8_t
-    {
-        Notify,
-        AttRead,
-    };
-
-    static uint16_t sendNMEABuffer(BtContext &ctx, NmeaSendMethod method, uint16_t offset = 0, uint8_t *buffer = nullptr, uint16_t bufferSize = 0);
+    static bool sendNMEABuffer(BtContext &ctx);
     static bool sendCobsBuffer(BtContext &ctx);
     static void receiveNMEA(BtContext &ctx, uint8_t *buffer, uint16_t bufferSize);
     static bool hasPendingData(const BtContext &ctx);
