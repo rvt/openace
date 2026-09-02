@@ -396,25 +396,29 @@ void Sx1262::listen()
     sx126x_set_fs(this);
     sx126x_cfg_rx_boosted(this, true);
 
-    sx126x_set_dio_irq_params(this, SX126X_IRQ_RX_DONE, SX126X_IRQ_RX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
+    disablePinInterrupt(dio1Pin);
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
     enablePinInterrupt(dio1Pin, DIO1_RX_DONE);
+    sx126x_set_dio_irq_params(this, SX126X_IRQ_RX_DONE, SX126X_IRQ_RX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
+
     sx126x_set_rx(this, SX126X_MAX_TIMEOUT_IN_MS);
 }
 
 void Sx1262::sendGFSKPacket(const GATAS::RadioParameters &parameters, const uint8_t *data, uint8_t length)
 {
     (void)parameters;
-    sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
+    disablePinInterrupt(dio1Pin);
     sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
+
     enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
+    sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
 
     // 22Dbm is the max power for sx1262.
     int8_t powerdBm = LOW_POWER_MODE ? LOW_POWER_DBM : etl::min(static_cast<int8_t>(22), parameters.frequency->powerdBm);
     sx126x_set_tx_params(this, powerdBm, SX126X_RAMP_200_US);
     sx126x_write_buffer(this, 0x00, data, length);
     // 13.1.14 SetTx
-    sx126x_set_tx(this, SX126X_MAX_TIMEOUT_IN_MS);
+    sx126x_set_tx(this, 10); // 10ms for largest timeout GFSK packages
 }
 
 void Sx1262::sendLORAPacket(const GATAS::RadioParameters &parameters, const uint8_t *data, uint8_t length)
@@ -455,16 +459,17 @@ void Sx1262::sendLORAPacket(const GATAS::RadioParameters &parameters, const uint
     int8_t powerdBm = LOW_POWER_MODE ? LOW_POWER_DBM : etl::min(static_cast<int8_t>(22), parameters.frequency->powerdBm);
     sx126x_set_tx_params(this, powerdBm, SX126X_RAMP_200_US);
 
+    disablePinInterrupt(dio1Pin);
+    sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
+    enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
     // Wait until CAD done
     // disablePinInterrupt(dio1Pin); // We are just waiting for CAD
     // Might be here a solution?? https://github.com/antirez/freakwan/tree/main/techo-port
     sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
-    sx126x_clear_irq_status(this, SX126X_IRQ_ALL);
-    enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
 
     // 13.1.14 SetTx
     sx126x_write_buffer(this, 0x00, data, length);
-    sx126x_set_tx(this, SX126X_MAX_TIMEOUT_IN_MS);
+    sx126x_set_tx(this, 55);
 }
 
 void Sx1262::receiveGFSKPacket()
