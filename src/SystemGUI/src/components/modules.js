@@ -50,6 +50,7 @@ class GaTasModules extends El {
 
     this.configurable = [
       "AircraftTracker",
+      "DataPort",
       "L76B",
       "UbloxM8N",
       "StaticGPS",
@@ -62,7 +63,7 @@ class GaTasModules extends El {
       "Sx1262_1",
       "Bluetooth",
       "GatasConnect",
-      "GatasConnectUDP",
+      "GatasConnectUDP"
     ];
 
     this.enablers = [

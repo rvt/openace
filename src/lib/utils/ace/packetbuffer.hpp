@@ -114,6 +114,22 @@ public:
     }
 
     /**
+     * Return a non-owning view of all queued packet data.
+     * Deprecated
+     */
+    etl::span<const uint8_t> data() const
+    {
+        if (entries().empty())
+        {
+            return {};
+        }
+
+        const auto *first = entries().front().data();
+        const size_t size = writePosition - static_cast<size_t>(first - bufferData);
+        return {first, size};
+    }
+
+    /**
      * Read and remove the oldest packet group.
      *
      * The returned span refers to the internal buffer and contains only complete

@@ -287,4 +287,5 @@ void AircraftTracker::closest10()
 void AircraftTracker::maintenance()
 {
     trackedAircraft.maintenance();
+    getBus().receive(GATAS::TrackerStatsMsg{static_cast<uint8_t>(trackedAircraft.size())});
 }

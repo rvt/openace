@@ -157,7 +157,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: true
           draft: false
-          name: Pre-Release
+          name: ${{ github.ref_name }}
           body_path: /tmp/release_body.md
           files: |
             ./.github/develop.md

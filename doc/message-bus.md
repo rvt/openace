@@ -86,6 +86,7 @@ rectangle "Infrastructure" {
 [GpsDecoder] --> [AircraftTracker] : OwnshipPositionMsg
 [GpsDecoder] --> [RadioTunerRx] : OwnshipPositionMsg
 [GpsDecoder] --> [RadioTunerTx] : OwnshipPositionMsg
+[GpsDecoder] --> [DataPort] : OwnshipPositionMsg\nGpsStatsMsg
 [GpsDecoder] --> [GatasConnect] : OwnshipPositionMsg\nGpsStatsMsg
 [GpsDecoder] --> [PicoRtc] : UtcTimeMsg
 [Sx1262] --> [RxDataFrameQueue]
@@ -100,7 +101,7 @@ rectangle "Infrastructure" {
 [FanetAce] --> [AircraftTracker] : IngressAircraftPositionMsg
 [ADSBDecoder] --> [AircraftTracker] : IngressAircraftPositionMsg
 [AircraftTracker] --> [Gdl90Service] : EgressAircraftPositionMsg
-[AircraftTracker] --> [DataPort] : EgressAircraftPositionMsg
+[AircraftTracker] --> [DataPort] : EgressAircraftPositionMsg\nTrackerStatsMsg
 [AircraftTracker] --> [ADSLAce] : EgressAircraftPositionsMsg
 [AircraftTracker] --> [ADSBDecoder] : AdapativeRadiusMsg
 [RadioTunerRx] --> [Sx1262] : RadioControlMsg
@@ -117,6 +118,7 @@ rectangle "Infrastructure" {
 [GatasConnectUDP] --> [GatasConnect] : GatasConnectRx
 [DataPort] --> [Bluetooth] : DataPortMsg
 [DataPort] --> [AirConnect] : DataPortMsg
+[Idle] --> [DataPort] : Every1SecMsg
 [Bmp280] --> [Ogn1] : BarometricPressureMsg
 
 @enduml
@@ -169,7 +171,7 @@ package "Consumers" {
 [GpsDecoder] --> [RadioTunerRx] : OwnshipPositionMsg
 [GpsDecoder] --> [RadioTunerTx] : OwnshipPositionMsg
 [GpsDecoder] --> [Gdl90Service] : OwnshipPositionMsg\nGpsStatsMsg
-[GpsDecoder] --> [DataPort] : OwnshipPositionMsg
+[GpsDecoder] --> [DataPort] : OwnshipPositionMsg\nGpsStatsMsg
 [GpsDecoder] --> [GatasConnect] : OwnshipPositionMsg\nGpsStatsMsg
 [GpsDecoder] --> [Bluetooth] : OwnshipPositionMsg
 [GpsDecoder] --> [Sx1262] : GpsStatsMsg
@@ -270,7 +272,7 @@ package "Output Services" {
 }
 
 [AircraftTracker] --> [Gdl90Service] : EgressAircraftPositionMsg
-[AircraftTracker] --> [DataPort] : EgressAircraftPositionMsg
+[AircraftTracker] --> [DataPort] : EgressAircraftPositionMsg\nTrackerStatsMsg
 [AircraftTracker] --> [ADSLAce] : EgressAircraftPositionsMsg
 [AircraftTracker] --> [ADSBDecoder] : AdapativeRadiusMsg
 
@@ -409,8 +411,8 @@ package "Wifi Consumers" {
 [Idle] --> [WS2] : Every5SecMsg
 [Idle] --> [AirConnect] : Every5SecMsg
 [Idle] --> [AircraftTracker] : Every5SecMsg
+[Idle] --> [DataPort] : Every1SecMsg\nEvery30SecMsg
 [Idle] --> [Bmp280] : Every30SecMsg
-[Idle] --> [DataPort] : Every30SecMsg
 
 [Config] --> [Sx1262] : ConfigUpdatedMsg
 [Config] --> [GDLoverUDP] : ConfigUpdatedMsg
@@ -427,6 +429,7 @@ package "Wifi Consumers" {
 [Config] --> [AT2] : ConfigUpdatedMsg
 [Config] --> [Gdl90Service] : ConfigUpdatedMsg
 [Config] --> [BMP2] : ConfigUpdatedMsg
+[Config] --> [DP2] : ConfigUpdatedMsg
 
 [GC4] --> [WifiService] : WifiModeRequestMsg
 [WifiService] --> [GC3] : WifiConnectionStateMsg
@@ -447,7 +450,7 @@ package "Wifi Consumers" {
 | `GPSSentenceMsg` | `AbstractGnss`, `StaticGPS` | `GpsDecoder`, `DataPort` | Raw or generated NMEA ingress. |
 | `OwnshipPositionMsg` | `GpsDecoder` | `Ogn1`, `Flarm2024`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `DataPort`, `Bluetooth`, `GatasConnect` | Main ownship state fan-out. |
 | `UtcTimeMsg` | `GpsDecoder` | `PicoRtc` | RTC synchronization. |
-| `GpsStatsMsg` | `GpsDecoder` | `Ogn1`, `ADSLAce`, `Sx1262`, `Gdl90Service`, `GatasConnect`, `Idle` | GPS fix and DOP status. |
+| `GpsStatsMsg` | `GpsDecoder` | `Ogn1`, `ADSLAce`, `Sx1262`, `Gdl90Service`, `DataPort`, `GatasConnect`, `Idle` | GPS fix and DOP status. |
 | `BarometricPressureMsg` | `Bmp280` | `Ogn1` | OGN transmission enhancement. |
 | `RadioRxManchesterMsg` | `RxDataFrameQueue` | `Ogn1`, `Flarm2024`, `ADSLAce` | Produced after `Sx1262` receive + Manchester decode. |
 | `RadioRxMsg` | `RxDataFrameQueue` | `ADSLAce`, `FanetAce` | Produced after `Sx1262` receive for non-Manchester frames. |
@@ -455,6 +458,7 @@ package "Wifi Consumers" {
 | `IngressAircraftPositionsMsg` | `ADSLAce` | `AircraftTracker` | Batched ADS-L uplink traffic. |
 | `EgressAircraftPositionMsg` | `AircraftTracker` | `Gdl90Service`, `DataPort` | Tracker-selected traffic for outputs. |
 | `EgressAircraftPositionsMsg` | `AircraftTracker` | `ADSLAce` | Tracker-selected batch for ADS-L transmit. |
+| `TrackerStatsMsg` | `AircraftTracker` | `DataPort` | Current number of tracked aircraft after tracker maintenance. |
 | `AdapativeRadiusMsg` | `AircraftTracker` | `ADSBDecoder` | Decoder radius feedback. |
 | `RadioControlMsg` | `RadioTunerRx` | `Sx1262`, `RadioTunerTx` | Current receive slot / radio assignment. |
 | `RadioTxPositionRequestMsg` | `RadioTunerTx` | `Ogn1`, `Flarm2024`, `ADSLAce`, `FanetAce`, `AircraftTracker` | Triggers per-protocol transmit preparation. |
@@ -466,6 +470,8 @@ package "Wifi Consumers" {
 | `WifiModeRequestMsg` | `GatasConnect` | `WifiService` | Companion-originated WiFi mode switch request derived from framed binary control traffic. |
 | `WifiConnectionStateMsg` | `WifiService` | `Dump1090Client`, `GDLoverUDP`, `GatasConnect`, `GatasConnectUDP`, `DataPort`, `AirConnect`, `StaticGPS`, `Idle` | Shared network state. |
 | `AccessPointClientsMsg` | `WifiService` | `GDLoverUDP` | AP client list for UDP output policy. |
+| `ConfigUpdatedMsg` | `Config` | `GpsDecoder`, `Bmp280`, `Sx1262`, `Ogn1`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `GDLoverUDP`, `DataPort`, `GatasConnect`, `GatasConnectUDP` | Runtime config propagation. |
+| `Every1SecMsg` | `Idle` | `DataPort` | PFLAU heartbeat. |
 | `ConfigUpdatedMsg` | `Config` | `GpsDecoder`, `StaticGPS`, `Bmp280`, `Sx1262`, `Ogn1`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `GDLoverUDP`, `GatasConnect`, `GatasConnectUDP` | Runtime config propagation. |
 | `Every5SecMsg` | `Idle` | `WifiService`, `AirConnect`, `ADSBDecoder`, `AircraftTracker` | Periodic maintenance. |
 | `Every30SecMsg` | `Idle` | `Bmp280`, `DataPort` | Slow periodic maintenance. |
@@ -475,7 +481,6 @@ package "Wifi Consumers" {
 | Message | Current status |
 | --- | --- |
 | `ADSBMessageBinMsg` | Supported by `ADSBDecoder`, but the current `Dump1090Client` path calls `ADSBDecoder::receiveBinary(...)` directly instead of publishing to the bus. |
-| `Every1SecMsg` | Emitted by `Idle`, but there are no current subscribers. |
 | `Every15SecMsg` | Emitted by `Idle`, but there are no current subscribers. |
 | `Every300SecMsg` | Emitted by `Idle`, but there are no current subscribers. |
 | `IdleMsg` | Emitted by `Idle`, but there are no current subscribers. |
