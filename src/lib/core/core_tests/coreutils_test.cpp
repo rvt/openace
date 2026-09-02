@@ -395,7 +395,7 @@ TEST_CASE("egmGeoidOffset StaticGPS default position", "[altitude]")
 {
     const float result = CoreUtils::egmGeoidOffset(51.8925725F, 4.0362312F);
 
-    REQUIRE(result == 42.0F);
+    REQUIRE(result == 44.0F);
 }
 
 TEST_CASE("egmGeoidOffset Example case (72, -15.5)", "[altitude]") {

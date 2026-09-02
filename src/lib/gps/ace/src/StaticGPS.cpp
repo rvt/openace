@@ -239,7 +239,7 @@ void StaticGPS::publishSentences()
         etl::string_stream nmeaStream(nmeaString);
         nmeaStream << "$GPGLL," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
                    << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
-                   << "," << timeText << AV;
+                   << ',' << timeText << AV;
     }
     CoreUtils::addChecksumToNMEA(nmeaString, false);
     processNewSentence({nmeaString.data(), nmeaString.size()});
