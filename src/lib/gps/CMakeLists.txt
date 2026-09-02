@@ -8,6 +8,7 @@ gatas_add_module(
         ace/src/ubloxm8n.cpp
         ace/src/L76B.cpp
         ace/src/AbstractGnss.cpp
+        ace/src/NtpClient.cpp
         ace/src/StaticGPS.cpp
     TARGET_LINK_LIBS
         pioserial

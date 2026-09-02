@@ -3,16 +3,13 @@
 #include <stdint.h>
 
 #include "AbstractGnss.hpp"
+#include "NtpClient.hpp"
 
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "timers.h"
 
 #include "etl/message_router.h"
-#include "lwip/ip_addr.h"
-
-struct pbuf;
-struct udp_pcb;
 
 /**
  * Generates NMEA sentences for a configured fixed position.
@@ -32,7 +29,6 @@ private:
     // Re-discipline the software PPS often enough to limit RP2040 crystal
     // drift while avoiding excessive traffic to the configured NTP server.
     static constexpr uint64_t NTP_REFRESH_INTERVAL_US = 5ULL * 60ULL * 1'000'000ULL;
-    static constexpr uint64_t NTP_TIMEOUT_US = 10ULL * 1'000'000ULL;
 
     enum TaskNotification : uint32_t
     {
@@ -57,19 +53,16 @@ private:
     float longitude;
     float altitudeMeters;
     float geoidSeparationMeters;
-    GATAS::ConfigString ntpServer;
     SemaphoreHandle_t configurationMutex = nullptr;
 
     TaskHandle_t staticTaskHandle = nullptr;
     TimerHandle_t sendTimerHandle = nullptr;
     RtcModule *rtc = nullptr;
-    udp_pcb *ntpPcb = nullptr;
-    uint64_t ntpRequestStartedUs = 0;
+    NtpClient ntpClient;
     uint64_t nextNtpAttemptUs = 0;
     uint64_t ntpEpochAtReceiveMs = 0;
     uint64_t ntpReceivedAtUs = 0;
     bool wifiConnected = false;
-    bool ntpRequestActive = false;
     bool ntpResultPending = false;
 
     struct Coordinate
@@ -80,16 +73,14 @@ private:
 
     static void taskTrampoline(void *arg);
     static void timerCallback(TimerHandle_t timer);
-    static void dnsCallback(const char *name, const ip_addr_t *address, void *arg);
-    static void ntpReceiveCallback(void *arg, udp_pcb *pcb, pbuf *packet, const ip_addr_t *address, uint16_t port);
 
     void task();
     void readConfiguration(const Configuration &config);
     Coordinate coordinate(float value, bool latitude);
     void publishSentences();
-    void beginNtpRequest();
-    void sendNtpRequest(const ip_addr_t *address);
-    void cancelNtpRequest();
+    void onNtpTime(uint64_t epochMs);
+    void onNtpPps(int32_t offsetUs);
+    void onNtpFailure();
     void applyNtpResult();
     void applyConfigurationUpdate();
 

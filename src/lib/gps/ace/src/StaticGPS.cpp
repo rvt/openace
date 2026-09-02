@@ -1,24 +1,11 @@
 #include "../StaticGPS.hpp"
 
 #include <cmath>
-#include <cstring>
 
 #include "ace/coreutils.hpp"
-#include "ace/lwiplock.hpp"
 #include "ace/semaphoreguard.hpp"
 
-#include "lwip/def.h"
-#include "lwip/dns.h"
-#include "lwip/pbuf.h"
-#include "lwip/udp.h"
 #include "pico/time.h"
-
-namespace
-{
-    constexpr uint16_t NTP_PORT = 123;
-    constexpr size_t NTP_PACKET_SIZE = 48;
-    constexpr uint32_t NTP_TO_UNIX_EPOCH_SECONDS = 2'208'988'800UL;
-}
 
 StaticGPS::StaticGPS(etl::imessage_bus &bus, const Configuration &config)
     : AbstractGnss(bus, NAME, GATAS::PinTypeMap{}, true, 0, false),
@@ -26,7 +13,9 @@ StaticGPS::StaticGPS(etl::imessage_bus &bus, const Configuration &config)
       longitude(0.0F),
       altitudeMeters(0.0F),
       geoidSeparationMeters(0.0F),
-      ntpServer("pool.ntp.org")
+      ntpClient(NtpClient::TimeCallback::create<StaticGPS, &StaticGPS::onNtpTime>(*this),
+                NtpClient::PpsCallback::create<StaticGPS, &StaticGPS::onNtpPps>(*this),
+                NtpClient::FailureCallback::create<StaticGPS, &StaticGPS::onNtpFailure>(*this))
 {
     readConfiguration(config);
 }
@@ -36,7 +25,7 @@ void StaticGPS::readConfiguration(const Configuration &config)
     latitude = config.floatValueByPath(0.0F, NAME, "latitude");
     longitude = config.floatValueByPath(0.0F, NAME, "longitude");
     altitudeMeters = config.floatValueByPath(0.0F, NAME, "altitude");
-    ntpServer = config.strValueByPath("pool.ntp.org", NAME, "ntpServer");
+    GATAS::ConfigString ntpServer = config.strValueByPath("nl.pool.ntp.org", NAME, "ntpServer");
 
     if (!std::isfinite(latitude) || latitude < -90.0F || latitude > 90.0F)
     {
@@ -52,10 +41,11 @@ void StaticGPS::readConfiguration(const Configuration &config)
     }
     if (ntpServer.empty())
     {
-        ntpServer = "pool.ntp.org";
+        ntpServer = "nl.pool.ntp.org";
     }
 
     geoidSeparationMeters = static_cast<float>(CoreUtils::egmGeoidOffset(latitude, longitude));
+    ntpClient.setServerName(ntpServer);
 }
 
 GATAS::PostConstruct StaticGPS::postConstruct()
@@ -138,7 +128,7 @@ void StaticGPS::task()
 
         if ((notification & NETWORK_CHANGED) != 0)
         {
-            cancelNtpRequest();
+            ntpClient.cancel();
             if (wifiConnected)
             {
                 nextNtpAttemptUs = nowUs;
@@ -156,17 +146,13 @@ void StaticGPS::task()
             nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
         }
 
-        if (ntpRequestActive && nowUs - ntpRequestStartedUs >= NTP_TIMEOUT_US)
+        if (wifiConnected && !ntpClient.busy() && nowUs >= nextNtpAttemptUs)
         {
-            cancelNtpRequest();
-            staticStatistics.ntpErrors += 1;
-            nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
+            staticStatistics.ntpRequests += 1;
+            ntpClient.requestTime();
         }
 
-        if (wifiConnected && !ntpRequestActive && nowUs >= nextNtpAttemptUs)
-        {
-            beginNtpRequest();
-        }
+        ntpClient.poll(nowUs);
 
         if ((notification & SEND_SENTENCES) != 0)
         {
@@ -302,166 +288,22 @@ void StaticGPS::publishSentences()
     processNewSentence({nmeaString.data(), nmeaString.size()});
 }
 
-void StaticGPS::beginNtpRequest()
+void StaticGPS::onNtpTime(uint64_t epochMs)
 {
-    GATAS::ConfigString currentNtpServer;
-    if (auto guard = SemaphoreGuard(1000, configurationMutex))
-    {
-        currentNtpServer = ntpServer;
-    }
-    else
-    {
-        return;
-    }
-
-    cancelNtpRequest();
-
-    LwipLock lock;
-    ntpPcb = udp_new_ip_type(IPADDR_TYPE_ANY);
-    if (ntpPcb == nullptr)
-    {
-        staticStatistics.ntpErrors += 1;
-        nextNtpAttemptUs = CoreUtils::timeUs64() + NTP_RETRY_INTERVAL_US;
-        return;
-    }
-
-    udp_recv(ntpPcb, ntpReceiveCallback, this);
-    ntpRequestActive = true;
-    ntpRequestStartedUs = CoreUtils::timeUs64();
-    staticStatistics.ntpRequests += 1;
-
-    ip_addr_t address;
-    const err_t error = dns_gethostbyname(currentNtpServer.c_str(), &address, dnsCallback, this);
-    if (error == ERR_OK)
-    {
-        sendNtpRequest(&address);
-    }
-    else if (error != ERR_INPROGRESS)
-    {
-        udp_remove(ntpPcb);
-        ntpPcb = nullptr;
-        ntpRequestActive = false;
-        staticStatistics.ntpErrors += 1;
-        nextNtpAttemptUs = CoreUtils::timeUs64() + NTP_RETRY_INTERVAL_US;
-    }
+    ntpEpochAtReceiveMs = epochMs;
+    ntpReceivedAtUs = CoreUtils::timeUs64();
+    ntpResultPending = true;
+    xTaskNotify(staticTaskHandle, NTP_RESULT, eSetBits);
 }
 
-void StaticGPS::dnsCallback(const char *name, const ip_addr_t *address, void *arg)
+void StaticGPS::onNtpPps(int32_t offsetUs)
 {
-    (void)name;
-    auto *staticGps = static_cast<StaticGPS *>(arg);
-    if (staticGps == nullptr || !staticGps->ntpRequestActive)
-    {
-        return;
-    }
-
-    if (address == nullptr)
-    {
-        staticGps->ntpRequestActive = false;
-        if (staticGps->ntpPcb != nullptr)
-        {
-            udp_remove(staticGps->ntpPcb);
-            staticGps->ntpPcb = nullptr;
-        }
-        xTaskNotify(staticGps->staticTaskHandle, NTP_FAILED, eSetBits);
-        return;
-    }
-
-    staticGps->sendNtpRequest(address);
+    rtc->ppsEvent(offsetUs);
 }
 
-void StaticGPS::sendNtpRequest(const ip_addr_t *address)
+void StaticGPS::onNtpFailure()
 {
-    if (!ntpRequestActive || ntpPcb == nullptr || address == nullptr)
-    {
-        return;
-    }
-
-    pbuf *packet = pbuf_alloc(PBUF_TRANSPORT, NTP_PACKET_SIZE, PBUF_RAM);
-    if (packet == nullptr)
-    {
-        return;
-    }
-
-    uint8_t request[NTP_PACKET_SIZE] = {};
-    request[0] = 0x1B; // NTP v3, client mode
-    if (pbuf_take(packet, request, sizeof(request)) != ERR_OK)
-    {
-        pbuf_free(packet);
-        return;
-    }
-    if (udp_connect(ntpPcb, address, NTP_PORT) == ERR_OK)
-    {
-        udp_send(ntpPcb, packet);
-    }
-    pbuf_free(packet);
-}
-
-void StaticGPS::ntpReceiveCallback(void *arg, udp_pcb *pcb, pbuf *packet, const ip_addr_t *address, uint16_t port)
-{
-    (void)address;
-    auto *staticGps = static_cast<StaticGPS *>(arg);
-    if (staticGps == nullptr || packet == nullptr)
-    {
-        if (packet != nullptr)
-        {
-            pbuf_free(packet);
-        }
-        return;
-    }
-
-    uint8_t response[NTP_PACKET_SIZE] = {};
-    const bool valid = staticGps->ntpRequestActive && port == NTP_PORT &&
-                       packet->tot_len >= NTP_PACKET_SIZE &&
-                       pbuf_copy_partial(packet, response, sizeof(response), 0) == sizeof(response) &&
-                       (response[0] & 0x07) == 4 && // server mode
-                       (response[0] >> 6) != 3 &&   // clock is synchronized
-                       response[1] != 0;            // valid stratum
-    pbuf_free(packet);
-
-    if (!valid)
-    {
-        return;
-    }
-
-    uint32_t ntpSecondsNetwork = 0;
-    uint32_t ntpFractionNetwork = 0;
-    std::memcpy(&ntpSecondsNetwork, response + 40, sizeof(ntpSecondsNetwork));
-    std::memcpy(&ntpFractionNetwork, response + 44, sizeof(ntpFractionNetwork));
-    const uint32_t ntpSeconds = lwip_ntohl(ntpSecondsNetwork);
-    const uint32_t ntpFraction = lwip_ntohl(ntpFractionNetwork);
-    const uint64_t unixSeconds = ntpSeconds >= NTP_TO_UNIX_EPOCH_SECONDS
-                                     ? static_cast<uint64_t>(ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS)
-                                     : (1ULL << 32) + ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS;
-
-    const uint64_t receiveUs = CoreUtils::timeUs64();
-    const uint64_t roundTripMs = (receiveUs - staticGps->ntpRequestStartedUs) / 1'000ULL;
-    const uint64_t unixMs = unixSeconds * 1'000ULL +
-                            ((static_cast<uint64_t>(ntpFraction) * 1'000ULL) >> 32) +
-                            roundTripMs / 2;
-
-    staticGps->ntpEpochAtReceiveMs = unixMs;
-    staticGps->ntpReceivedAtUs = receiveUs;
-    staticGps->ntpResultPending = true;
-
-    staticGps->ntpRequestActive = false;
-    if (pcb != nullptr)
-    {
-        udp_remove(pcb);
-        staticGps->ntpPcb = nullptr;
-    }
-    xTaskNotify(staticGps->staticTaskHandle, NTP_RESULT, eSetBits);
-}
-
-void StaticGPS::cancelNtpRequest()
-{
-    LwipLock lock;
-    if (ntpPcb != nullptr)
-    {
-        udp_remove(ntpPcb);
-        ntpPcb = nullptr;
-    }
-    ntpRequestActive = false;
+    xTaskNotify(staticTaskHandle, NTP_FAILED, eSetBits);
 }
 
 void StaticGPS::applyNtpResult()
@@ -482,9 +324,6 @@ void StaticGPS::applyNtpResult()
 
     const uint64_t nowUs = CoreUtils::timeUs64();
     const uint64_t epochNowMs = epochAtReceiveMs + (nowUs - receivedAtUs) / 1'000ULL;
-    // NTP gives the current fractional UTC second. Feeding that phase through
-    // RtcModule keeps PicoRtc's PPS state and CoreUtils' software PPS aligned.
-    rtc->ppsEvent(static_cast<int32_t>((epochNowMs % 1'000ULL) * 1'000ULL));
     CoreUtils::setOffsetMsSinceEpoch(epochNowMs);
     staticStatistics.ntpSyncs += 1;
     nextNtpAttemptUs = nowUs + NTP_REFRESH_INTERVAL_US;
@@ -493,7 +332,7 @@ void StaticGPS::applyNtpResult()
 
 void StaticGPS::applyConfigurationUpdate()
 {
-    cancelNtpRequest();
+    ntpClient.cancel();
     nextNtpAttemptUs = CoreUtils::timeUs64();
     setStatus(wifiConnected ? "Waiting NTP" : "Waiting WiFi");
 }
@@ -518,9 +357,9 @@ void StaticGPS::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     bool ntpServerChanged = false;
     if (auto guard = SemaphoreGuard(1000, configurationMutex))
     {
-        const GATAS::ConfigString previousNtpServer = ntpServer;
+        const etl::string<64> previousNtpServer(ntpClient.serverName());
         readConfiguration(msg.config);
-        ntpServerChanged = ntpServer != previousNtpServer;
+        ntpServerChanged = ntpClient.serverName() != previousNtpServer;
     }
     else
     {
@@ -553,7 +392,7 @@ void StaticGPS::getData(etl::string_stream &stream, const etl::string_view path)
         stream << ",\"longitude\":" << longitude;
         stream << ",\"altitude:m\":" << altitudeMeters;
         stream << ",\"geoidSeparation:m\":" << geoidSeparationMeters;
-        stream << ",\"ntpServer\":\"" << ntpServer << "\"";
+        stream << ",\"ntpServer\":\"" << ntpClient.serverName() << "\"";
     }
     else
     {
