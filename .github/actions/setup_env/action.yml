@@ -7,15 +7,30 @@ runs:
       shell: bash
       run: |
         sudo apt-get remove --purge gcc-11 gcc-12 gcc-13
-        sudo apt-get install tree git python3 ninja-build cmake gcc-14 g++-14 gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential libstdc++-arm-none-eabi-newlib libusb-dev python3-pycryptodome libatomic1
+        sudo apt-get install tree git python3 ninja-build cmake gcc-14 g++-14 build-essential libusb-dev python3-pycryptodome libatomic1 curl xz-utils
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+    - name: Install Arm GNU Toolchain
+      shell: bash
+      run: |
+        ARM_GNU_VERSION="15.2.rel1"
+        ARM_GNU_DIRECTORY="arm-gnu-toolchain-${ARM_GNU_VERSION}-x86_64-arm-none-eabi"
+        ARM_GNU_ARCHIVE="${ARM_GNU_DIRECTORY}.tar.xz"
+        ARM_GNU_DOWNLOAD="/tmp/${ARM_GNU_ARCHIVE}"
+        curl --fail --location --retry 3 \
+          --output "${ARM_GNU_DOWNLOAD}" \
+          "https://developer.arm.com/-/media/Files/downloads/gnu/${ARM_GNU_VERSION}/binrel/${ARM_GNU_ARCHIVE}"
+        echo "597893282ac8c6ab1a4073977f2362990184599643b4c5ee34870a8215783a16  ${ARM_GNU_DOWNLOAD}" | sha256sum --check --strict
+        sudo tar -xJf "${ARM_GNU_DOWNLOAD}" -C /opt
+        echo "/opt/${ARM_GNU_DIRECTORY}/bin" >> "${GITHUB_PATH}"
 
     - name: Verify GCC version
       shell: bash
       run: |
         gcc --version
         g++ --version
+        arm-none-eabi-g++ --version
 
     - name: Checkout pico-sdk
       uses: actions/checkout@v4

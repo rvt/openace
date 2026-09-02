@@ -68,7 +68,7 @@ private:
     struct Coordinate
     {
         etl::string<11> text;
-        char hemisphere;
+        etl::string<2> hemisphere;
     };
 
     static void taskTrampoline(void *arg);

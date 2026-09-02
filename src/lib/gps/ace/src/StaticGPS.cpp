@@ -164,7 +164,7 @@ void StaticGPS::task()
 StaticGPS::Coordinate StaticGPS::coordinate(float value, bool latitude)
 {
     Coordinate coordinate;
-    coordinate.hemisphere = latitude ? (value < 0.0F ? 'S' : 'N') : (value < 0.0F ? 'W' : 'E');
+    coordinate.hemisphere = latitude ? (value < 0.0F ? "S" : "N") : (value < 0.0F ? "W" : "E");
     const float absolute = std::fabs(value);
     int degrees = static_cast<int>(absolute);
     float minutes = std::round((absolute - static_cast<float>(degrees)) * 60.0F * 100000.0F) / 100000.0F;
@@ -219,16 +219,16 @@ void StaticGPS::publishSentences()
     etl::string_stream timeStream(timeText);
     const uint32_t centiseconds = static_cast<uint32_t>((epochMs % 1000) / 10);
     timeStream << etl::format_spec{}.width(2).fill('0') << utc.tm_hour
-               << etl::format_spec{}.width(2).fill('0') << utc.tm_min
-               << etl::format_spec{}.width(2).fill('0') << utc.tm_sec
-               << GATAS::RESET_FORMAT << "."
-               << etl::format_spec{}.width(2).fill('0') << centiseconds;
+               << utc.tm_min
+               << utc.tm_sec
+               << "."
+               << centiseconds;
 
     etl::string<6> dateText;
     etl::string_stream dateStream(dateText);
     dateStream << etl::format_spec{}.width(2).fill('0') << utc.tm_mday
-               << etl::format_spec{}.width(2).fill('0') << utc.tm_mon + 1
-               << etl::format_spec{}.width(2).fill('0') << (utc.tm_year + 1900) % 100;
+               << utc.tm_mon + 1
+               << (utc.tm_year + 1900) % 100;
 
     GATAS::NMEAString nmeaString;
 
@@ -263,8 +263,8 @@ void StaticGPS::publishSentences()
     // $GPGGA
     nmeaString.clear();
     etl::string_stream nmeaStream(nmeaString);
-    nmeaStream << "$GPGGA," << timeText << "," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
-               << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
+    nmeaStream << "$GPGGA," << timeText << "," << latitudeCoordinate.text << "," << latitudeCoordinate.hemisphere
+               << "," << longitudeCoordinate.text << "," << longitudeCoordinate.hemisphere
                << "," << (valid ? "1,08" : "0,00") << ",1.0," << etl::format_spec{}.precision(1) << currentAltitudeMeters
                << GATAS::RESET_FORMAT << ",M," << etl::format_spec{}.precision(1) << currentGeoidSeparationMeters
                << GATAS::RESET_FORMAT << ",M,,";
