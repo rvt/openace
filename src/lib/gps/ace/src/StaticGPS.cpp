@@ -237,7 +237,7 @@ void StaticGPS::publishSentences()
         etl::string_stream nmeaStream(nmeaString);
         nmeaStream << "$GPGLL," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
                    << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
-                   << "," << timeText << "," << (valid ? "A" : "V");
+                   << "," << timeText << "," << (valid ? 'A' : 'V');
     }
     CoreUtils::addChecksumToNMEA(nmeaString, false);
     processNewSentence({nmeaString.data(), nmeaString.size()});
@@ -246,7 +246,7 @@ void StaticGPS::publishSentences()
     nmeaString.clear();
     {
         etl::string_stream nmeaStream(nmeaString);
-        nmeaStream << "$GPRMC," << timeText << "," << (valid ? "A" : "V")
+        nmeaStream << "$GPRMC," << timeText << "," << (valid ? 'A' : 'V')
                    << "," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
                    << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
                    << ",0.000,0.00," << dateText << ",,";
