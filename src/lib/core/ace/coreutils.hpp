@@ -35,6 +35,17 @@ namespace CoreUtils
     }
 
     /**
+     * Get a monotonic 64-bit timestamp in microseconds.
+     *
+     * Unlike timeUs64(), this value is not adjusted when PPS alignment changes,
+     * making it suitable for measuring elapsed time and scheduling timeouts.
+     */
+    inline uint64_t monotonic()
+    {
+        return time_us_64();
+    }
+
+    /**
      * Get a 64-bit timestamp in us aligned on PPS.
      * This uses the same hardware time base as timeUs32(), but preserves the full
      * 64-bit range for long-running intervals and epoch-related calculations.

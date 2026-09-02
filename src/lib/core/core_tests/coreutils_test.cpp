@@ -46,14 +46,17 @@ TEST_CASE("setPPS handles signed software offsets", "[single-file]")
     CoreUtils::setPPS(250);
     REQUIRE(CoreUtils::timeUs32() == 23'000'250);
     REQUIRE(CoreUtils::timeUs64() == 23'000'250);
+    REQUIRE(CoreUtils::monotonic() == 23'000'100);
     time_us_Value += 150;
     REQUIRE(CoreUtils::usInSecond() == 400);
     REQUIRE(CoreUtils::timeUs32() == 23'000'400);
+    REQUIRE(CoreUtils::monotonic() == 23'000'250);
 
     time_us_Value = 23'000'250;
     CoreUtils::setPPS(-100);
     REQUIRE(CoreUtils::timeUs32() == 22'999'900);
     REQUIRE(CoreUtils::timeUs64() == 22'999'900);
+    REQUIRE(CoreUtils::monotonic() == 23'000'250);
     REQUIRE(CoreUtils::usInSecond() == 999'900);
 }
 
@@ -390,7 +393,7 @@ TEST_CASE("egmGeoidOffset Example case (51, 4)", "[altitude]") {
 
 TEST_CASE("egmGeoidOffset StaticGPS default position", "[altitude]")
 {
-    const float result = CoreUtils::egmGeoidOffset(52.8925725F, 4.7362312F);
+    const float result = CoreUtils::egmGeoidOffset(51.8925725F, 4.0362312F);
 
     REQUIRE(result == 42.0F);
 }

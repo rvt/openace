@@ -1157,8 +1157,8 @@ class StaticGPS extends ModuleConfig {
   }
 
   _setFormData(data) {
-    this.$refs.latitude.value = data?.latitude ?? "52.8925725";
-    this.$refs.longitude.value = data?.longitude ?? "4.7362312";
+    this.$refs.latitude.value = data?.latitude ?? "0.0";
+    this.$refs.longitude.value = data?.longitude ?? "0.0";
     this.$refs.altitude.value = data?.altitude ?? "0.0";
     this.$refs.ntpServer.value = data?.ntpServer ?? "pool.ntp.org";
   }
@@ -1184,11 +1184,11 @@ class StaticGPS extends ModuleConfig {
         <div class="page-section app-grid app-grid--2">
           <label for="staticGpsLatitude">
             Latitude (decimal degrees)
-            <input type="number" step="any" id="staticGpsLatitude" ref="latitude" placeholder="52.8925725" />
+            <input type="number" step="any" id="staticGpsLatitude" ref="latitude" placeholder="0.0" />
           </label>
           <label for="staticGpsLongitude">
             Longitude (decimal degrees)
-            <input type="number" step="any" id="staticGpsLongitude" ref="longitude" placeholder="4.7362312" />
+            <input type="number" step="any" id="staticGpsLongitude" ref="longitude" placeholder="0.0" />
           </label>
           <label for="staticGpsAltitude">
             Altitude above mean sea level (m)

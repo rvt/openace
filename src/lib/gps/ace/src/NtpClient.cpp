@@ -52,7 +52,7 @@ bool NtpClient::requestTime()
 
     udp_recv(pcb, receiveCallback, this);
     active = true;
-    requestStartedUs = CoreUtils::timeUs64();
+    requestStartedUs = CoreUtils::monotonic();
 
     ip_addr_t address;
     const err_t error = dns_gethostbyname(server.c_str(), &address, dnsCallback, this);
@@ -145,7 +145,7 @@ void NtpClient::sendRequest(const ip_addr_t *address)
         return;
     }
 
-    requestSentUs = CoreUtils::timeUs64();
+    requestSentUs = CoreUtils::monotonic();
     const err_t error = udp_send(pcb, packet);
     pbuf_free(packet);
     if (error != ERR_OK)
@@ -191,7 +191,7 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
                                      ? static_cast<uint64_t>(ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS)
                                      : (1ULL << 32) + ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS;
 
-    const uint64_t receiveUs = CoreUtils::timeUs64();
+    const uint64_t receiveUs = CoreUtils::monotonic();
     const uint64_t roundTripMs = (receiveUs - client->requestSentUs) / 1'000ULL;
     const uint64_t unixMs = unixSeconds * 1'000ULL +
                             ((static_cast<uint64_t>(ntpFraction) * 1'000ULL) >> 32) +
