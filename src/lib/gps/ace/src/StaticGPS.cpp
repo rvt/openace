@@ -233,12 +233,11 @@ void StaticGPS::publishSentences()
     GATAS::NMEAString nmeaString;
 
     // $GPGLL
-    const char *AV;
-    AV = (valid ? ",A" : ",V");
+    etl::string<3> AV = (valid ? ",A" : ",V");
     {
         etl::string_stream nmeaStream(nmeaString);
-        nmeaStream << "$GPGLL," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
-                   << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
+        nmeaStream << "$GPGLL," << latitudeCoordinate.text << "," << latitudeCoordinate.hemisphere
+                   << "," << longitudeCoordinate.text << "," << longitudeCoordinate.hemisphere
                    << "," << timeText << AV;
     }
     CoreUtils::addChecksumToNMEA(nmeaString, false);
@@ -249,8 +248,8 @@ void StaticGPS::publishSentences()
     {
         etl::string_stream nmeaStream(nmeaString);
         nmeaStream << "$GPRMC," << timeText << AV
-                   << "," << latitudeCoordinate.text << "," << etl::string_view(&latitudeCoordinate.hemisphere, 1)
-                   << "," << longitudeCoordinate.text << "," << etl::string_view(&longitudeCoordinate.hemisphere, 1)
+                   << "," << latitudeCoordinate.text << "," << latitudeCoordinate.hemisphere
+                   << "," << longitudeCoordinate.text << "," << longitudeCoordinate.hemisphere
                    << ",0.000,0.00," << dateText << ",,";
     }
     CoreUtils::addChecksumToNMEA(nmeaString, false);
