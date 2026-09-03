@@ -50,6 +50,13 @@ void StaticGPS::readConfiguration(const Configuration &config)
 
 GATAS::PostConstruct StaticGPS::postConstruct()
 {
+    if (BaseModule::moduleByName(*this, "L76B") != nullptr ||
+        BaseModule::moduleByName(*this, "UbloxM8N") != nullptr)
+    {
+        setStatus("GNSS conflict");
+        return GATAS::PostConstruct::CONFIG_ERROR;
+    }
+
     const GATAS::PostConstruct result = AbstractGnss::postConstruct();
     if (result != GATAS::PostConstruct::OK)
     {
@@ -114,7 +121,7 @@ void StaticGPS::task()
     {
         uint32_t notification = 0;
         xTaskNotifyWait(pdFALSE, ULONG_MAX, &notification, portMAX_DELAY);
-        const uint64_t nowUs = CoreUtils::timeUs64();
+        const uint64_t nowUs = CoreUtils::monotonic();
 
         if ((notification & NTP_RESULT) != 0)
         {
@@ -146,13 +153,13 @@ void StaticGPS::task()
             nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
         }
 
+        ntpClient.poll(nowUs);
+
         if (wifiConnected && !ntpClient.busy() && nowUs >= nextNtpAttemptUs)
         {
             staticStatistics.ntpRequests += 1;
             ntpClient.requestTime();
         }
-
-        ntpClient.poll(nowUs);
 
         if ((notification & SEND_SENTENCES) != 0)
         {
@@ -241,7 +248,7 @@ void StaticGPS::publishSentences()
                    << "," << timeText << AV;
     }
     CoreUtils::addChecksumToNMEA(nmeaString, false);
-    processNewSentence({nmeaString.data(), nmeaString.size()});
+    processNewSentenceFromTask({nmeaString.data(), nmeaString.size()});
 
     // $GPRMC
     nmeaString.clear();
@@ -253,12 +260,12 @@ void StaticGPS::publishSentences()
                    << ",0.000,0.00," << dateText << ",,";
     }
     CoreUtils::addChecksumToNMEA(nmeaString, false);
-    processNewSentence({nmeaString.data(), nmeaString.size()});
+    processNewSentenceFromTask({nmeaString.data(), nmeaString.size()});
 
     // // $GPVTG
     // nmeaString = "$GPVTG,0.00,T,,M,0.000,N,0.000,K";
     // CoreUtils::addChecksumToNMEA(nmeaString, false);
-    // processNewSentence({nmeaString.data(), nmeaString.size()});
+    // processNewSentenceFromTask({nmeaString.data(), nmeaString.size()});
 
     // $GPGGA
     nmeaString.clear();
@@ -269,30 +276,30 @@ void StaticGPS::publishSentences()
                << GATAS::RESET_FORMAT << ",M," << etl::format_spec{}.precision(1) << currentGeoidSeparationMeters
                << GATAS::RESET_FORMAT << ",M,,";
     CoreUtils::addChecksumToNMEA(nmeaString, false);
-    processNewSentence({nmeaString.data(), nmeaString.size()});
+    processNewSentenceFromTask({nmeaString.data(), nmeaString.size()});
 
     // $GPGSA
     nmeaString = valid
                      ? "$GPGSA,M,3,03,04,08,10,13,16,21,27,,,,,1.0,1.0,1.0"
                      : "$GPGSA,M,1,,,,,,,,,,,,,1.0,1.0,1.0";
     CoreUtils::addChecksumToNMEA(nmeaString, false);
-    processNewSentence({nmeaString.data(), nmeaString.size()});
+    processNewSentenceFromTask({nmeaString.data(), nmeaString.size()});
 
     // $GPGSV
     nmeaString = "$GPGSV,2,1,08,03,45,111,42,04,50,272,43,08,35,046,40,10,60,151,45";
     CoreUtils::addChecksumToNMEA(nmeaString, false);
-    processNewSentence({nmeaString.data(), nmeaString.size()});
+    processNewSentenceFromTask({nmeaString.data(), nmeaString.size()});
 
     // $GPGSV
     nmeaString = "$GPGSV,2,2,08,13,25,210,38,16,40,315,41,21,55,080,44,27,30,180,39";
     CoreUtils::addChecksumToNMEA(nmeaString, false);
-    processNewSentence({nmeaString.data(), nmeaString.size()});
+    processNewSentenceFromTask({nmeaString.data(), nmeaString.size()});
 }
 
 void StaticGPS::onNtpTime(uint64_t epochMs)
 {
     ntpEpochAtReceiveMs = epochMs;
-    ntpReceivedAtUs = CoreUtils::timeUs64();
+    ntpReceivedAtUs = CoreUtils::monotonic();
     ntpResultPending = true;
     xTaskNotify(staticTaskHandle, NTP_RESULT, eSetBits);
 }
@@ -323,7 +330,7 @@ void StaticGPS::applyNtpResult()
         return;
     }
 
-    const uint64_t nowUs = CoreUtils::timeUs64();
+    const uint64_t nowUs = CoreUtils::monotonic();
     const uint64_t epochNowMs = epochAtReceiveMs + (nowUs - receivedAtUs) / 1'000ULL;
     CoreUtils::setOffsetMsSinceEpoch(epochNowMs);
     staticStatistics.ntpSyncs += 1;
@@ -334,7 +341,7 @@ void StaticGPS::applyNtpResult()
 void StaticGPS::applyConfigurationUpdate()
 {
     ntpClient.cancel();
-    nextNtpAttemptUs = CoreUtils::timeUs64();
+    nextNtpAttemptUs = CoreUtils::monotonic();
     setStatus(wifiConnected ? "Waiting NTP" : "Waiting WiFi");
 }
 

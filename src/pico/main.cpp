@@ -341,9 +341,13 @@ static void loadModules(void *arg)
     // Hardware timings, GPS and connectivity
     load(PicoRtc::NAME, bus, config, true);
     load(GpsDecoder::NAME, bus, config);
+
+    // GPS
     load(UbloxM8N::NAME, bus, config);
     load(L76B::NAME, bus, config);
-    load(StaticGPS::NAME, bus, config);
+    load(StaticGPS::NAME, bus, config); // Must always be after any Hardware GPS
+    // GPS
+
     load(Gdl90Service::NAME, bus, config);
     load(GDLoverUDP::NAME, bus, config);
     load(DataPort::NAME, bus, config);

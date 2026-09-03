@@ -54,12 +54,17 @@ private:
     etl::queue_spsc_atomic<GATAS::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
 
     static constexpr const etl::string_view NAME = "Gnss";
+
+private:
+    void processNewSentence(const etl::array_view<char> &sentence, bool fromISR);
+
 protected:
     PioSerial &getSerial()
     {
         return pioSerial;
     }
-    void processNewSentence(const etl::array_view<char> &sentence);
+    void processNewSentenceFromISR(const etl::array_view<char> &sentence);
+    void processNewSentenceFromTask(const etl::array_view<char> &sentence);
 
     /** What a implementation needs to override */
     void setStatus(const etl::string_view &status)
@@ -101,7 +106,7 @@ protected:
 public:
     AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins, bool softPPS, int32_t softPPSLagUs_, bool usePioSerial_ = true)
         : BaseModule(bus, name),
-          pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
+          pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentenceFromISR>(*this)},
           ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
           usePioSerial(usePioSerial_),
           softwarebasedPPS(softPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG),

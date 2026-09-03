@@ -123,7 +123,17 @@ void AbstractGnss::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "}";
 }
 
-void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char> &sentence)
+void __time_critical_func(AbstractGnss::processNewSentenceFromISR)(const etl::array_view<char> &sentence)
+{
+    processNewSentence(sentence, true);
+}
+
+void AbstractGnss::processNewSentenceFromTask(const etl::array_view<char> &sentence)
+{
+    processNewSentence(sentence, false);
+}
+
+void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char> &sentence, bool fromISR)
 {
     // Not even enough characters for a valid sentence type ("$GPxxx...")
     if (sentence.size() < 17)
@@ -135,7 +145,14 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     if (queue.full())
     {
         statistics.queueFullErr += 1;
-        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+        if (fromISR)
+        {
+            xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+        }
+        else
+        {
+            xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
+        }
         return;
     }
 
@@ -173,6 +190,13 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     queue.push(sentence.data());
     if (isPriority || queue.size() > (QUEUE_SIZE / 2))
     {
-        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+        if (fromISR)
+        {
+            xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+        }
+        else
+        {
+            xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
+        }
     }
 }

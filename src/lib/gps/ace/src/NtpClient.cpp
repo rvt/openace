@@ -81,7 +81,7 @@ void NtpClient::cancel()
 
 void NtpClient::poll(uint64_t nowUs)
 {
-    if (active && nowUs - requestStartedUs >= REQUEST_TIMEOUT_US)
+    if (active && nowUs >= requestStartedUs && nowUs - requestStartedUs >= REQUEST_TIMEOUT_US)
     {
         cancel();
         if (failureCallback.is_valid())
