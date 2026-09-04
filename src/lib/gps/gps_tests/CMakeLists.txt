@@ -28,6 +28,7 @@ add_executable(staticgps_nmea_test
   staticgps_nmea_test.cpp)
 
 target_link_libraries(staticgps_nmea_test PRIVATE Catch2WithMain etl)
+target_compile_definitions(staticgps_nmea_test PRIVATE MEASURE_NTP_OFFSET=0)
 
 add_custom_command(
   TARGET staticgps_nmea_test

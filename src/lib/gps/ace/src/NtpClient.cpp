@@ -49,7 +49,7 @@ bool NtpClient::requestTime()
     pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
     if (pcb == nullptr)
     {
-        failureCallback();
+        failureCallback(Failure::REQUEST);
         return false;
     }
 
@@ -91,7 +91,7 @@ void NtpClient::poll(uint64_t nowUs)
     {
         closePcb();
         active = false;
-        failureCallback();
+        failureCallback(Failure::REQUEST);
     }
 }
 
@@ -202,7 +202,14 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
                                      : (1ULL << 32) + ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS;
 
     const uint64_t receiveUs = CoreUtils::monotonic();
-    const uint64_t roundTripMs = (receiveUs - client->requestSentUs) / 1'000ULL;
+    const uint64_t roundTripUs = receiveUs - client->requestSentUs;
+    if (roundTripUs > MAX_ROUND_TRIP_US)
+    {
+        client->failRequest(Failure::ROUND_TRIP_TOO_LONG);
+        return;
+    }
+
+    const uint64_t roundTripMs = roundTripUs / 1'000ULL;
     const uint64_t unixMs = unixSeconds * 1'000ULL +
                             ((static_cast<uint64_t>(ntpFraction) * 1'000ULL) >> 32) +
                             roundTripMs / 2;
@@ -229,10 +236,10 @@ void NtpClient::closePcb()
     requestSentUs = 0;
 }
 
-void NtpClient::failRequest()
+void NtpClient::failRequest(Failure failure)
 {
     dnsPending = false;
     closePcb();
     active = false;
-    failureCallback();
+    failureCallback(failure);
 }

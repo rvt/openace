@@ -1,6 +1,7 @@
 #include "../StaticGPS.hpp"
 
 #include <cmath>
+#include <inttypes.h>
 #include <ctime>
 
 #include "ace/coreutils.hpp"
@@ -58,12 +59,14 @@ void StaticGPS::readConfiguration(const Configuration &config)
 
 GATAS::PostConstruct StaticGPS::postConstruct()
 {
+#if !MEASURE_NTP_OFFSET
     if (BaseModule::moduleByName(*this, "L76B") != nullptr ||
         BaseModule::moduleByName(*this, "UbloxM8N") != nullptr)
     {
         setStatus("GNSS conflict");
         return GATAS::PostConstruct::CONFIG_ERROR;
     }
+#endif
 
     const GATAS::PostConstruct result = AbstractGnss::postConstruct();
     if (result != GATAS::PostConstruct::OK)
@@ -135,10 +138,14 @@ void StaticGPS::task()
             applyNtpResult();
         }
 
-        if ((notification & NTP_FAILED) != 0)
+        if ((notification & (NTP_FAILED | NTP_ROUND_TRIP_TOO_LONG)) != 0)
         {
             staticStatistics.ntpErrors += 1;
             nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
+        }
+        if ((notification & NTP_ROUND_TRIP_TOO_LONG) != 0)
+        {
+            staticStatistics.ntpRoundTripRejected += 1;
         }
 
         if ((notification & NTP_SERVER_UPDATED) != 0)
@@ -199,6 +206,10 @@ StaticGPS::Coordinate StaticGPS::coordinate(float value, bool latitude)
 
 void StaticGPS::publishSentences()
 {
+#if MEASURE_NTP_OFFSET
+    return;
+#endif
+
     float currentLatitude;
     float currentLongitude;
     float currentAltitudeMeters;
@@ -307,12 +318,19 @@ void StaticGPS::onNtpTime(uint64_t epochMs)
 
 void StaticGPS::onNtpPps(int32_t offsetUs)
 {
+#if MEASURE_NTP_OFFSET
+    (void)offsetUs;
+#else
     rtc->ppsEvent(offsetUs);
+#endif
 }
 
-void StaticGPS::onNtpFailure()
+void StaticGPS::onNtpFailure(NtpClient::Failure failure)
 {
-    xTaskNotify(staticTaskHandle, NTP_FAILED, eSetBits);
+    const uint32_t notification = failure == NtpClient::Failure::ROUND_TRIP_TOO_LONG
+                                      ? NTP_ROUND_TRIP_TOO_LONG
+                                      : NTP_FAILED;
+    xTaskNotify(staticTaskHandle, notification, eSetBits);
 }
 
 void StaticGPS::applyNtpResult()
@@ -333,10 +351,18 @@ void StaticGPS::applyNtpResult()
 
     const uint64_t nowUs = CoreUtils::monotonic();
     const uint64_t epochNowMs = epochAtReceiveMs + (nowUs - receivedAtUs) / 1'000ULL;
+#if MEASURE_NTP_OFFSET
+    const uint64_t gpsEpochMs = CoreUtils::msSinceEpoch();
+    const int64_t ntpOffsetUs = epochNowMs >= gpsEpochMs
+                                    ? static_cast<int64_t>((epochNowMs - gpsEpochMs) * 1'000ULL)
+                                    : -static_cast<int64_t>((gpsEpochMs - epochNowMs) * 1'000ULL);
+    GATAS_INFO("NTP offset from GPS: %" PRId64 "us", ntpOffsetUs);
+#else
     CoreUtils::setOffsetMsSinceEpoch(epochNowMs);
+#endif
     staticStatistics.ntpSyncs += 1;
     nextNtpAttemptUs = nowUs + NTP_REFRESH_INTERVAL_US;
-    setStatus("Configured");
+    setStatus(MEASURE_NTP_OFFSET ? "Measuring NTP" : "Configured");
 }
 
 void StaticGPS::applyConfigurationUpdate()
@@ -402,9 +428,11 @@ void StaticGPS::getData(etl::string_stream &stream, const etl::string_view path)
     }
     stream << ",\"status\":\"" << statistics.status << "\"";
     stream << ",\"totalReceived:k\":" << statistics.totalReceived;
+    stream << ",\"queueFullErr:k\":" << statistics.queueFullErr;    
     stream << ",\"ntpRequests:k\":" << staticStatistics.ntpRequests;
     stream << ",\"ntpSyncs:k\":" << staticStatistics.ntpSyncs;
     stream << ",\"ntpErrors:err\":" << staticStatistics.ntpErrors;
-    stream << ",\"waitingForTime:k\":" << staticStatistics.invalidTime;
+    stream << ",\"ntpRoundTripsRejected:err\":" << staticStatistics.ntpRoundTripRejected;
+    stream << ",\"invalidTimeCycles:err\":" << staticStatistics.invalidTime;
     stream << "}";
 }

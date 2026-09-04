@@ -27,16 +27,23 @@ struct udp_pcb;
 class NtpClient
 {
 public:
+    enum class Failure
+    {
+        REQUEST,
+        ROUND_TRIP_TOO_LONG,
+    };
+
     using ServerName = etl::string<64>;
     using TimeCallback = etl::delegate<void(uint64_t)>;
     using PpsCallback = etl::delegate<void(int32_t)>;
-    using FailureCallback = etl::delegate<void()>;
+    using FailureCallback = etl::delegate<void(Failure)>;
 
 private:
     static constexpr uint16_t NTP_PORT = 123;
     static constexpr size_t NTP_PACKET_SIZE = 48;
     static constexpr uint32_t NTP_TO_UNIX_EPOCH_SECONDS = 2'208'988'800UL;
     static constexpr uint64_t REQUEST_TIMEOUT_US = 15ULL * 1'000'000ULL;
+    static constexpr uint64_t MAX_ROUND_TRIP_US = 25'000ULL; // any round trip time higher than this value might indicate jitter and will result in incorrect timings
 
     ServerName server;
     TimeCallback timeCallback;
@@ -52,7 +59,7 @@ private:
 
     void sendRequest(const ip_addr_t *address);
     void closePcb();
-    void failRequest();
+    void failRequest(Failure failure = Failure::REQUEST);
 
 public:
     NtpClient(TimeCallback timeCallback, PpsCallback ppsCallback, FailureCallback failureCallback);

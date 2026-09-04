@@ -12,6 +12,10 @@
 #include "etl/message_router.h"
 #include "etl/string.h"
 
+#ifndef MEASURE_NTP_OFFSET
+#define MEASURE_NTP_OFFSET (0)
+#endif
+
 /**
  * Generates NMEA sentences for a configured fixed position.
  *
@@ -40,6 +44,7 @@ private:
         NETWORK_CHANGED = 1 << 2,
         NTP_FAILED = 1 << 3,
         NTP_SERVER_UPDATED = 1 << 4,
+        NTP_ROUND_TRIP_TOO_LONG = 1 << 5,
     };
 
     struct
@@ -47,6 +52,7 @@ private:
         uint32_t ntpRequests = 0;
         uint32_t ntpSyncs = 0;
         uint32_t ntpErrors = 0;
+        uint32_t ntpRoundTripRejected = 0;
         uint32_t invalidTime = 0;
     } staticStatistics;
 
@@ -83,7 +89,7 @@ private:
     void publishSentences();
     void onNtpTime(uint64_t epochMs);
     void onNtpPps(int32_t offsetUs);
-    void onNtpFailure();
+    void onNtpFailure(NtpClient::Failure failure);
     void applyNtpResult();
     void applyConfigurationUpdate();
 
