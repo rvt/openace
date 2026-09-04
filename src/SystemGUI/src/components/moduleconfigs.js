@@ -1191,7 +1191,7 @@ class StaticGPS extends ModuleConfig {
             <input type="number" step="any" id="staticGpsLongitude" ref="longitude" placeholder="0.0" />
           </label>
           <label for="staticGpsAltitude">
-            Altitude above mean sea level (m)
+            Altitude MSL (m)
             <input type="number" step="any" id="staticGpsAltitude" ref="altitude" placeholder="0.0" />
           </label>
           <label for="staticGpsNtpServer">

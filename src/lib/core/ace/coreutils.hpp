@@ -516,7 +516,6 @@ namespace CoreUtils
             nmea.resize(starPos);
         }
 
-        const size_t suffixSize = appendCRLF ? 5 : 3;
         if (nmea.capacity() - nmea.size() < 5) // Keep 5, just in case when /r/l needs to be appended again
         {
             return; // not enough space
@@ -529,6 +528,7 @@ namespace CoreUtils
             '\r',
             '\n'};
 
+        const size_t suffixSize = appendCRLF ? 5 : 3;
         nmea.append(suffix, suffixSize);
     }
 
