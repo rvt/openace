@@ -9,7 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added a configurable StaticGPS module for stationary installations that generates NMEA position data through the normal GNSS pipeline and synchronizes its clock using NTP.
+- 
+
+### Changed
+
+-
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+- 
+
+### Security
+
+
+## [v3.4.0] - 2026-09-04
+
+### Added
+
+- [Experimental] Added a configurable StaticGPS module for stationary installations that generates NMEA position data through the normal GNSS pipeline and synchronizes its clock using NTP.
 
 ### Changed
 
