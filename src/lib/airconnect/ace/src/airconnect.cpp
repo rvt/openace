@@ -2,7 +2,7 @@
 
 #include "../airconnect.hpp"
 #include "ace/debug.hpp"
-#include "ace/lwiplock.hpp"
+#include "ace/lwipraiilock.hpp"
 
 GATAS::PostConstruct AirConnect::postConstruct()
 {

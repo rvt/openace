@@ -141,7 +141,7 @@
     "latitude": "0.0",
     "longitude": "0.0",
     "altitude": "0.0",
-    "ntpServer": "pool.ntp.org"
+    "ntpServer": "time.cloudflare.com"
   },
   "SerialADSB": {},
   "_commentPinMaps": "Hardware specific items are only handled by pinmapping",

@@ -464,8 +464,8 @@ void Sx1262::sendLORAPacket(const GATAS::RadioParameters &parameters, const uint
     // Wait until CAD done
     // disablePinInterrupt(dio1Pin); // We are just waiting for CAD
     // Might be here a solution?? https://github.com/antirez/freakwan/tree/main/techo-port
-    enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
     sx126x_set_dio_irq_params(this, SX126X_IRQ_TX_DONE, SX126X_IRQ_TX_DONE, SX126X_IRQ_NONE, SX126X_IRQ_NONE);
+    enablePinInterrupt(dio1Pin, DIO1_TX_DONE);
 
     // 13.1.14 SetTx
     sx126x_write_buffer(this, 0x00, data, length);

@@ -1,7 +1,7 @@
 #include "../wifiservice.hpp"
 #include "lwip/apps/mdns.h"
 #include "ace/coreutils.hpp"
-#include "ace/lwiplock.hpp"
+#include "ace/lwipraiilock.hpp"
 
 #include "pico/lwip_freertos.h"
 #include "pico/stdlib.h"
@@ -19,12 +19,16 @@ GATAS::PostConstruct WifiService::postConstruct()
 
 void WifiService::start()
 {
+}
+
+void WifiService::postStart()
+{
 #if LWIP_MDNS_RESPONDER == 1
     mdns_resp_init();
 #endif
     xTaskCreate(wifiTaskTrampoline, WifiService::NAME.cbegin(), configMINIMAL_STACK_SIZE + 256, this, tskIDLE_PRIORITY, &taskHandle);
     getBus().subscribe(*this);
-};
+}
 
 bool WifiService::setData(const etl::string_view data, const etl::string_view path)
 {
@@ -392,7 +396,7 @@ WifiService::ConnectClientResult WifiService::connectClient()
 bool WifiService::checkIfClientActive(int itf)
 {
     (void)itf;
-    LwipLock lock;
+    LwipRAIILock lock;
     struct netif *n = netif_list;
     while (n != nullptr)
     {
@@ -493,7 +497,7 @@ void WifiService::mDnsDeinit(int itf)
 
 WifiService::IpGw WifiService::getInterfaceInfo()
 {
-    LwipLock lock; // protects netif_list iteration
+    LwipRAIILock lock; // protects netif_list iteration
     // Using cyw43_state.netif won't work for AP mode
     struct netif *n = netif_list;
     while (n != NULL)

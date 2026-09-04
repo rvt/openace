@@ -23,6 +23,8 @@ endif()
 
 add_executable(staticgps_nmea_test
   ../../../vendor/minmea/minmea.c
+  ../../core/ace/src/coreutils.cpp
+  ../ace/src/StaticGPS.cpp
   staticgps_nmea_test.cpp)
 
 target_link_libraries(staticgps_nmea_test PRIVATE Catch2WithMain etl)

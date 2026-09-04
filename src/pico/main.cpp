@@ -382,6 +382,17 @@ static void loadModules(void *arg)
     // load(SerialADSB::NAME, bus, config);
     // puts("\033[2J\033[H");
 
+    // All successfully initialised modules have now completed start() and can
+    // safely receive messages emitted by post-start lifecycle hooks.
+    for (const auto &registeredModule : BaseModule::registeredModules())
+    {
+        const auto &moduleStatus = registeredModule.second;
+        if (moduleStatus.result == GATAS::PostConstruct::OK && moduleStatus.module != nullptr)
+        {
+            moduleStatus.module->postStart();
+        }
+    }
+
     printf(
         R"=(
 

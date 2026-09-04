@@ -160,4 +160,5 @@ public:
     virtual GATAS::PostConstruct postConstruct() override;
 
     virtual void start() override;
+    virtual void postStart() override;
 };

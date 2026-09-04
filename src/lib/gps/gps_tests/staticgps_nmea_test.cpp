@@ -1,14 +1,66 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include "ace/constants.hpp"
 #include "ace/coreutils.hpp"
+#include "ace/messagerouter.hpp"
+#include "mockconfig.h"
+#include "pico/time.h"
+#include "semphr.h"
+
+#define private public
+#include "StaticGPS.hpp"
+#undef private
 
 #include "etl/array.h"
+#include "etl/vector.h"
 
 #include "minmea.h"
 
 namespace
 {
+    etl::vector<GATAS::NMEAString, 6> publishedSentences;
+
+    class StaticGpsConfig : public MockConfig
+    {
+    public:
+        explicit StaticGpsConfig(etl::imessage_bus &bus) : MockConfig(bus)
+        {
+        }
+
+        float floatValueByPath(float defaultValue,
+                               const etl::string_view pathToValue,
+                               const etl::string_view key) const override
+        {
+            if (pathToValue != StaticGPS::NAME)
+            {
+                return defaultValue;
+            }
+            if (key == "latitude")
+            {
+                return 52.8925725F;
+            }
+            if (key == "longitude")
+            {
+                return 4.7362312F;
+            }
+            if (key == "altitude")
+            {
+                return 12.3F;
+            }
+            return defaultValue;
+        }
+
+        const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue,
+                                                 const etl::string_view pathToValue,
+                                                 const etl::string_view key) const override
+        {
+            (void)pathToValue;
+            (void)key;
+            return GATAS::ConfigString(defaultValue);
+        }
+    };
+
     void addChecksum(GATAS::NMEAString &sentence)
     {
         CoreUtils::addChecksumToNMEA(sentence, false);
@@ -20,19 +72,103 @@ namespace
     }
 }
 
+BaseModule::BaseModule(etl::imessage_bus &bus_, const etl::string_view name_)
+    : bus(bus_), moduleName(name_)
+{
+}
+
+BaseModule *BaseModule::moduleByName(const BaseModule &that, const etl::string_view requesting)
+{
+    (void)that;
+    (void)requesting;
+    return nullptr;
+}
+
+GATAS::PostConstruct AbstractGnss::postConstruct()
+{
+    return GATAS::PostConstruct::OK;
+}
+
+void AbstractGnss::start()
+{
+}
+
+void AbstractGnss::getData(etl::string_stream &stream, const etl::string_view path) const
+{
+    (void)stream;
+    (void)path;
+}
+
+bool AbstractGnss::isPpsDetected()
+{
+    return false;
+}
+
+void AbstractGnss::processNewSentenceFromISR(const etl::array_view<char> &sentence)
+{
+    processNewSentenceFromTask(sentence);
+}
+
+void AbstractGnss::processNewSentenceFromTask(const etl::array_view<char> &sentence)
+{
+    GATAS::NMEAString copy;
+    copy.assign(sentence.begin(), sentence.end());
+    publishedSentences.push_back(copy);
+}
+
+NtpClient::NtpClient(TimeCallback timeCallback_, PpsCallback ppsCallback_, FailureCallback failureCallback_)
+    : timeCallback(timeCallback_),
+      ppsCallback(ppsCallback_),
+      failureCallback(failureCallback_)
+{
+}
+
+NtpClient::~NtpClient() = default;
+
+void NtpClient::setServerName(etl::string_view serverName_)
+{
+    server.assign(serverName_.begin(), serverName_.end());
+}
+
+NtpClient::ServerName NtpClient::serverName() const
+{
+    return server;
+}
+
+bool NtpClient::requestTime()
+{
+    return false;
+}
+
+void NtpClient::cancel()
+{
+}
+
+void NtpClient::poll(uint64_t nowUs)
+{
+    (void)nowUs;
+}
+
+bool NtpClient::busy() const
+{
+    return false;
+}
+
 TEST_CASE("StaticGPS NMEA sentences are accepted by the GPS decoder parser")
 {
-    etl::array<GATAS::NMEAString, 6> sentences{
-        "$GPGLL,5253.55446,N,00444.17388,E,183205.50,A",
-        "$GPRMC,183205.50,A,5253.55446,N,00444.17388,E,0.000,0.00,260826,,",
-        "$GPGGA,183205.50,5253.55446,N,00444.17388,E,1,08,1.0,12.3,M,42.0,M,,",
-        "$GPGSA,M,3,03,04,08,10,13,16,21,27,,,,,1.0,1.0,1.0",
-        "$GPGSV,2,1,08,03,45,111,42,04,50,272,43,08,35,046,40,10,60,151,45",
-        "$GPGSV,2,2,08,13,25,210,38,16,40,315,41,21,55,080,44,27,30,180,39"};
+    GATAS::ThreadSafeBus<4> bus;
+    StaticGpsConfig config(bus);
+    xSemaphoreTakeValue = pdTRUE;
+    time_us_64_SET(0);
+    CoreUtils::setOffsetMsSinceEpoch(1'787'769'125'500ULL);
 
-    for (auto &sentence : sentences)
+    StaticGPS staticGps(bus, config);
+    publishedSentences.clear();
+    staticGps.publishSentences();
+
+    REQUIRE(publishedSentences.size() == 6);
+    for (const auto &sentence : publishedSentences)
     {
-        addChecksum(sentence);
         REQUIRE(validSentence(sentence));
     }
 
@@ -43,19 +179,30 @@ TEST_CASE("StaticGPS NMEA sentences are accepted by the GPS decoder parser")
     minmea_sentence_gsv gsvPage1 = {};
     minmea_sentence_gsv gsvPage2 = {};
 
-    REQUIRE(minmea_parse_gll(&gll, sentences[0].c_str()));
-    REQUIRE(minmea_parse_rmc(&rmc, sentences[1].c_str()));
-    REQUIRE(minmea_parse_gga(&gga, sentences[2].c_str()));
-    REQUIRE(minmea_parse_gsa(&gsa, sentences[3].c_str()));
-    REQUIRE(minmea_parse_gsv(&gsvPage1, sentences[4].c_str()));
-    REQUIRE(minmea_parse_gsv(&gsvPage2, sentences[5].c_str()));
+    REQUIRE(minmea_parse_gll(&gll, publishedSentences[0].c_str()));
+    REQUIRE(minmea_parse_rmc(&rmc, publishedSentences[1].c_str()));
+    REQUIRE(minmea_parse_gga(&gga, publishedSentences[2].c_str()));
+    REQUIRE(minmea_parse_gsa(&gsa, publishedSentences[3].c_str()));
+    REQUIRE(minmea_parse_gsv(&gsvPage1, publishedSentences[4].c_str()));
+    REQUIRE(minmea_parse_gsv(&gsvPage2, publishedSentences[5].c_str()));
 
+    INFO("GLL: " << publishedSentences[0].c_str());
     REQUIRE(gll.status == 'A');
+    REQUIRE(minmea_tocoord(&gll.latitude) == Catch::Approx(52.8925725F));
+    REQUIRE(minmea_tocoord(&gll.longitude) == Catch::Approx(4.7362312F));
+    REQUIRE(gll.time.hours == 18);
+    REQUIRE(gll.time.minutes == 32);
+    REQUIRE(gll.time.seconds == 5);
+    REQUIRE(gll.time.microseconds == 500'000);
     REQUIRE(rmc.valid);
+    REQUIRE(rmc.date.day == 26);
+    REQUIRE(rmc.date.month == 8);
+    REQUIRE(rmc.date.year == 26);
     REQUIRE(rmc.speed.value == 0);
     REQUIRE(rmc.course.value == 0);
     REQUIRE(gga.fix_quality == 1);
     REQUIRE(gga.satellites_tracked == 8);
+    REQUIRE(minmea_tofloat(&gga.altitude) == Catch::Approx(12.3F));
     REQUIRE(gsa.mode == 'M');
     REQUIRE(gsa.fix_type == 3);
     REQUIRE(gsvPage1.total_sats == 8);

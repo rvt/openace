@@ -10,6 +10,7 @@
 #include "timers.h"
 
 #include "etl/message_router.h"
+#include "etl/string.h"
 
 /**
  * Generates NMEA sentences for a configured fixed position.
@@ -25,7 +26,9 @@ class StaticGPS : public AbstractGnss,
 {
 private:
     static constexpr uint32_t SEND_INTERVAL_MS = 500;
-    static constexpr uint64_t NTP_RETRY_INTERVAL_US = 60ULL * 1'000'000ULL;
+    // Retry startup synchronization promptly. Successful synchronization uses
+    // the much longer refresh interval below.
+    static constexpr uint64_t NTP_RETRY_INTERVAL_US = 5ULL * 1'000'000ULL;
     // Re-discipline the software PPS often enough to limit RP2040 crystal
     // drift while avoiding excessive traffic to the configured NTP server.
     static constexpr uint64_t NTP_REFRESH_INTERVAL_US = 5ULL * 60ULL * 1'000'000ULL;
@@ -36,7 +39,7 @@ private:
         NTP_RESULT = 1 << 1,
         NETWORK_CHANGED = 1 << 2,
         NTP_FAILED = 1 << 3,
-        CONFIG_NTP_UPDATED = 1 << 4,
+        NTP_SERVER_UPDATED = 1 << 4,
     };
 
     struct
@@ -46,6 +49,12 @@ private:
         uint32_t ntpErrors = 0;
         uint32_t invalidTime = 0;
     } staticStatistics;
+
+    struct Coordinate
+    {
+        etl::string<11> text;
+        etl::string<2> hemisphere;
+    };
 
     friend class message_router;
 
@@ -65,18 +74,12 @@ private:
     bool wifiConnected = false;
     bool ntpResultPending = false;
 
-    struct Coordinate
-    {
-        etl::string<11> text;
-        etl::string<2> hemisphere;
-    };
-
     static void taskTrampoline(void *arg);
     static void timerCallback(TimerHandle_t timer);
+    static Coordinate coordinate(float value, bool latitude);
 
     void task();
     void readConfiguration(const Configuration &config);
-    Coordinate coordinate(float value, bool latitude);
     void publishSentences();
     void onNtpTime(uint64_t epochMs);
     void onNtpPps(int32_t offsetUs);

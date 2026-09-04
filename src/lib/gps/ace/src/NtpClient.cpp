@@ -3,7 +3,7 @@
 #include <cstring>
 
 #include "ace/coreutils.hpp"
-#include "ace/lwiplock.hpp"
+#include "ace/lwipraiilock.hpp"
 
 #include "lwip/def.h"
 #include "lwip/dns.h"
@@ -15,44 +15,46 @@ NtpClient::NtpClient(TimeCallback timeCallback_, PpsCallback ppsCallback_, Failu
       ppsCallback(ppsCallback_),
       failureCallback(failureCallback_)
 {
+    GATAS_ASSERT(timeCallback.is_valid(), "NtpClient requires a time callback");
+    GATAS_ASSERT(ppsCallback.is_valid(), "NtpClient requires a PPS callback");
+    GATAS_ASSERT(failureCallback.is_valid(), "NtpClient requires a failure callback");
 }
 
 NtpClient::~NtpClient()
 {
+    GATAS_ASSERT(!dnsPending, "NtpClient cannot be destroyed during a DNS lookup");
     cancel();
 }
 
 void NtpClient::setServerName(etl::string_view serverName_)
 {
+    LwipRAIILock lock;
     server.assign(serverName_.begin(), serverName_.end());
 }
 
-etl::string_view NtpClient::serverName() const
+NtpClient::ServerName NtpClient::serverName() const
 {
+    LwipRAIILock lock;
     return server;
 }
 
 bool NtpClient::requestTime()
 {
-    if (busy() || server.empty())
+    LwipRAIILock lock;
+    if (active || dnsPending || server.empty())
     {
         return false;
     }
 
-    LwipLock lock;
     pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
     if (pcb == nullptr)
     {
-        if (failureCallback.is_valid())
-        {
-            failureCallback();
-        }
+        failureCallback();
         return false;
     }
 
     udp_recv(pcb, receiveCallback, this);
     active = true;
-    requestStartedUs = CoreUtils::monotonic();
 
     ip_addr_t address;
     const err_t error = dns_gethostbyname(server.c_str(), &address, dnsCallback, this);
@@ -74,25 +76,28 @@ bool NtpClient::requestTime()
 
 void NtpClient::cancel()
 {
-    LwipLock lock;
+    LwipRAIILock lock;
     closePcb();
     active = false;
+    // lwIP cannot cancel a pending DNS lookup. Leave dnsPending set until its
+    // callback arrives so a new request cannot be confused with the old one.
 }
 
 void NtpClient::poll(uint64_t nowUs)
 {
-    if (active && nowUs >= requestStartedUs && nowUs - requestStartedUs >= REQUEST_TIMEOUT_US)
+    LwipRAIILock lock;
+    if (active && !dnsPending && requestSentUs != 0 &&
+        nowUs >= requestSentUs && nowUs - requestSentUs >= REQUEST_TIMEOUT_US)
     {
-        cancel();
-        if (failureCallback.is_valid())
-        {
-            failureCallback();
-        }
+        closePcb();
+        active = false;
+        failureCallback();
     }
 }
 
 bool NtpClient::busy() const
 {
+    LwipRAIILock lock;
     return active || dnsPending;
 }
 
@@ -136,7 +141,7 @@ void NtpClient::sendRequest(const ip_addr_t *address)
     }
 
     uint8_t request[NTP_PACKET_SIZE] = {};
-    request[0] = 0x1B; // NTP v3, client mode
+    request[0] = 0x23; // NTP v4, client mode
     if (pbuf_take(packet, request, sizeof(request)) != ERR_OK ||
         udp_connect(pcb, address, NTP_PORT) != ERR_OK)
     {
@@ -168,18 +173,9 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
     }
 
     uint8_t response[NTP_PACKET_SIZE] = {};
-    const bool valid = client->active && client->requestSentUs != 0 && port == NTP_PORT &&
-                       packet->tot_len >= NTP_PACKET_SIZE &&
-                       pbuf_copy_partial(packet, response, sizeof(response), 0) == sizeof(response) &&
-                       (response[0] & 0x07) == 4 && // server mode
-                       (response[0] >> 6) != 3 &&   // clock is synchronized
-                       response[1] != 0;            // valid stratum
+    const bool responseCopied = packet->tot_len >= NTP_PACKET_SIZE &&
+                                pbuf_copy_partial(packet, response, sizeof(response), 0) == sizeof(response);
     pbuf_free(packet);
-
-    if (!valid)
-    {
-        return;
-    }
 
     uint32_t ntpSecondsNetwork = 0;
     uint32_t ntpFractionNetwork = 0;
@@ -187,6 +183,20 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
     std::memcpy(&ntpFractionNetwork, response + 44, sizeof(ntpFractionNetwork));
     const uint32_t ntpSeconds = lwip_ntohl(ntpSecondsNetwork);
     const uint32_t ntpFraction = lwip_ntohl(ntpFractionNetwork);
+    const uint8_t version = static_cast<uint8_t>((response[0] >> 3) & 0x07);
+
+    const bool valid = client->active && client->requestSentUs != 0 && pcb_ == client->pcb &&
+                       port == NTP_PORT && responseCopied && version >= 3 && version <= 4 &&
+                       (response[0] & 0x07) == 4 && // server mode
+                       (response[0] >> 6) != 3 &&   // clock is synchronized
+                       response[1] >= 1 && response[1] <= 15 &&
+                       ntpSeconds != 0;
+
+    if (!valid)
+    {
+        return;
+    }
+
     const uint64_t unixSeconds = ntpSeconds >= NTP_TO_UNIX_EPOCH_SECONDS
                                      ? static_cast<uint64_t>(ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS)
                                      : (1ULL << 32) + ntpSeconds - NTP_TO_UNIX_EPOCH_SECONDS;
@@ -205,14 +215,8 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
         client->pcb = nullptr;
     }
 
-    if (client->ppsCallback.is_valid())
-    {
-        client->ppsCallback(static_cast<int32_t>((unixMs % 1'000ULL) * 1'000ULL));
-    }
-    if (client->timeCallback.is_valid())
-    {
-        client->timeCallback(unixMs);
-    }
+    client->ppsCallback(static_cast<int32_t>((unixMs % 1'000ULL) * 1'000ULL));
+    client->timeCallback(unixMs);
 }
 
 void NtpClient::closePcb()
@@ -227,10 +231,8 @@ void NtpClient::closePcb()
 
 void NtpClient::failRequest()
 {
+    dnsPending = false;
     closePcb();
     active = false;
-    if (failureCallback.is_valid())
-    {
-        failureCallback();
-    }
+    failureCallback();
 }

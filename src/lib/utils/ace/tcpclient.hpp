@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include "ace/models.hpp"
-#include "ace/lwiplock.hpp"
+#include "ace/lwipraiilock.hpp"
 #include "ace/debug.hpp"
 
 #include "pico/cyw43_arch.h"
@@ -97,7 +97,7 @@ public:
         tcp_err(pcb, tcp_client_err);
         tcp_sent(pcb, tcp_client_sent);
 
-        LwipLock lock;
+        LwipRAIILock lock;
         err_t err = tcp_connect(pcb, &remote_addr, ipPort.port, tcp_client_connected);
         if (err != ERR_OK)
         {
@@ -141,7 +141,7 @@ public:
             return false;
         }
 
-        LwipLock lock;
+        LwipRAIILock lock;
         if (tcp_sndbuf(pcb) < data.size())
         {
             TCP_LOG("Sendbuffer too small %u needed %u", tcp_sndbuf(pcb), data.size());
@@ -174,7 +174,7 @@ public:
 
     bool flush()
     {
-        LwipLock lock;
+        LwipRAIILock lock;
         return tcp_output(pcb) == ERR_OK;
     }
 
@@ -188,7 +188,7 @@ public:
         }
         pcb = existing;
 
-        LwipLock lock;
+        LwipRAIILock lock;
         tcp_arg(pcb, this);
         tcp_recv(pcb, tcp_client_recv);
         tcp_err(pcb, tcp_client_err);
@@ -222,7 +222,7 @@ private:
             return;
         }
 
-        LwipLock lock;
+        LwipRAIILock lock;
 
         tcp_arg(self->pcb, nullptr);
         tcp_recv(self->pcb, nullptr);
@@ -356,7 +356,7 @@ public:
             return false;
         }
 
-        LwipLock lock;
+        LwipRAIILock lock;
         err_t err = tcp_bind(listenPcb, IP_ANY_TYPE, port);
         if (err != ERR_OK)
         {
@@ -390,7 +390,7 @@ public:
             return;
         }
 
-        LwipLock lock;
+        LwipRAIILock lock;
         err_t err = tcp_close(listenPcb);
         if (err != ERR_OK)
         {

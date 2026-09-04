@@ -1160,7 +1160,7 @@ class StaticGPS extends ModuleConfig {
     this.$refs.latitude.value = data?.latitude ?? "0.0";
     this.$refs.longitude.value = data?.longitude ?? "0.0";
     this.$refs.altitude.value = data?.altitude ?? "0.0";
-    this.$refs.ntpServer.value = data?.ntpServer ?? "pool.ntp.org";
+    this.$refs.ntpServer.value = data?.ntpServer ?? "time.cloudflare.com";
   }
 
   _getFormData() {
@@ -1196,7 +1196,7 @@ class StaticGPS extends ModuleConfig {
           </label>
           <label for="staticGpsNtpServer">
             Time server
-            <input type="text" id="staticGpsNtpServer" ref="ntpServer" placeholder="pool.ntp.org" />
+            <input type="text" id="staticGpsNtpServer" ref="ntpServer" placeholder="time.cloudflare.com" />
           </label>
         </div>
         <div class="notice notice--warning">

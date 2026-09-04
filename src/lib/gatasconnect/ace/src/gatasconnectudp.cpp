@@ -5,7 +5,7 @@
 #include "../gatasconnectudp.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/debug.hpp"
-#include "ace/lwiplock.hpp"
+#include "ace/lwipraiilock.hpp"
 #include "ace/scopedpbuf.hpp"
 
 #include "etl/array.h"
