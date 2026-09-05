@@ -67,9 +67,9 @@ protected:
     void processNewSentenceFromTask(const etl::array_view<char> &sentence);
 
     /** What a implementation needs to override */
-    void setStatus(const etl::string_view &status)
+    void setStatus(const etl::string_view status)
     {
-        statistics.status.assign(status.cbegin(), status.cend());
+        statistics.status = status;
     }
 
     void setStatusBaud(uint32_t baud)

@@ -15,46 +15,41 @@ StaticGPS::StaticGPS(etl::imessage_bus &bus, const Configuration &config)
       longitude(0.0F),
       altitudeMeters(0.0F),
       geoidSeparationMeters(0.0F),
-      configurationMutex(xSemaphoreCreateMutex()),
+      configurationMutex(nullptr),
       ntpClient(NtpClient::TimeCallback::create<StaticGPS, &StaticGPS::onNtpTime>(*this),
                 NtpClient::PpsCallback::create<StaticGPS, &StaticGPS::onNtpPps>(*this),
                 NtpClient::FailureCallback::create<StaticGPS, &StaticGPS::onNtpFailure>(*this))
 {
-    if (configurationMutex != nullptr)
-    {
-        readConfiguration(config);
-    }
+    readConfiguration(config);
 }
 
 void StaticGPS::readConfiguration(const Configuration &config)
 {
-    if (auto guard = SemaphoreGuard(1000, configurationMutex))
+    latitude = config.floatValueByPath(0.0F, NAME, "latitude");
+    longitude = config.floatValueByPath(0.0F, NAME, "longitude");
+    altitudeMeters = config.floatValueByPath(0.0F, NAME, "altitude");
+    GATAS::ConfigString ntpServer = config.strValueByPath("time.cloudflare.com", NAME, "ntpServer");
+
+    if (!std::isfinite(latitude) || latitude < -90.0F || latitude > 90.0F)
     {
-        latitude = config.floatValueByPath(0.0F, NAME, "latitude");
-        longitude = config.floatValueByPath(0.0F, NAME, "longitude");
-        altitudeMeters = config.floatValueByPath(0.0F, NAME, "altitude");
-        GATAS::ConfigString ntpServer = config.strValueByPath("time.cloudflare.com", NAME, "ntpServer");
-
-        if (!std::isfinite(latitude) || latitude < -90.0F || latitude > 90.0F)
-        {
-            latitude = 0.0F;
-        }
-        if (!std::isfinite(longitude) || longitude < -180.0F || longitude > 180.0F)
-        {
-            longitude = 0.0F;
-        }
-        if (!std::isfinite(altitudeMeters) || altitudeMeters < -1000.0F || altitudeMeters > 20000.0F)
-        {
-            altitudeMeters = 0.0F;
-        }
-        if (ntpServer.empty())
-        {
-            ntpServer = "time.cloudflare.com";
-        }
-
-        geoidSeparationMeters = static_cast<float>(CoreUtils::egmGeoidOffset(latitude, longitude));
-        ntpClient.setServerName(ntpServer);
+        latitude = 0.0F;
     }
+    if (!std::isfinite(longitude) || longitude < -180.0F || longitude > 180.0F)
+    {
+        longitude = 0.0F;
+    }
+    if (!std::isfinite(altitudeMeters) || altitudeMeters < -1000.0F || altitudeMeters > 20000.0F)
+    {
+        altitudeMeters = 0.0F;
+    }
+    if (ntpServer.empty())
+    {
+        ntpServer = "time.cloudflare.com";
+    }
+
+    geoidSeparationMeters = static_cast<float>(CoreUtils::egmGeoidOffset(latitude, longitude));
+
+    ntpClient.setServerName(ntpServer);
 }
 
 GATAS::PostConstruct StaticGPS::postConstruct()
@@ -73,7 +68,7 @@ GATAS::PostConstruct StaticGPS::postConstruct()
     {
         return result;
     }
-
+    configurationMutex = xSemaphoreCreateMutex();
     if (configurationMutex == nullptr)
     {
         return GATAS::PostConstruct::MUTEX_ERROR;
@@ -141,7 +136,11 @@ void StaticGPS::task()
         if ((notification & (NTP_FAILED | NTP_ROUND_TRIP_TOO_LONG)) != 0)
         {
             staticStatistics.ntpErrors += 1;
-            nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
+
+            {
+                SpinlockGuard guard(CoreUtils::sharedSpinLock());
+                nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
+            }
         }
         if ((notification & NTP_ROUND_TRIP_TOO_LONG) != 0)
         {
@@ -157,7 +156,10 @@ void StaticGPS::task()
         {
             if (wifiConnected)
             {
-                nextNtpAttemptUs = nowUs;
+                {
+                    SpinlockGuard guard(CoreUtils::sharedSpinLock());
+                    nextNtpAttemptUs = nowUs;
+                }
                 setStatus("Waiting NTP");
             }
             else
@@ -166,16 +168,20 @@ void StaticGPS::task()
             }
         }
 
-        const bool ntpRequestWasActive = ntpClient.busy();
-        ntpClient.poll(nowUs);
-
         // If poll() timed out an active request, its failure notification is
         // handled on the next iteration and establishes the retry delay.
-        if (!ntpRequestWasActive && wifiConnected && !ntpClient.busy() && nowUs >= nextNtpAttemptUs)
+        if (wifiConnected && nowUs >= nextNtpAttemptUs)
         {
             staticStatistics.ntpRequests += 1;
-            nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
-            ntpClient.requestTime();
+            {
+                SpinlockGuard guard(CoreUtils::sharedSpinLock());
+                nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
+            }
+
+            if (auto guard = SemaphoreGuard(1000, configurationMutex))
+            {
+                ntpClient.requestTime();
+            }
         }
 
         if ((notification & SEND_SENTENCES) != 0)
@@ -312,7 +318,6 @@ void StaticGPS::onNtpTime(uint64_t epochMs)
 {
     ntpEpochAtReceiveMs = epochMs;
     ntpReceivedAtUs = CoreUtils::monotonic();
-    ntpResultPending = true;
     xTaskNotify(staticTaskHandle, NTP_RESULT, eSetBits);
 }
 
@@ -335,14 +340,8 @@ void StaticGPS::onNtpFailure(NtpClient::Failure failure)
 
 void StaticGPS::applyNtpResult()
 {
-    uint64_t epochAtReceiveMs = 0;
+    uint64_t epochAtReceiveMs = ntpEpochAtReceiveMs;
     uint64_t receivedAtUs = 0;
-    if (ntpResultPending)
-    {
-        epochAtReceiveMs = ntpEpochAtReceiveMs;
-        receivedAtUs = ntpReceivedAtUs;
-        ntpResultPending = false;
-    }
 
     if (epochAtReceiveMs == 0)
     {
@@ -361,14 +360,21 @@ void StaticGPS::applyNtpResult()
     CoreUtils::setOffsetMsSinceEpoch(epochNowMs);
 #endif
     staticStatistics.ntpSyncs += 1;
-    nextNtpAttemptUs = nowUs + NTP_REFRESH_INTERVAL_US;
+
+    {
+        SpinlockGuard guard(CoreUtils::sharedSpinLock());
+        nextNtpAttemptUs = nowUs + NTP_REFRESH_INTERVAL_US;
+    }
+
     setStatus(MEASURE_NTP_OFFSET ? "Measuring NTP" : "Configured");
 }
 
 void StaticGPS::applyConfigurationUpdate()
 {
-    ntpClient.cancel();
-    nextNtpAttemptUs = CoreUtils::monotonic();
+    {
+        SpinlockGuard guard(CoreUtils::sharedSpinLock());
+        nextNtpAttemptUs = CoreUtils::monotonic();
+    }
     setStatus(wifiConnected ? "Waiting NTP" : "Waiting WiFi");
 }
 
@@ -390,9 +396,13 @@ void StaticGPS::on_receive(const GATAS::ConfigUpdatedMsg &msg)
     }
 
     bool ntpServerChanged = false;
-    const GATAS::ConfigString previousNtpServer(ntpClient.serverName());
-    readConfiguration(msg.config);
-    ntpServerChanged = ntpClient.serverName() != previousNtpServer;
+
+    if (auto guard = SemaphoreGuard(1000, configurationMutex))
+    {
+        const GATAS::ConfigString previousNtpServer(ntpClient.serverName());
+        readConfiguration(msg.config);
+        ntpServerChanged = ntpClient.serverName() != previousNtpServer;
+    }
 
     if (ntpServerChanged && staticTaskHandle != nullptr)
     {
@@ -428,7 +438,7 @@ void StaticGPS::getData(etl::string_stream &stream, const etl::string_view path)
     }
     stream << ",\"status\":\"" << statistics.status << "\"";
     stream << ",\"totalReceived:k\":" << statistics.totalReceived;
-    stream << ",\"queueFullErr:k\":" << statistics.queueFullErr;    
+    stream << ",\"queueFullErr:k\":" << statistics.queueFullErr;
     stream << ",\"ntpRequests:k\":" << staticStatistics.ntpRequests;
     stream << ",\"ntpSyncs:k\":" << staticStatistics.ntpSyncs;
     stream << ",\"ntpErrors:err\":" << staticStatistics.ntpErrors;

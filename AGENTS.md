@@ -29,6 +29,7 @@ OpenAce is a multi-protocol aviation conspicuity device (OGN, FLARM, ADS-L, FANE
   }
   ```
   After the guarded block, RAII releases the mutex. Do not replace this with manual `xSemaphoreTake` / `xSemaphoreGive` pairs unless the task explicitly requires it.
+- Use `LwipRAIILock` only around lwIP API calls. It protects lwIP's core context and must not be used as general-purpose synchronization for application state.
 - When changing message routes or module interactions, update [doc/message-bus.md](/Volumes/ext/source/OpenAce/doc/message-bus.md) if the documented flow changed.
 
 ## Build Commands

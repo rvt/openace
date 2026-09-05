@@ -147,7 +147,9 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
         statistics.queueFullErr += 1;
         if (fromISR)
         {
-            xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
         else
         {
@@ -192,7 +194,9 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     {
         if (fromISR)
         {
-            xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
         else
         {

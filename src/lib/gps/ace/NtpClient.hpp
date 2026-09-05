@@ -42,37 +42,44 @@ private:
     static constexpr uint16_t NTP_PORT = 123;
     static constexpr size_t NTP_PACKET_SIZE = 48;
     static constexpr uint32_t NTP_TO_UNIX_EPOCH_SECONDS = 2'208'988'800UL;
-    static constexpr uint64_t REQUEST_TIMEOUT_US = 15ULL * 1'000'000ULL;
-    static constexpr uint64_t MAX_ROUND_TRIP_US = 25'000ULL; // any round trip time higher than this value might indicate jitter and will result in incorrect timings
+    static constexpr uint64_t MAX_ROUND_TRIP_MS = 50; // any round trip time higher than this value might indicate jitter and will result in incorrect timings
 
     ServerName server;
     TimeCallback timeCallback;
     PpsCallback ppsCallback;
     FailureCallback failureCallback;
     udp_pcb *pcb = nullptr;
-    uint64_t requestSentUs = 0;
-    bool active = false;
+    uint32_t ntpRequestSendUs = 0;
     bool dnsPending = false;
 
+    /** Handles completion of an asynchronous DNS lookup. */
     static void dnsCallback(const char *name, const ip_addr_t *address, void *arg);
+
+    /** Handles an incoming UDP NTP response. */
     static void receiveCallback(void *arg, udp_pcb *pcb, pbuf *packet, const ip_addr_t *address, uint16_t port);
 
+    /** Sends an NTP request to the resolved server address. */
     void sendRequest(const ip_addr_t *address);
-    void closePcb();
+
+    /** Completes the current request with the supplied failure reason. */
     void failRequest(Failure failure = Failure::REQUEST);
 
 public:
+    /** Creates a client with callbacks for time, PPS phase, and failures. */
     NtpClient(TimeCallback timeCallback, PpsCallback ppsCallback, FailureCallback failureCallback);
+
+    /** Cancels the client request and releases its UDP control block. */
     ~NtpClient();
 
     NtpClient(const NtpClient &) = delete;
     NtpClient &operator=(const NtpClient &) = delete;
 
+    /** Sets the hostname used for subsequent NTP requests. */
     void setServerName(etl::string_view serverName);
+
+    /** Returns the currently configured NTP hostname. */
     ServerName serverName() const;
 
+    /** Starts an asynchronous NTP request, returning whether it was started. */
     bool requestTime();
-    void cancel();
-    void poll(uint64_t nowUs);
-    bool busy() const;
 };

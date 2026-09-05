@@ -45,6 +45,11 @@ namespace CoreUtils
         return time_us_64();
     }
 
+    inline uint32_t monotonic32()
+    {
+        return time_us_32();
+    }
+
     /**
      * Get a 64-bit timestamp in us aligned on PPS.
      * This uses the same hardware time base as timeUs32(), but preserves the full

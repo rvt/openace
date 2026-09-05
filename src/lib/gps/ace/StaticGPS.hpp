@@ -78,7 +78,6 @@ private:
     uint64_t ntpEpochAtReceiveMs = 0;
     uint64_t ntpReceivedAtUs = 0;
     bool wifiConnected = false;
-    bool ntpResultPending = false;
 
     static void taskTrampoline(void *arg);
     static void timerCallback(TimerHandle_t timer);
