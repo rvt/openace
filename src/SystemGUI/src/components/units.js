@@ -23,7 +23,11 @@ const UNIT_TABLE = {
         { scale: 1, suffix: "m", min: 0, digits: 0 },
     ],
     msec: [
-        { scale: 1, suffix: "Ms", min: 0, digits: 0 },
+        { scale: 1, suffix: "ms", min: 0, digits: 0 },
+    ],
+    usec: [
+        { scale: 1e3, suffix: "ms", min: 1e3, digits: 1 },
+        { scale: 1, suffix: "us", min: 0, digits: 0 },
     ],
     ms: [
         { scale: 0.277777778, suffix: "Km/h", min: 2.77777778, digits: 1 },

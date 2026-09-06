@@ -133,7 +133,7 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             if ((timeinfo->tm_hour != frame.time.hours ||
                  timeinfo->tm_min != frame.time.minutes ||
                  timeinfo->tm_sec != frame.time.seconds) &&
-                CoreUtils::secondsSinceEpoch() > 1000'000'000)
+                secondsSinceEpoch > 1000'000'000)
             {
 
                 GATAS_WARN("RMC and Local time don't match %02d:%02d:%02d.%03ld RMC:%02d:%02d:%02d.%03d",

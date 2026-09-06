@@ -1148,7 +1148,12 @@ class StaticGPS extends ModuleConfig {
       .addField(this.$refs.latitude, coordinateValidation(-90, 90))
       .addField(this.$refs.longitude, coordinateValidation(-180, 180))
       .addField(this.$refs.altitude, coordinateValidation(-1000, 20000))
-      .addField(this.$refs.ntpServer, [{ rule: "required" }, ...configStringLengthValidator])
+      .addField(this.$refs.ntpServer, [
+        {
+          rule: "maxLength",
+          value: 31,
+        },
+      ])
       .onSuccess(() => {
         store.updateModuleData("StaticGPS", { ...this.copyOfData, ...this._getFormData() }).then(() => {
           this.close();
@@ -1196,7 +1201,7 @@ class StaticGPS extends ModuleConfig {
           </label>
           <label for="staticGpsNtpServer">
             Time server
-            <input type="text" id="staticGpsNtpServer" ref="ntpServer" placeholder="time.cloudflare.com" />
+            <input type="text" maxlength="31" id="staticGpsNtpServer" ref="ntpServer" placeholder="time.cloudflare.com" />
           </label>
         </div>
         <div class="notice notice--warning">

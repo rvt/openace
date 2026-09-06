@@ -134,25 +134,23 @@ void StaticGPS::task()
         {
             applyNtpResult();
             nextNtpAttemptUs = nowUs + NTP_REFRESH_INTERVAL_US;
-            putchar('1');
         }
 
         if ((notification & (NTP_FAILED | NTP_ROUND_TRIP_TOO_LONG)) != 0)
         {
             staticStatistics.ntpErrors += 1;
             nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
-            putchar('2');
         }
         if ((notification & NTP_ROUND_TRIP_TOO_LONG) != 0)
         {
             staticStatistics.ntpRoundTripRejected += 1;
-            putchar('3');
         }
 
         if ((notification & NTP_SERVER_UPDATED) != 0)
         {
             hasNewServerData = true;
             nextNtpAttemptUs = nowUs;
+            // Handle the set of the ntp server right before we do the request for reliability
         }
 
         if ((notification & NETWORK_CHANGED) != 0)
@@ -166,11 +164,8 @@ void StaticGPS::task()
             {
                 setStatus("Waiting WiFi");
             }
-            putchar('5');
         }
 
-        // If poll() timed out an active request, its failure notification is
-        // handled on the next iteration and establishes the retry delay.
         if (wifiConnected && nowUs >= nextNtpAttemptUs)
         {
             staticStatistics.ntpRequests += 1;
@@ -185,18 +180,15 @@ void StaticGPS::task()
             if (ntpClient.requestTime())
             {
                 nextNtpAttemptUs = nowUs + NTP_REFRESH_INTERVAL_US;
-                putchar('8');
             }
             else
             {
                 nextNtpAttemptUs = nowUs + NTP_RETRY_INTERVAL_US;
-                putchar('9');
             }
         }
 
         if ((notification & SEND_SENTENCES) != 0)
         {
-            putchar('7');
             publishSentences();
         }
     }
@@ -340,12 +332,15 @@ void StaticGPS::applyNtpResult()
 
     const auto localNtpTimeResult = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ntpTimeResult);
     const uint64_t epochNowMs = localNtpTimeResult.epochMs + (nowUs - localNtpTimeResult.receivedAtUs) / 1'000ULL;
+    const uint64_t picoEpochMs = CoreUtils::msSinceEpoch();
+    const int64_t slewUs = picoEpochMs >= 1'000'000'000'000ULL
+                               ? (epochNowMs >= picoEpochMs
+                                      ? static_cast<int64_t>((epochNowMs - picoEpochMs) * 1'000ULL)
+                                      : -static_cast<int64_t>((picoEpochMs - epochNowMs) * 1'000ULL))
+                               : 0;
+    ntpSlewUs = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), slewUs);
 #if MEASURE_NTP_OFFSET
-    const uint64_t gpsEpochMs = CoreUtils::msSinceEpoch();
-    const int64_t ntpOffsetUs = epochNowMs >= gpsEpochMs
-                                    ? static_cast<int64_t>((epochNowMs - gpsEpochMs) * 1'000ULL)
-                                    : -static_cast<int64_t>((gpsEpochMs - epochNowMs) * 1'000ULL);
-    GATAS_INFO("NTP offset from GPS: %" PRId64 "us", ntpOffsetUs);
+    GATAS_INFO("NTP offset from GPS: %" PRId64 "us", slewUs);
 #else
     CoreUtils::setOffsetMsSinceEpoch(epochNowMs);
 #endif
@@ -375,13 +370,14 @@ void StaticGPS::getData(etl::string_stream &stream, const etl::string_view path)
 {
     (void)path;
     auto const servername = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), newServerName);
-    const auto currentLocation = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), locationData);
+    const int64_t currentNtpSlewUs = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ntpSlewUs);
     stream << "{";
-    stream << "\"latitude\":" << etl::format_spec{}.precision(7) << currentLocation.latitude;
-    stream << ",\"longitude\":" << currentLocation.longitude;
-    stream << ",\"altitude:m\":" << currentLocation.altitudeMeters;
-    stream << ",\"geoidSeparation:m\":" << currentLocation.geoidSeparationMeters;
+    stream << "\"latitude\":" << etl::format_spec{}.precision(7) << locationData.latitude;
+    stream << ",\"longitude\":" << locationData.longitude;
+    stream << ",\"altitude:m\":" << locationData.altitudeMeters;
+    stream << ",\"geoidSeparation:m\":" << locationData.geoidSeparationMeters;
     stream << ",\"ntpServer\":\"" << servername << "\"";
+    stream << ",\"ntpSlew:usec\":" << currentNtpSlewUs;
     stream << ",\"status\":\"" << statistics.status << "\"";
     stream << ",\"totalReceived:k\":" << statistics.totalReceived;
     stream << ",\"queueFullErr:k\":" << statistics.queueFullErr;

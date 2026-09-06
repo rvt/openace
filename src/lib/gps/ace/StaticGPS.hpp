@@ -79,6 +79,7 @@ private:
     RtcModule *rtc = nullptr;
     NtpClient ntpClient;
     NtpTimeResult ntpTimeResult{0, 0};
+    int64_t ntpSlewUs = 0;
     bool wifiConnected = false;
 
     static void taskTrampoline(void *arg);
