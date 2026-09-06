@@ -4,6 +4,7 @@
 
 #include "ace/coreutils.hpp"
 #include "ace/lwipraiilock.hpp"
+#include "ace/scopedpbuf.hpp"
 
 #include "lwip/def.h"
 #include "lwip/dns.h"
@@ -29,7 +30,7 @@ NtpClient::NtpClient(TimeCallback timeCallback_, PpsCallback ppsCallback_, Failu
 
 NtpClient::~NtpClient()
 {
-    GATAS_ASSERT(!dnsPending, "NtpClient cannot be destroyed during a DNS lookup");
+    GATAS_ASSERT(!processPending, "NtpClient cannot be destroyed during a DNS lookup");
     if (pcb)
     {
         LwipRAIILock lock;
@@ -49,20 +50,21 @@ NtpClient::ServerName NtpClient::serverName() const
 
 bool NtpClient::requestTime()
 {
-    // Reset timer after 10 minutes, if something odd happaned
+    // Fail Safe: Reset timer after 10 minutes, if something odd happaned and processPending was never reset
     if ((CoreUtils::monotonic32() - ntpRequestSendUs) > 10 * 60 * 1'000'000)
     {
-        ntpRequestSendUs = 0;
-        dnsPending = false;
+        processPending = false;
     }
 
-    if (pcb == nullptr || dnsPending || server.empty() || ntpRequestSendUs)
+    if (pcb == nullptr || processPending || server.empty())
     {
+        GATAS_INFO("processPending, pcb or server.empty() ");
         return false;
     }
 
     LwipRAIILock lock;
     ip_addr_t address;
+    processPending = true;
     const err_t error = dns_gethostbyname(server.c_str(), &address, dnsCallback, this);
     if (error == ERR_OK)
     {
@@ -70,11 +72,12 @@ bool NtpClient::requestTime()
     }
     else if (error == ERR_INPROGRESS)
     {
-        dnsPending = true;
+        // waiting for DNS resturn, then we call sendRequest
     }
     else
     {
         failRequest();
+        return false;
     }
 
     return true;
@@ -85,9 +88,9 @@ void NtpClient::dnsCallback(const char *name, const ip_addr_t *address, void *ar
     (void)name;
     auto *client = static_cast<NtpClient *>(arg);
 
-    client->dnsPending = false;
     if (address == nullptr)
     {
+        // When address is null, the DNS resolcing failed
         client->failRequest();
         return;
     }
@@ -97,13 +100,16 @@ void NtpClient::dnsCallback(const char *name, const ip_addr_t *address, void *ar
 
 void NtpClient::sendRequest(const ip_addr_t *address)
 {
+    GATAS_INFO("Resolved NTP server %s -> %u.%u.%u.%u", server.c_str(), ip4_addr1(address), ip4_addr2(address), ip4_addr3(address), ip4_addr4(address));
+
     if (address == nullptr)
     {
         failRequest();
         return;
     }
 
-    pbuf *packet = pbuf_alloc(PBUF_TRANSPORT, NTP_PACKET_SIZE, PBUF_RAM);
+    pbuf *packet = pbuf_alloc(PBUF_TRANSPORT, NTP_PACKET_SIZE, PBUF_POOL);
+    ScopedPbuf scopedPbuf(packet);
     if (packet == nullptr)
     {
         failRequest();
@@ -112,16 +118,15 @@ void NtpClient::sendRequest(const ip_addr_t *address)
 
     uint8_t request[NTP_PACKET_SIZE] = {};
     request[0] = 0x23; // NTP v4, client mode
-    if (pbuf_take(packet, request, sizeof(request)) != ERR_OK || udp_connect(pcb, address, NTP_PORT) != ERR_OK)
+    if (pbuf_take(packet, request, sizeof(request)) != ERR_OK)
     {
-        pbuf_free(packet);
         failRequest();
         return;
     }
 
     ntpRequestSendUs = CoreUtils::monotonic32();
-    const err_t error = udp_send(pcb, packet);
-    pbuf_free(packet);
+
+    const err_t error = udp_sendto(pcb, packet, address, NTP_PORT);
     if (error != ERR_OK)
     {
         failRequest();
@@ -131,28 +136,28 @@ void NtpClient::sendRequest(const ip_addr_t *address)
 void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip_addr_t *address, uint16_t port)
 {
     (void)address;
+    ScopedPbuf scopedPbuf(packet);
     const uint32_t receiveUs = CoreUtils::monotonic32();
 
     auto *client = static_cast<NtpClient *>(arg);
+
     if (packet == nullptr)
     {
         if (client != nullptr)
         {
-            client->ntpRequestSendUs = 0;
+            client->failRequest(Failure::REQUEST);
         }
         return;
     }
 
-    if (client == nullptr)
+    // sanety checks
+    if (!client->processPending || pcb_ != client->pcb || port != NTP_PORT)
     {
-        pbuf_free(packet);
         return;
     }
 
     uint8_t response[NTP_PACKET_SIZE] = {};
-    const bool responseCopied = packet->tot_len >= NTP_PACKET_SIZE &&
-                                pbuf_copy_partial(packet, response, sizeof(response), 0) == sizeof(response);
-    pbuf_free(packet);
+    const bool responseCopied = packet->tot_len >= NTP_PACKET_SIZE && pbuf_copy_partial(packet, response, sizeof(response), 0) == sizeof(response);
 
     uint32_t ntpSecondsNetwork = 0;
     uint32_t ntpFractionNetwork = 0;
@@ -162,8 +167,8 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
     const uint32_t ntpFraction = lwip_ntohl(ntpFractionNetwork);
     const uint8_t version = static_cast<uint8_t>((response[0] >> 3) & 0x07);
 
-    const bool valid = client->ntpRequestSendUs != 0 && pcb_ == client->pcb &&
-                       port == NTP_PORT && responseCopied && version >= 3 && version <= 4 &&
+    const bool valid = responseCopied &&
+                       version >= 3 && version <= 4 &&
                        (response[0] & 0x07) == 4 && // server mode
                        (response[0] >> 6) != 3 &&   // clock is synchronized
                        response[1] >= 1 && response[1] <= 15 &&
@@ -171,8 +176,8 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
 
     if (!valid)
     {
-        client->ntpRequestSendUs = 0;
-        client->failRequest(Failure::REQUEST);
+        // Valid might be fails if a request was not even send from us
+        client->processPending = false;
         return;
     }
 
@@ -186,18 +191,19 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
                             roundTripMs / 2;
 
     // Maximum jitter on network allowed
-    if (roundTripMs > MAX_ROUND_TRIP_MS) {
-        client->failRequest(Failure::REQUEST);
+    if (roundTripMs > MAX_ROUND_TRIP_MS)
+    {
+        client->failRequest(Failure::ROUND_TRIP_TOO_LONG);
         return;
-    }                            
+    }
 
     client->ppsCallback(static_cast<int32_t>((unixMs % 1'000ULL) * 1'000ULL));
-    client->timeCallback(unixMs);
-    client->ntpRequestSendUs = 0;
+    client->timeCallback(NtpTimeResult{unixMs, receiveUs});
+    client->processPending = false;
 }
 
 void NtpClient::failRequest(Failure failure)
 {
-    ntpRequestSendUs = 0;
     failureCallback(failure);
+    processPending = false;
 }

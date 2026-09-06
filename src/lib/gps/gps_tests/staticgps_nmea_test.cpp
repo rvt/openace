@@ -140,20 +140,6 @@ bool NtpClient::requestTime()
     return false;
 }
 
-void NtpClient::cancel()
-{
-}
-
-void NtpClient::poll(uint64_t nowUs)
-{
-    (void)nowUs;
-}
-
-bool NtpClient::busy() const
-{
-    return false;
-}
-
 TEST_CASE("StaticGPS NMEA sentences are accepted by the GPS decoder parser")
 {
     GATAS::ThreadSafeBus<4> bus;

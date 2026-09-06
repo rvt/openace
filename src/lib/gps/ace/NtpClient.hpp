@@ -11,6 +11,12 @@
 struct pbuf;
 struct udp_pcb;
 
+struct NtpTimeResult
+{
+    uint64_t epochMs;
+    uint64_t receivedAtUs;
+};
+
 /**
  * Small asynchronous NTP client.
  *
@@ -33,8 +39,8 @@ public:
         ROUND_TRIP_TOO_LONG,
     };
 
-    using ServerName = etl::string<64>;
-    using TimeCallback = etl::delegate<void(uint64_t)>;
+    using ServerName = etl::string<32>;
+    using TimeCallback = etl::delegate<void(const NtpTimeResult &)>;
     using PpsCallback = etl::delegate<void(int32_t)>;
     using FailureCallback = etl::delegate<void(Failure)>;
 
@@ -51,6 +57,7 @@ private:
     udp_pcb *pcb = nullptr;
     uint32_t ntpRequestSendUs = 0;
     bool dnsPending = false;
+    bool processPending = false;
 
     /** Handles completion of an asynchronous DNS lookup. */
     static void dnsCallback(const char *name, const ip_addr_t *address, void *arg);
@@ -82,4 +89,8 @@ public:
 
     /** Starts an asynchronous NTP request, returning whether it was started. */
     bool requestTime();
+
+    bool isPending() const {
+        return processPending;
+    }
 };
