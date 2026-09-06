@@ -30,6 +30,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 
+## [v3.4.0] - 2026-09-06
+
+### Added
+
+- [Experimental] Added a configurable StaticGPS module for stationary installations that generates NMEA position data through the normal GNSS pipeline and synchronizes its clock using NTP.
+
+### Changed
+
+-
+
+### Deprecated
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+- Fixed SX1262 DIO1 interrupt transitions by disabling the GPIO handler before clearing stale radio IRQs and remapping RX_DONE or TX_DONE.
+- Replaced the SX1262 maximum-duration hardware TX timeout with bounded 10 ms GFSK and 55 ms LoRa timeouts so failed transmissions return to the configured fallback state promptly.
+
+### Security
+
+
 ## [v3.3.0] - 2026-09-01
 
 ### Added

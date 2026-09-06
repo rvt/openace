@@ -35,6 +35,22 @@ namespace CoreUtils
     }
 
     /**
+     * Get a monotonic 64-bit timestamp in microseconds.
+     *
+     * Unlike timeUs64(), this value is not adjusted when PPS alignment changes,
+     * making it suitable for measuring elapsed time and scheduling timeouts.
+     */
+    inline uint64_t monotonic()
+    {
+        return time_us_64();
+    }
+
+    inline uint32_t monotonic32()
+    {
+        return time_us_32();
+    }
+
+    /**
      * Get a 64-bit timestamp in us aligned on PPS.
      * This uses the same hardware time base as timeUs32(), but preserves the full
      * 64-bit range for long-running intervals and epoch-related calculations.
@@ -489,9 +505,10 @@ namespace CoreUtils
      * When the capacity is not enough, the result is undefined
      * Note: Must start with the prefix character $
      * @param nmea example '$PFEC,GPint,RMC05'
-     * @return             '$PFEC,GPint,RMC05*2D\r\n'
+     * @param appendCRLF append the NMEA line terminator when true
+     * @return             '$PFEC,GPint,RMC05*2D\r\n' when appendCRLF is true
      */
-    inline void addChecksumToNMEA(etl::istring &nmea)
+    inline void addChecksumToNMEA(etl::istring &nmea, bool appendCRLF = true)
     {
         const char hexChars[] = "0123456789ABCDEF";
 
@@ -504,7 +521,7 @@ namespace CoreUtils
             nmea.resize(starPos);
         }
 
-        if (nmea.capacity() - nmea.size() < 5)
+        if (nmea.capacity() - nmea.size() < 5) // Keep 5, just in case when /r/l needs to be appended again
         {
             return; // not enough space
         }
@@ -516,7 +533,8 @@ namespace CoreUtils
             '\r',
             '\n'};
 
-        nmea.append(suffix, sizeof(suffix));
+        const size_t suffixSize = appendCRLF ? 5 : 3;
+        nmea.append(suffix, suffixSize);
     }
 
     inline bool validateNMEAChecksum(const etl::istring &nmea)

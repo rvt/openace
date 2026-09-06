@@ -122,8 +122,16 @@ public:
     // Called after construction but before running
     virtual GATAS::PostConstruct postConstruct() = 0;
 
-    // Called when all objects are initialised and ready to run
+    // Called after this module has been constructed successfully.
     virtual void start() = 0;
+
+    /**
+     * Called after start() has been called on every successfully initialised module.
+     * The order in which module postStart() methods are called is unspecified.
+     */
+    virtual void postStart()
+    {
+    }
 
     const etl::string_view name() const
     {
@@ -284,6 +292,12 @@ public:
     int valueByPath(int defaultValue, const etl::string_view pathToValue) const
     {
         return valueByPath(defaultValue, pathToValue, "");
+    };
+
+    virtual float floatValueByPath(float defaultValue, const etl::string_view pathToValue, const etl::string_view key) const = 0;
+    float floatValueByPath(float defaultValue, const etl::string_view pathToValue) const
+    {
+        return floatValueByPath(defaultValue, pathToValue, "");
     };
 
     /**

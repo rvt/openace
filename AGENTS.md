@@ -15,6 +15,10 @@ OpenAce is a multi-protocol aviation conspicuity device (OGN, FLARM, ADS-L, FANE
 - For richer or multi-value results, return a small struct declared next to the API so callers can use `auto result = function();` instead of passing output references.
 - Keep desktop test code and embedded code paths aligned when changing shared module behavior.
 - Use fixed-size ETL containers and avoid introducing dynamic-allocation-heavy patterns into firmware code.
+- Modules must not retain a reference or pointer to `Configuration`. Read configuration during construction and synchronously from `ConfigUpdatedMsg`, then copy only the values owned by the module. `Configuration` is not task-safe, so configuration access must remain in these controlled paths.
+- Use `float`, never `double`, in project code and tests.
+- Prefer ETL text facilities such as `etl::string_stream` and `etl::string_view`; do not use `std::snprintf`.
+- Reuse `CoreUtils::addChecksumToNMEA(...)` when assembling NMEA sentences instead of implementing checksum formatting locally.
 - Always use braces for control-flow bodies, even when the body is a single line.
 - Do not introduce trailing-underscore variable names by default. Prefer the existing local naming style unless a specific file or API already requires a different convention.
 - Handle mutexes with RAII `SemaphoreGuard` scopes. Preferred pattern:
@@ -25,6 +29,8 @@ OpenAce is a multi-protocol aviation conspicuity device (OGN, FLARM, ADS-L, FANE
   }
   ```
   After the guarded block, RAII releases the mutex. Do not replace this with manual `xSemaphoreTake` / `xSemaphoreGive` pairs unless the task explicitly requires it.
+- Use `LwipRAIILock` only around lwIP API calls. It protects lwIP's core context and must not be used as general-purpose synchronization for application state.
+- For lwIP packet allocation, use `PBUF_POOL` rather than `PBUF_RAM` (for example, with `pbuf_alloc`).
 - When changing message routes or module interactions, update [doc/message-bus.md](/Volumes/ext/source/OpenAce/doc/message-bus.md) if the documented flow changed.
 
 ## Build Commands

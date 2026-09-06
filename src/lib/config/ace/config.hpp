@@ -189,6 +189,8 @@ public:
 
     virtual int valueByPath(int defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override;
 
+    virtual float floatValueByPath(float defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override;
+
     virtual const GATAS::ConfigString strValueByPath(const etl::string_view defaultValue, const etl::string_view pathToValue, const etl::string_view key) const override;
 
     virtual const GATAS::Config::IpPort ipPortBypath(const etl::string_view pathToValue, const etl::string_view key) const override;

@@ -35,6 +35,7 @@
 #include "ace/flashstore.hpp"
 #include "ace/ubloxm8n.hpp"
 #include "ace/L76B.hpp"
+#include "ace/StaticGPS.hpp"
 #include "ace/adsbdecoder.hpp"
 #include "ace/picortc.hpp"
 #include "ace/wifiservice.hpp"
@@ -104,6 +105,7 @@ void registerModules()
     BaseModule::registerModule(GpsDecoder::NAME, false);
     BaseModule::registerModule(UbloxM8N::NAME, true);
     BaseModule::registerModule(L76B::NAME, true);
+    BaseModule::registerModule(StaticGPS::NAME, false);
     BaseModule::registerModule(SerialADSB::NAME, true);
     BaseModule::registerModule(Dump1090Client::NAME, false);
     BaseModule::registerModule(AircraftTracker::NAME, false);
@@ -166,6 +168,8 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
         return new L76B(bus, config);
     if (name == UbloxM8N::NAME)
         return new UbloxM8N(bus, config);
+    if (name == StaticGPS::NAME)
+        return new StaticGPS(bus, config);
     if (name == GpsDecoder::NAME)
         return new GpsDecoder(bus, config);
     if (name == GDLoverUDP::NAME)
@@ -337,8 +341,13 @@ static void loadModules(void *arg)
     // Hardware timings, GPS and connectivity
     load(PicoRtc::NAME, bus, config, true);
     load(GpsDecoder::NAME, bus, config);
+
+    // GPS
     load(UbloxM8N::NAME, bus, config);
     load(L76B::NAME, bus, config);
+    load(StaticGPS::NAME, bus, config); // Must always be after any Hardware GPS
+    // GPS
+
     load(Gdl90Service::NAME, bus, config);
     load(GDLoverUDP::NAME, bus, config);
     load(DataPort::NAME, bus, config);
@@ -372,6 +381,17 @@ static void loadModules(void *arg)
     // SerialADSB messes up the serial terminal, but it will load beyond this point
     // load(SerialADSB::NAME, bus, config);
     // puts("\033[2J\033[H");
+
+    // All successfully initialised modules have now completed start() and can
+    // safely receive messages emitted by post-start lifecycle hooks.
+    for (const auto &registeredModule : BaseModule::registeredModules())
+    {
+        const auto &moduleStatus = registeredModule.second;
+        if (moduleStatus.result == GATAS::PostConstruct::OK && moduleStatus.module != nullptr)
+        {
+            moduleStatus.module->postStart();
+        }
+    }
 
     printf(
         R"=(

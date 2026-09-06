@@ -6,7 +6,7 @@
 #include "ace/coreutils.hpp"
 #include "ace/semaphoreguard.hpp"
 #include "ace/measure.hpp"
-#include "ace/lwiplock.hpp"
+#include "ace/lwipraiilock.hpp"
 #include "ace/scopedpbuf.hpp"
 #include "ace/spinlockguard.hpp"
 
@@ -281,7 +281,7 @@ void GDLoverUDP::transmitBuffer()
     }
 
     auto data = part.value();
-    LwipLock lock;
+    LwipRAIILock lock;
 
     // Send to the connect clients and the defined ports
     for (auto ip : connectedClientsSnapshot)

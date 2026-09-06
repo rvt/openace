@@ -1128,5 +1128,92 @@ class UbloxM8N extends AbstractGnss {
   name = "UbloxM8N";
 }
 
+class StaticGPS extends ModuleConfig {
+  created() {
+    this._initForm(store.getModuleData("StaticGPS"));
+  }
+
+  mounted() {
+    const validator = new JustValidate(this.$refs.form);
+    const coordinateValidation = (minimum, maximum) => [
+      { rule: "required" },
+      {
+        rule: "custom",
+        validator: (value) => Number.isFinite(Number(value)) && Number(value) >= minimum && Number(value) <= maximum,
+        errorMessage: `Enter a number from ${minimum} to ${maximum}`,
+      },
+    ];
+
+    validator
+      .addField(this.$refs.latitude, coordinateValidation(-90, 90))
+      .addField(this.$refs.longitude, coordinateValidation(-180, 180))
+      .addField(this.$refs.altitude, coordinateValidation(-1000, 20000))
+      .addField(this.$refs.ntpServer, [
+        {
+          rule: "maxLength",
+          value: 31,
+        },
+      ])
+      .onSuccess(() => {
+        store.updateModuleData("StaticGPS", { ...this.copyOfData, ...this._getFormData() }).then(() => {
+          this.close();
+        });
+      });
+  }
+
+  _setFormData(data) {
+    this.$refs.latitude.value = data?.latitude ?? "0.0";
+    this.$refs.longitude.value = data?.longitude ?? "0.0";
+    this.$refs.altitude.value = data?.altitude ?? "0.0";
+    this.$refs.ntpServer.value = data?.ntpServer ?? "time.cloudflare.com";
+  }
+
+  _getFormData() {
+    return {
+      latitude: this.$refs.latitude.value,
+      longitude: this.$refs.longitude.value,
+      altitude: this.$refs.altitude.value,
+      ntpServer: this.$refs.ntpServer.value.trim(),
+    };
+  }
+
+  render(html) {
+    return html`
+      <h4>Configuration of the Static GPS</h4>
+      <p>
+        Generates a fixed ownship position at zero speed with a north track. NMEA data is sent twice per second. Internet time is synchronized when a Wi-Fi
+        client connection is available.
+      </p>
+
+      <form ref="form" autocomplete="off" novalidate="novalidate">
+        <div class="page-section app-grid app-grid--2">
+          <label for="staticGpsLatitude">
+            Latitude (decimal degrees)
+            <input type="number" step="any" id="staticGpsLatitude" ref="latitude" placeholder="0.0" />
+          </label>
+          <label for="staticGpsLongitude">
+            Longitude (decimal degrees)
+            <input type="number" step="any" id="staticGpsLongitude" ref="longitude" placeholder="0.0" />
+          </label>
+          <label for="staticGpsAltitude">
+            Altitude MSL (m)
+            <input type="number" step="any" id="staticGpsAltitude" ref="altitude" placeholder="0.0" />
+          </label>
+          <label for="staticGpsNtpServer">
+            Time server
+            <input type="text" maxlength="31" id="staticGpsNtpServer" ref="ntpServer" placeholder="time.cloudflare.com" />
+          </label>
+        </div>
+        <div class="notice notice--warning">
+          Enable only one GPS module at a time. Static GPS waits for valid network time before advertising a valid fix.
+        </div>
+        <br />
+        ${this.buttonArray(html)}
+      </form>
+    `;
+  }
+}
+
 customElements.define("l76b-config", L76B);
 customElements.define("ubloxm8n-config", UbloxM8N);
+customElements.define("staticgps-config", StaticGPS);

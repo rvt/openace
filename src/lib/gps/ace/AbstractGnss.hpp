@@ -16,6 +16,15 @@
 
 class AbstractGnss : public BaseModule
 {
+protected:
+    struct
+    {
+        uint32_t totalReceived = 0;
+        uint32_t baudrate = 0;
+        uint32_t queueFullErr = 0;
+        etl::string<16> status;
+    } statistics;
+
 private:
     static constexpr uint8_t QUEUE_SIZE = 6;
      // If you change this, you need to change the baudrate in attached GPS configurations
@@ -32,18 +41,12 @@ private:
     {
         NEW = 1 << 2,
     };
-    struct
-    {
-        uint32_t totalReceived = 0;
-        uint32_t baudrate = 0;
-        uint32_t queueFullErr = 0;
-        etl::string<16> status;
-    } statistics;
 
     static void receiveTask(void *arg);
 
     PioSerial pioSerial;
     const uint8_t ppsPin;
+    const bool usePioSerial;
     bool softwarebasedPPS;
     int32_t softPPSlagUs;
     uint32_t measureSoftPPSlag = 0;
@@ -51,17 +54,22 @@ private:
     etl::queue_spsc_atomic<GATAS::NMEAString, QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> queue;
 
     static constexpr const etl::string_view NAME = "Gnss";
+
+private:
+    void processNewSentence(const etl::array_view<char> &sentence, bool fromISR);
+
 protected:
     PioSerial &getSerial()
     {
         return pioSerial;
     }
-    void processNewSentence(const etl::array_view<char> &sentence);
+    void processNewSentenceFromISR(const etl::array_view<char> &sentence);
+    void processNewSentenceFromTask(const etl::array_view<char> &sentence);
 
     /** What a implementation needs to override */
-    void setStatus(const etl::string_view &status)
+    void setStatus(const etl::string_view status)
     {
-        statistics.status.assign(status.cbegin(), status.cend());
+        statistics.status = status;
     }
 
     void setStatusBaud(uint32_t baud)
@@ -96,11 +104,13 @@ protected:
     }
 
 public:
-    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins, bool softPPS, int32_t softPPSlagUs_) : BaseModule(bus, name),
-                                                                                                       pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentence>(*this)},
-                                                                                                       ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
-                                                                                                       softwarebasedPPS(softPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG),
-                                                                                                       softPPSlagUs(softPPSlagUs_)
+    AbstractGnss(etl::imessage_bus &bus, const etl::string_view name, const GATAS::PinTypeMap &pins, bool softPPS, int32_t softPPSLagUs_, bool usePioSerial_ = true)
+        : BaseModule(bus, name),
+          pioSerial{pins, DEFAULT_GPS_BAUDRATE, PioSerial::CallBackFunction::create<AbstractGnss, &AbstractGnss::processNewSentenceFromISR>(*this)},
+          ppsPin(CoreUtils::pinValue(pins, GATAS::PinType::BUSY)),
+          usePioSerial(usePioSerial_),
+          softwarebasedPPS(softPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG),
+          softPPSlagUs(softPPSLagUs_)
     {
     }
 

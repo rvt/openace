@@ -30,7 +30,7 @@ void __time_critical_func(AbstractGnss_pps_callback)(uint32_t events)
 
 GATAS::PostConstruct AbstractGnss::postConstruct()
 {
-    if (pioSerial.postConstruct() != GATAS::PostConstruct::OK)
+    if (usePioSerial && pioSerial.postConstruct() != GATAS::PostConstruct::OK)
     {
         return GATAS::PostConstruct::HARDWARE_ERROR;
     }
@@ -59,7 +59,11 @@ GATAS::PostConstruct AbstractGnss::postConstruct()
 
 void AbstractGnss::start()
 {
-    pioSerial.start();
+    if (usePioSerial)
+    {
+        pioSerial.start();
+    }
+
     if (!softwarebasedPPS || ABSTRACT_GNSS_MEASURE_SOFTPPS_LAG)
     {
         registerPinInterrupt(ppsPin, GPIO_IRQ_EDGE_RISE, pinIntrCallback_t::create<AbstractGnss_pps_callback>());
@@ -119,7 +123,17 @@ void AbstractGnss::getData(etl::string_stream &stream, const etl::string_view pa
     stream << "}";
 }
 
-void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char> &sentence)
+void __time_critical_func(AbstractGnss::processNewSentenceFromISR)(const etl::array_view<char> &sentence)
+{
+    processNewSentence(sentence, true);
+}
+
+void AbstractGnss::processNewSentenceFromTask(const etl::array_view<char> &sentence)
+{
+    processNewSentence(sentence, false);
+}
+
+void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_view<char> &sentence, bool fromISR)
 {
     // Not even enough characters for a valid sentence type ("$GPxxx...")
     if (sentence.size() < 17)
@@ -131,7 +145,16 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     if (queue.full())
     {
         statistics.queueFullErr += 1;
-        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+        if (fromISR)
+        {
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
+        else
+        {
+            xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
+        }
         return;
     }
 
@@ -169,6 +192,15 @@ void __time_critical_func(AbstractGnss::processNewSentence)(const etl::array_vie
     queue.push(sentence.data());
     if (isPriority || queue.size() > (QUEUE_SIZE / 2))
     {
-        xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, nullptr);
+        if (fromISR)
+        {
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xTaskNotifyFromISR(taskHandle, TaskState::NEW, eSetBits, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
+        else
+        {
+            xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
+        }
     }
 }
