@@ -9,7 +9,6 @@
 
 #include "etl/algorithm.h"
 #include "etl/array.h"
-#include "etl/scaled_rounding.h"
 #include "etl/unordered_map.h"
 
 /**
@@ -23,11 +22,9 @@ class TrackerData
 private:
     static_assert(MAX_PREDICTED_AIRCRAFT <= SIZE, "MAX_PREDICTED_AIRCRAFT must not exceed SIZE");
 
-    // Try to ensure that XX is minimally free to allow for burst of new aircraft
-    static constexpr uint8_t ADAPTIVE_RADIUS_MIN_FREE = 4;
     // When less than X persentage the buffers is full, start ioncreaing the adaptive radius
     static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_INCREASE = 75;
-    // When buffer needs to cleanup because nearly full, keep XX percebtage of all aircraft
+    // Keep this percentage of tracks when full, leaving room for new aircraft.
     static constexpr uint8_t ADAPTIVE_RADIUS_PERCENTAGE_KEEP = 90;
     static constexpr uint32_t HEARTBEAT_TIME = 1'000'000;
     static constexpr uint32_t ADAPTIVE_RADIUS_INCREASE = 1'000;
@@ -70,11 +67,20 @@ private:
     bool prefixEnabledFlag;
     bool showSquawkFlag;
 
+    static bool isExpired(const GATAS::AircraftPositionInfo &position, uint32_t currentTime)
+    {
+        return CoreUtils::isUsReached(position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC, currentTime);
+    }
+
     void predictPosition(GATAS::AircraftPositionInfo &position,
                          uint32_t currentTime,
                          const GATAS::OwnshipPositionInfo &ownship) const
     {
         position = pathPredictor.extrapolatedPos(currentTime, position);
+        // Unpredicted positions retain their measured distance even if ownship moves.
+        // Issue 4 is deferred: tracks without predictor slots are usually farther away.
+        // Revisit if realistic traffic shows a meaningful nearest-ten selection error;
+        // disabling prediction can also leave nearby aircraft with stale distances.
         if (position.distanceFromOwn == static_cast<uint32_t>(INT32_MIN))
         {
             auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, position.lat, position.lon);
@@ -82,63 +88,29 @@ private:
         }
     }
 
-    /**
-     * Recalculate the adaptive tracking radius when the tracker is nearly full.
-     *
-     * The algorithm collects the current aircraft distances from ownship,
-     * sorts them from farthest to nearest, removes duplicate distance values,
-     * and then selects a cutoff near the far end of the list. That cutoff is
-     * rounded down to the nearest 500 meters and stored as the new
-     * adaptiveRadius. The effect is that, under pressure, the farthest aircraft
-     * are trimmed first while the majority of nearer traffic is retained.
-     *
-     * @return true if a new adaptive radius was calculated, otherwise false.
-     */
-    bool calculateAdaptiveRadius()
+    // Called when full and no expired tracks can be reclaimed. Remove by count,
+    // not radius: similar distances must not cause an entire cluster to be lost.
+    void trimFarthestAircraft()
     {
-        auto size = trackedAircraft.size();
-        if (size >= (SIZE - ADAPTIVE_RADIUS_MIN_FREE))
+        constexpr size_t keepCount = SIZE * ADAPTIVE_RADIUS_PERCENTAGE_KEEP / 100;
+        while (trackedAircraft.size() > keepCount)
         {
-            etl::array<uint32_t, SIZE> distances = {};
-            size_t count = 0;
-            for (const auto &pair : trackedAircraft)
+            auto farthest = trackedAircraft.begin();
+            for (auto it = trackedAircraft.begin(); it != trackedAircraft.end(); ++it)
             {
-                distances[count] = pair.second.position.distanceFromOwn;
-                count += 1;
-            }
-
-            etl::sort(distances.begin(), distances.begin() + count, etl::greater<uint32_t>());
-
-            size_t uniqueCount = 0;
-            for (size_t i = 0; i < count; ++i)
-            {
-                if (uniqueCount == 0 || distances[i] != distances[uniqueCount - 1])
+                // ByDistance breaks equal-distance ties by aircraft address.
+                if (ByDistance()(farthest->second.position, it->second.position))
                 {
-                    distances[uniqueCount] = distances[i];
-                    uniqueCount += 1;
+                    farthest = it;
                 }
             }
 
-            // Find the 90% position, that means we remove 10% of the aircraft based on radious
-            size_t pos = 1;
-            if (uniqueCount > SIZE / 2)
-            {
-                pos = SIZE - SIZE * ADAPTIVE_RADIUS_PERCENTAGE_KEEP / 100;
-                if (pos >= uniqueCount)
-                {
-                    pos = uniqueCount - 1;
-                }
-            }
-
-            // Calculate new adaptive radious
-            adaptiveRadius = etl::round_floor_scaled<500>(distances[pos]);
-            return true;
+            // The last removed distance becomes the admission radius. Do not round
+            // down: retained tracks must remain inside it on their next update.
+            adaptiveRadius = farthest->second.position.distanceFromOwn;
+            pathPredictor.remove(farthest->first);
+            trackedAircraft.erase(farthest);
         }
-        else if (size < SIZE - ADAPTIVE_RADIUS_MIN_FREE)
-        {
-            increaseAdaptiveRadius();
-        }
-        return false;
     }
 
     void increaseAdaptiveRadius()
@@ -156,7 +128,7 @@ private:
 
         for (auto it = trackedAircraft.begin(); it != trackedAircraft.end();)
         {
-            if (CoreUtils::isUsReached(it->second.position.timestamp + MAX_POSITION_INTERPOLATIONS_USEC, us))
+            if (isExpired(it->second.position, us))
             {
                 pathPredictor.remove(it->first);
                 it = trackedAircraft.erase(it);
@@ -169,22 +141,6 @@ private:
         }
 
         return cleaned;
-    }
-
-    void removeOutsideAdaptiveRadius()
-    {
-        for (auto it = trackedAircraft.begin(); it != trackedAircraft.end();)
-        {
-            if (it->second.position.distanceFromOwn >= adaptiveRadius)
-            {
-                pathPredictor.remove(it->first);
-                it = trackedAircraft.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
     }
 
 public:
@@ -269,7 +225,19 @@ public:
                 return false;
             }
 
-            // A current position outside the active radius supersedes the old
+            // Prefer positions received directly over radio to ADS-B and MLAT for
+            // RADIO_PRIORITY_TIMEOUT_US. Reject lower-priority reports before they
+            // can delete a fresh radio track by placing it outside the radius.
+            const bool trackedIsRadio = it->second.position.dataSource < GATAS::DataSource::_RADIO;
+            const bool incomingIsAdsbOrMlat = position.dataSource == GATAS::DataSource::ADSB ||
+                                              position.dataSource == GATAS::DataSource::MLAT;
+            const bool radioStillFresh = !CoreUtils::isUsReached(it->second.position.timestamp + RADIO_PRIORITY_TIMEOUT_US, time);
+            if (trackedIsRadio && incomingIsAdsbOrMlat && radioStillFresh)
+            {
+                return false;
+            }
+
+            // An accepted position outside the active radius supersedes the old
             // in-range position; retaining it would predict an aircraft that has left.
             if (position.distanceFromOwn > adaptiveRadius)
             {
@@ -282,19 +250,10 @@ public:
             assignSquawkCallsign(position);
             assignDataSourcePrefix(position);
 
-            // Prefer positions received directly over radio to ADS-B and MLAT for
-            // RADIO_PRIORITY_TIMEOUT_US. Direct radio reception provides the most
-            // accurate position while it remains fresh.
-            const bool trackedIsRadio = it->second.position.dataSource < GATAS::DataSource::_RADIO;
-            const bool incomingIsAdsbOrMlat = position.dataSource == GATAS::DataSource::ADSB ||
-                                              position.dataSource == GATAS::DataSource::MLAT;
-            const bool radioStillFresh = !CoreUtils::isUsReached(it->second.position.timestamp + RADIO_PRIORITY_TIMEOUT_US, time);
-            if (trackedIsRadio && incomingIsAdsbOrMlat && radioStillFresh)
-            {
-                return false;
-            }
-
-            it->second.sendTime = time;
+            // Keep the existing output deadline while accepting the latest measurement.
+            // Resetting it on every update lets high-rate input repeatedly claim output
+            // slots and starve other aircraft. sendScheduled() sets the next deadline.
+            // it->second.sendTime = time;
             it->second.position = position;
             pathPredictor.update(position);
             return true;
@@ -309,13 +268,18 @@ public:
         {
             if (!removeExpired())
             {
-                calculateAdaptiveRadius();
-                removeOutsideAdaptiveRadius();
+                trimFarthestAircraft();
             }
         }
 
         GATAS_VERIFY(!trackedAircraft.full(), "TrackerData: Should never be full");
         if (trackedAircraft.full())
+        {
+            return false;
+        }
+
+        // Full-storage cleanup may have reduced the radius since the first check.
+        if (position.distanceFromOwn > adaptiveRadius)
         {
             return false;
         }
@@ -376,6 +340,12 @@ public:
         for (auto &pair : trackedAircraft)
         {
             auto &it = pair.second;
+            // Check the measurement age before prediction can advance its timestamp.
+            // Expired tracks stay in storage until maintenance or insertion cleanup.
+            if (isExpired(it.position, currentTime))
+            {
+                continue;
+            }
             if (CoreUtils::isUsReached(it.sendTime, currentTime))
             {
                 GATAS::AircraftPositionInfo position = it.position;
@@ -399,16 +369,17 @@ public:
     }
 
     /**
-     * Return up to the 10 closest tracked aircraft.
+     * Return up to the 10 closest unexpired tracked aircraft.
      *
-     * When fewer than 10 aircraft are currently tracked, all of them are
-     * returned immediately. Otherwise, the algorithm builds a fixed-size heap
-     * of 10 candidate aircraft. The heap root is the farthest aircraft in the
+     * When at most 10 aircraft are currently tracked, all of them are
+     * returned immediately after filtering expired measurements. Otherwise,
+     * the algorithm builds a fixed-size heap of up to 10 unexpired candidate
+     * aircraft. The heap root is the farthest aircraft in the
      * current candidate set. Each additional aircraft only replaces that root
-     * if it is closer, which leaves the 10 closest aircraft in the heap at the
+     * if it is closer, which leaves up to 10 closest unexpired aircraft in the heap at the
      * end of the scan. The return order is not significant.
      *
-     * @return A list containing up to the 10 nearest tracked aircraft.
+     * @return A list containing up to the 10 nearest unexpired tracked aircraft.
      */
     GATAS::AdslObandUplinkAircraft adslUplinkTrigger(const GATAS::OwnshipPositionInfo &ownship) const
     {
@@ -420,6 +391,10 @@ public:
         {
             for (const auto &pair : trackedAircraft)
             {
+                if (isExpired(pair.second.position, currentTime))
+                {
+                    continue;
+                }
                 GATAS::AircraftPositionInfo position = pair.second.position;
                 predictPosition(position, currentTime, ownship);
                 result.push_back(position);
@@ -434,15 +409,28 @@ public:
         auto it = trackedAircraft.begin();
         for (; it != trackedAircraft.end() && count < closest.size(); ++it)
         {
+            if (isExpired(it->second.position, currentTime))
+            {
+                continue;
+            }
             closest[count] = it->second.position;
             predictPosition(closest[count], currentTime, ownship);
             count += 1;
+        }
+
+        if (count == 0)
+        {
+            return result;
         }
 
         etl::make_heap(closest.begin(), closest.begin() + count, ByDistance());
 
         for (; it != trackedAircraft.end(); ++it)
         {
+            if (isExpired(it->second.position, currentTime))
+            {
+                continue;
+            }
             GATAS::AircraftPositionInfo candidate = it->second.position;
             predictPosition(candidate, currentTime, ownship);
             if (ByDistance()(candidate, closest.front()))

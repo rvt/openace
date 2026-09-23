@@ -27,6 +27,7 @@ void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"trackingFailure:err\":" << statistics.trackingFailureErr;
     stream << ",\"ownEncodingFailure:err\":" << statistics.ownEncodingFailureErr;
     stream << ",\"heartBeatEncodingFailure:err\":" << statistics.heartBeatEncodingFailureErr;
+    stream << ",\"packingFailure:err\":" << statistics.packingFailureErr;
     stream << "}";
 }
 
@@ -240,7 +241,8 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
         constexpr float vertical_figure_of_merit_f = 10.f * M_TO_FT;
         uint32_t vertical_figure_of_merit;
         uint32_t geo_altitude;
-        bool ok = gdl90.geo_altitude_encode(geo_altitude, pos.ellipseHeight * M_TO_FT);
+        // The ForeFlight ID advertises MSL as the altitude datum.
+        bool ok = gdl90.geo_altitude_encode(geo_altitude, pos.heightMsl() * M_TO_FT);
         ok |= gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
         if (ok && gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
         {
@@ -276,7 +278,7 @@ GDL90::NACP Gdl90Service::calcNACp(float hfomMeters)
     const float hfomNm = hfomMeters / 1852.0f;
 
     // clang-format off
-    if (hfomNm < 0.05f) return GDL90::NACP::LT_0_01_NM;
+    if (hfomNm < 0.05f) return GDL90::NACP::LT_0_05_NM;
     if (hfomNm < 0.1f)  return GDL90::NACP::LT_0_1_NM;
     if (hfomNm < 0.3f)  return GDL90::NACP::LT_0_3_NM;
     if (hfomNm < 0.5f)  return GDL90::NACP::LT_0_5_NM;
@@ -409,7 +411,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
 
     // Send ForeFLight heartbeat
     // https://www.foreflight.com/connect/spec/
-    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", 0b00)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 1/2 to 0 for unlimited internet
+    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", GDL90::FOREFLIGHT_CAPABILITIES_MSL_ALTITUDE_MASK)) // MSL altitude, unrestricted internet
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx += 1;
@@ -423,6 +425,10 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
 void Gdl90Service::packAndSend(const GDL90::RawBytes &unpacked)
 {
     GATAS::GdlMsg GdlMsg{};
-    gdl90.pack(GdlMsg.msg, unpacked);
+    if (!gdl90.pack(GdlMsg.msg, unpacked))
+    {
+        statistics.packingFailureErr += 1;
+        return;
+    }
     getBus().receive(GdlMsg);
 }
