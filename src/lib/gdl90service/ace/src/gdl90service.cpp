@@ -184,7 +184,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, pos.heightMsl() * M_TO_FT);
+    gdl90.altitude_encode(altitude, pos.ellipseHeight * M_TO_FT);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.track);
@@ -338,11 +338,13 @@ void Gdl90Service::on_receive(const GATAS::EgressAircraftPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    gdl90.altitude_encode(altitude, (pos.ellipseHeight - ownshipGeoidSeparation) * M_TO_FT);
+    // gdl90.altitude_encode(altitude, (pos.ellipseHeight - ownshipGeoidSeparation) * M_TO_FT);
+    gdl90.altitude_encode(altitude, (pos.ellipseHeight * M_TO_FT));
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.track);
-    GDL90::ADDR_TYPE type = pos.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+//    GDL90::ADDR_TYPE type = pos.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+    GDL90::ADDR_TYPE type = GDL90::ADDR_TYPE::TISB_WITH_ICAO_ADDR;
 
     GDL90::RawBytes unpacked;
     if (gdl90.ownership_or_traffic_report_encode(
@@ -411,7 +413,7 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
 
     // Send ForeFLight heartbeat
     // https://www.foreflight.com/connect/spec/
-    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", GDL90::FOREFLIGHT_CAPABILITIES_MSL_ALTITUDE_MASK)) // MSL altitude, unrestricted internet
+    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", 0x00)) // MSL altitude, unrestricted internet
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx += 1;
