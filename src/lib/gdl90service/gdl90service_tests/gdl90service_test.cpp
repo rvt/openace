@@ -193,6 +193,7 @@ TEST_CASE("ownship position", "[single-file]")
     REQUIRE(test.msg.size() == 32);
     REQUIRE(latitude_f == Catch::Approx(tc.lat).margin(0.001));
     REQUIRE(longitude_f == Catch::Approx(tc.lon).margin(0.001));
+    // The traffic report carries MSL altitude; the test data stores ellipsoid height.
     REQUIRE((altitude_f * FT_TO_M + 47) == Catch::Approx(tc.alt).margin(15));
     REQUIRE(track_hdg_f == Catch::Approx(tc.track).margin(1));
     REQUIRE((vert_velocity_f * FTPMIN_TO_MS) == Catch::Approx(tc.vspeed).margin(0.3));
@@ -254,10 +255,11 @@ TEST_CASE("heartbeat", "[single-file]")
     etl::string<8> name;
     etl::string<16> longName;
     REQUIRE(gdl90.foreflight_id_decode(unpacked, serial, name, longName, capabilities));
-    REQUIRE(capabilities == GDL90::FOREFLIGHT_CAPABILITIES_MSL_ALTITUDE_MASK);
+    // Capability bit 0 is clear: altitude is WGS-84 ellipsoid altitude.
+    REQUIRE(capabilities == GDL90::FOREFLIGHT_CAPABILITIES_INTERNET_UNRESTRICTED);
 }
 
-TEST_CASE("GDL90 service geometric altitude matches advertised MSL datum", "[gdl90]")
+TEST_CASE("GDL90 service geometric altitude uses ellipsoid height", "[gdl90]")
 {
     MockConfig mockConfig{bus};
     Gdl90Service service{bus, mockConfig};
@@ -279,7 +281,7 @@ TEST_CASE("GDL90 service geometric altitude matches advertised MSL datum", "[gdl
     REQUIRE(gdl90.ownership_geometric_altitude_decode(unpacked, altitude, warning, merit));
     float feet = 0.f;
     REQUIRE(gdl90.geo_altitude_decode(altitude, feet));
-    REQUIRE(feet == Catch::Approx(position.heightMsl() * M_TO_FT).margin(5.f));
+    REQUIRE(feet == Catch::Approx(position.ellipseHeight * M_TO_FT).margin(5.f));
 }
 
 TEST_CASE("GDL90 unavailable values and signed encodings", "[gdl90]")

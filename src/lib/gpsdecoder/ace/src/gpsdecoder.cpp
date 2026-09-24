@@ -130,9 +130,26 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             time_t t = (time_t)secondsSinceEpoch;
             struct tm *timeinfo = localtime(&t); // or gmtime() for UTC
 
-            if ((timeinfo->tm_hour != frame.time.hours ||
-                 timeinfo->tm_min != frame.time.minutes ||
-                 timeinfo->tm_sec != frame.time.seconds) &&
+            const int32_t localMillisecondsOfDay =
+                ((timeinfo->tm_hour * 60 + timeinfo->tm_min) * 60 + timeinfo->tm_sec) * 1'000 + msSinceEpoch;
+            const int32_t rmcMillisecondsOfDay =
+                ((frame.time.hours * 60 + frame.time.minutes) * 60 + frame.time.seconds) * 1'000 + millis;
+            int32_t timeDifferenceMs = localMillisecondsOfDay - rmcMillisecondsOfDay;
+            constexpr int32_t millisecondsPerDay = 24 * 60 * 60 * 1'000;
+            if (timeDifferenceMs > millisecondsPerDay / 2)
+            {
+                timeDifferenceMs -= millisecondsPerDay;
+            }
+            else if (timeDifferenceMs < -millisecondsPerDay / 2)
+            {
+                timeDifferenceMs += millisecondsPerDay;
+            }
+
+            // RMC can arrive just after the local clock crosses a second boundary.
+            // Allow the expected sentence/transport delay before reporting drift.
+            constexpr int32_t maximumExpectedDifferenceMs = 1'200;
+            const int32_t absoluteTimeDifferenceMs = timeDifferenceMs < 0 ? -timeDifferenceMs : timeDifferenceMs;
+            if (absoluteTimeDifferenceMs > maximumExpectedDifferenceMs &&
                 secondsSinceEpoch > 1000'000'000)
             {
 
