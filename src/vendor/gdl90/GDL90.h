@@ -46,6 +46,8 @@ public:
     // Be sure to check the return value to see if it passed.
     bool     self_test( void );
 
+    // Small reports; callers handling UAT uplinks must supply a larger ivector.
+    // Callers must provide sufficient output capacity. Capacity checks are debug-only (!NDEBUG).
     using RawBytes = etl::vector<uint8_t, 52>;
 
     // pack   - take encoded rawbytes and add escape sequences, CRC, and start/end delimiters so message is ready to send out
@@ -193,7 +195,7 @@ public:
         LT_0_5_NM               = 5,
         LT_0_3_NM               = 6,
         LT_0_1_NM               = 7,
-        LT_0_01_NM              = 8,
+        LT_0_05_NM              = 8,
         HFOM_LT_30_VFOM_LT_45   = 9,
         HFOM_LT_10_VFOM_LT_15   = 10,
         HFOM_LT_3_VFOM_LT_4     = 11,
@@ -210,7 +212,7 @@ public:
         HEAVY                   = 5,
         HIGHLY_MANEUVERABLE     = 6,
         ROTOCRAFT               = 7,
-        GLIDER_SAILPLANE        = 8,
+        GLIDER_SAILPLANE        = 9,
         LIGHTER_THAN_AIR        = 10,
         PARACHUTIST             = 11,
         ULTRA_LIGHT             = 12,
@@ -266,7 +268,7 @@ public:
                                                                                  EMITTER& emitter, etl::istring & call_sign, EMERGENCY_PRIO& emergency_prio_code );
 
     // HEIGHT_ABOVE_TERRAIN
-    static constexpr uint32_t HEIGHT_ENCODED_INVALID = 0x80000;
+    static constexpr uint32_t HEIGHT_ENCODED_INVALID = 0x8000;
     bool     height_encode( uint32_t& height_encoded, float  height );  // height must be -32767 .. 32767; if NaN, height_encoded is set to HEIGHT_ENCODED_INVALID
     bool     height_decode( uint32_t  height_encoded, float& height );  // height is set to NaN if height_encoded==HEIGHT_ENCODED_INVALID
 
@@ -286,10 +288,13 @@ public:
     bool     ownership_geometric_altitude_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& geo_altitude, bool& vertical_warning, uint32_t& vertical_figure_of_merit );
 
     // FOREFLIGHT ID
-    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_GEO_ALTITUDE_USED_MASK = 0x00000001; // in OWNERSHIP_GEOMETRIC_ALTITUDE message
-    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_WGS84_ELLIPSOID_MASK   = 0x00000002; // per GDL90 spec
-    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_ALLOWED_MASK           = FOREFLIGHT_CAPABILITIES_GEO_ALTITUDE_USED_MASK |
-                                                                               FOREFLIGHT_CAPABILITIES_WGS84_ELLIPSOID_MASK;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_MSL_ALTITUDE_MASK = 0x00000001; // clear = WGS-84 ellipsoid
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_INTERNET_POLICY_MASK = 0x00000006;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_INTERNET_UNRESTRICTED = 0x00000000;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_INTERNET_EXPENSIVE = 0x00000002;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_INTERNET_DISALLOWED = 0x00000004;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_ALLOWED_MASK = FOREFLIGHT_CAPABILITIES_MSL_ALTITUDE_MASK |
+                                                                     FOREFLIGHT_CAPABILITIES_INTERNET_POLICY_MASK;
     static constexpr uint32_t FOREFLIGHT_CAPABILITIES_DISALLOWED_MASK        = ~FOREFLIGHT_CAPABILITIES_ALLOWED_MASK;
 
     static constexpr uint64_t FOREFLIGHT_DEVICE_SERIAL_NUMBER_INVALID = 0xffffffffffffffffULL;

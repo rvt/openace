@@ -16,8 +16,8 @@ bool GDL90::self_test( void )
     //-----------------------------------------------------------
     // Encode+pack and unpack+decode all message types.
     //-----------------------------------------------------------
-    etl::vector<uint8_t, 432> unpacked;
-    etl::vector<uint8_t, 432> packed;
+    etl::vector<uint8_t, 436> unpacked;
+    etl::vector<uint8_t, 878> packed;
 
     // PACK/UNPACK (using raw CRC example in GDL90 section 2.2.4)
     unpacked = {0x00, 0x81, 0x41, 0xdb, 0xd0, 0x08, 0x02};
@@ -326,15 +326,29 @@ uint16_t GDL90::crc_compute( const etl::ivector<uint8_t>& unpacked, size_t lengt
 
 bool GDL90::pack( etl::ivector<uint8_t>& packed, const etl::ivector<uint8_t>& unpacked )
 {
+    if (&packed == &unpacked || unpacked.empty() || unpacked[0] > 0x7f) { return error(); }
     //-----------------------------------------------------------
     // Compute CRC.
     //-----------------------------------------------------------
     uint16_t crc = crc_compute( unpacked, unpacked.size() );
+#ifndef NDEBUG
+    size_t required = unpacked.size() + 4;
+    for (const auto byte : unpacked)
+    {
+        if (byte == 0x7d || byte == 0x7e) { ++required; }
+    }
+    for (uint32_t shift = 0; shift < 16; shift += 8)
+    {
+        const auto byte = (crc >> shift) & 0xff;
+        if (byte == 0x7d || byte == 0x7e) { ++required; }
+    }
+    if (packed.capacity() < required) { return error(); }
+#endif
 
     //-----------------------------------------------------------
     // Start and end message with 0x7e byte.
     // Any 0x7d or 0x7e byte in the message or CRC gets escaped with
-    // 0x7e followed by byte^0x20.
+    // 0x7d followed by byte^0x20.
     //-----------------------------------------------------------
     packed.clear();
     packed.push_back( 0x7e );
@@ -363,46 +377,55 @@ bool GDL90::pack( etl::ivector<uint8_t>& packed, const etl::ivector<uint8_t>& un
 
 bool GDL90::unpack( const etl::ivector<uint8_t>& packed, etl::ivector<uint8_t>& unpacked )
 {
-    //-----------------------------------------------------------
-    // Get rid of starting and ending 0x7e bytes.
-    // Get rid of escape sequences.
-    //-----------------------------------------------------------
+    if (&packed == &unpacked) { return error(); }
     unpacked.clear();
-    size_t size = packed.size();
-    if ( size < 4 || packed[0] != 0x7e || packed[size-1] != 0x7e ) return error();
-    for( size_t i = 1; i < size-1; i++ )
+    const size_t size = packed.size();
+    if (size < 5 || packed[0] != 0x7e || packed[size - 1] != 0x7e) { return error(); }
+
+    // Validate framing and capacity before writing; CRC bytes need no output space.
+    size_t decodedSize = 0;
+    for (size_t i = 1; i < size - 1; ++i)
+    {
+        if (packed[i] == 0x7e) { return error(); }
+        if (packed[i] == 0x7d)
+        {
+            ++i;
+            if (i >= size - 1 || (packed[i] != 0x5d && packed[i] != 0x5e)) { return error(); }
+        }
+        ++decodedSize;
+    }
+    if (decodedSize < 3) { return error(); }
+#ifndef NDEBUG
+    if (decodedSize - 2 > unpacked.capacity()) { return error(); }
+#endif
+    uint16_t crc = 0;
+    size_t decodedIndex = 0;
+    for (size_t i = 1; i < size - 1; ++i)
     {
         uint8_t byte = packed[i];
-        if ( byte == 0x7d ) {
-            i++;
-            if ( i >= (size-1) ) return error();
-            byte = packed[i] ^ 0x20;
-        }
-        unpacked.push_back( byte );
+        if (byte == 0x7d) { byte = packed[++i] ^ 0x20; }
+        if (decodedIndex < decodedSize - 2) { unpacked.push_back(byte); }
+        else if (decodedIndex == decodedSize - 2) { crc = byte; }
+        else { crc |= uint16_t(byte) << 8; }
+        ++decodedIndex;
     }
-
-    //-----------------------------------------------------------
-    // Compute CRC on the part of the message that doesn't contain the CRC.
-    //-----------------------------------------------------------
-    size = unpacked.size();
-    if ( size < 2 ) return error();
-    uint16_t crc = (unpacked[size-1] << 8) | unpacked[size-2];
-    uint16_t crc_expected = crc_compute( unpacked, size-2 );
-    if ( crc != crc_expected ) return error();
-
-    //-----------------------------------------------------------
-    // Get rid of the CRC at the end.
-    //-----------------------------------------------------------
-    unpacked.resize( size-2 );
+    if (unpacked[0] > 0x7f || crc != crc_compute(unpacked, unpacked.size()))
+    {
+        unpacked.clear();
+        return error();
+    }
     return true;
 }
 
 bool GDL90::id_decode( MESSAGE_ID& id, const etl::ivector<uint8_t>& unpacked )
 {
+#ifndef NDEBUG
     if ( unpacked.size() == 0 ) return error();
+#endif
     id = MESSAGE_ID( unpacked[0] );
     return id == MESSAGE_ID::HEARTBEAT            ||
            id == MESSAGE_ID::INITIALIZATION       ||
+           id == MESSAGE_ID::HEIGHT_ABOVE_TERRAIN ||
            id == MESSAGE_ID::UPLINK_DATA          ||
            id == MESSAGE_ID::OWNERSHIP_REPORT     ||
            id == MESSAGE_ID::OWNERSHIP_GEOMETRIC_ALTITUDE ||
@@ -414,7 +437,9 @@ bool GDL90::id_decode( MESSAGE_ID& id, const etl::ivector<uint8_t>& unpacked )
 
 bool GDL90::foreflight_subid_decode( MESSAGE_FOREFLIGHT_SUBID& subid, const etl::ivector<uint8_t>& unpacked )
 {
+#ifndef NDEBUG
     if ( unpacked.size() < 2 ) return error();
+#endif
     MESSAGE_ID id = MESSAGE_ID( unpacked[0] );
     if ( id != MESSAGE_ID::FOREFLIGHT ) return error();
     subid = MESSAGE_FOREFLIGHT_SUBID( unpacked[1] );
@@ -424,6 +449,10 @@ bool GDL90::foreflight_subid_decode( MESSAGE_FOREFLIGHT_SUBID& subid, const etl:
 
 bool GDL90::heartbeat_encode( etl::ivector<uint8_t>& unpacked, uint32_t  status, uint32_t  timestamp, uint32_t  msg_count_uplink, uint32_t  msg_count_basic_and_long )
 {
+
+#ifndef NDEBUG
+    if (unpacked.capacity() < 7) { return error(); }
+#endif
     unpacked.clear();
     if ( (status & HEARTBEAT_STATUS_DISALLOWED_MASK) != 0 ) return error();
     if ( timestamp > 0x1ffff ) return error();
@@ -431,10 +460,12 @@ bool GDL90::heartbeat_encode( etl::ivector<uint8_t>& unpacked, uint32_t  status,
     if ( msg_count_basic_and_long > 1023 ) return error();
     unpacked.push_back( uint8_t(MESSAGE_ID::HEARTBEAT) );
     status |= ((timestamp >> 16) & 1) << 15;
-    unpacked.push_back( (status >> 8) & 0xff );
+    // Status byte 1 is the low byte; timestamp bit 16 belongs to status byte 2.
     unpacked.push_back( (status >> 0) & 0xff );
-    unpacked.push_back( (timestamp >> 8) & 0xff );
+    unpacked.push_back( (status >> 8) & 0xff );
+    // The remaining timestamp bits are transmitted least significant byte first.
     unpacked.push_back( (timestamp >> 0) & 0xff );
+    unpacked.push_back( (timestamp >> 8) & 0xff );
     uint16_t msg_counts = (msg_count_uplink << 11) | msg_count_basic_and_long;
     unpacked.push_back( (msg_counts >> 8) & 0xff );
     unpacked.push_back( (msg_counts >> 0) & 0xff );
@@ -443,16 +474,18 @@ bool GDL90::heartbeat_encode( etl::ivector<uint8_t>& unpacked, uint32_t  status,
 
 bool GDL90::heartbeat_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& status, uint32_t& timestamp, uint32_t& msg_count_uplink, uint32_t& msg_count_basic_and_long )
 {
+#ifndef NDEBUG
     if ( unpacked.size() != 7 ) return error();
+#endif
     size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::HEARTBEAT) ) return error();
-    status = unpacked[i++] << 8;
-    status |= unpacked[i++] << 0;
+    status = unpacked[i++] << 0;
+    status |= unpacked[i++] << 8;
     timestamp = (status >> 15) << 16;
     status &= 0x7fff;
     if ( (status & HEARTBEAT_STATUS_DISALLOWED_MASK) != 0 ) return error();
-    timestamp |= unpacked[i++] << 8;
     timestamp |= unpacked[i++] << 0;
+    timestamp |= unpacked[i++] << 8;
     uint16_t msg_counts = unpacked[i++] << 8;
     msg_counts |= unpacked[i++] << 0;
     msg_count_uplink = msg_counts >> 11;
@@ -462,21 +495,26 @@ bool GDL90::heartbeat_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& s
 
 bool GDL90::initialization_encode( etl::ivector<uint8_t>& unpacked, uint32_t  config )
 {
+#ifndef NDEBUG
+    if (unpacked.capacity() < 3) { return error(); }
+#endif
     unpacked.clear();
     if ( (config & INIT_CONFIG_DISALLOWED_MASK) != 0 ) return error();
     unpacked.push_back( uint8_t(MESSAGE_ID::INITIALIZATION) );
-    unpacked.push_back( (config >> 8) & 0xff );
     unpacked.push_back( (config >> 0) & 0xff );
+    unpacked.push_back( (config >> 8) & 0xff );
     return true;
 }
 
 bool GDL90::initialization_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& config )
 {
+#ifndef NDEBUG
     if ( unpacked.size() != 3 ) return error();
+#endif    
     size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::INITIALIZATION) ) return error();
-    config = unpacked[i++] << 8;
-    config |= unpacked[i++] << 0;
+    config = unpacked[i++];
+    config |= unpacked[i++] << 8;
     if ( (config & INIT_CONFIG_DISALLOWED_MASK) != 0 ) return error();
     return true;
 }
@@ -506,13 +544,16 @@ bool GDL90::time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac )
 
 bool GDL90::uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
 {
+#ifndef NDEBUG
+    if (unpacked.capacity() < 436) { return error(); }
+#endif
     unpacked.clear();
     if ( time_of_reception_frac >= (1 << 24) ) return error();
     if ( payload.size() != 432 ) return error();
     unpacked.push_back( uint8_t(MESSAGE_ID::UPLINK_DATA) );
-    unpacked.push_back( (time_of_reception_frac >> 16) & 0xff );
-    unpacked.push_back( (time_of_reception_frac >> 8) & 0xff );
     unpacked.push_back( (time_of_reception_frac >> 0) & 0xff );
+    unpacked.push_back( (time_of_reception_frac >> 8) & 0xff );
+    unpacked.push_back( (time_of_reception_frac >> 16) & 0xff );
     for( uint32_t i = 0; i < payload.size(); i++ )
     {
         unpacked.push_back( payload[i] );
@@ -522,12 +563,17 @@ bool GDL90::uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t 
 
 bool GDL90::uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
 {
+#ifndef NDEBUG
     if ( unpacked.size() != 436 ) return error();
+#endif
     size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::UPLINK_DATA) ) return error();
-    time_of_reception_frac  = unpacked[i++] << 16;
+    time_of_reception_frac  = unpacked[i++];
     time_of_reception_frac |= unpacked[i++] << 8;
-    time_of_reception_frac |= unpacked[i++] << 0;
+    time_of_reception_frac |= unpacked[i++] << 16;
+#ifndef NDEBUG
+    if (payload.capacity() < 432) { return error(); }
+#endif
     payload.clear();
     for( ; i < unpacked.size(); i++ )
     {
@@ -538,13 +584,16 @@ bool GDL90::uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t&
 
 bool GDL90::basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
 {
+#ifndef NDEBUG
+    if (unpacked.capacity() < 22) { return error(); }
+#endif
     unpacked.clear();
     if ( time_of_reception_frac >= (1 << 24) ) return error();
     if ( payload.size() != 18 ) return error();
     unpacked.push_back( uint8_t(MESSAGE_ID::BASIC_UAT_REPORT) );
-    unpacked.push_back( (time_of_reception_frac >> 16) & 0xff );
-    unpacked.push_back( (time_of_reception_frac >> 8) & 0xff );
     unpacked.push_back( (time_of_reception_frac >> 0) & 0xff );
+    unpacked.push_back( (time_of_reception_frac >> 8) & 0xff );
+    unpacked.push_back( (time_of_reception_frac >> 16) & 0xff );
     for( uint32_t i = 0; i < payload.size(); i++ )
     {
         unpacked.push_back( payload[i] );
@@ -554,12 +603,17 @@ bool GDL90::basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint
 
 bool GDL90::basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
 {
+#ifndef NDEBUG
     if ( unpacked.size() != 22 ) return error();
+#endif
     size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::BASIC_UAT_REPORT) ) return error();
-    time_of_reception_frac  = unpacked[i++] << 16;
+    time_of_reception_frac  = unpacked[i++];
     time_of_reception_frac |= unpacked[i++] << 8;
-    time_of_reception_frac |= unpacked[i++] << 0;
+    time_of_reception_frac |= unpacked[i++] << 16;
+#ifndef NDEBUG
+    if (payload.capacity() < 18) { return error(); }
+#endif
     payload.clear();
     for( ; i < unpacked.size(); i++ )
     {
@@ -570,13 +624,16 @@ bool GDL90::basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint
 
 bool GDL90::long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
 {
+#ifndef NDEBUG
+    if (unpacked.capacity() < 38) { return error(); }
+#endif
     unpacked.clear();
     if ( time_of_reception_frac >= (1 << 24) ) return error();
     if ( payload.size() != 34 ) return error();
     unpacked.push_back( uint8_t(MESSAGE_ID::LONG_UAT_REPORT) );
-    unpacked.push_back( (time_of_reception_frac >> 16) & 0xff );
-    unpacked.push_back( (time_of_reception_frac >> 8) & 0xff );
     unpacked.push_back( (time_of_reception_frac >> 0) & 0xff );
+    unpacked.push_back( (time_of_reception_frac >> 8) & 0xff );
+    unpacked.push_back( (time_of_reception_frac >> 16) & 0xff );
     for( uint32_t i = 0; i < payload.size(); i++ )
     {
         unpacked.push_back( payload[i] );
@@ -586,12 +643,17 @@ bool GDL90::long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint3
 
 bool GDL90::long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
 {
+#ifndef NDEBUG
     if ( unpacked.size() != 38 ) return error();
+#endif
     size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::LONG_UAT_REPORT) ) return error();
-    time_of_reception_frac  = unpacked[i++] << 16;
+    time_of_reception_frac  = unpacked[i++];
     time_of_reception_frac |= unpacked[i++] << 8;
-    time_of_reception_frac |= unpacked[i++] << 0;
+    time_of_reception_frac |= unpacked[i++] << 16;
+#ifndef NDEBUG
+    if (payload.capacity() < 34) { return error(); }
+#endif
     payload.clear();
     for( ; i < unpacked.size(); i++ )
     {
@@ -661,7 +723,8 @@ bool GDL90::horizontal_velocity_encode( uint32_t& velocity_encoded, float  veloc
 
 bool GDL90::horizontal_velocity_decode( uint32_t velocity_encoded, float& velocity )
 {
-    if ( velocity_encoded == VERTICAL_VELOCITY_ENCODED_INVALID ) {
+    if (velocity_encoded > 0xfff) { return error(); }
+    if ( velocity_encoded == HORIZONTAL_VELOCITY_ENCODED_INVALID ) {
         velocity = std::nanf("3");
     } else {
         velocity = velocity_encoded;
@@ -737,6 +800,10 @@ bool GDL90::ownership_or_traffic_report_encode( etl::ivector<uint8_t>& unpacked,
                                                         NIC nic, NACP nacp, uint32_t horiz_velocity, uint32_t vert_velocity, uint32_t track_hdg,
                                                         EMITTER emitter, const etl::string_view call_sign, EMERGENCY_PRIO emergency_prio_code )
 {
+
+#ifndef NDEBUG
+    if (unpacked.capacity() < 28) { return error(); }
+#endif
     unpacked.clear();
     if ( uint32_t(alert_status) > uint32_t(ALERT_STATUS::__LAST) ) return error();
     if ( uint32_t(addr_type) > uint32_t(ADDR_TYPE::__LAST) ) return error();
@@ -817,6 +884,9 @@ bool GDL90::ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unp
     vert_velocity |= unpacked[i++];
     track_hdg = unpacked[i++];
     emitter = EMITTER( unpacked[i++] );
+#ifndef NDEBUG
+    if (call_sign.capacity() < 8) { return error(); }
+#endif
     call_sign.clear();
 
     uint32_t pending_spaces = 0;
@@ -877,6 +947,9 @@ bool GDL90::height_decode( uint32_t height_encoded, float& height )
 
 bool GDL90::height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  height )
 {
+#ifndef NDEBUG
+    if (unpacked.capacity() < 3) { return error(); }
+#endif
     unpacked.clear();
     if ( height >= (1 << 16) ) return error();
     unpacked.push_back( uint8_t(MESSAGE_ID::HEIGHT_ABOVE_TERRAIN) );
@@ -887,7 +960,9 @@ bool GDL90::height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, 
 
 bool GDL90::height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& height )
 {
+#ifndef NDEBUG
     if ( unpacked.size() != 3 ) return error();
+#endif
     size_t i = 0;
     if ( unpacked[i++] != uint8_t(MESSAGE_ID::HEIGHT_ABOVE_TERRAIN) ) return error();
     height = unpacked[i++] << 8;
@@ -897,8 +972,9 @@ bool GDL90::height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, 
 
 bool GDL90::geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude )
 {
-    if ( geo_altitude < (-5.0*32768.0) || geo_altitude > (5.0*32767.0) ) return error();
-    geo_altitude_encoded = geo_altitude / 5.f;
+    if (geo_altitude < (-5.f * 32768.f) || geo_altitude > (5.f * 32767.f)) { return error(); }
+    if (!std::isfinite(geo_altitude)) { return error(); }
+    geo_altitude_encoded = static_cast<uint32_t>(static_cast<int32_t>(geo_altitude / 5.f));
     geo_altitude_encoded &= 0xffff;
     return true;
 }
@@ -940,6 +1016,10 @@ bool GDL90::vertical_figure_of_merit_decode( uint32_t  vertical_figure_of_merit_
 
 bool GDL90::ownership_geometric_altitude_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  geo_altitude, bool  vertical_warning, uint32_t  vertical_figure_of_merit )
 {
+
+#ifndef NDEBUG
+    if (unpacked.capacity() < 5) { return error(); }
+#endif
     unpacked.clear();
     if ( geo_altitude > 0xffff ) return error();
     if ( vertical_figure_of_merit > 0x7fff ) return error();
@@ -969,6 +1049,10 @@ bool GDL90::ownership_geometric_altitude_decode( const etl::ivector<uint8_t>& un
 
 bool GDL90::foreflight_id_encode(       etl::ivector<uint8_t>& unpacked, uint64_t  device_serial_number, const etl::string_view device_name, const etl::string_view device_long_name, uint32_t  capabilities_mask )
 {
+
+#ifndef NDEBUG
+    if (unpacked.capacity() < 39) { return error(); }
+#endif
     unpacked.clear();
     if ( device_name.length() > 8 ) return error();
     if ( device_long_name.length() > 16 ) return error();
@@ -999,6 +1083,9 @@ bool GDL90::foreflight_id_encode(       etl::ivector<uint8_t>& unpacked, uint64_
 
 bool GDL90::foreflight_id_decode( const etl::ivector<uint8_t>& unpacked, uint64_t& device_serial_number, etl::istring& device_name, etl::istring& device_long_name, uint32_t& capabilities_mask )
 {
+#ifndef NDEBUG
+    if (device_name.capacity() < 8 || device_long_name.capacity() < 16) { return error(); }
+#endif
     if ( unpacked.size() != 39 ) return error();
     uint32_t i = 0;
     MESSAGE_ID id = MESSAGE_ID( unpacked[i++] );
@@ -1038,7 +1125,7 @@ bool GDL90::foreflight_roll_pitch_encode( uint32_t& roll_pitch_encoded, float  r
         roll_pitch_encoded = FOREFLIGHT_ROLL_PITCH_INVALID;
     } else {
         if ( roll_pitch < -180.f || roll_pitch > 180.f ) return error();
-        roll_pitch_encoded = roll_pitch * 10.f;
+        roll_pitch_encoded = static_cast<uint32_t>(static_cast<int32_t>(roll_pitch * 10.f));
         roll_pitch_encoded &= 0xffff;
     }
     return true;
@@ -1063,7 +1150,7 @@ bool GDL90::foreflight_heading_encode( uint32_t& heading_encoded, float  heading
         heading_encoded = FOREFLIGHT_HEADING_INVALID;
     } else {
         if ( heading < -360.f || heading > 360.f ) return error();
-        heading_encoded = heading * 10.f;
+        heading_encoded = static_cast<uint32_t>(static_cast<int32_t>(heading * 10.f));
         heading_encoded &= 0x7fff;
         heading_encoded |= is_magnetic << 15;
     }
@@ -1072,7 +1159,7 @@ bool GDL90::foreflight_heading_encode( uint32_t& heading_encoded, float  heading
 
 bool GDL90::foreflight_heading_decode( uint32_t  heading_encoded, float& heading, bool& is_magnetic )
 {
-    if ( heading_encoded == FOREFLIGHT_ROLL_PITCH_INVALID ) {
+    if ( heading_encoded == FOREFLIGHT_HEADING_INVALID ) {
         heading = std::nanf("22");
         is_magnetic = false;
     } else {
@@ -1088,6 +1175,9 @@ bool GDL90::foreflight_heading_decode( uint32_t  heading_encoded, float& heading
 
 bool GDL90::foreflight_ahrs_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  roll, uint32_t  pitch, uint32_t  heading, uint32_t  ias, uint32_t  tas )
 {
+#ifndef NDEBUG
+    if (unpacked.capacity() < 12) { return error(); }
+#endif
     unpacked.clear();
     int32_t roll_s  = roll  | ((roll  >= 0x8000) ? 0xffff0000 : 0x00000000);
     int32_t pitch_s = pitch | ((pitch >= 0x8000) ? 0xffff0000 : 0x00000000);
@@ -1145,7 +1235,10 @@ bool GDL90::sx_heartbeat_encode(etl::ivector<uint8_t> &unpacked,
                                 float cpuTemp,
                                 const etl::span<etl::pair<float, float>> &towers)
 {
-
+    if (towers.size() > 255) { return error(); }
+#ifndef NDEBUG
+    if (unpacked.capacity() < 30 + 6 * towers.size()) { return error(); }
+#endif
     unpacked.clear();
     unpacked.push_back(uint8_t(MESSAGE_ID::HILTON_SX_HEARTBEAT));
     unpacked.push_back('S');

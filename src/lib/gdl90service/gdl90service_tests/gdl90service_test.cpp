@@ -193,12 +193,42 @@ TEST_CASE("ownship position", "[single-file]")
     REQUIRE(test.msg.size() == 32);
     REQUIRE(latitude_f == Catch::Approx(tc.lat).margin(0.001));
     REQUIRE(longitude_f == Catch::Approx(tc.lon).margin(0.001));
+    // The traffic report carries MSL altitude; the test data stores ellipsoid height.
     REQUIRE((altitude_f * FT_TO_M + 47) == Catch::Approx(tc.alt).margin(15));
     REQUIRE(track_hdg_f == Catch::Approx(tc.track).margin(1));
     REQUIRE((vert_velocity_f * FTPMIN_TO_MS) == Catch::Approx(tc.vspeed).margin(0.3));
     REQUIRE((horiz_velocity_f * KN_TO_MS) == Catch::Approx(tc.speed).margin(1));
     REQUIRE(call_sign.length() == etl::string_view(tc.callSign).length());
     REQUIRE(call_sign == etl::string_view(tc.callSign));
+}
+
+TEST_CASE("heartbeat uses GDL90 wire byte order", "[single-file]")
+{
+    GDL90 gdl90;
+    const bool hasFix = GENERATE(false, true);
+    const bool timestampHighBit = GENERATE(false, true);
+    const uint32_t status = GDL90::HEARTBEAT_STATUS_UAT_INITIALIZED_MASK |
+                            (hasFix ? GDL90::HEARTBEAT_STATUS_GPS_POS_VALID_MASK : 0);
+    const uint32_t timestamp = timestampHighBit ? 0x11234 : 0x01234;
+
+    // ICD section 3.1: status byte 1 first, timestamp low byte first.
+    // Nonzero message counts also ensure their byte order stays unchanged.
+    const GDL90::RawBytes expected{
+        0x00, uint8_t(hasFix ? 0x81 : 0x01), uint8_t(timestampHighBit ? 0x80 : 0x00),
+        0x34, 0x12, 0x22, 0x37};
+    GDL90::RawBytes unpacked;
+    REQUIRE(gdl90.heartbeat_encode(unpacked, status, timestamp, 4, 567));
+    REQUIRE(unpacked == expected);
+
+    uint32_t decodedStatus = 0;
+    uint32_t decodedTimestamp = 0;
+    uint32_t uplinkCount = 0;
+    uint32_t trafficCount = 0;
+    REQUIRE(gdl90.heartbeat_decode(expected, decodedStatus, decodedTimestamp, uplinkCount, trafficCount));
+    REQUIRE(decodedStatus == status);
+    REQUIRE(decodedTimestamp == timestamp);
+    REQUIRE(uplinkCount == 4);
+    REQUIRE(trafficCount == 567);
 }
 
 TEST_CASE("heartbeat", "[single-file]")
@@ -217,4 +247,205 @@ TEST_CASE("heartbeat", "[single-file]")
     // print_buffer_hex<uint8_t>(test.msg);
     REQUIRE(test.numReceived == 2);
     REQUIRE(test.msg.size() == 43);
+    GDL90 gdl90;
+    GDL90::RawBytes unpacked;
+    REQUIRE(gdl90.unpack(test.msg, unpacked));
+    uint64_t serial = 0;
+    uint32_t capabilities = 0;
+    etl::string<8> name;
+    etl::string<16> longName;
+    REQUIRE(gdl90.foreflight_id_decode(unpacked, serial, name, longName, capabilities));
+    // Capability bit 0 is clear: altitude is WGS-84 ellipsoid altitude.
+    REQUIRE(capabilities == GDL90::FOREFLIGHT_CAPABILITIES_INTERNET_UNRESTRICTED);
 }
+
+TEST_CASE("GDL90 service geometric altitude uses ellipsoid height", "[gdl90]")
+{
+    MockConfig mockConfig{bus};
+    Gdl90Service service{bus, mockConfig};
+    Test receiver{&bus};
+    GATAS::GpsStats stats;
+    stats.gpsFix = GATAS::GpsFix{GATAS::GpsFixType::D3};
+    service.on_receive(GATAS::GpsStatsMsg{stats});
+    GATAS::OwnshipPositionInfo position{};
+    position.ellipseHeight = GENERATE(100, 20);
+    position.geoidSeparation = 47;
+    service.on_receive(GATAS::OwnshipPositionMsg{position});
+
+    GDL90 gdl90;
+    GDL90::RawBytes unpacked;
+    REQUIRE(gdl90.unpack(receiver.msg, unpacked));
+    uint32_t altitude = 0;
+    uint32_t merit = 0;
+    bool warning = false;
+    REQUIRE(gdl90.ownership_geometric_altitude_decode(unpacked, altitude, warning, merit));
+    float feet = 0.f;
+    REQUIRE(gdl90.geo_altitude_decode(altitude, feet));
+    REQUIRE(feet == Catch::Approx(position.ellipseHeight * M_TO_FT).margin(5.f));
+}
+
+TEST_CASE("GDL90 unavailable values and signed encodings", "[gdl90]")
+{
+    GDL90 g;
+    float value = 0.f;
+    uint32_t raw = 0;
+    bool magnetic = false;
+    REQUIRE(g.horizontal_velocity_decode(0xfff, value));
+    REQUIRE(std::isnan(value));
+    REQUIRE(g.horizontal_velocity_decode(0x800, value));
+    REQUIRE(value == 2048.f);
+    REQUIRE_FALSE(g.horizontal_velocity_decode(0x1000, value));
+    REQUIRE(g.height_decode(0x8000, value));
+    REQUIRE(std::isnan(value));
+    REQUIRE(g.height_encode(raw, std::nanf("")));
+    REQUIRE(raw == 0x8000);
+    GDL90::RawBytes bytes;
+    REQUIRE(g.height_above_terrain_encode(bytes, raw));
+    REQUIRE(bytes == GDL90::RawBytes{9, 0x80, 0});
+    GDL90::MESSAGE_ID id;
+    REQUIRE(g.id_decode(id, bytes));
+    REQUIRE(id == GDL90::MESSAGE_ID::HEIGHT_ABOVE_TERRAIN);
+    REQUIRE(g.foreflight_heading_decode(0xffff, value, magnetic));
+    REQUIRE(std::isnan(value));
+    REQUIRE(g.geo_altitude_encode(raw, -1000.f));
+    REQUIRE(raw == 0xff38);
+    REQUIRE(g.geo_altitude_decode(raw, value));
+    REQUIRE(value == -1000.f);
+    REQUIRE_FALSE(g.geo_altitude_encode(raw, std::nanf("")));
+    REQUIRE(g.foreflight_roll_pitch_encode(raw, -10.f));
+    REQUIRE(raw == 0xff9c);
+    REQUIRE(g.foreflight_roll_pitch_decode(raw, value));
+    REQUIRE(value == -10.f);
+    REQUIRE(g.foreflight_heading_encode(raw, -10.f, false));
+    REQUIRE(raw == 0x7f9c);
+    REQUIRE(g.foreflight_heading_decode(raw, value, magnetic));
+    REQUIRE(value == -10.f);
+    REQUIRE_FALSE(magnetic);
+    REQUIRE(uint32_t(GDL90::EMITTER::GLIDER_SAILPLANE) == 9);
+    REQUIRE(uint32_t(GDL90::NACP::LT_0_05_NM) == 8);
+}
+
+TEST_CASE("GDL90 initialization uses specification byte order", "[gdl90]")
+{
+    GDL90 g;
+    GDL90::RawBytes bytes;
+    const GDL90::RawBytes expected{2, 0x43, 0x02};
+    const uint32_t config = GDL90::INIT_CONFIG_CDTI_OK_MASK | GDL90::INIT_CONFIG_AUDIO_INHIBIT_MASK |
+                            GDL90::INIT_CONFIG_AUDIO_TEST_MASK | GDL90::INIT_CONFIG_CSA_AUDIO_DISABLE_MASK;
+    REQUIRE(g.initialization_encode(bytes, config));
+    REQUIRE(bytes == expected);
+    uint32_t decoded = 0;
+    REQUIRE(g.initialization_decode(expected, decoded));
+    REQUIRE(decoded == config);
+}
+
+TEST_CASE("GDL90 UAT timestamps use least significant byte first", "[gdl90]")
+{
+    GDL90 g;
+    const auto kind = GENERATE(7, 30, 31);
+    const size_t payloadSize = kind == 7 ? 432 : (kind == 30 ? 18 : 34);
+    etl::vector<uint8_t, 432> payload;
+    payload.resize(payloadSize, 0x7e);
+    etl::vector<uint8_t, 436> bytes;
+    auto encode = kind == 7 ? &GDL90::uplink_data_encode : (kind == 30 ? &GDL90::basic_uat_report_encode : &GDL90::long_uat_report_encode);
+    auto decode = kind == 7 ? &GDL90::uplink_data_decode : (kind == 30 ? &GDL90::basic_uat_report_decode : &GDL90::long_uat_report_decode);
+    REQUIRE((g.*encode)(bytes, 1000000, payload));
+    REQUIRE(bytes.size() == payloadSize + 4);
+    REQUIRE(bytes[0] == kind);
+    REQUIRE(bytes[1] == 0x40);
+    REQUIRE(bytes[2] == 0x42);
+    REQUIRE(bytes[3] == 0x0f);
+    etl::vector<uint8_t, 432> decoded;
+    uint32_t time = 0;
+    REQUIRE((g.*decode)(bytes, time, decoded));
+    REQUIRE(time == 1000000);
+    REQUIRE(decoded == payload);
+#ifndef NDEBUG
+    etl::vector<uint8_t, 1> small;
+    REQUIRE_FALSE((g.*encode)(small, 1000000, payload));
+    REQUIRE_FALSE((g.*decode)(bytes, time, small));
+#endif
+    etl::vector<uint8_t, 878> framed;
+    REQUIRE(g.pack(framed, bytes));
+    etl::vector<uint8_t, 436> restored;
+    REQUIRE(g.unpack(framed, restored));
+    REQUIRE(restored == bytes);
+#ifndef NDEBUG
+    if (kind == 7)
+    {
+        GDL90::RawBytes reportBuffer;
+        REQUIRE_FALSE((g.*encode)(reportBuffer, 1000000, payload));
+    }
+#endif
+}
+
+TEST_CASE("ForeFlight ID supports all documented internet policies", "[gdl90]")
+{
+    GDL90 g;
+    const uint32_t policy = GENERATE(0u, 2u, 4u);
+    const uint32_t datum = GENERATE(0u, 1u);
+    GDL90::RawBytes expected;
+    expected.resize(39, 0);
+    expected[0] = 0x65;
+    expected[2] = 1;
+    expected[38] = policy | datum;
+    uint64_t serial = 0;
+    uint32_t capabilities = 0;
+    etl::string<8> name;
+    etl::string<16> longName;
+    REQUIRE(g.foreflight_id_decode(expected, serial, name, longName, capabilities));
+    REQUIRE(capabilities == (policy | datum));
+    GDL90::RawBytes bytes;
+    REQUIRE(g.foreflight_id_encode(bytes, 0, "", "", policy | datum));
+    REQUIRE(bytes[38] == (policy | datum));
+    REQUIRE_FALSE(g.foreflight_id_encode(bytes, 0, "", "", 8));
+}
+
+TEST_CASE("GDL90 framing validates CRC escapes and capacity", "[gdl90]")
+{
+    GDL90 g;
+    // ICD section 2.2.4, independently specified CRC and heartbeat payload.
+    const GDL90::RawBytes golden{0x7e, 0, 0x81, 0x41, 0xdb, 0xd0, 8, 2, 0xb3, 0x8b, 0x7e};
+    etl::vector<uint8_t, 7> decoded;
+    REQUIRE(g.unpack(golden, decoded));
+    REQUIRE(decoded == GDL90::RawBytes{0, 0x81, 0x41, 0xdb, 0xd0, 8, 2});
+    GDL90::RawBytes framed;
+    REQUIRE(g.pack(framed, decoded));
+    REQUIRE(framed == golden);
+#ifndef NDEBUG
+    etl::vector<uint8_t, 6> small;
+    REQUIRE_FALSE(g.unpack(golden, small));
+    REQUIRE_FALSE(g.pack(small, decoded));
+#endif
+    auto corrupted = golden;
+    corrupted[5] ^= 1;
+    REQUIRE_FALSE(g.unpack(corrupted, decoded));
+    const auto malformed = GENERATE(
+        GDL90::RawBytes{0x7e, 0, 0, 0x7e},
+        GDL90::RawBytes{0x7e, 0x7d, 0x20, 0x81, 0x41, 0xdb, 0xd0, 8, 2, 0xb3, 0x8b, 0x7e},
+        GDL90::RawBytes{0x7e, 0, 0x7e, 0, 0, 0x7e},
+        GDL90::RawBytes{0x7e, 0, 0, 0x7d, 0x7e});
+    REQUIRE_FALSE(g.unpack(malformed, decoded));
+    GDL90::RawBytes escaped{0, 0x7d, 0x7e};
+    REQUIRE(g.pack(framed, escaped));
+    REQUIRE(g.unpack(framed, decoded));
+    REQUIRE(decoded == escaped);
+#ifndef NDEBUG
+    escaped.resize(28, 0x7e);
+    REQUIRE_FALSE(g.pack(framed, escaped));
+#endif
+}
+
+#ifndef NDEBUG
+TEST_CASE("GDL90 service does not publish failed packets", "[gdl90]")
+{
+    MockConfig mockConfig{bus};
+    Gdl90Service service{bus, mockConfig};
+    Test receiver{&bus};
+    GDL90::RawBytes bytes{0};
+    bytes.resize(28, 0x7e);
+    service.packAndSend(bytes);
+    REQUIRE(receiver.numReceived == 0);
+    REQUIRE(service.statistics.packingFailureErr == 1);
+}
+#endif

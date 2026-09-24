@@ -31,6 +31,7 @@ private:
         uint32_t trackingFailureErr = 0;
         uint32_t ownEncodingFailureErr = 0;
         uint32_t heartBeatEncodingFailureErr = 0;
+        uint32_t packingFailureErr = 0;
     } statistics;
 
     enum TaskState : uint8_t

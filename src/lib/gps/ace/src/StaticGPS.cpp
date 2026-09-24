@@ -281,9 +281,8 @@ void StaticGPS::publishSentences()
         stream << "$GPGGA," << timeText << "," << latitudeCoordinate.text << "," << latitudeCoordinate.hemisphere
                << "," << longitudeCoordinate.text << "," << longitudeCoordinate.hemisphere
                << "," << (valid ? "1,08" : "0,00") << ",1.0,"
-               << etl::format_spec{}.precision(1) << currentLocation.altitudeMeters
-               << GATAS::RESET_FORMAT << ",M," << etl::format_spec{}.precision(1) << currentLocation.geoidSeparationMeters
-               << GATAS::RESET_FORMAT << ",M,,";
+               << etl::format_spec{}.precision(1) << currentLocation.altitudeMeters << GATAS::RESET_FORMAT << ",M," 
+               << etl::format_spec{}.precision(1) << currentLocation.geoidSeparationMeters << GATAS::RESET_FORMAT << ",M,,";
     }
     CoreUtils::addChecksumToNMEA(nmeaString, false);
     processNewSentenceFromTask({nmeaString.data(), nmeaString.size()});

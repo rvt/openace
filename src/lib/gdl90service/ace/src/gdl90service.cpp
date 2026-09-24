@@ -27,6 +27,7 @@ void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"trackingFailure:err\":" << statistics.trackingFailureErr;
     stream << ",\"ownEncodingFailure:err\":" << statistics.ownEncodingFailureErr;
     stream << ",\"heartBeatEncodingFailure:err\":" << statistics.heartBeatEncodingFailureErr;
+    stream << ",\"packingFailure:err\":" << statistics.packingFailureErr;
     stream << "}";
 }
 
@@ -209,7 +210,8 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
             pos.conspicuity.icaoAddress,
             latitude,
             longitude,
-            altitude, // GDL90 spec states we can set it to 0xFFF if barometric is not available, but SkyDemoon does not like that. So we add this anyways
+            GDL90::ALTITUDE_ENCODED_INVALID,
+//            altitude, // GDL90 spec states we can set it to 0xFFF if barometric is not available, but SkyDemoon does not like that. So we add this anyways
             // Same as for tracked aircraft, force to AIRBORN unless we can understand how forflight handles this bit
             GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_AIRBORNE_MASK,
             // GDL90::MISC_TT_HEADING_TRUE_MASK | (msg.position.airborne ? GDL90::MISC_AIRBORNE_MASK : GDL90::MISC_ON_GROUND_MASK),
@@ -240,6 +242,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
         constexpr float vertical_figure_of_merit_f = 10.f * M_TO_FT;
         uint32_t vertical_figure_of_merit;
         uint32_t geo_altitude;
+        // In EasyVFR this controls Alt GPS
         bool ok = gdl90.geo_altitude_encode(geo_altitude, pos.ellipseHeight * M_TO_FT);
         ok |= gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
         if (ok && gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
@@ -276,7 +279,7 @@ GDL90::NACP Gdl90Service::calcNACp(float hfomMeters)
     const float hfomNm = hfomMeters / 1852.0f;
 
     // clang-format off
-    if (hfomNm < 0.05f) return GDL90::NACP::LT_0_01_NM;
+    if (hfomNm < 0.05f) return GDL90::NACP::LT_0_05_NM;
     if (hfomNm < 0.1f)  return GDL90::NACP::LT_0_1_NM;
     if (hfomNm < 0.3f)  return GDL90::NACP::LT_0_3_NM;
     if (hfomNm < 0.5f)  return GDL90::NACP::LT_0_5_NM;
@@ -340,7 +343,8 @@ void Gdl90Service::on_receive(const GATAS::EgressAircraftPositionMsg &msg)
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.track);
-    GDL90::ADDR_TYPE type = pos.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+//    GDL90::ADDR_TYPE type = pos.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+    GDL90::ADDR_TYPE type = GDL90::ADDR_TYPE::TISB_WITH_ICAO_ADDR;
 
     GDL90::RawBytes unpacked;
     if (gdl90.ownership_or_traffic_report_encode(
@@ -407,9 +411,9 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
         gdl90Service.statistics.heartBeatEncodingFailureErr += 1;
     }
 
-    // Send ForeFLight heartbeat
+    // Send ForeFlight heartbeat
     // https://www.foreflight.com/connect/spec/
-    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", 0b00)) // Bit 0set to 0 Capability WGS-84 ellipsoid bit 1/2 to 0 for unlimited internet
+    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", 0x00)) // WGS-84 ellipsoid, unrestricted internet
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx += 1;
@@ -423,6 +427,10 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
 void Gdl90Service::packAndSend(const GDL90::RawBytes &unpacked)
 {
     GATAS::GdlMsg GdlMsg{};
-    gdl90.pack(GdlMsg.msg, unpacked);
+    if (!gdl90.pack(GdlMsg.msg, unpacked))
+    {
+        statistics.packingFailureErr += 1;
+        return;
+    }
     getBus().receive(GdlMsg);
 }
