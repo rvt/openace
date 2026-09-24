@@ -144,19 +144,21 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
     const uint32_t receiveUs32 = static_cast<uint32_t>(receiveUs);
 
     auto *client = static_cast<NtpClient *>(arg);
+    if (client == nullptr)
+    {        
+        return;
+    }
 
     if (packet == nullptr)
     {
-        if (client != nullptr)
-        {
-            client->failRequest(Failure::REQUEST);
-        }
+        client->failRequest(Failure::REQUEST);
         return;
     }
 
     // sanety checks
     if (!client->processPending || pcb_ != client->pcb || port != NTP_PORT)
     {
+        client->failRequest(Failure::REQUEST);
         return;
     }
 
@@ -182,6 +184,7 @@ void NtpClient::receiveCallback(void *arg, udp_pcb *pcb_, pbuf *packet, const ip
     {
         // Valid might be fails if a request was not even send from us
         client->processPending = false;
+        client->failRequest(Failure::REQUEST);
         return;
     }
 

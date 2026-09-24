@@ -210,7 +210,8 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
             pos.conspicuity.icaoAddress,
             latitude,
             longitude,
-            altitude, // GDL90 spec states we can set it to 0xFFF if barometric is not available, but SkyDemoon does not like that. So we add this anyways
+            GDL90::ALTITUDE_ENCODED_INVALID,
+//            altitude, // GDL90 spec states we can set it to 0xFFF if barometric is not available, but SkyDemoon does not like that. So we add this anyways
             // Same as for tracked aircraft, force to AIRBORN unless we can understand how forflight handles this bit
             GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_AIRBORNE_MASK,
             // GDL90::MISC_TT_HEADING_TRUE_MASK | (msg.position.airborne ? GDL90::MISC_AIRBORNE_MASK : GDL90::MISC_ON_GROUND_MASK),
@@ -241,6 +242,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &msg)
         constexpr float vertical_figure_of_merit_f = 10.f * M_TO_FT;
         uint32_t vertical_figure_of_merit;
         uint32_t geo_altitude;
+        // In EasyVFR this controls Alt GPS
         bool ok = gdl90.geo_altitude_encode(geo_altitude, pos.ellipseHeight * M_TO_FT);
         ok |= gdl90.vertical_figure_of_merit_encode(vertical_figure_of_merit, vertical_figure_of_merit_f);
         if (ok && gdl90.ownership_geometric_altitude_encode(unpacked, geo_altitude, vertical_warning, vertical_figure_of_merit))
@@ -409,9 +411,9 @@ void Gdl90Service::sendHeartBeat(Gdl90Service &gdl90Service)
         gdl90Service.statistics.heartBeatEncodingFailureErr += 1;
     }
 
-    // Send ForeFLight heartbeat
+    // Send ForeFlight heartbeat
     // https://www.foreflight.com/connect/spec/
-    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", 0x00)) // MSL altitude, unrestricted internet
+    if (gdl90Service.gdl90.foreflight_id_encode(unpacked, 0xace000ace, "GATAS", "GATAS Conspcty", 0x00)) // WGS-84 ellipsoid, unrestricted internet
     {
         gdl90Service.packAndSend(unpacked);
         gdl90Service.statistics.heartbeatTx += 1;
