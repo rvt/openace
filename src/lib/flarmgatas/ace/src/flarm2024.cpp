@@ -109,9 +109,9 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
     }
 }
 
-void Flarm2024::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void Flarm2024::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
+    ownshipPosition = GATAS::OwnshipState::shared().location.load();
 }
 
 void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)

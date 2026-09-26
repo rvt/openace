@@ -172,15 +172,16 @@ void RadioTunerTx::radioTuneTask()
 
 // ******************** Message bus receive handlers ********************
 
-void RadioTunerTx::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void RadioTunerTx::on_receive(const GATAS::OwnshipPositionMsg &)
 {
+    const auto position = GATAS::OwnshipState::shared().location.load();
     static auto lastTime = CoreUtils::timeUs32Raw();
     // Update ZONE every 30 seconds, or when still at ZONE0
-    isAirborne = msg.position.groundSpeed >= GATAS::GROUNDSPEED_CONSIDERING_AIRBORN;
+    isAirborne = position.groundSpeed >= GATAS::GROUNDSPEED_CONSIDERING_AIRBORN;
     if (CoreUtils::isUsReachedRaw(lastTime) || currentZone == CountryRegulations::Zone::ZONE0)
     {
         lastTime = CoreUtils::timeUs32Raw() + UPDATE_ZONE_REGULATION_EVERY;
-        auto newZone = CountryRegulations::zone(msg.position.lat, msg.position.lon);
+        auto newZone = CountryRegulations::zone(position.lat, position.lon);
         if (newZone != currentZone)
         {
             currentZone = newZone;

@@ -22,6 +22,7 @@
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
+#include "ace/ownshipstate.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/datasourcetimestatstable.hpp"
@@ -99,6 +100,7 @@ private:
     GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
 
     GATAS::OwnshipPositionInfo ownshipPosition{};
+    const GATAS::OwnshipState &ownshipState;
     GATAS::BarometricPressure lastBarometricPressure{0, 0};
     GATAS::GpsStats gpsStats{};
     uint32_t distanceIgnore;
@@ -106,7 +108,7 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "Ogn1";
-    Ogn1(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
+    Ogn1(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_)
     {
         uint32_t di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, NAME, "distanceIgnore");
         distanceIgnore = etl::clamp(di, static_cast<uint32_t>(0), MAX_IGNORE_DISTANCE);

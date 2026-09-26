@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "../gpsdecoder.hpp"
+#include "ace/ownshipstate.hpp"
 #include "ace/moreutils.hpp"
 #include "etl/algorithm.h"
 
@@ -327,9 +328,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
         auto altGeoid = altitudeGeoid();
 
         // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
-        getBus().receive(
-            GATAS::OwnshipPositionMsg{
-                GATAS::OwnshipPositionInfo{
+        const GATAS::OwnshipPositionInfo position{
                     .timestamp = CoreUtils::timeUs32(),
                     .lat = latitude,
                     .lon = longitude,
@@ -342,6 +341,8 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
 //                    .velocityEast = velocityEast,
                     .geoidSeparation = static_cast<int16_t>(geoidSeparation),
                     .airborne = CoreUtils::isAirborn(conspicuity.category, groundSpeed),
-                    .conspicuity = conspicuity}});
+                    .conspicuity = conspicuity};
+        GATAS::OwnshipState::shared().location.store(position);
+        getBus().receive(GATAS::OwnshipPositionMsg{});
     }
 }

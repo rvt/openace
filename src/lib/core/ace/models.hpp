@@ -14,6 +14,9 @@ namespace CoreUtils
 
 namespace GATAS
 {
+    static constexpr int32_t INVALID_BARO_ALTITUDE = INT32_MIN;
+    static constexpr float INVALID_QNH = -1.0f;
+
     /*
      * Result after the POST_CONSTRUCT call to indicate the status of the module, eg what happened and if the module is in a good state to run
      */
@@ -359,6 +362,7 @@ namespace GATAS
         int16_t geoidSeparation;         // The distance from the surface of an ellipsoid to the surface of the geoid.
         bool airborne;                   // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
         Config::Conspicuity conspicuity; // Configuration for this aircraft, used to send out the correct data
+        int32_t baroAlt = INVALID_BARO_ALTITUDE; // Pressure altitude in meters, when available
         int32_t heightMsl() const
         {
             return ellipseHeight - geoidSeparation;
@@ -398,6 +402,7 @@ namespace GATAS
         // These can be used by received to understand where the target is relative to ownship
         uint32_t distanceFromOwn; // Distance to ownship in meters,
         //        int16_t bearingFromOwn;   // Bearing to ownship in degrees, currently only used in AntennaRadiationPattern?
+        int32_t pressureAlt = INVALID_BARO_ALTITUDE; // Pressure altitude in meters, when available
 
         CoreUtils::distanceRelNorthRelEastInt relativeFromOwn(float ownshipLat, float ownshipLon) const;
         CoreUtils::distanceRelNorthRelEastInt relativeFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
@@ -409,8 +414,8 @@ namespace GATAS
         int32_t relEastFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
         int32_t relEastFromOwn(const OwnshipPositionInfo &ownship) const;
 
-        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t track_, float hTurnRate_, uint32_t distanceFromOwn_, int16_t squawk_ = -1 /*, int16_t bearingFromOwn_*/)
-            : timestamp(timestamp_), callSign(callSign_), squawk(squawk_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), track(track_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_) // , bearingFromOwn(bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t track_, float hTurnRate_, uint32_t distanceFromOwn_, int16_t squawk_ = -1, int32_t pressureAlt_ = INVALID_BARO_ALTITUDE /*, int16_t bearingFromOwn_*/)
+            : timestamp(timestamp_), callSign(callSign_), squawk(squawk_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), track(track_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), pressureAlt(pressureAlt_) // , bearingFromOwn(bearingFromOwn_)
         {
         }
         // Default constructor
@@ -598,8 +603,15 @@ namespace GATAS
 
     struct BarometricPressure
     {
-        float pressurehPa;    // Preasure in hPa (hectopascal)
-        uint32_t usSinceBoot; // Time since boot
+        float pressurehPa;    // Ambient pressure in hPa; 0 when unavailable
+        int32_t pressure_alt; // Pressure altitude in metres, or INVALID_BARO_ALTITUDE
+        float qnh;           // Sea-level QNH in hPa, or INVALID_QNH; not ambient pressure
+
+        BarometricPressure(float pressurehPa_ = 0.0f,
+                           int32_t pressureAlt = INVALID_BARO_ALTITUDE, float qnh_ = INVALID_QNH)
+            : pressurehPa(pressurehPa_), pressure_alt(pressureAlt), qnh(qnh_)
+        {
+        }
     };
 
     /**

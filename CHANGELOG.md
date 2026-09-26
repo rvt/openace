@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added regression coverage for aircraft-tracker expiry, prediction, capacity cleanup,
   radio-source priority, nearest-aircraft selection, and GDL90 encoding/decoding.
 - Added GDL90 packing-failure statistics to the service diagnostics.
+- Added version-negotiated aircraft position V3 messages with optional barometric altitude.
 
 ### Changed
 
@@ -24,7 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fresh radio positions retain priority over ADS-B and MLAT updates until the radio
   priority timeout expires.
 - GDL90 ownship and traffic altitude handling now follows the configured altitude datum,
-  and ForeFlight identification advertises the matching datum.
+  target traffic prefers received barometric altitude with an MSL fallback, and ForeFlight
+  identification advertises the matching datum.
 
 ### Deprecated
 

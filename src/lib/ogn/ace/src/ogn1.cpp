@@ -318,14 +318,14 @@ void Ogn1::on_receive(const GATAS::RadioRxManchesterMsg &msg)
     }
 }
 
-void Ogn1::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void Ogn1::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
+    ownshipPosition = ownshipState.location.load();
 }
 
-void Ogn1::on_receive(const GATAS::BarometricPressureMsg &msg)
+void Ogn1::on_receive(const GATAS::BarometricPressureMsg &)
 {
-    lastBarometricPressure = msg.barometricPressure;
+    lastBarometricPressure = ownshipState.barometricPressure.load();
 }
 
 void Ogn1::on_receive(const GATAS::GpsStatsMsg &msg)

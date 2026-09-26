@@ -42,6 +42,8 @@ set(SOURCES_IDIOMATIC_EXAMPLES # Tests
     antennaRadiationPattern_test.cpp
     models_test.cpp
     binarymessages_test.cpp
+    ownship_pressure_test.cpp
+    ownshipstate_test.cpp
     )
 
 string(REPLACE ".cpp" "" BASENAMES_IDIOMATIC_EXAMPLES
@@ -64,6 +66,9 @@ foreach(name ${TARGETS_IDIOMATIC_EXAMPLES})
     POST_BUILD
     COMMAND ${UNIT_TEST})
 endforeach()
+
+target_sources(ownship_pressure_test PRIVATE ../../utils/ace/src/cobs.cpp)
+target_sources(binarymessages_test PRIVATE ../../utils/ace/src/cobs.cpp)
 
 set(ALL_EXAMPLE_TARGETS ${TARGETS_IDIOMATIC_EXAMPLES})
 

@@ -47,8 +47,11 @@ GATAS::ThreadSafeBus<50> bus;
 
 TEST_CASE("GDL90 callsigns are converted to uppercase", "[single-file]")
 {
+    CoreUtils::init();
+    GATAS::OwnshipState state;
+    state.init(CoreUtils::sharedSpinLock());
     MockConfig mockConfig{bus};
-    Gdl90Service gdl90Service{bus, mockConfig};
+    Gdl90Service gdl90Service{bus, mockConfig, state};
 
     REQUIRE(gdl90Service.makeGdlCallsign("ph-Ab12") == "PH-AB12");
 }
@@ -123,9 +126,12 @@ TEST_CASE("ownship position", "[single-file]")
 
     );
 
+    CoreUtils::init();
+    GATAS::OwnshipState state;
+    state.init(CoreUtils::sharedSpinLock());
     MockConfig mockConfig{bus};
     mockConfig.ownIcao = tc.icao;
-    Gdl90Service gdl90Service{bus, mockConfig};
+    Gdl90Service gdl90Service{bus, mockConfig, state};
     gdl90Service.postConstruct();
     Test test{&bus};
 
@@ -147,7 +153,8 @@ TEST_CASE("ownship position", "[single-file]")
         .conspicuity = GATAS::Config::Conspicuity{},
     };
 
-    GATAS::OwnshipPositionMsg msg{thisIsUs};
+    state.location.store(thisIsUs);
+    GATAS::OwnshipPositionMsg msg{};
 
     gdl90Service.on_receive(msg);
 
@@ -193,8 +200,7 @@ TEST_CASE("ownship position", "[single-file]")
     REQUIRE(test.msg.size() == 32);
     REQUIRE(latitude_f == Catch::Approx(tc.lat).margin(0.001));
     REQUIRE(longitude_f == Catch::Approx(tc.lon).margin(0.001));
-    // The traffic report carries MSL altitude; the test data stores ellipsoid height.
-    REQUIRE((altitude_f * FT_TO_M + 47) == Catch::Approx(tc.alt).margin(15));
+    REQUIRE(altitude_f == Catch::Approx(thisIsUs.heightMsl() * M_TO_FT).margin(25.f));
     REQUIRE(track_hdg_f == Catch::Approx(tc.track).margin(1));
     REQUIRE((vert_velocity_f * FTPMIN_TO_MS) == Catch::Approx(tc.vspeed).margin(0.3));
     REQUIRE((horiz_velocity_f * KN_TO_MS) == Catch::Approx(tc.speed).margin(1));
@@ -233,12 +239,15 @@ TEST_CASE("heartbeat uses GDL90 wire byte order", "[single-file]")
 
 TEST_CASE("heartbeat", "[single-file]")
 {
+    CoreUtils::init();
+    GATAS::OwnshipState state;
+    state.init(CoreUtils::sharedSpinLock());
     MockConfig mockConfig{bus};
 
     // CircularPosition center = CircularPosition(20'000, 15, {52.f, 0.f, 0});
     // auto mainPos = center.take();
 
-    Gdl90Service gdl90Service{bus, mockConfig};
+    Gdl90Service gdl90Service{bus, mockConfig, state};
     gdl90Service.postConstruct();
     Test test{&bus};
 
@@ -261,8 +270,11 @@ TEST_CASE("heartbeat", "[single-file]")
 
 TEST_CASE("GDL90 service geometric altitude uses ellipsoid height", "[gdl90]")
 {
+    CoreUtils::init();
+    GATAS::OwnshipState state;
+    state.init(CoreUtils::sharedSpinLock());
     MockConfig mockConfig{bus};
-    Gdl90Service service{bus, mockConfig};
+    Gdl90Service service{bus, mockConfig, state};
     Test receiver{&bus};
     GATAS::GpsStats stats;
     stats.gpsFix = GATAS::GpsFix{GATAS::GpsFixType::D3};
@@ -270,7 +282,8 @@ TEST_CASE("GDL90 service geometric altitude uses ellipsoid height", "[gdl90]")
     GATAS::OwnshipPositionInfo position{};
     position.ellipseHeight = GENERATE(100, 20);
     position.geoidSeparation = 47;
-    service.on_receive(GATAS::OwnshipPositionMsg{position});
+    state.location.store(position);
+    service.on_receive(GATAS::OwnshipPositionMsg{});
 
     GDL90 gdl90;
     GDL90::RawBytes unpacked;
@@ -282,6 +295,69 @@ TEST_CASE("GDL90 service geometric altitude uses ellipsoid height", "[gdl90]")
     float feet = 0.f;
     REQUIRE(gdl90.geo_altitude_decode(altitude, feet));
     REQUIRE(feet == Catch::Approx(position.ellipseHeight * M_TO_FT).margin(5.f));
+}
+
+TEST_CASE("GDL90 ownship and traffic reports prefer pressure altitude and fall back to MSL", "[gdl90]")
+{
+    CoreUtils::init();
+    GATAS::OwnshipState state;
+    state.init(CoreUtils::sharedSpinLock());
+    MockConfig mockConfig{bus};
+    Gdl90Service service{bus, mockConfig, state};
+    Test receiver{&bus};
+    GDL90 gdl90;
+
+    const bool ownship = GENERATE(true, false);
+    struct Case
+    {
+        int32_t meters;
+        uint8_t highByte;
+        uint8_t lowNibble;
+    };
+    // Independent ICD values: feet are offset by 1000 and quantized in 25-foot steps.
+    // Repeated reports exercise state updates and invalidation after a valid sample.
+    const Case cases[] = {
+        {GATAS::INVALID_BARO_ALTITUDE, 0x0A, 0xB0},
+        {500, 0x06, 0x90},
+        {1000, 0x0A, 0xB0},
+        {0, 0x02, 0x80},
+        {-100, 0x01, 0xA0},
+        {GATAS::INVALID_BARO_ALTITUDE, 0x0A, 0xB0},
+        {-400, 0xFF, 0xF0},
+        {31000, 0xFF, 0xF0},
+    };
+    for (const auto &test : cases)
+    {
+        INFO(test.meters);
+        // QNH and geometric height deliberately differ from pressure altitude.
+        // Traffic must also ignore the ownship pressure altitude.
+        state.barometricPressure.store(GATAS::BarometricPressure{
+            987.5f, ownship ? test.meters : 2000, 1030.0f});
+        const auto previousCount = receiver.numReceived;
+        GATAS::OwnshipPositionInfo ownPosition{};
+        ownPosition.ellipseHeight = 1047;
+        ownPosition.geoidSeparation = 47;
+        ownPosition.baroAlt = 7000;
+        state.location.store(ownPosition);
+        if (ownship)
+        {
+            service.on_receive(GATAS::OwnshipPositionMsg{});
+        }
+        else
+        {
+            GATAS::AircraftPositionInfo position{};
+            position.ellipseHeight = 1047;
+            position.pressureAlt = test.meters;
+            service.on_receive(GATAS::EgressAircraftPositionMsg{position});
+        }
+        REQUIRE(receiver.numReceived == previousCount + 1);
+        GDL90::RawBytes unpacked;
+        REQUIRE(gdl90.unpack(receiver.msg, unpacked));
+        REQUIRE(unpacked.size() == 28);
+        REQUIRE(unpacked[0] == (ownship ? 0x0A : 0x14));
+        REQUIRE(unpacked[11] == test.highByte);
+        REQUIRE((unpacked[12] & 0xF0) == test.lowNibble);
+    }
 }
 
 TEST_CASE("GDL90 unavailable values and signed encodings", "[gdl90]")
@@ -439,8 +515,11 @@ TEST_CASE("GDL90 framing validates CRC escapes and capacity", "[gdl90]")
 #ifndef NDEBUG
 TEST_CASE("GDL90 service does not publish failed packets", "[gdl90]")
 {
+    CoreUtils::init();
+    GATAS::OwnshipState state;
+    state.init(CoreUtils::sharedSpinLock());
     MockConfig mockConfig{bus};
-    Gdl90Service service{bus, mockConfig};
+    Gdl90Service service{bus, mockConfig, state};
     Test receiver{&bus};
     GDL90::RawBytes bytes{0};
     bytes.resize(28, 0x7e);

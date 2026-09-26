@@ -30,6 +30,7 @@
 #include "ace/constants.hpp"
 #include "ace/aircrafttracker.hpp"
 #include "ace/basemodule.hpp"
+#include "ace/ownshipstate.hpp"
 #include "ace/config.hpp"
 #include "ace/inmemorystore.hpp"
 #include "ace/flashstore.hpp"
@@ -125,6 +126,11 @@ void registerModules()
 
 GATAS::GlobalPoolConfiguration pool;
 
+namespace
+{
+    GATAS::OwnshipState &ownshipState = GATAS::OwnshipState::shared();
+}
+
 void disabled(etl::string_view name, Configuration &config)
 {
     // clang-format off
@@ -141,7 +147,9 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
 {
     // clang-format off
     if (name == Ogn1::NAME)
-        return new Ogn1(bus, config);
+    {
+        return new Ogn1(bus, config, ownshipState);
+    }
     if (name == FanetAce::NAME)
         return new FanetAce(bus, config);
     if (name == ADSLAce::NAME)
@@ -151,7 +159,9 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == AirConnect::NAME)
         return new AirConnect(bus, config);
     if (name == GatasConnect::NAME)
-        return new GatasConnect(bus, config);
+    {
+        return new GatasConnect(bus, config, ownshipState);
+    }
     if (name == GatasConnectUDP::NAME)
         return new GatasConnectUDP(bus, config);
     if (name == Bluetooth::NAME)
@@ -193,9 +203,13 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == WifiService::NAME)
         return new WifiService(bus, config);
     if (name == Gdl90Service::NAME)
-        return new Gdl90Service(bus, config);
+    {
+        return new Gdl90Service(bus, config, ownshipState);
+    }
     if (name == Bmp280::NAME)
-        return new Bmp280(bus, config);
+    {
+        return new Bmp280(bus, config, ownshipState);
+    }
     if (name == AceSpi::NAMES[0])
         return new AceSpi(bus, config, 0);
     if (name == AceSpi::NAMES[1])
@@ -321,6 +335,7 @@ static void loadModules(void *arg)
     (void)arg;
 
     CoreUtils::init();
+    ownshipState.init(CoreUtils::sharedSpinLock());
     config.postConstruct();
     config.start();
 

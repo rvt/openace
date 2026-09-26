@@ -91,7 +91,8 @@ TEST_CASE("Test filter below and above", "[single-file]")
 
     std::string line;
     ownship.ellipseHeight = 10000;
-    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
+    GATAS::OwnshipState::shared().location.store(ownship);
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{});
     adsbDecoder.filterAbove = 50000;
     adsbDecoder.filterBelow = 50000;
     while (std::getline(infile, line))
@@ -124,7 +125,8 @@ TEST_CASE("Test filter below and above", "[single-file]")
     adsbDecoder.filterAbove = 1000;
     adsbDecoder.filterBelow = 1000;
     ownship.ellipseHeight = lowestPlane - adsbDecoder.filterAbove;
-    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
+    GATAS::OwnshipState::shared().location.store(ownship);
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{});
 
     get_absolute_timeValue += 10000000;
     while (std::getline(infile, line))
@@ -148,7 +150,8 @@ TEST_CASE("Test filter below and above", "[single-file]")
     adsbDecoder.filterAbove = 1000;
     adsbDecoder.filterBelow = 1000;
     ownship.ellipseHeight = higestPlane;
-    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
+    GATAS::OwnshipState::shared().location.store(ownship);
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{});
 
     get_absolute_timeValue += 100'000'000;
     totalPlanes = 0;
@@ -184,7 +187,8 @@ TEST_CASE("Test heading and direction received aircraft", "[single-file]")
     ownship.lat = 52.1;
     ownship.lon = 4.8;
     ownship.ellipseHeight = 10000;
-    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
+    GATAS::OwnshipState::shared().location.store(ownship);
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{});
 
     uint8_t data[14];
     CoreUtils::hexStrToByteArray("8d502cd1589992ecbaf1a4140b65", data);
@@ -227,7 +231,8 @@ TEST_CASE("Test descending aircraft", "[single-file]")
     ownship.lat = 52.1;
     ownship.lon = 4.8;
     ownship.ellipseHeight = 10000;
-    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{ownship});
+    GATAS::OwnshipState::shared().location.store(ownship);
+    adsbDecoder.on_receive(GATAS::OwnshipPositionMsg{});
 
 
     uint8_t data[14];

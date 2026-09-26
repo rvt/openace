@@ -25,9 +25,9 @@ void ADSBDecoder::start()
     getBus().subscribe(*this);
 };
 
-void ADSBDecoder::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void ADSBDecoder::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position).assignTo();
+    ownshipPosition = GATAS::OwnshipState::shared().location.load().assignTo();
 }
 
 void ADSBDecoder::getConfiguration(const Configuration &config)

@@ -11,7 +11,7 @@ GDL90::~GDL90()
 {
 }
 
-bool GDL90::self_test( void )
+bool GDL90::self_test( void ) const
 {
     //-----------------------------------------------------------
     // Encode+pack and unpack+decode all message types.
@@ -314,7 +314,7 @@ void GDL90::crc_init( void )
     }
 }
 
-uint16_t GDL90::crc_compute( const etl::ivector<uint8_t>& unpacked, size_t length )
+uint16_t GDL90::crc_compute( const etl::ivector<uint8_t>& unpacked, size_t length ) const
 {
     uint16_t crc = 0;
     for( size_t i = 0; i < length; i++ )
@@ -324,7 +324,7 @@ uint16_t GDL90::crc_compute( const etl::ivector<uint8_t>& unpacked, size_t lengt
     return crc;
 }
 
-bool GDL90::pack( etl::ivector<uint8_t>& packed, const etl::ivector<uint8_t>& unpacked )
+bool GDL90::pack( etl::ivector<uint8_t>& packed, const etl::ivector<uint8_t>& unpacked ) const
 {
     if (&packed == &unpacked || unpacked.empty() || unpacked[0] > 0x7f) { return error(); }
     //-----------------------------------------------------------
@@ -375,7 +375,7 @@ bool GDL90::pack( etl::ivector<uint8_t>& packed, const etl::ivector<uint8_t>& un
     return true;
 }
 
-bool GDL90::unpack( const etl::ivector<uint8_t>& packed, etl::ivector<uint8_t>& unpacked )
+bool GDL90::unpack( const etl::ivector<uint8_t>& packed, etl::ivector<uint8_t>& unpacked ) const
 {
     if (&packed == &unpacked) { return error(); }
     unpacked.clear();
@@ -417,7 +417,7 @@ bool GDL90::unpack( const etl::ivector<uint8_t>& packed, etl::ivector<uint8_t>& 
     return true;
 }
 
-bool GDL90::id_decode( MESSAGE_ID& id, const etl::ivector<uint8_t>& unpacked )
+bool GDL90::id_decode( MESSAGE_ID& id, const etl::ivector<uint8_t>& unpacked ) const
 {
 #ifndef NDEBUG
     if ( unpacked.size() == 0 ) return error();
@@ -435,7 +435,7 @@ bool GDL90::id_decode( MESSAGE_ID& id, const etl::ivector<uint8_t>& unpacked )
            id == MESSAGE_ID::FOREFLIGHT;
 }
 
-bool GDL90::foreflight_subid_decode( MESSAGE_FOREFLIGHT_SUBID& subid, const etl::ivector<uint8_t>& unpacked )
+bool GDL90::foreflight_subid_decode( MESSAGE_FOREFLIGHT_SUBID& subid, const etl::ivector<uint8_t>& unpacked ) const
 {
 #ifndef NDEBUG
     if ( unpacked.size() < 2 ) return error();
@@ -447,7 +447,7 @@ bool GDL90::foreflight_subid_decode( MESSAGE_FOREFLIGHT_SUBID& subid, const etl:
            subid == MESSAGE_FOREFLIGHT_SUBID::AHRS;
 }
 
-bool GDL90::heartbeat_encode( etl::ivector<uint8_t>& unpacked, uint32_t  status, uint32_t  timestamp, uint32_t  msg_count_uplink, uint32_t  msg_count_basic_and_long )
+bool GDL90::heartbeat_encode( etl::ivector<uint8_t>& unpacked, uint32_t  status, uint32_t  timestamp, uint32_t  msg_count_uplink, uint32_t  msg_count_basic_and_long ) const
 {
 
 #ifndef NDEBUG
@@ -472,7 +472,7 @@ bool GDL90::heartbeat_encode( etl::ivector<uint8_t>& unpacked, uint32_t  status,
     return true;
 }
 
-bool GDL90::heartbeat_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& status, uint32_t& timestamp, uint32_t& msg_count_uplink, uint32_t& msg_count_basic_and_long )
+bool GDL90::heartbeat_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& status, uint32_t& timestamp, uint32_t& msg_count_uplink, uint32_t& msg_count_basic_and_long ) const
 {
 #ifndef NDEBUG
     if ( unpacked.size() != 7 ) return error();
@@ -493,7 +493,7 @@ bool GDL90::heartbeat_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& s
     return true;
 }
 
-bool GDL90::initialization_encode( etl::ivector<uint8_t>& unpacked, uint32_t  config )
+bool GDL90::initialization_encode( etl::ivector<uint8_t>& unpacked, uint32_t  config ) const
 {
 #ifndef NDEBUG
     if (unpacked.capacity() < 3) { return error(); }
@@ -506,7 +506,7 @@ bool GDL90::initialization_encode( etl::ivector<uint8_t>& unpacked, uint32_t  co
     return true;
 }
 
-bool GDL90::initialization_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& config )
+bool GDL90::initialization_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& config ) const
 {
 #ifndef NDEBUG
     if ( unpacked.size() != 3 ) return error();
@@ -519,7 +519,7 @@ bool GDL90::initialization_decode( const etl::ivector<uint8_t>& unpacked, uint32
     return true;
 }
 
-bool GDL90::time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac )
+bool GDL90::time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac ) const
 {
     if ( std::isnan( frac ) ) {
         frac_encoded = TIME_OF_RECEPTION_FRAC_ENCODED_INVALID;
@@ -530,7 +530,7 @@ bool GDL90::time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac )
     return true;
 }
 
-bool GDL90::time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac )
+bool GDL90::time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac ) const
 {
     if ( frac_encoded > 0xffffff ) return error();
     if ( frac_encoded == TIME_OF_RECEPTION_FRAC_ENCODED_INVALID ) {
@@ -542,7 +542,7 @@ bool GDL90::time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac )
     return true;
 }
 
-bool GDL90::uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
+bool GDL90::uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload ) const
 {
 #ifndef NDEBUG
     if (unpacked.capacity() < 436) { return error(); }
@@ -561,7 +561,7 @@ bool GDL90::uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t 
     return true;
 }
 
-bool GDL90::uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
+bool GDL90::uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload ) const
 {
 #ifndef NDEBUG
     if ( unpacked.size() != 436 ) return error();
@@ -582,7 +582,7 @@ bool GDL90::uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t&
     return true;
 }
 
-bool GDL90::basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
+bool GDL90::basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload ) const
 {
 #ifndef NDEBUG
     if (unpacked.capacity() < 22) { return error(); }
@@ -601,7 +601,7 @@ bool GDL90::basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint
     return true;
 }
 
-bool GDL90::basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
+bool GDL90::basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload ) const
 {
 #ifndef NDEBUG
     if ( unpacked.size() != 22 ) return error();
@@ -622,7 +622,7 @@ bool GDL90::basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint
     return true;
 }
 
-bool GDL90::long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload )
+bool GDL90::long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload ) const
 {
 #ifndef NDEBUG
     if (unpacked.capacity() < 38) { return error(); }
@@ -641,7 +641,7 @@ bool GDL90::long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint3
     return true;
 }
 
-bool GDL90::long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload )
+bool GDL90::long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload ) const
 {
 #ifndef NDEBUG
     if ( unpacked.size() != 38 ) return error();
@@ -663,7 +663,7 @@ bool GDL90::long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint3
 }
 
 constexpr float GDL90_DEGREES_TO_COUNTS = float(1 << 23) / 180.f;
-bool GDL90::latlon_encode( uint32_t& latlon_encoded, float  latlon )
+bool GDL90::latlon_encode( uint32_t& latlon_encoded, float  latlon ) const
 {
     if (std::fabs(latlon) >= 180.f) {
         return error();
@@ -675,7 +675,7 @@ bool GDL90::latlon_encode( uint32_t& latlon_encoded, float  latlon )
     return true;
 }
 
-bool GDL90::latlon_decode( uint32_t latlon_encoded, float& latlon )
+bool GDL90::latlon_decode( uint32_t latlon_encoded, float& latlon ) const
 {
     constexpr float GDL90_DEGREES_TO_COUNTS      = float( 1 << 23 )/180.f;
 
@@ -685,7 +685,7 @@ bool GDL90::latlon_decode( uint32_t latlon_encoded, float& latlon )
     return true;
 }
 
-bool GDL90::altitude_encode( uint32_t& altitude_encoded, float altitude )
+bool GDL90::altitude_encode( uint32_t& altitude_encoded, float altitude ) const
 {
     if ( std::isnan( altitude ) ) {
         altitude_encoded = ALTITUDE_ENCODED_INVALID;
@@ -697,7 +697,7 @@ bool GDL90::altitude_encode( uint32_t& altitude_encoded, float altitude )
     return true;
 }
 
-bool GDL90::altitude_decode( uint32_t  altitude_encoded, float& altitude )
+bool GDL90::altitude_decode( uint32_t  altitude_encoded, float& altitude ) const
 {
     if ( altitude_encoded > 0xfff ) return error();
     if ( altitude_encoded == ALTITUDE_ENCODED_INVALID ) {
@@ -708,7 +708,7 @@ bool GDL90::altitude_decode( uint32_t  altitude_encoded, float& altitude )
     return true;
 }
 
-bool GDL90::horizontal_velocity_encode( uint32_t& velocity_encoded, float  velocity )
+bool GDL90::horizontal_velocity_encode( uint32_t& velocity_encoded, float  velocity ) const
 {
     if ( std::isnan( velocity ) ) {
         velocity_encoded = HORIZONTAL_VELOCITY_ENCODED_INVALID;
@@ -721,7 +721,7 @@ bool GDL90::horizontal_velocity_encode( uint32_t& velocity_encoded, float  veloc
     return true;
 }
 
-bool GDL90::horizontal_velocity_decode( uint32_t velocity_encoded, float& velocity )
+bool GDL90::horizontal_velocity_decode( uint32_t velocity_encoded, float& velocity ) const
 {
     if (velocity_encoded > 0xfff) { return error(); }
     if ( velocity_encoded == HORIZONTAL_VELOCITY_ENCODED_INVALID ) {
@@ -732,7 +732,7 @@ bool GDL90::horizontal_velocity_decode( uint32_t velocity_encoded, float& veloci
     return true;
 }
 
-bool GDL90::vertical_velocity_encode(uint32_t& velocity_encoded, float velocity)
+bool GDL90::vertical_velocity_encode(uint32_t& velocity_encoded, float velocity) const
 {
     if (std::isnan(velocity)) {
         velocity_encoded = VERTICAL_VELOCITY_ENCODED_INVALID;
@@ -749,7 +749,7 @@ bool GDL90::vertical_velocity_encode(uint32_t& velocity_encoded, float velocity)
     return true;
 }
 
-bool GDL90::vertical_velocity_decode( uint32_t velocity_encoded, float& velocity )
+bool GDL90::vertical_velocity_decode( uint32_t velocity_encoded, float& velocity ) const
 {
     if ( velocity_encoded == VERTICAL_VELOCITY_ENCODED_INVALID ) {
         velocity = std::nanf("4");
@@ -761,7 +761,7 @@ bool GDL90::vertical_velocity_decode( uint32_t velocity_encoded, float& velocity
     return true;
 }
 
-bool GDL90::track_hdg_encode( uint32_t& track_hdg_encoded, float  track_hdg )
+bool GDL90::track_hdg_encode( uint32_t& track_hdg_encoded, float  track_hdg ) const
 {
     if ( track_hdg < 0.f || track_hdg > 360.f ) return error();
     track_hdg_encoded = track_hdg * 256.0/360.f;
@@ -769,13 +769,13 @@ bool GDL90::track_hdg_encode( uint32_t& track_hdg_encoded, float  track_hdg )
     return true;
 }
 
-bool GDL90::track_hdg_decode( uint32_t  track_hdg_encoded, float& track_hdg )
+bool GDL90::track_hdg_decode( uint32_t  track_hdg_encoded, float& track_hdg ) const
 {
     track_hdg = float(track_hdg_encoded) * 360.f / 256.f;
     return true;
 }
 
-bool GDL90::is_valid_call_sign( const etl::string_view call_sign )
+bool GDL90::is_valid_call_sign( const etl::string_view call_sign ) const
 {
     if ( call_sign.length() > 8 ) return error();
     // bool have_space = false;
@@ -798,7 +798,7 @@ bool GDL90::is_valid_call_sign( const etl::string_view call_sign )
 bool GDL90::ownership_or_traffic_report_encode( etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS alert_status, ADDR_TYPE addr_type, uint32_t participant_address,
                                                         uint32_t latitude, uint32_t longitude, uint32_t altitude, uint32_t misc,
                                                         NIC nic, NACP nacp, uint32_t horiz_velocity, uint32_t vert_velocity, uint32_t track_hdg,
-                                                        EMITTER emitter, const etl::string_view call_sign, EMERGENCY_PRIO emergency_prio_code )
+                                                        EMITTER emitter, const etl::string_view call_sign, EMERGENCY_PRIO emergency_prio_code ) const
 {
 
 #ifndef NDEBUG
@@ -851,7 +851,7 @@ bool GDL90::ownership_or_traffic_report_encode( etl::ivector<uint8_t>& unpacked,
 bool GDL90::ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS& alert_status, ADDR_TYPE& addr_type, uint32_t& participant_address,
                                                                                  uint32_t& latitude, uint32_t& longitude, uint32_t& altitude, uint32_t& misc,
                                                                                  NIC& nic, NACP& nacp, uint32_t& horiz_velocity, uint32_t& vert_velocity, uint32_t& track_hdg,
-                                                                                 EMITTER& emitter,  etl::istring & call_sign, EMERGENCY_PRIO& emergency_prio_code )
+                                                                                 EMITTER& emitter,  etl::istring & call_sign, EMERGENCY_PRIO& emergency_prio_code ) const
 {
     if ( unpacked.size() != 28 ) return error();
     uint32_t i = 0;
@@ -922,7 +922,7 @@ bool GDL90::ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unp
     return true;
 }
 
-bool GDL90::height_encode( uint32_t& height_encoded, float  height )
+bool GDL90::height_encode( uint32_t& height_encoded, float  height ) const
 {
     if ( std::isnan( height ) ) {
         height_encoded = HEIGHT_ENCODED_INVALID;
@@ -934,7 +934,7 @@ bool GDL90::height_encode( uint32_t& height_encoded, float  height )
     return true;
 }
 
-bool GDL90::height_decode( uint32_t height_encoded, float& height )
+bool GDL90::height_decode( uint32_t height_encoded, float& height ) const
 {
     if ( height_encoded == HEIGHT_ENCODED_INVALID ) {
         height = std::nanf("4");
@@ -945,7 +945,7 @@ bool GDL90::height_decode( uint32_t height_encoded, float& height )
     return true;
 }
 
-bool GDL90::height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  height )
+bool GDL90::height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  height ) const
 {
 #ifndef NDEBUG
     if (unpacked.capacity() < 3) { return error(); }
@@ -958,7 +958,7 @@ bool GDL90::height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, 
     return true;
 }
 
-bool GDL90::height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& height )
+bool GDL90::height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& height ) const
 {
 #ifndef NDEBUG
     if ( unpacked.size() != 3 ) return error();
@@ -970,7 +970,7 @@ bool GDL90::height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, 
     return true;
 }
 
-bool GDL90::geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude )
+bool GDL90::geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude ) const
 {
     if (geo_altitude < (-5.f * 32768.f) || geo_altitude > (5.f * 32767.f)) { return error(); }
     if (!std::isfinite(geo_altitude)) { return error(); }
@@ -979,14 +979,14 @@ bool GDL90::geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_alti
     return true;
 }
 
-bool GDL90::geo_altitude_decode( uint32_t  geo_altitude_encoded, float& geo_altitude )
+bool GDL90::geo_altitude_decode( uint32_t  geo_altitude_encoded, float& geo_altitude ) const
 {
     int32_t geo_altitude_encoded_s = geo_altitude_encoded | ((geo_altitude_encoded >= 0x8000) ? 0xffff0000 : 0x00000000);
     geo_altitude = float(geo_altitude_encoded_s) * 5.f;
     return true;
 }
 
-bool GDL90::vertical_figure_of_merit_encode( uint32_t& vertical_figure_of_merit_encoded, float  vertical_figure_of_merit )
+bool GDL90::vertical_figure_of_merit_encode( uint32_t& vertical_figure_of_merit_encoded, float  vertical_figure_of_merit ) const
 {
     if ( std::isnan( vertical_figure_of_merit ) ) {
         vertical_figure_of_merit_encoded = VERTICAL_FIGURE_OF_MERIT_NOT_AVAIL;
@@ -1001,7 +1001,7 @@ bool GDL90::vertical_figure_of_merit_encode( uint32_t& vertical_figure_of_merit_
     return true;
 }
 
-bool GDL90::vertical_figure_of_merit_decode( uint32_t  vertical_figure_of_merit_encoded, float& vertical_figure_of_merit )
+bool GDL90::vertical_figure_of_merit_decode( uint32_t  vertical_figure_of_merit_encoded, float& vertical_figure_of_merit ) const
 {
     if ( vertical_figure_of_merit_encoded > 0x7fff ) return error();
     if ( vertical_figure_of_merit_encoded == VERTICAL_FIGURE_OF_MERIT_NOT_AVAIL ) {
@@ -1014,7 +1014,7 @@ bool GDL90::vertical_figure_of_merit_decode( uint32_t  vertical_figure_of_merit_
     return true;
 }
 
-bool GDL90::ownership_geometric_altitude_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  geo_altitude, bool  vertical_warning, uint32_t  vertical_figure_of_merit )
+bool GDL90::ownership_geometric_altitude_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  geo_altitude, bool  vertical_warning, uint32_t  vertical_figure_of_merit ) const
 {
 
 #ifndef NDEBUG
@@ -1032,7 +1032,7 @@ bool GDL90::ownership_geometric_altitude_encode(       etl::ivector<uint8_t>& un
     return true;
 }
 
-bool GDL90::ownership_geometric_altitude_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& geo_altitude, bool& vertical_warning, uint32_t& vertical_figure_of_merit )
+bool GDL90::ownership_geometric_altitude_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& geo_altitude, bool& vertical_warning, uint32_t& vertical_figure_of_merit ) const
 {
     if ( unpacked.size() != 5 ) return error();
     uint32_t i = 0;
@@ -1047,7 +1047,7 @@ bool GDL90::ownership_geometric_altitude_decode( const etl::ivector<uint8_t>& un
     return true;
 }
 
-bool GDL90::foreflight_id_encode(       etl::ivector<uint8_t>& unpacked, uint64_t  device_serial_number, const etl::string_view device_name, const etl::string_view device_long_name, uint32_t  capabilities_mask )
+bool GDL90::foreflight_id_encode(       etl::ivector<uint8_t>& unpacked, uint64_t  device_serial_number, const etl::string_view device_name, const etl::string_view device_long_name, uint32_t  capabilities_mask ) const
 {
 
 #ifndef NDEBUG
@@ -1081,7 +1081,7 @@ bool GDL90::foreflight_id_encode(       etl::ivector<uint8_t>& unpacked, uint64_
     return true;
 }
 
-bool GDL90::foreflight_id_decode( const etl::ivector<uint8_t>& unpacked, uint64_t& device_serial_number, etl::istring& device_name, etl::istring& device_long_name, uint32_t& capabilities_mask )
+bool GDL90::foreflight_id_decode( const etl::ivector<uint8_t>& unpacked, uint64_t& device_serial_number, etl::istring& device_name, etl::istring& device_long_name, uint32_t& capabilities_mask ) const
 {
 #ifndef NDEBUG
     if (device_name.capacity() < 8 || device_long_name.capacity() < 16) { return error(); }
@@ -1119,7 +1119,7 @@ bool GDL90::foreflight_id_decode( const etl::ivector<uint8_t>& unpacked, uint64_
     return true;
 }
 
-bool GDL90::foreflight_roll_pitch_encode( uint32_t& roll_pitch_encoded, float  roll_pitch )
+bool GDL90::foreflight_roll_pitch_encode( uint32_t& roll_pitch_encoded, float  roll_pitch ) const
 {
     if ( std::isnan( roll_pitch ) ) {
         roll_pitch_encoded = FOREFLIGHT_ROLL_PITCH_INVALID;
@@ -1131,7 +1131,7 @@ bool GDL90::foreflight_roll_pitch_encode( uint32_t& roll_pitch_encoded, float  r
     return true;
 }
 
-bool GDL90::foreflight_roll_pitch_decode( uint32_t  roll_pitch_encoded, float& roll_pitch )
+bool GDL90::foreflight_roll_pitch_decode( uint32_t  roll_pitch_encoded, float& roll_pitch ) const
 {
     if ( roll_pitch_encoded == FOREFLIGHT_ROLL_PITCH_INVALID ) {
         roll_pitch = std::nanf("21");
@@ -1144,7 +1144,7 @@ bool GDL90::foreflight_roll_pitch_decode( uint32_t  roll_pitch_encoded, float& r
     return true;
 }
 
-bool GDL90::foreflight_heading_encode( uint32_t& heading_encoded, float  heading, bool is_magnetic )
+bool GDL90::foreflight_heading_encode( uint32_t& heading_encoded, float  heading, bool is_magnetic ) const
 {
     if ( std::isnan( heading ) ) {
         heading_encoded = FOREFLIGHT_HEADING_INVALID;
@@ -1157,7 +1157,7 @@ bool GDL90::foreflight_heading_encode( uint32_t& heading_encoded, float  heading
     return true;
 }
 
-bool GDL90::foreflight_heading_decode( uint32_t  heading_encoded, float& heading, bool& is_magnetic )
+bool GDL90::foreflight_heading_decode( uint32_t  heading_encoded, float& heading, bool& is_magnetic ) const
 {
     if ( heading_encoded == FOREFLIGHT_HEADING_INVALID ) {
         heading = std::nanf("22");
@@ -1173,7 +1173,7 @@ bool GDL90::foreflight_heading_decode( uint32_t  heading_encoded, float& heading
     return true;
 }
 
-bool GDL90::foreflight_ahrs_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  roll, uint32_t  pitch, uint32_t  heading, uint32_t  ias, uint32_t  tas )
+bool GDL90::foreflight_ahrs_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  roll, uint32_t  pitch, uint32_t  heading, uint32_t  ias, uint32_t  tas ) const
 {
 #ifndef NDEBUG
     if (unpacked.capacity() < 12) { return error(); }
@@ -1201,7 +1201,7 @@ bool GDL90::foreflight_ahrs_encode(       etl::ivector<uint8_t>& unpacked, uint3
     return true;
 }
 
-bool GDL90::foreflight_ahrs_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& roll, uint32_t& pitch, uint32_t& heading, uint32_t& ias, uint32_t& tas )
+bool GDL90::foreflight_ahrs_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& roll, uint32_t& pitch, uint32_t& heading, uint32_t& ias, uint32_t& tas ) const
 {
     if ( unpacked.size() != 12 ) return error();
     uint32_t i = 0;
@@ -1233,7 +1233,7 @@ bool GDL90::sx_heartbeat_encode(etl::ivector<uint8_t> &unpacked,
                                 uint16_t num978, uint16_t num1090,
                                 uint16_t rate978, uint16_t rate1090,
                                 float cpuTemp,
-                                const etl::span<etl::pair<float, float>> &towers)
+                                const etl::span<etl::pair<float, float>> &towers) const
 {
     if (towers.size() > 255) { return error(); }
 #ifndef NDEBUG

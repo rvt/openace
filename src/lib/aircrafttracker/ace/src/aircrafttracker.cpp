@@ -141,12 +141,9 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
 }
 
-void AircraftTracker::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void AircraftTracker::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    {
-        SpinlockGuard guard(CoreUtils::sharedSpinLock());
-        ownshipPosition = msg.position;
-    }
+    ownshipPosition = GATAS::OwnshipState::shared().location.load();
     ownshipPositionValid = true;
 }
 

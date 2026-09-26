@@ -120,6 +120,7 @@ rectangle "Infrastructure" {
 [DataPort] --> [AirConnect] : DataPortMsg
 [Idle] --> [DataPort] : Every1SecMsg
 [Bmp280] --> [Ogn1] : BarometricPressureMsg
+[GatasConnect] --> [Ogn1] : BarometricPressureMsg\nOwnship pressure altitude / QNH
 
 @enduml
 ```
@@ -345,6 +346,7 @@ title Sensor Data Flow
 left to right direction
 
 [Bmp280] --> [Ogn1] : BarometricPressureMsg
+[GatasConnect] --> [Ogn1] : BarometricPressureMsg\nOwnship pressure altitude / QNH
 
 @enduml
 ```
@@ -448,15 +450,15 @@ package "Wifi Consumers" {
 | Message | Publisher(s) | Subscriber(s) | Notes |
 | --- | --- | --- | --- |
 | `GPSSentenceMsg` | `AbstractGnss`, `StaticGPS` | `GpsDecoder`, `DataPort` | Raw or generated NMEA ingress. |
-| `OwnshipPositionMsg` | `GpsDecoder` | `Ogn1`, `Flarm2024`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `DataPort`, `Bluetooth`, `GatasConnect` | Main ownship state fan-out. |
+| `OwnshipPositionMsg` | `GpsDecoder` | `Ogn1`, `Flarm2024`, `ADSLAce`, `FanetAce`, `ADSBDecoder`, `AircraftTracker`, `RadioTunerRx`, `RadioTunerTx`, `Gdl90Service`, `DataPort`, `GatasConnect` | Empty notification after `GpsDecoder` atomically replaces `OwnshipState::location`; subscribers load their own snapshot. On each position update, `Gdl90Service` reads pressure altitude from shared `OwnshipState::barometricPressure` for report 10; geometric report 11 retains ellipsoid height. |
 | `UtcTimeMsg` | `GpsDecoder` | `PicoRtc` | RTC synchronization. |
 | `GpsStatsMsg` | `GpsDecoder` | `Ogn1`, `ADSLAce`, `Sx1262`, `Gdl90Service`, `DataPort`, `GatasConnect`, `Idle` | GPS fix and DOP status. |
-| `BarometricPressureMsg` | `Bmp280` | `Ogn1` | OGN transmission enhancement. |
+| `BarometricPressureMsg` | `Bmp280`, `GatasConnect` | `Ogn1` | Empty notification sent after atomically replacing `OwnshipState::barometricPressure` and releasing its lock. BMP280 stores ambient pressure with unavailable altitude/QNH; COBS type 11 stores pressure altitude/QNH with no ambient pressure (`pressurehPa = 0`). The latest sample replaces all fields; missing values invalidate earlier values, while malformed frames do not update state or notify. OGN loads a snapshot from shared state when notified. |
 | `RadioRxManchesterMsg` | `RxDataFrameQueue` | `Ogn1`, `Flarm2024`, `ADSLAce` | Produced after `Sx1262` receive + Manchester decode. |
 | `RadioRxMsg` | `RxDataFrameQueue` | `ADSLAce`, `FanetAce` | Produced after `Sx1262` receive for non-Manchester frames. |
 | `IngressAircraftPositionMsg` | `Ogn1`, `Flarm2024`, `ADSLAce`, `FanetAce`, `ADSBDecoder` | `AircraftTracker`, `RadioTunerRx`, `GatasConnect` | Single aircraft decoded from any protocol. |
 | `IngressAircraftPositionsMsg` | `ADSLAce` | `AircraftTracker` | Batched ADS-L uplink traffic. |
-| `EgressAircraftPositionMsg` | `AircraftTracker` | `Gdl90Service`, `DataPort` | Tracker-selected traffic for outputs. |
+| `EgressAircraftPositionMsg` | `AircraftTracker` | `Gdl90Service`, `DataPort` | Tracker-selected traffic for outputs. `Gdl90Service` uses `AircraftPositionInfo::pressureAlt` for report 20. Both ownship and traffic pressure-altitude fields use `0xFFF` when unavailable or outside the encoding range; no MSL/ellipsoid fallback is used. |
 | `EgressAircraftPositionsMsg` | `AircraftTracker` | `ADSLAce` | Tracker-selected batch for ADS-L transmit. |
 | `TrackerStatsMsg` | `AircraftTracker` | `DataPort` | Current number of tracked aircraft after tracker maintenance. |
 | `AdapativeRadiusMsg` | `AircraftTracker` | `ADSBDecoder` | Decoder radius feedback. |

@@ -140,14 +140,14 @@ void Bmp280::on_receive(const GATAS::Every30SecMsg &msg)
     if (sendData)
     {
         int32_t pressure = ((uint32_t)buffer[0] << 12) | ((uint32_t)buffer[1] << 4) | (buffer[2] >> 4);
-        int32_t temperature = ((uint32_t)buffer[3] << 12) | ((uint32_t)buffer[4] << 4) | (buffer[5] >> 4);
+        // int32_t temperature = ((uint32_t)buffer[3] << 12) | ((uint32_t)buffer[4] << 4) | (buffer[5] >> 4);
 
-        temperature = compensate_temp(temperature);
+        // temperature = compensate_temp(temperature);
         pressure = compensate_pressure(pressure);
 
         statistics.lastPressurehPa = (pressure + compensation) / 100.0f;
-        getBus().receive(GATAS::BarometricPressureMsg(
-            GATAS::BarometricPressure(
-                statistics.lastPressurehPa, CoreUtils::timeUs32Raw())));
+        const GATAS::BarometricPressure sample{statistics.lastPressurehPa};
+        ownshipState.barometricPressure.store(sample);
+        getBus().receive(GATAS::BarometricPressureMsg{});
     }
 }

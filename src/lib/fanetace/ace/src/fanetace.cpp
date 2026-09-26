@@ -133,9 +133,9 @@ void FanetAce::fanet_ackReceived(uint16_t id)
     (void)id;
 }
 
-void FanetAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void FanetAce::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
+    ownshipPosition = GATAS::OwnshipState::shared().location.load();
 }
 
 void FanetAce::on_receive(const GATAS::RadioRxMsg &msg)

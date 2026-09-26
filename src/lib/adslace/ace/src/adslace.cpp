@@ -140,9 +140,9 @@ bool ADSLAce::adsl_sendFrame(const void *ctx, const uint8_t *data, size_t length
     return true;
 }
 
-void ADSLAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void ADSLAce::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
+    ownshipPosition = GATAS::OwnshipState::shared().location.load();
 }
 
 void ADSLAce::on_receive(const GATAS::GpsStatsMsg &msg)

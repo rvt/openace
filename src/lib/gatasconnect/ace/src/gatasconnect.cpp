@@ -52,9 +52,9 @@ void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg)
     hasGpsFix = msg.gpsStats.gpsFix.hasFix;
 }
 
-void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
+    ownshipPosition = GATAS::OwnshipState::shared().location.load();
 }
 
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
@@ -196,7 +196,7 @@ void GatasConnect::sendOwnshipPosition()
         return;
     }
 
-    const size_t ownshipFrameSize = BinaryMessages::serializeOwnshipPositionFramedSizeV1();
+    const size_t ownshipFrameSize = BinaryMessages::serializeOwnshipPositionFramedSizeV2();
     auto &pool = BaseModule::getGlobalPool();
     auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(ownshipFrameSize));
     if (cobsPayload == nullptr)
@@ -205,7 +205,7 @@ void GatasConnect::sendOwnshipPosition()
         return;
     }
 
-    const size_t written = BinaryMessages::serializeOwnshipPositionV1(cobsPayload, ownshipFrameSize, ownshipSnap);
+    const size_t written = BinaryMessages::serializeOwnshipPositionV2(cobsPayload, ownshipFrameSize, ownshipSnap);
     if (written == 0)
     {
         GATAS_WARN("GatasConnect: failed to encode ownship request payload");

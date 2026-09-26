@@ -12,9 +12,9 @@ GATAS::PostConstruct DataPort::postConstruct()
     return GATAS::PostConstruct::OK;
 }
 
-void DataPort::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void DataPort::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    ownshipPosition = msg.position.assignTo();
+    ownshipPosition = GATAS::OwnshipState::shared().location.load().assignTo();
 
     // if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
     // {

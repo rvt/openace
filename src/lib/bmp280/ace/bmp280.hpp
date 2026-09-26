@@ -9,6 +9,7 @@
 #include "ace/basemodule.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/messages.hpp"
+#include "ace/ownshipstate.hpp"
 
 /**
  * Client that can connect to a host and a port and expect to receive line terminated NMEA Messages
@@ -27,6 +28,7 @@ class Bmp280 : public BaseModule, public etl::message_router<Bmp280, GATAS::Conf
     const uint8_t cs;
     const uint8_t device;
     int16_t compensation;
+    GATAS::OwnshipState &ownshipState;
 
     int32_t t_fine = 0;
     uint16_t dig_T1 = 0;
@@ -54,14 +56,15 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "Bmp280";
-    Bmp280(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, int16_t compensation_) : BaseModule(bus, NAME),
+    Bmp280(etl::imessage_bus &bus, const GATAS::PinTypeMap &pins, int16_t compensation_, GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME),
                                                                                            cs(pins.at(GATAS::PinType::CS)),
                                                                                            device(CoreUtils::getPin(pins, GATAS::PinType::DEV, 0)),
-                                                                                           compensation(compensation_)
+                                                                                           compensation(compensation_),
+                                                                                           ownshipState(ownshipState_)
     {
     }
 
-    Bmp280(etl::imessage_bus &bus, const Configuration &config) : Bmp280(bus, config.pinMap(NAME), config.valueByPath(0, NAME, "compensation"))
+    Bmp280(etl::imessage_bus &bus, const Configuration &config, GATAS::OwnshipState &ownshipState_) : Bmp280(bus, config.pinMap(NAME), config.valueByPath(0, NAME, "compensation"), ownshipState_)
     {
     }
 

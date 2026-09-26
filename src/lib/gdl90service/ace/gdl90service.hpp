@@ -11,6 +11,7 @@
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
+#include "ace/ownshipstate.hpp"
 
 #include "GDL90.h"
 
@@ -45,7 +46,7 @@ private:
     GDL90 gdl90;
 
     GDL90::ADDR_TYPE type;
-    int16_t ownshipGeoidSeparation = 0;
+    const GATAS::OwnshipState &ownshipState;
     GATAS::GpsStats gpsStats;
     GATAS::CallSign ownshipCallsign;
 
@@ -67,6 +68,7 @@ private:
 
     GDL90::NIC calcNIC(float hplMeters);
     GDL90::NACP calcNACp(float hfomMeters);
+    uint32_t encodePressureAltitude(int32_t pressureAltitude, int32_t heightMsl);
 
     GDL90::EMITTER aircraftTypeToEmitter(GATAS::AircraftCategory category) const;
     /**
@@ -77,7 +79,7 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "Gdl90Service";
-    Gdl90Service(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
+    Gdl90Service(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_)
     {
         (void)config;
         on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::NAME});

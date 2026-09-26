@@ -73,7 +73,7 @@ private:
     void getConfig(const Configuration &config);
 public:
     static constexpr const char *NAME = "GatasConnect";
-    GatasConnect(etl::imessage_bus &bus, Configuration &config) : BaseModule(bus, NAME), cobsStreamHandler(CobsStreamHandler(bus, config))
+    GatasConnect(etl::imessage_bus &bus, Configuration &config, GATAS::OwnshipState &ownshipState) : BaseModule(bus, NAME), cobsStreamHandler(bus, config, ownshipState)
     {
         getConfig(config);
     }
