@@ -23,7 +23,7 @@
  * framed binary protocol while transport specific modules subscribe to
  * GatasConnectTx and publish GatasConnectRx.
  */
-class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::IngressAircraftPositionMsg, GATAS::GatasConnectRx, GATAS::GdlMsg>
+class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::IngressAircraftPositionMsg, GATAS::GatasConnectRx, GATAS::GdlMsg>
 {
     friend class message_router;
 
@@ -48,7 +48,7 @@ class GatasConnect : public BaseModule, public etl::message_router<GatasConnect,
     GATAS::WifiMode wifiMode = GATAS::WifiMode::NC;
 
     etl::vector<uint32_t, GATAS::MAX_AIRCRAFT_CONFIG> allIcaoAddresses;
-    GATAS::OwnshipPositionInfo ownshipPosition = {};
+    const GATAS::OwnshipState &ownshipState;
     CobsStreamHandler cobsStreamHandler;
 
 private:
@@ -73,7 +73,7 @@ private:
     void getConfig(const Configuration &config);
 public:
     static constexpr const char *NAME = "GatasConnect";
-    GatasConnect(etl::imessage_bus &bus, Configuration &config, GATAS::OwnshipState &ownshipState) : BaseModule(bus, NAME), cobsStreamHandler(bus, config, ownshipState)
+    GatasConnect(etl::imessage_bus &bus, Configuration &config, GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_), cobsStreamHandler(bus, config, ownshipState_)
     {
         getConfig(config);
     }

@@ -159,7 +159,7 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
 void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    const auto position = GATAS::OwnshipState::shared().location.load();
+    const auto position = ownshipState.location.load();
     static auto lastTime = CoreUtils::timeUs32Raw();
 
     if (CoreUtils::isUsReachedRaw(lastTime) || currentZone.value() == CountryRegulations::Zone::ZONE0)

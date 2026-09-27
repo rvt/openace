@@ -49,6 +49,7 @@ private:
     const GATAS::OwnshipState &ownshipState;
     GATAS::GpsStats gpsStats;
     GATAS::CallSign ownshipCallsign;
+    bool useMslAltitudeFallback = false;
 
 private:
     static void gdl90ServiceTask(void *arg);
@@ -68,7 +69,7 @@ private:
 
     GDL90::NIC calcNIC(float hplMeters);
     GDL90::NACP calcNACp(float hfomMeters);
-    uint32_t encodePressureAltitude(int32_t pressureAltitude, int32_t heightMsl);
+    uint32_t encodePressureAltitude(int32_t pressureAltitude, int32_t heightMsl, bool allowMslFallback = true);
 
     GDL90::EMITTER aircraftTypeToEmitter(GATAS::AircraftCategory category) const;
     /**

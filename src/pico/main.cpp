@@ -128,7 +128,7 @@ GATAS::GlobalPoolConfiguration pool;
 
 namespace
 {
-    GATAS::OwnshipState &ownshipState = GATAS::OwnshipState::shared();
+    GATAS::OwnshipState ownshipState;
 }
 
 void disabled(etl::string_view name, Configuration &config)
@@ -151,11 +151,11 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
         return new Ogn1(bus, config, ownshipState);
     }
     if (name == FanetAce::NAME)
-        return new FanetAce(bus, config);
+        return new FanetAce(bus, config, ownshipState);
     if (name == ADSLAce::NAME)
-        return new ADSLAce(bus, config);
+        return new ADSLAce(bus, config, ownshipState);
     if (name == Flarm2024::NAME)
-        return new Flarm2024(bus, config);
+        return new Flarm2024(bus, config, ownshipState);
     if (name == AirConnect::NAME)
         return new AirConnect(bus, config);
     if (name == GatasConnect::NAME)
@@ -167,9 +167,9 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == Bluetooth::NAME)
         return new Bluetooth(bus, config);
     if (name == DataPort::NAME)
-        return new DataPort(bus, config);
+        return new DataPort(bus, config, ownshipState);
     if (name == AircraftTracker::NAME)
-        return new AircraftTracker(bus, config);
+        return new AircraftTracker(bus, config, ownshipState);
     if (name == Dump1090Client::NAME)
         return new Dump1090Client(bus, config);
     if (name == SerialADSB::NAME)
@@ -181,15 +181,15 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == StaticGPS::NAME)
         return new StaticGPS(bus, config);
     if (name == GpsDecoder::NAME)
-        return new GpsDecoder(bus, config);
+        return new GpsDecoder(bus, config, ownshipState);
     if (name == GDLoverUDP::NAME)
         return new GDLoverUDP(bus, config);
     if (name == ADSBDecoder::NAME)
-        return new ADSBDecoder(bus, config);
+        return new ADSBDecoder(bus, config, ownshipState);
     if (name == RadioTunerRx::NAME)
-        return new RadioTunerRx(bus, config);
+        return new RadioTunerRx(bus, config, ownshipState);
     if (name == RadioTunerTx::NAME)
-        return new RadioTunerTx(bus, config);
+        return new RadioTunerTx(bus, config, ownshipState);
     if (name == RxDataFrameQueue::NAME)
         return new RxDataFrameQueue(bus, config);
     if (name == Sx1262::NAMES[0])

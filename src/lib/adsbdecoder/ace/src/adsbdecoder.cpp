@@ -25,11 +25,6 @@ void ADSBDecoder::start()
     getBus().subscribe(*this);
 };
 
-void ADSBDecoder::on_receive(const GATAS::OwnshipPositionMsg &)
-{
-    ownshipPosition = GATAS::OwnshipState::shared().location.load().assignTo();
-}
-
 void ADSBDecoder::getConfiguration(const Configuration &config)
 {
     filterAbove = config.valueByPath(true, NAME, "filterAbove");
@@ -169,7 +164,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
         {
             statistics.totalMsgReceived += 1;
             auto &current = adsbDataCollector.current();
-            auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+            auto ownship = ownshipState.location.load();
             auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, current.lat, current.lon);
 
             // Altitude filtering + Radius filtering
@@ -222,7 +217,7 @@ void ADSBDecoder::processAdsbData(const uint8_t *data, uint8_t length)
     }
 }
 
-bool ADSBDecoder::outOfAltitudeRange(const GATAS::OwnshipMinimalPositionInfo &opi, int32_t otherellipseHeight)
+bool ADSBDecoder::outOfAltitudeRange(const GATAS::OwnshipPositionInfo &opi, int32_t otherellipseHeight)
 {
     return (otherellipseHeight - opi.ellipseHeight) > filterAbove || (opi.ellipseHeight - otherellipseHeight) > filterBelow;
 }

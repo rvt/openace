@@ -71,7 +71,7 @@ public:
                 if (pressure)
                 {
                     // Store missing values too, so consumers can invalidate a previous sample.
-                    ownshipState.barometricPressure.store(pressure.value());
+                    ownshipState.pressureAltQnh.store(pressure.value());
                     bus.receive(GATAS::BarometricPressureMsg{});
                 }
                 continue;

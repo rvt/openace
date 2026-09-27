@@ -174,7 +174,7 @@ void RadioTunerTx::radioTuneTask()
 
 void RadioTunerTx::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    const auto position = GATAS::OwnshipState::shared().location.load();
+    const auto position = ownshipState.location.load();
     static auto lastTime = CoreUtils::timeUs32Raw();
     // Update ZONE every 30 seconds, or when still at ZONE0
     isAirborne = position.groundSpeed >= GATAS::GROUNDSPEED_CONSIDERING_AIRBORN;

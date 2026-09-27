@@ -146,7 +146,7 @@ void Bmp280::on_receive(const GATAS::Every30SecMsg &msg)
         pressure = compensate_pressure(pressure);
 
         statistics.lastPressurehPa = (pressure + compensation) / 100.0f;
-        const GATAS::BarometricPressure sample{statistics.lastPressurehPa};
+        const GATAS::BarometricPressure sample{statistics.lastPressurehPa, GATAS::PressureSource::PressureSensor};
         ownshipState.barometricPressure.store(sample);
         getBus().receive(GATAS::BarometricPressureMsg{});
     }

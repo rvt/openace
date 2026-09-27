@@ -12,22 +12,22 @@ GATAS::PostConstruct DataPort::postConstruct()
     return GATAS::PostConstruct::OK;
 }
 
-void DataPort::on_receive(const GATAS::OwnshipPositionMsg &)
-{
-    ownshipPosition = GATAS::OwnshipState::shared().location.load().assignTo();
+// void DataPort::on_receive(const GATAS::OwnshipPositionMsg &)
+// {
+//     ownshipPosition = ownshipState.location.load().assignTo();
 
-    // if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
-    // {
+//     // if (sendValidGps.isItTime(CoreUtils::timeUs32Raw()))
+//     // {
 
-        // Initially the idea was to 'emulate' a GNS chip, but later decides
-        // to pass through GPS messages. Keeping this code just in case/
-        // sendGPRMC(message.position);
-        // sendGPGSA(ownshipPosition);
-        // sendGPGGA(ownshipPosition);
-        // sendPGRMZ(msg.position);
+//         // Initially the idea was to 'emulate' a GNS chip, but later decides
+//         // to pass through GPS messages. Keeping this code just in case/
+//         // sendGPRMC(message.position);
+//         // sendGPGSA(ownshipPosition);
+//         // sendGPGGA(ownshipPosition);
+//         // sendPGRMZ(msg.position);
 
-    // }
-}
+//     // }
+// }
 
 void DataPort::on_receive(const GATAS::EgressAircraftPositionMsg &msg)
 {
@@ -100,6 +100,8 @@ void DataPort::sendPFLAA(const GATAS::AircraftPositionInfo &position)
     getPFLAAClimbRate(position, climbRate);
 
     auto CO = etl::make_string(",");
+    auto ownshipPosition = ownshipState.location.load();
+    
     auto relativeFromOwn = position.relativeFromOwn(ownshipPosition);
 
     // PFLAA,<AlarmLevel>,<RelativeNorth>,<RelativeEast>,<RelativeVertical>,<IDType>,<ID>,<Track>,<TurnRate>,<GroundSpeed>,<ClimbRate>,<AcftType>[,<NoTrack>[,<Source>,<RSSI>]]

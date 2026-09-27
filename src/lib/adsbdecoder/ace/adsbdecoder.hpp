@@ -19,7 +19,7 @@
 /**
  * ADSBDecoder decodes ADSB message from a ADSB device and forwards that as NMEA Strings
  */
-class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, GATAS::ADSBMessageBinMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg, GATAS::Every5SecMsg, GATAS::AdapativeRadiusMsg>
+class ADSBDecoder : public BinaryReceiver, etl::message_router<ADSBDecoder, GATAS::ConfigUpdatedMsg, GATAS::Every5SecMsg, GATAS::AdapativeRadiusMsg>
 {
 private:
     static constexpr uint8_t MAX_PLANES_TRACKED = 48;
@@ -45,13 +45,13 @@ private:
 
     SemaphoreHandle_t mutex;
     uint32_t filterRadius=100'000;
-    GATAS::OwnshipMinimalPositionInfo ownshipPosition;
+    const GATAS::OwnshipState &ownshipState;
     mode_s_t state;
     int32_t filterAbove; // Filter out all aircraft above me in meters. 1000 means all aircraft 1000m or more above me will not get processed
     int32_t filterBelow; // Filter out all aircraft below me in meters. 100 means all aircraft 100m below me or more are not processed
 public:
     static constexpr const etl::string_view NAME = "ADSBDecoder";
-    ADSBDecoder(etl::imessage_bus &bus, const Configuration &config) : BinaryReceiver(bus, NAME), mutex(nullptr), filterRadius(100000)
+    ADSBDecoder(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BinaryReceiver(bus, NAME), mutex(nullptr), filterRadius(100000), ownshipState(ownshipState_)
     {
         filterAbove = config.valueByPath(true, NAME, "filterAbove");
         filterBelow = config.valueByPath(true, NAME, "filterBelow");
@@ -70,8 +70,6 @@ public:
 private:
     void getConfiguration(const Configuration &config);
 
-    void on_receive(const GATAS::OwnshipPositionMsg &msg);
-
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
     void on_receive(const GATAS::Every5SecMsg &msg);
@@ -86,7 +84,7 @@ private:
     virtual void receiveBinary(const uint8_t* data, uint8_t length) override;
     void processAdsbData(const uint8_t* data, uint8_t length);
 
-    bool outOfAltitudeRange(const GATAS::OwnshipMinimalPositionInfo &opi, int32_t otherellipseHeight);
+    bool outOfAltitudeRange(const GATAS::OwnshipPositionInfo &opi, int32_t otherellipseHeight);
 
     void on_receive_unknown(const etl::imessage &msg)
     {

@@ -154,6 +154,8 @@ TEST_CASE("ownship position", "[single-file]")
     };
 
     state.location.store(thisIsUs);
+    state.pressureAltQnh.store(GATAS::PressureAltQnh{
+        thisIsUs.heightMsl(), GATAS::INVALID_QNH, GATAS::PressureSource::Calculated});
     GATAS::OwnshipPositionMsg msg{};
 
     gdl90Service.on_receive(msg);
@@ -304,6 +306,7 @@ TEST_CASE("GDL90 ownship and traffic reports prefer pressure altitude and fall b
     state.init(CoreUtils::sharedSpinLock());
     MockConfig mockConfig{bus};
     Gdl90Service service{bus, mockConfig, state};
+    service.useMslAltitudeFallback = true;
     Test receiver{&bus};
     GDL90 gdl90;
 
@@ -331,8 +334,11 @@ TEST_CASE("GDL90 ownship and traffic reports prefer pressure altitude and fall b
         INFO(test.meters);
         // QNH and geometric height deliberately differ from pressure altitude.
         // Traffic must also ignore the ownship pressure altitude.
-        state.barometricPressure.store(GATAS::BarometricPressure{
-            987.5f, ownship ? test.meters : 2000, 1030.0f});
+        state.barometricPressure.store(GATAS::BarometricPressure{});
+        state.pressureAltQnh.store(GATAS::PressureAltQnh{
+            ownship ? test.meters : GATAS::INVALID_BARO_ALTITUDE,
+            test.meters == GATAS::INVALID_BARO_ALTITUDE ? GATAS::INVALID_QNH : 1030.0f,
+            GATAS::PressureSource::Calculated});
         const auto previousCount = receiver.numReceived;
         GATAS::OwnshipPositionInfo ownPosition{};
         ownPosition.ellipseHeight = 1047;
@@ -358,6 +364,57 @@ TEST_CASE("GDL90 ownship and traffic reports prefer pressure altitude and fall b
         REQUIRE(unpacked[11] == test.highByte);
         REQUIRE((unpacked[12] & 0xF0) == test.lowNibble);
     }
+}
+
+TEST_CASE("GDL90 ownship altitude policy is strict by default", "[gdl90]")
+{
+    CoreUtils::init();
+    GATAS::OwnshipState state;
+    state.init(CoreUtils::sharedSpinLock());
+    MockConfig mockConfig{bus};
+    Gdl90Service service{bus, mockConfig, state};
+    Test receiver{&bus};
+    GATAS::OwnshipPositionInfo position{};
+    position.timestamp = 1;
+    position.ellipseHeight = 1600;
+    state.location.store(position);
+
+    GDL90 gdl90;
+    GDL90::RawBytes unpacked;
+    uint32_t latitude = 0;
+    uint32_t longitude = 0;
+    uint32_t altitude = 0;
+    float feet = 0.0f;
+    bool isOwnership = true;
+    GDL90::ALERT_STATUS alertStatus = GDL90::ALERT_STATUS::__LAST;
+    GDL90::ADDR_TYPE addressType = GDL90::ADDR_TYPE::__LAST;
+    uint32_t address = 0;
+    uint32_t misc = 0;
+    GDL90::NIC nic = GDL90::NIC::__LAST;
+    GDL90::NACP nacp = GDL90::NACP::__LAST;
+    uint32_t horizontalVelocity = 0;
+    uint32_t verticalVelocity = 0;
+    uint32_t track = 0;
+    GDL90::EMITTER emitter = GDL90::EMITTER::__LAST;
+    etl::string<8> callSign;
+    GDL90::EMERGENCY_PRIO emergencyPriority = GDL90::EMERGENCY_PRIO::__LAST;
+
+    service.on_receive(GATAS::OwnshipPositionMsg{});
+    REQUIRE(gdl90.unpack(receiver.msg, unpacked));
+    REQUIRE(gdl90.ownership_or_traffic_report_decode(
+        unpacked, isOwnership, alertStatus, addressType, address, latitude, longitude, altitude, misc, nic, nacp,
+        horizontalVelocity, verticalVelocity, track, emitter, callSign, emergencyPriority));
+    REQUIRE(gdl90.altitude_decode(altitude, feet));
+    REQUIRE(std::isnan(feet));
+
+    service.useMslAltitudeFallback = true;
+    service.on_receive(GATAS::OwnshipPositionMsg{});
+    REQUIRE(gdl90.unpack(receiver.msg, unpacked));
+    REQUIRE(gdl90.ownership_or_traffic_report_decode(
+        unpacked, isOwnership, alertStatus, addressType, address, latitude, longitude, altitude, misc, nic, nacp,
+        horizontalVelocity, verticalVelocity, track, emitter, callSign, emergencyPriority));
+    REQUIRE(gdl90.altitude_decode(altitude, feet));
+    REQUIRE(feet == Catch::Approx(1600.0f * M_TO_FT).margin(25.0f));
 }
 
 TEST_CASE("GDL90 unavailable values and signed encodings", "[gdl90]")

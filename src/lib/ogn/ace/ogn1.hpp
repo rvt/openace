@@ -33,7 +33,7 @@
 
 #include "ognpacket.hpp"
 
-class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
+class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxManchesterMsg, GATAS::RadioTxPositionRequestMsg, GATAS::GpsStatsMsg>
 {
 public:
     static constexpr uint8_t OGN_PACKET_LENGTH = 20;
@@ -99,9 +99,7 @@ private:
 
     GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
 
-    GATAS::OwnshipPositionInfo ownshipPosition{};
     const GATAS::OwnshipState &ownshipState;
-    GATAS::BarometricPressure lastBarometricPressure{0, 0};
     GATAS::GpsStats gpsStats{};
     uint32_t distanceIgnore;
     static LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH * 8, 48> decoder;
@@ -122,7 +120,6 @@ public:
 
 private:
     void on_receive(const GATAS::RadioRxManchesterMsg &msg);
-    void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::BarometricPressureMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);

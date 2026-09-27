@@ -10,10 +10,9 @@
 #include "ace/messages.hpp"
 #include "ace/messages.hpp"
 
-class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::EgressAircraftPositionMsg, GATAS::OwnshipPositionMsg, GATAS::GPSSentenceMsg, GATAS::GpsStatsMsg, GATAS::TrackerStatsMsg, GATAS::Every1SecMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg, GATAS::ConfigUpdatedMsg>
+class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::EgressAircraftPositionMsg, GATAS::GPSSentenceMsg, GATAS::GpsStatsMsg, GATAS::TrackerStatsMsg, GATAS::Every1SecMsg, GATAS::Every30SecMsg, GATAS::WifiConnectionStateMsg, GATAS::ConfigUpdatedMsg>
 {
     friend class message_router;
-    GATAS::OwnshipMinimalPositionInfo ownshipPosition;
     uint8_t noTrackedAircraft = 0;
     bool hasGpsFix = false;
     bool pflauEnabled = false;
@@ -26,10 +25,11 @@ class DataPort : public BaseModule, public etl::message_router<DataPort, GATAS::
     } statistics;
 
     uint32_t gatasIp;
+    const GATAS::OwnshipState &ownshipState;
 
 public:
     static constexpr const etl::string_view NAME = "DataPort";
-    DataPort(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), /*spinLock(0),*/ gatasIp(0)
+    DataPort(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), /*spinLock(0),*/ gatasIp(0), ownshipState(ownshipState_)
     {
         pflauEnabled = config.valueByPath(false, NAME, "pflauEnabled");
     }
@@ -44,8 +44,6 @@ public:
     };
 
     void on_receive(const GATAS::EgressAircraftPositionMsg &msg);
-
-    void on_receive(const GATAS::OwnshipPositionMsg &msg);
 
     void on_receive(const GATAS::GPSSentenceMsg &msg);
 

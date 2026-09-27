@@ -55,7 +55,7 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
             return;
         }
 
-        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+        auto ownship = ownshipState.location.load();
         if (packet.aircraftId() == ownship.conspicuity.icaoAddress)
         {
             return;
@@ -109,11 +109,6 @@ void Flarm2024::on_receive(const GATAS::RadioRxManchesterMsg &msg)
     }
 }
 
-void Flarm2024::on_receive(const GATAS::OwnshipPositionMsg &)
-{
-    ownshipPosition = GATAS::OwnshipState::shared().location.load();
-}
-
 void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
 
@@ -122,7 +117,7 @@ void Flarm2024::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         Flarm2024Packet packet;
         auto epochSeconds = CoreUtils::secondsSinceEpoch();
 
-        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+        auto ownship = ownshipState.location.load();
 
         packet.aircraftId(ownship.conspicuity.icaoAddress);
         packet.messageType(0x02);

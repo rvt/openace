@@ -41,15 +41,15 @@ public:
     {
         enum enum_type : uint8_t
         {
-            AIRCRAFT_POSITION_TYPE_V1 = 1,    // Deprecated BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
-            AIRCRAFT_POSITION_REQUEST_V1 = 2, // Binary message of a request for other aircraft from gatasConnect
-//          AIRCRAFT_CONFIGURATIONS_V1 = 3,   // Deprecated, see AIRCRAFT_CONFIGURATIONS_V2 Current GATAS COnfiguration 1.0.0-prerelease
-            SET_ICAO_ADDRESS_V1 = 4,          // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
-            AIRCRAFT_CONFIGURATIONS_V2 = 5,   // Current GATAS COnfiguration V2
+            AIRCRAFT_POSITION_TYPE_V1 = 1,     // Deprecated BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
+            AIRCRAFT_POSITION_REQUEST_V1 = 2,  // Binary message of a request for other aircraft from gatasConnect
+                                               //          AIRCRAFT_CONFIGURATIONS_V1 = 3,   // Deprecated, see AIRCRAFT_CONFIGURATIONS_V2 Current GATAS COnfiguration 1.0.0-prerelease
+            SET_ICAO_ADDRESS_V1 = 4,           // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
+            AIRCRAFT_CONFIGURATIONS_V2 = 5,    // Current GATAS COnfiguration V2
             GDL90_V1 = 6,                      // Packed GDL90 message for bridge transports
-            SET_WIFI_MODE_V1 = 7,             // Request that OpenAce changes WiFi mode
-            AIRCRAFT_POSITION_TYPE_V2 = 8,    // BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
-            AIRCRAFT_POSITION_TYPE_V3 = 9,    // Aircraft position with pressure altitude and QNH
+            SET_WIFI_MODE_V1 = 7,              // Request that OpenAce changes WiFi mode
+            AIRCRAFT_POSITION_TYPE_V2 = 8,     // BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
+            AIRCRAFT_POSITION_TYPE_V3 = 9,     // Aircraft position with pressure altitude and QNH
             AIRCRAFT_POSITION_REQUEST_V2 = 10, // Request aircraft positions using the versioned response format
             OWNSHIP_PRESSURE_ALTITUDE_V1 = 11, // Ownship pressure altitude and QNH
         };
@@ -57,7 +57,7 @@ public:
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V1, "Aircraft Data")
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_REQUEST_V1, "conspicuity Data Request")
-//      ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V1, "Current GATAS Configuration see AIRCRAFT_CONFIGURATIONS_V2")
+        //      ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V1, "Current GATAS Configuration see AIRCRAFT_CONFIGURATIONS_V2")
         ETL_ENUM_TYPE(SET_ICAO_ADDRESS_V1, "Set new aircraft from configuration")
         ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V2, "Current GATAS Configuration")
         ETL_ENUM_TYPE(GDL90_V1, "GDL90 Message")
@@ -86,11 +86,12 @@ public:
         return callSignLength <= GATAS::MAX_CALLSIGN_LENGTH && data.size() == fixedSize + callSignLength;
     }
 
-    // Decoded payload: type (u8), pressure altitude (u16, metres + 1000), QNH (u16, 0.1 hPa).
+    // Payload: type (u8), pressure altitude (u16, metres + 1000), QNH (u16, 0.1 hPa), source (u8).
     // Both quantities are big endian; 0xffff means unavailable independently for each field.
-    static etl::optional<GATAS::BarometricPressure> deserializeOwnshipPressureAltitudeV1(etl::bit_stream_reader &reader)
+    static etl::optional<GATAS::PressureAltQnh> deserializeOwnshipPressureAltitudeV1(etl::bit_stream_reader &reader)
     {
-        if (reader.size_bytes() != 5U)
+        const auto payloadSize = reader.size_bytes();
+        if (payloadSize != 6U)
         {
             return etl::nullopt;
         }
@@ -99,16 +100,18 @@ public:
         {
             return etl::nullopt;
         }
-        const auto altitude = reader.read<uint16_t>();
+        const auto pressure_altitude_m = reader.read<uint16_t>();
         const auto qnh = reader.read<uint16_t>();
-        if (!altitude || !qnh)
+        const auto rawSource = reader.read<uint8_t>();
+        if (!pressure_altitude_m || !qnh || !rawSource)
         {
             return etl::nullopt;
         }
-        return GATAS::BarometricPressure{
-            0.0f, // The server supplies no ambient pressure measurement.
-            altitude.value() == 0xFFFFU ? GATAS::INVALID_BARO_ALTITUDE : static_cast<int32_t>(altitude.value()) - PRESSURE_ALTITUDE_OFFSET_M,
-            qnh.value() == 0xFFFFU ? GATAS::INVALID_QNH : static_cast<float>(qnh.value()) / 10.0f};
+
+        return GATAS::PressureAltQnh{
+            pressure_altitude_m.value() == 0xFFFFU ? GATAS::INVALID_BARO_ALTITUDE : static_cast<int32_t>(pressure_altitude_m.value()) - PRESSURE_ALTITUDE_OFFSET_M,
+            qnh.value() == 0xFFFFU ? GATAS::INVALID_QNH : static_cast<float>(qnh.value()) / 10.0f,
+            static_cast<GATAS::PressureSource>(rawSource.value())};
     }
 
     /**
@@ -216,9 +219,9 @@ public:
             static_cast<GATAS::AddressType>(addressTypeIdx),
             static_cast<GATAS::DataSource>(dataSourceIdx),
             static_cast<GATAS::AircraftCategory>(aircraftCategoryIdx),
-            false, // stealth
-            false, // noTrack
-            groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN,  // airborne
+            false,                                                // stealth
+            false,                                                // noTrack
+            groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN, // airborne
             lat,
             lon,
             heightHAE,

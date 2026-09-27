@@ -35,6 +35,7 @@ void GpsDecoder::start()
 void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
+    const auto pressureAltitude = ownshipState.calculatePressureAltitude();
     constexpr etl::format_spec width2fill0 = etl::format_spec().width(2).fill('0');
     const char *dopValue = GATAS::DOPInterpretationToString(GATAS::floatToDOPInterpretation(pDop));
     stream << "{";
@@ -48,6 +49,15 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude;
     stream << ",\"longitude\":" << longitude << etl::format_spec{}.precision(1);
     stream << ",\"altitudeGeoid:ft\":" << altitudeGeoid();
+    stream << ",\"pressureAltitude:ft\":";
+    if (!pressureAltitude)
+    {
+        stream << "null";
+    }
+    else
+    {
+        stream << (pressureAltitude.value());
+    }
     stream << ",\"geoidSeparation:ft\":" << geoidSeparation;
     stream << ",\"groundspeed:kt\":" << groundSpeed;
     stream << ",\"track:deg\":" << course();
@@ -342,7 +352,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
                     .geoidSeparation = static_cast<int16_t>(geoidSeparation),
                     .airborne = CoreUtils::isAirborn(conspicuity.category, groundSpeed),
                     .conspicuity = conspicuity};
-        GATAS::OwnshipState::shared().location.store(position);
+        ownshipState.location.store(position);
         getBus().receive(GATAS::OwnshipPositionMsg{});
     }
 }

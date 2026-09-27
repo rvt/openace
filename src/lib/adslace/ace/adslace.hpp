@@ -30,7 +30,7 @@
 // #include "ace/ldpc.hpp"
 // #include "adsl_packet.hpp"
 
-class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<ADSLAce, GATAS::RadioRxManchesterMsg, GATAS::RadioRxMsg, GATAS::OwnshipPositionMsg, GATAS::EgressAircraftPositionsMsg, GATAS::RadioTxPositionRequestMsg, GATAS::GpsStatsMsg>
+class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<ADSLAce, GATAS::RadioRxManchesterMsg, GATAS::RadioRxMsg, GATAS::EgressAircraftPositionsMsg, GATAS::RadioTxPositionRequestMsg, GATAS::GpsStatsMsg>
 {
     static constexpr int DEFAULT_IGNORE_DISTANCE = 25000;
     static constexpr int MAX_IGNORE_DISTANCE = 100000;
@@ -53,7 +53,7 @@ class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<A
     } statistics;
 
     ADSL::Protocol protocol;
-    GATAS::OwnshipPositionInfo ownshipPosition{};
+    const GATAS::OwnshipState &ownshipState;
 
     GATAS::DataSourceTimeStatsTable<3> datasourceTimeStats;
 
@@ -70,8 +70,8 @@ class ADSLAce : public BaseModule, ADSL::Connector, public etl::message_router<A
 
 public:
     static constexpr const etl::string_view NAME = "ADSL";
-    ADSLAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                   protocol(this)
+    ADSLAce(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME),
+                                                                   protocol(this), ownshipState(ownshipState_)
     {
         (void) config;
         protocol.init();
@@ -91,7 +91,6 @@ private:
      */
     void on_receive(const GATAS::RadioRxManchesterMsg &msg);
     void on_receive(const GATAS::RadioRxMsg &msg);
-    void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);

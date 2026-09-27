@@ -136,7 +136,7 @@ int8_t Ogn1::parseFrame(OGN_Packet &packet, uint32_t frequency, int16_t rssiDbm)
     float fLatitude = POSITION_DECODE * packet.DecodeLatitude();
     float fLongitude = POSITION_DECODE * packet.DecodeLongitude();
 
-    auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+    auto ownship = ownshipState.location.load();
 
     auto fromOwn = CoreUtils::getDistanceRelNorthRelEastInt(ownship.lat, ownship.lon, fLatitude, fLongitude);
 
@@ -193,7 +193,7 @@ void Ogn1::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
 {
     if (msg.radioParameters.config->isTxDataSource(GATAS::DataSource::OGN))
     {
-        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+        auto ownship = ownshipState.location.load();
 
         OGN_Packet packet;
         packet.Header =
@@ -308,7 +308,7 @@ void Ogn1::on_receive(const GATAS::RadioRxManchesterMsg &msg)
         }
 
         // Ignore ownship address
-        auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+        auto ownship = ownshipState.location.load();
         if (packet.Header.Address == ownship.conspicuity.icaoAddress)
         {
             return;
@@ -318,15 +318,6 @@ void Ogn1::on_receive(const GATAS::RadioRxManchesterMsg &msg)
     }
 }
 
-void Ogn1::on_receive(const GATAS::OwnshipPositionMsg &)
-{
-    ownshipPosition = ownshipState.location.load();
-}
-
-void Ogn1::on_receive(const GATAS::BarometricPressureMsg &)
-{
-    lastBarometricPressure = ownshipState.barometricPressure.load();
-}
 
 void Ogn1::on_receive(const GATAS::GpsStatsMsg &msg)
 {

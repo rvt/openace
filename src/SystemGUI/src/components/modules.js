@@ -50,6 +50,7 @@ class GaTasModules extends El {
 
     this.configurable = [
       "AircraftTracker",
+      "Gdl90Service",
       "DataPort",
       "L76B",
       "UbloxM8N",
@@ -264,16 +265,6 @@ class GaTasModules extends El {
 
   _showModuleStatus(html) {
     return html`
-      ${this.state.selectedModule === "Gdl90Service"
-        ? html`<div class="notice">
-            ${html.raw(icon.primary)}
-            <div>
-              <strong>Altitude fallback</strong><br />
-              GATAS falls back to mean sea level (MSL) altitude when pressure altitude is unavailable, including when QNH is unavailable for its calculation.
-              MSL differs from pressure altitude and can affect relative traffic altitude shown by your flight app.
-            </div>
-          </div>`
-        : ""}
       <monitor-module key="config" selected=${this.state.selectedModule}></monitor-module>
       <button class="secondary" onclick=${() => this._showModules()}>Back to modules</button>
     `;
