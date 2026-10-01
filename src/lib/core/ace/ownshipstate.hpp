@@ -1,95 +1,193 @@
 #pragma once
 
 #include <cmath>
+
+#include "etl/map.h"
+#include "etl/unordered_map.h"
 #include "etl/optional.h"
 
 #include "models.hpp"
 #include "spinlockguard.hpp"
 
+// Forward declaration avoids the coreutils/messages/ownshipstate include cycle.
+namespace CoreUtils
+{
+    uint64_t msSinceEpoch();
+}
+
 namespace GATAS
 {
+    struct BarometricPressureSample
+    {
+        BarometricPressure value{};
+        uint64_t msSinceEpoch = 0;
+        bool valid = false;
+    };
+
+    // Local update metadata only; never part of the pressure model or wire format.
+    enum class BarometricSource : uint8_t
+    {
+        Internal,
+        External
+    };
+
+    struct OwnshipPressureState
+    {
+        static constexpr size_t SOURCE_COUNT =
+            static_cast<size_t>(PressureSource::PRESSURE_SOURCE_NO_ITEMS);
+
+        etl::unordered_map<
+            PressureSource,
+            BarometricPressureSample,
+            SOURCE_COUNT>
+            barometricPressure{};
+    };
+
     /**
-     * Current ownship samples, with independent atomic snapshot reads and writes.
-     * Initialize once during startup before sharing this object with modules.
-     * Both values use the supplied lock; no hardware spinlock is allocated here.
-     * Separate loads do not form a single atomic snapshot of both samples.
+     * Inject one instance into producers and consumers. Initialize before use.
+     * Pressure updates gate incoming samples before changing the existing method-keyed map.
+     * Selection uses one coherent pressure snapshot; location is a separate snapshot.
      */
     class OwnshipState
     {
+        SynchronizedValue<OwnshipPressureState> pressure;
+        // Arbitration bookkeeping only, accessed inside pressure.update()'s lock.
+        // Internal/external origin is not added to the pressure model or samples.
+        BarometricSource acceptedSource = BarometricSource::External;
+
+        static bool positiveFinite(float value)
+        {
+            return std::isfinite(value) && value > 0.0f;
+        }
+
+        static uint8_t quality(PressureSource source)
+        {
+            switch (source)
+            {
+            case PressureSource::PressureSensor:
+                return 2;
+            case PressureSource::Calculated:
+                return 1;
+            default:
+                return 0;
+            }
+        }
+
+        static uint64_t maxAgeMs(PressureSource source)
+        {
+            switch (source)
+            {
+            case PressureSource::PressureSensor:
+                return 5'000;
+
+            case PressureSource::Calculated:
+                return 5'000;
+
+            default:
+                return 5'000;
+            }
+        }
+
+        static bool fresh(
+            bool valid,
+            uint64_t timestamp,
+            uint64_t now,
+            PressureSource source)
+        {
+            // Reject future samples before subtraction, including after a clock correction.
+            return valid &&
+                   timestamp <= now &&
+                   now - timestamp <= maxAgeMs(source);
+        }
+
     public:
         SynchronizedValue<OwnshipPositionInfo> location;
-        SynchronizedValue<BarometricPressure> barometricPressure;
-        SynchronizedValue<PressureAltQnh> pressureAltQnh;
 
-        // Returns pressure altitude in metres, using the first available method.
-        etl::optional<float> calculatePressureAltitude(bool includeGpsQnhFallback = true) const
+        void updateBarometricPressure(
+            BarometricSource origin,
+            const BarometricPressure &value,
+            uint64_t msSinceEpoch = CoreUtils::msSinceEpoch())
         {
-            const auto received = pressureAltQnh.load();
-            const bool hasReceivedAltitude = received.pressureAlt != INVALID_BARO_ALTITUDE;
-
-            // 1. Prefer pressure altitude supplied by a pressure sensor.
-            // It is already referenced to 1013.25 hPa, so QNH is not required.
-            if (hasReceivedAltitude && received.source == PressureSource::PressureSensor)
-            {
-                return static_cast<float>(received.pressureAlt);
-            }
-
-            // 2. Calculate from measured ambient pressure (e.g. BMP280).
-            // Copy under the lock and calculate after load() releases it. The
-            // sensor must sample representative static air pressure.
-            const float pressureHpa = barometricPressure.load().pressurehPa;
-            if (std::isfinite(pressureHpa) && pressureHpa > 0.0f)
-            {
-                // Pressure altitude is the altitude corresponding to measured
-                // pressure in the standard atmosphere, referenced to 1013.25 hPa.
-                // Neither QNH, GPS height nor measured temperature is required.
-                // Invert the standard tropospheric pressure-height relationship:
-                // h = (T0 / L) * (1 - (p / p0)^(R * L / g)).
-                // T0 / L is approximately 44330 metres; R * L / g is 0.190295.
-                // Pressure above 1013.25 hPa correctly gives negative altitude.
-                // This tropospheric approximation applies below approximately 11 km.
-                return 44330.0f * (1.0f - powf(pressureHpa / 1013.25f, 0.190295f));
-            }
-
-            // 3. Use another received pressure altitude, including calculated
-            // estimates or values whose source is unavailable.
-            // A valid pressure altitude remains usable when QNH is unavailable.
-            if (hasReceivedAltitude && received.source == PressureSource::Calculated)
-            {
-                return static_cast<float>(received.pressureAlt);
-            }
-
-            // 4. Estimate from GPS MSL height and local QNH. First infer ambient
-            // pressure using p = QNH * (1 - hMSL / 44330)^(1 / 0.190295), then
-            // convert that pressure to altitude referenced to 1013.25 hPa.
-            // Combining both equations gives the expression below. GPS height is
-            // geometric, not barometric, so this assumes a standard temperature
-            // profile and representative local QNH; it is our least reliable method.
-            if (includeGpsQnhFallback && std::isfinite(received.qnh) && received.qnh > 0.0f)
-            {
-                const auto position = location.load();
-                // There is no fix-valid flag in this snapshot. A nonzero timestamp
-                // indicates a stored position, but does not guarantee freshness.
-                // Pressure samples also lack timestamps, so no method checks age.
-                const float heightMsl = static_cast<float>(position.ellipseHeight) -
-                                        static_cast<float>(position.geoidSeparation);
-                if (position.timestamp != 0 && heightMsl < 44330.0f)
+            GATAS_ASSERT(origin == BarometricSource::Internal || origin == BarometricSource::External,
+                         "Invalid pressure origin");
+            GATAS_ASSERT(static_cast<uint8_t>(value.source) <
+                             static_cast<uint8_t>(PressureSource::PRESSURE_SOURCE_NO_ITEMS),
+                         "Invalid pressure source");
+            pressure.update(
+                [&](OwnshipPressureState &state)
                 {
-                    return 44330.0f * (1.0f - powf(received.qnh / 1013.25f, 0.190295f) *
-                                              (1.0f - heightMsl / 44330.0f));
+                    const BarometricPressureSample sample{
+                        value,
+                        msSinceEpoch,
+                        positiveFinite(value.pressurehPa)};
+
+                    if (!state.barometricPressure.empty())
+                    {
+                        const auto &current = state.barometricPressure.begin()->second;
+                        if (fresh(current.valid, current.msSinceEpoch, msSinceEpoch, current.value.source))
+                        {
+                            // A missing value cannot displace another producer's
+                            // valid data. The accepted origin/method may invalidate itself.
+                            if (!sample.valid &&
+                                (origin != acceptedSource || value.source != current.value.source))
+                            {
+                                return;
+                            }
+                            // Origin wins first; compare methods only for the same origin.
+                            if ((acceptedSource == BarometricSource::Internal && origin == BarometricSource::External) ||
+                                (origin == acceptedSource && quality(current.value.source) > quality(value.source)))
+                            {
+                                return;
+                            }
+                        }
+                    }
+
+                    // Keep only the accepted sample, keyed by its measured/calculated
+                    // method. Rejected updates do not alter its value or freshness.
+                    state.barometricPressure.clear();
+                    state.barometricPressure.insert(etl::make_pair(value.source, sample));
+                    acceptedSource = origin;
+                });
+        }
+
+        OwnshipPressureState loadPressureState() const
+        {
+            return pressure.load();
+        }
+
+        // Returns pressure altitude in metres from the best fresh ambient pressure.
+        etl::optional<float> calculatePressureAltitude(
+            uint64_t nowMsSinceEpoch = CoreUtils::msSinceEpoch()) const
+        {
+            const auto snapshot = pressure.load();
+
+            // All priority decisions happen in updateBarometricPressure().
+            for (const auto &entry : snapshot.barometricPressure)
+            {
+                const auto &sample = entry.second;
+                if (fresh(sample.valid, sample.msSinceEpoch, nowMsSinceEpoch, sample.value.source))
+                {
+                    // Pressure altitude is the height corresponding to ambient
+                    // pressure in the standard atmosphere, referenced to 1013.25 hPa.
+                    // Invert p = p0 * (1 - h / 44330)^(1 / 0.190295):
+                    // h = 44330 * (1 - (p / 1013.25)^0.190295).
+                    // QNH, GPS height and measured temperature are not required.
+                    // The server has already used QNH when estimating ambient pressure.
+                    // Pressure above 1013.25 hPa correctly gives negative altitude.
+                    // This tropospheric approximation applies below approximately 11 km.
+
+                    return 44330.0f * (1.0f - powf(sample.value.pressurehPa / 1013.25f, 0.190295f));
                 }
             }
 
-            // 5. Unavailable. GPS height alone is not pressure altitude; do not
-            // silently return it or assume a QNH of 1013.25 hPa.
+            // No fresh pressure: GPS height alone is not pressure altitude.
             return etl::nullopt;
         }
 
         void init(spin_lock_t *lock)
         {
             location.init(lock);
-            barometricPressure.init(lock);
-            pressureAltQnh.init(lock);
+            pressure.init(lock);
         }
     };
 }

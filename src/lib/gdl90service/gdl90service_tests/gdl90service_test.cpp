@@ -154,8 +154,9 @@ TEST_CASE("ownship position", "[single-file]")
     };
 
     state.location.store(thisIsUs);
-    state.pressureAltQnh.store(GATAS::PressureAltQnh{
-        thisIsUs.heightMsl(), GATAS::INVALID_QNH, GATAS::PressureSource::Calculated});
+    state.updateBarometricPressure(GATAS::BarometricSource::External,
+        {1013.25f * powf(1.0f - static_cast<float>(thisIsUs.heightMsl()) / 44330.0f, 1.0f / 0.190295f),
+         GATAS::PressureSource::Calculated});
     GATAS::OwnshipPositionMsg msg{};
 
     gdl90Service.on_receive(msg);
@@ -306,7 +307,7 @@ TEST_CASE("GDL90 ownship and traffic reports prefer pressure altitude and fall b
     state.init(CoreUtils::sharedSpinLock());
     MockConfig mockConfig{bus};
     Gdl90Service service{bus, mockConfig, state};
-    service.useMslAltitudeFallback = true;
+    service.mslAltFallback = true;
     Test receiver{&bus};
     GDL90 gdl90;
 
@@ -332,13 +333,17 @@ TEST_CASE("GDL90 ownship and traffic reports prefer pressure altitude and fall b
     for (const auto &test : cases)
     {
         INFO(test.meters);
-        // QNH and geometric height deliberately differ from pressure altitude.
-        // Traffic must also ignore the ownship pressure altitude.
-        state.barometricPressure.store(GATAS::BarometricPressure{});
-        state.pressureAltQnh.store(GATAS::PressureAltQnh{
-            ownship ? test.meters : GATAS::INVALID_BARO_ALTITUDE,
-            test.meters == GATAS::INVALID_BARO_ALTITUDE ? GATAS::INVALID_QNH : 1030.0f,
-            GATAS::PressureSource::Calculated});
+        // Geometric height deliberately differs from pressure altitude.
+        // Traffic must also ignore the ownship pressure sample.
+        // Keep the generated pressure inside the expected whole-metre interval;
+        // an inverse float conversion at exactly -100 m may produce -99.999 m.
+        const float sampleAltitude = static_cast<float>(test.meters) +
+            (test.meters > 0 ? 0.5f : (test.meters < 0 ? -0.5f : 0.0f));
+        const float pressureHpa = ownship && test.meters != GATAS::INVALID_BARO_ALTITUDE
+            ? 1013.25f * powf(1.0f - sampleAltitude / 44330.0f, 1.0f / 0.190295f)
+            : GATAS::INVALID_PRESSSURE_HPA;
+        state.updateBarometricPressure(GATAS::BarometricSource::External,
+                                       {pressureHpa, GATAS::PressureSource::Calculated});
         const auto previousCount = receiver.numReceived;
         GATAS::OwnshipPositionInfo ownPosition{};
         ownPosition.ellipseHeight = 1047;
@@ -407,7 +412,7 @@ TEST_CASE("GDL90 ownship altitude policy is strict by default", "[gdl90]")
     REQUIRE(gdl90.altitude_decode(altitude, feet));
     REQUIRE(std::isnan(feet));
 
-    service.useMslAltitudeFallback = true;
+    service.mslAltFallback = true;
     service.on_receive(GATAS::OwnshipPositionMsg{});
     REQUIRE(gdl90.unpack(receiver.msg, unpacked));
     REQUIRE(gdl90.ownership_or_traffic_report_decode(

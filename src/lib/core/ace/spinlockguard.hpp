@@ -113,4 +113,14 @@ public:
         SpinlockGuard guard(lock);
         value = newValue;
     }
+
+    /** Modify in place under the lock. The callback must be short and must not
+     * acquire locks, block, or retain references to the protected value. */
+    template <typename F>
+    void update(F &&fn)
+    {
+        GATAS_ASSERT(lock != nullptr, "SynchronizedValue must be initialized before update");
+        SpinlockGuard guard(lock);
+        etl::forward<F>(fn)(value);
+    }
 };

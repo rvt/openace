@@ -157,8 +157,10 @@ const formatUnit = (value, unit, locale = navigator.language) => {
         return value;
     }
 
+    const magnitude = Math.abs(value);
+
     for (const entry of table) {
-        if (value >= entry.min) {
+        if (magnitude >= entry.min) {
             const scaled = value / entry.scale;
 
             const formatter = new Intl.NumberFormat(locale, {

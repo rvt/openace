@@ -12,79 +12,54 @@ namespace
     class PressureReceiver : public etl::message_router<PressureReceiver, GATAS::BarometricPressureMsg, GATAS::IngressAircraftPositionsMsg>
     {
         const GATAS::OwnshipState &ownshipState;
-
     public:
         explicit PressureReceiver(const GATAS::OwnshipState &state) : ownshipState(state) {}
-
-        etl::vector<GATAS::PressureAltQnh, 8> samples;
+        etl::vector<GATAS::BarometricPressureSample, 8> samples;
         size_t trafficBatches = 0;
-
         void on_receive(const GATAS::BarometricPressureMsg &)
         {
-            samples.push_back(ownshipState.pressureAltQnh.load());
+            samples.push_back(ownshipState.loadPressureState().barometricPressure.at(GATAS::PressureSource::Calculated));
         }
-
         void on_receive(const GATAS::IngressAircraftPositionsMsg &)
         {
             ++trafficBatches;
         }
-
-        void on_receive_unknown(const etl::imessage &)
-        {
-        }
+        void on_receive_unknown(const etl::imessage &) {}
     };
 }
 
-TEST_CASE("Ownship pressure V1 matches the Rust wire fixture", "[binarymessages][pressure]")
+TEST_CASE("Ownship pressure V1 matches server bytes and ignores QNH", "[binarymessages][pressure]")
 {
-    // Literal fixture from Rust protocol/tests/cobs_messages.rs, independent of our enum.
-    const uint8_t raw[] = {11, 0x04, 0x42, 0x27, 0x95, 1};
-    REQUIRE(BinaryMessages::DataType::OWNSHIP_PRESSURE_ALTITUDE_V1 == 11);
-    time_us_Value = 12'345'678;
-    etl::bit_stream_reader reader(raw, sizeof(raw), etl::endian::big);
-    const auto result = BinaryMessages::deserializeOwnshipPressureAltitudeV1(reader);
-    REQUIRE(result.has_value());
-    REQUIRE(result->pressureAlt == 90);
-    REQUIRE(result->qnh == Catch::Approx(1013.3f));
-    REQUIRE(result->source == static_cast<GATAS::PressureSource>(1));
-    const GATAS::BarometricPressure sensor{987.6f, GATAS::PressureSource::PressureSensor};
-    REQUIRE(sensor.pressurehPa == 987.6f);
-    REQUIRE(sensor.source == GATAS::PressureSource::PressureSensor);
-    const GATAS::PressureAltQnh empty{};
-    REQUIRE(empty.pressureAlt == GATAS::INVALID_BARO_ALTITUDE);
-    REQUIRE(empty.source == GATAS::PressureSource::Unavailable);
-}
-
-TEST_CASE("Ownship pressure V1 preserves unsigned bounds and independent missing fields", "[binarymessages][pressure]")
-{
-    struct Case
-    {
-        uint8_t raw[6];
-        int32_t altitude;
-        float qnh;
-    };
+    REQUIRE(BinaryMessages::DataType::OWNSHIP_PRESSURE_V1 == 11);
+    struct Case { uint8_t raw[6]; float hpa; };
+    // Literal decoded fixtures from gatasServer protocol/tests/cobs_messages.rs.
     const Case cases[] = {
-        {{11, 0, 0, 0x27, 0x10, 0}, -1000, 1000.0f},
-        {{11, 0x03, 0x5D, 0x28, 0x3C, 0}, -139, 1030.0f},
-        {{11, 0x03, 0xE8, 0xFF, 0xFF, 0}, 0, GATAS::INVALID_QNH},
-        {{11, 0xFF, 0xFE, 0x27, 0x95, 0}, 64534, 1013.3f},
-        {{11, 0xFF, 0xFF, 0x27, 0x95, 0}, GATAS::INVALID_BARO_ALTITUDE, 1013.3f},
-        {{11, 0xFF, 0xFF, 0xFF, 0xFF, 0}, GATAS::INVALID_BARO_ALTITUDE, GATAS::INVALID_QNH},
+        {{11, 0x27, 0x95, 0x27, 0x95, 1}, 1013.3f},
+        {{11, 0x23, 0x28, 0x28, 0x3C, 1}, 900.0f},
+        {{11, 0, 1, 255, 255, 1}, 0.1f},
+        {{11, 255, 254, 255, 255, 1}, 6553.4f},
+        {{11, 255, 255, 255, 255, 1}, GATAS::INVALID_PRESSSURE_HPA},
+        {{11, 255, 255, 0x27, 0x10, 1}, GATAS::INVALID_PRESSSURE_HPA},
+        {{11, 0x23, 0x29, 255, 255, 1}, 900.1f},
+        // Zero pressure is invalid even if a malformed sender omits the sentinel.
+        {{11, 0, 0, 0x27, 0x10, 1}, GATAS::INVALID_PRESSSURE_HPA},
+        // The same pressure remains usable with missing or zero QNH.
+        {{11, 0x27, 0x95, 255, 255, 1}, 1013.3f},
+        {{11, 0x27, 0x95, 0, 0, 1}, 1013.3f},
     };
     for (const auto &test : cases)
     {
         etl::bit_stream_reader reader(test.raw, sizeof(test.raw), etl::endian::big);
-        const auto result = BinaryMessages::deserializeOwnshipPressureAltitudeV1(reader);
+        const auto result = BinaryMessages::deserializeOwnshipPressureV1(reader);
         REQUIRE(result.has_value());
-        REQUIRE(result->pressureAlt == test.altitude);
-        REQUIRE(result->qnh == Catch::Approx(test.qnh));
-        REQUIRE(result->source == GATAS::PressureSource::Unavailable);
+        REQUIRE(result->pressurehPa == Catch::Approx(test.hpa));
+        REQUIRE(result->source == GATAS::PressureSource::Calculated);
     }
 }
 
-TEST_CASE("Ownship pressure V1 rejects wrong types and payload lengths", "[binarymessages][pressure]")
+TEST_CASE("Ownship pressure V1 requires exactly six bytes and known sources", "[binarymessages][pressure]")
 {
-    uint8_t raw[] = {11, 0x04, 0x42, 0x27, 0x95, 42};
+    uint8_t raw[] = {11, 0x23, 0x28, 0x27, 0x95, 1, 0, 0};
     for (size_t size = 0; size <= sizeof(raw); ++size)
     {
         if (size == 6)
@@ -92,76 +67,100 @@ TEST_CASE("Ownship pressure V1 rejects wrong types and payload lengths", "[binar
             continue;
         }
         etl::bit_stream_reader reader(raw, size, etl::endian::big);
-        REQUIRE_FALSE(BinaryMessages::deserializeOwnshipPressureAltitudeV1(reader).has_value());
+        REQUIRE_FALSE(BinaryMessages::deserializeOwnshipPressureV1(reader));
     }
     raw[0] = 1;
-    etl::bit_stream_reader reader(raw, 6, etl::endian::big);
-    REQUIRE_FALSE(BinaryMessages::deserializeOwnshipPressureAltitudeV1(reader).has_value());
-}
-
-TEST_CASE("Ownship pressure source decodes all origins and tolerates future values", "[binarymessages][pressure]")
-{
+    etl::bit_stream_reader wrongType(raw, 6, etl::endian::big);
+    REQUIRE_FALSE(BinaryMessages::deserializeOwnshipPressureV1(wrongType));
+    raw[0] = 11;
     using Source = GATAS::PressureSource;
-    struct Case { uint8_t raw; Source expected; };
-    const Case cases[] = {
-        {0, Source::Unavailable}, {4, Source::Calculated}, {5, Source::PressureSensor},
-        {6, static_cast<Source>(6)}, {255, static_cast<Source>(255)},
-    };
-    for (const auto &test : cases)
+    const Source sources[] = {Source::Unavailable, Source::Calculated, Source::PressureSensor};
+    for (uint8_t source = 0; source < 3; ++source)
     {
-        const uint8_t raw[] = {11, 0x04, 0x42, 0x27, 0x95, test.raw};
-        etl::bit_stream_reader reader(raw, sizeof(raw), etl::endian::big);
-        const auto decoded = BinaryMessages::deserializeOwnshipPressureAltitudeV1(reader);
-        REQUIRE(decoded.has_value());
-        REQUIRE(decoded->source == test.expected);
-        REQUIRE(decoded->pressureAlt == 90);
+        raw[5] = source;
+        etl::bit_stream_reader reader(raw, 6, etl::endian::big);
+        const auto result = BinaryMessages::deserializeOwnshipPressureV1(reader);
+        REQUIRE(result.has_value());
+        REQUIRE(result->source == sources[source]);
     }
+    for (const uint8_t source : {3, 4, 5, 255})
+    {
+        raw[5] = source;
+        etl::bit_stream_reader reader(raw, 6, etl::endian::big);
+        REQUIRE_FALSE(BinaryMessages::deserializeOwnshipPressureV1(reader));
+    }
+    const uint8_t legacy[] = {11, 0, 1, 0x8B, 0xCD, 0x27, 0x95, 1};
+    etl::bit_stream_reader oldReader(legacy, sizeof(legacy), etl::endian::big);
+    REQUIRE_FALSE(BinaryMessages::deserializeOwnshipPressureV1(oldReader));
 }
 
-TEST_CASE("COBS ownship pressure routes split and concatenated frames without traffic", "[binarymessages][pressure]")
+TEST_CASE("COBS pressure updates source state before notifying and recovers after bad frames", "[binarymessages][pressure]")
 {
     CoreUtils::init();
+    time_us_Value = 12'345'678;
+    const auto now = CoreUtils::msSinceEpoch();
     GATAS::OwnshipState state;
     state.init(CoreUtils::sharedSpinLock());
-    state.barometricPressure.store(GATAS::BarometricPressure{987.5f, GATAS::PressureSource::PressureSensor});
     etl::message_bus<2> bus;
     MockConfig config{bus};
     PressureReceiver receiver{state};
     bus.subscribe(receiver);
     CobsStreamHandler handler{bus, config, state};
 
-    // Source-aware frame, followed by a legacy frame without a source byte.
-    uint8_t first[] = {7, 11, 0x04};
-    handler.handle(0.0f, 0.0f, etl::span<uint8_t>(first, sizeof(first)));
+    // COBS encoding of [11, 0x27, 0x95, 0x27, 0x95, 1], split mid-frame.
+    uint8_t first[] = {7, 11, 0x27};
+    handler.handle(0.0f, 0.0f, first);
     REQUIRE(receiver.samples.empty());
-    REQUIRE(state.pressureAltQnh.load().pressureAlt == GATAS::INVALID_BARO_ALTITUDE);
-    uint8_t rest[] = {0x42, 0x27, 0x95, 1, 0, 6, 11, 255, 255, 255, 255, 1, 0};
-    handler.handle(0.0f, 0.0f, etl::span<uint8_t>(rest, sizeof(rest)));
+    uint8_t rest[] = {0x95, 0x27, 0x95, 1, 0,
+                      7, 11, 255, 255, 255, 255, 1, 0};
+    handler.handle(0.0f, 0.0f, rest);
     REQUIRE(receiver.samples.size() == 2);
-    REQUIRE(receiver.samples[0].pressureAlt == 90);
-    REQUIRE(receiver.samples[0].qnh == Catch::Approx(1013.3f));
-    REQUIRE(receiver.samples[0].source == static_cast<GATAS::PressureSource>(1));
-    REQUIRE(receiver.samples[1].source == GATAS::PressureSource::Unavailable);
-    REQUIRE(receiver.samples[1].pressureAlt == GATAS::INVALID_BARO_ALTITUDE);
-    REQUIRE(receiver.samples[1].qnh == GATAS::INVALID_QNH);
-    REQUIRE(state.pressureAltQnh.load().pressureAlt == GATAS::INVALID_BARO_ALTITUDE);
-    REQUIRE(state.pressureAltQnh.load().qnh == GATAS::INVALID_QNH);
-    REQUIRE(state.pressureAltQnh.load().source == GATAS::PressureSource::Unavailable);
-    REQUIRE(receiver.trafficBatches == 0);
+    REQUIRE(receiver.samples[0].value.pressurehPa == Catch::Approx(1013.3f));
+    REQUIRE(receiver.samples[0].msSinceEpoch == now);
+    REQUIRE(receiver.samples[0].valid);
+    REQUIRE_FALSE(receiver.samples[1].valid);
+    REQUIRE(receiver.samples[1].value.pressurehPa == GATAS::INVALID_PRESSSURE_HPA);
+    REQUIRE_FALSE(state.calculatePressureAltitude());
 
-    // Invalid COBS, then valid COBS with a truncated payload, then a valid frame.
-    uint8_t recovery[] = {8, 11, 1, 0, 5, 11, 0x04, 0x42, 0x27, 0, 7, 11, 0x04, 0x42, 0x27, 0x95, 1, 0};
-    handler.handle(0.0f, 0.0f, etl::span<uint8_t>(recovery, sizeof(recovery)));
+    // Invalid COBS and superseded eight-byte payload, then a valid pressure frame.
+    uint8_t recovery[] = {8, 11, 1, 0, 2, 11, 7, 1, 0x8B, 0xCD, 0x27, 0x95, 1, 0,
+                          7, 11, 0x27, 0x95, 0x27, 0x95, 1, 0};
+    handler.handle(0.0f, 0.0f, recovery);
     REQUIRE(receiver.samples.size() == 3);
-    REQUIRE(receiver.samples.back().pressureAlt == 90);
-    REQUIRE(state.pressureAltQnh.load().pressureAlt == 90);
-    REQUIRE(state.pressureAltQnh.load().qnh == Catch::Approx(1013.3f));
+    REQUIRE(receiver.samples.back().valid);
+    REQUIRE(receiver.samples.back().value.pressurehPa == Catch::Approx(1013.3f));
+    uint8_t unknownSource[] = {7, 11, 0x27, 0x95, 0x27, 0x95, 255, 0};
+    handler.handle(0.0f, 0.0f, unknownSource);
+    REQUIRE(receiver.samples.size() == 3);
+    REQUIRE(state.loadPressureState().barometricPressure.size() == 1);
     REQUIRE(receiver.trafficBatches == 0);
-
-    uint8_t malformed[] = {8, 11, 1, 0, 5, 11, 0x04, 0x42, 0x27, 0};
-    handler.handle(0.0f, 0.0f, etl::span<uint8_t>(malformed, sizeof(malformed)));
-    REQUIRE(receiver.samples.size() == 3);
-    REQUIRE(state.pressureAltQnh.load().pressureAlt == 90);
-    REQUIRE(state.pressureAltQnh.load().qnh == Catch::Approx(1013.3f));
     bus.unsubscribe(receiver);
+}
+
+TEST_CASE("External COBS pressure cannot overwrite fresh internal pressure", "[binarymessages][pressure]")
+{
+    CoreUtils::init();
+    time_us_Value = 12'345'678;
+    GATAS::OwnshipState state;
+    state.init(CoreUtils::sharedSpinLock());
+    const auto now = CoreUtils::msSinceEpoch();
+    state.updateBarometricPressure(GATAS::BarometricSource::Internal,
+        {898.7628f, GATAS::PressureSource::PressureSensor}, now);
+    etl::message_bus<2> bus;
+    MockConfig config{bus};
+    CobsStreamHandler handler{bus, config, state};
+    // External measured pressure uses the same method key as the BMP280.
+    uint8_t measured[] = {7, 11, 0x27, 0x95, 0x27, 0x95, 2, 0};
+    handler.handle(0.0f, 0.0f, measured);
+    uint8_t calculated[] = {7, 11, 0x27, 0x95, 0x27, 0x95, 1, 0};
+    handler.handle(0.0f, 0.0f, calculated);
+    const auto snapshot = state.loadPressureState();
+    REQUIRE(snapshot.barometricPressure.size() == 1);
+    REQUIRE(snapshot.barometricPressure.at(GATAS::PressureSource::PressureSensor).value.pressurehPa == 898.7628f);
+    REQUIRE(snapshot.barometricPressure.at(GATAS::PressureSource::PressureSensor).msSinceEpoch == now);
+    time_us_Value += 6'000'000;
+    // A new COBS update may take over when the internal reading has expired.
+    uint8_t next[] = {7, 11, 0x27, 0x95, 0x27, 0x95, 1, 0};
+    handler.handle(0.0f, 0.0f, next);
+    REQUIRE(state.loadPressureState().barometricPressure.at(GATAS::PressureSource::Calculated).value.pressurehPa == Catch::Approx(1013.3f));
 }

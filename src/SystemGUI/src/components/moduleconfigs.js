@@ -223,24 +223,24 @@ class Gdl90ServiceConfig extends ModuleConfig {
   }
 
   _setFormData(data) {
-    this.$refs.useMslAltitudeFallback.checked = data.useMslAltitudeFallback === true || data.useMslAltitudeFallback === 1;
+    this.$refs.mslAltFallback.checked = data.mslAltFallback === true || data.mslAltFallback === 1;
   }
 
   _getFormData() {
     return {
-      useMslAltitudeFallback: this.$refs.useMslAltitudeFallback.checked,
+      mslAltFallback: this.$refs.mslAltFallback.checked,
     };
   }
 
   render(html) {
-    const useMslAltitudeFallback = this.state?.data?.useMslAltitudeFallback === true || this.state?.data?.useMslAltitudeFallback === 1;
+    const mslAltFallback = this.state?.data?.mslAltFallback === true || this.state?.data?.mslAltFallback === 1;
     return html`
       <h4>Configuration of the GDL90 Service</h4>
       <p>GDL90 requires pressure altitude for its ownship report.</p>
       <form ref="form" autocomplete="off" novalidate="novalidate">
         <div class="page-section">
           <div class="config-field-heading">
-            <label for="useMslAltitudeFallback">Use MSL altitude when pressure altitude is unavailable</label>
+            <label for="mslAltFallback">Use MSL altitude when pressure altitude is unavailable</label>
             <span class="help-label" tabindex="0" aria-label="About MSL altitude fallback">
               ${html.raw(icon.help)}
               <span class="app-tooltip" role="tooltip">
@@ -250,11 +250,11 @@ class Gdl90ServiceConfig extends ModuleConfig {
           </div>
           <input
             type="checkbox"
-            id="useMslAltitudeFallback"
-            ref="useMslAltitudeFallback"
-            onchange=${(event) => { this.state.data.useMslAltitudeFallback = event.target.checked; }}
+            id="mslAltFallback"
+            ref="mslAltFallback"
+            onchange=${(event) => { this.state.data.mslAltFallback = event.target.checked; }}
           />
-          ${useMslAltitudeFallback
+          ${mslAltFallback
             ? html`<div class="notice notice--warning">
                 MSL altitude is not pressure altitude. Use this fallback for conspicuity only; do not rely on it for flying or vertical separation.
               </div>`

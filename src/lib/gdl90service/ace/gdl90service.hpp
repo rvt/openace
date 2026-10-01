@@ -49,7 +49,7 @@ private:
     const GATAS::OwnshipState &ownshipState;
     GATAS::GpsStats gpsStats;
     GATAS::CallSign ownshipCallsign;
-    bool useMslAltitudeFallback = false;
+    bool mslAltFallback = false;
 
 private:
     static void gdl90ServiceTask(void *arg);

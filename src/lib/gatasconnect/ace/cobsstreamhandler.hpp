@@ -65,13 +65,13 @@ public:
             uint8_t frameType = data[0];
             etl::bit_stream_reader reader(data, etl::endian::big);
 
-            if (frameType == BinaryMessages::DataType::OWNSHIP_PRESSURE_ALTITUDE_V1)
+            if (frameType == BinaryMessages::DataType::OWNSHIP_PRESSURE_V1)
             {
-                const auto pressure = BinaryMessages::deserializeOwnshipPressureAltitudeV1(reader);
+                const auto pressure = BinaryMessages::deserializeOwnshipPressureV1(reader);
                 if (pressure)
                 {
                     // Store missing values too, so consumers can invalidate a previous sample.
-                    ownshipState.pressureAltQnh.store(pressure.value());
+                    ownshipState.updateBarometricPressure(GATAS::BarometricSource::External, pressure.value(), CoreUtils::msSinceEpoch());
                     bus.receive(GATAS::BarometricPressureMsg{});
                 }
                 continue;

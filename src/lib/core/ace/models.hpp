@@ -600,33 +600,22 @@ namespace GATAS
         float vDop = 100.f;         // From GSA Sentence
     };
 
-    // Stable COBS source values. Values 1, 2 and 3 are no longer assigned.
+    // COBS ownship-pressure source values, matching the server.
     enum class PressureSource : uint8_t
     {
         Unavailable = 0,
-        Calculated = 4,
-        PressureSensor = 5,
+        Calculated = 1,
+        PressureSensor = 2,
+        PRESSURE_SOURCE_NO_ITEMS = 3
     };
 
     struct BarometricPressure
     {
-        float pressurehPa = GATAS::INVALID_PRESSSURE_HPA; // Ambient pressure in hPa; 0 when unavailable
+        float pressurehPa = GATAS::INVALID_PRESSSURE_HPA; // Ambient pressure in hPa; INVALID_PRESSSURE_HPA when unavailable
         PressureSource source = PressureSource::Unavailable;
 
         BarometricPressure(float pressurehPa_ = GATAS::INVALID_PRESSSURE_HPA, PressureSource source_ = PressureSource::Unavailable)
             : pressurehPa(pressurehPa_), source(source_)
-        {
-        }
-    };
-
-    struct PressureAltQnh
-    {
-        int32_t pressureAlt = GATAS::INVALID_BARO_ALTITUDE; // Ambient pressure in hPa; 0 when unavailable
-        float qnh = GATAS::INVALID_QNH;                     // Ambient pressure in hPa; 0 when unavailable
-        PressureSource source = PressureSource::Unavailable;
-
-        PressureAltQnh(int32_t pressureAlt_ = GATAS::INVALID_BARO_ALTITUDE, float qnh_ = GATAS::INVALID_QNH, PressureSource source_ = PressureSource::Unavailable)
-            : pressureAlt(pressureAlt_), qnh(qnh_), source(source_)
         {
         }
     };

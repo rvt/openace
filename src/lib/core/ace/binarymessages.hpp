@@ -51,7 +51,7 @@ public:
             AIRCRAFT_POSITION_TYPE_V2 = 8,     // BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
             AIRCRAFT_POSITION_TYPE_V3 = 9,     // Aircraft position with pressure altitude and QNH
             AIRCRAFT_POSITION_REQUEST_V2 = 10, // Request aircraft positions using the versioned response format
-            OWNSHIP_PRESSURE_ALTITUDE_V1 = 11, // Ownship pressure altitude and QNH
+            OWNSHIP_PRESSURE_V1 = 11, // Ownship ambient pressure and QNH
         };
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
@@ -65,7 +65,7 @@ public:
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V2, "Aircraft Data")
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V3, "Aircraft Data with pressure altitude and QNH")
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_REQUEST_V2, "Versioned conspicuity data request")
-        ETL_ENUM_TYPE(OWNSHIP_PRESSURE_ALTITUDE_V1, "Ownship pressure altitude and QNH")
+        ETL_ENUM_TYPE(OWNSHIP_PRESSURE_V1, "Ownship ambient pressure and QNH")
         ETL_END_ENUM_TYPE
     };
 
@@ -86,32 +86,34 @@ public:
         return callSignLength <= GATAS::MAX_CALLSIGN_LENGTH && data.size() == fixedSize + callSignLength;
     }
 
-    // Payload: type (u8), pressure altitude (u16, metres + 1000), QNH (u16, 0.1 hPa), source (u8).
-    // Both quantities are big endian; 0xffff means unavailable independently for each field.
-    static etl::optional<GATAS::PressureAltQnh> deserializeOwnshipPressureAltitudeV1(etl::bit_stream_reader &reader)
+    // Six-byte payload: type (u8), pressure (u16, 0.1 hPa),
+    // QNH (u16, 0.1 hPa), source (u8). Multi-byte fields are big endian.
+    // Pressure 0xffff is unavailable. QNH is consumed but not stored.
+    static etl::optional<GATAS::BarometricPressure> deserializeOwnshipPressureV1(etl::bit_stream_reader &reader)
     {
-        const auto payloadSize = reader.size_bytes();
-        if (payloadSize != 6U)
+        if (reader.size_bytes() != 6U)
         {
             return etl::nullopt;
         }
         const auto type = reader.read<uint8_t>();
-        if (!type || type.value() != DataType::OWNSHIP_PRESSURE_ALTITUDE_V1)
+        if (!type || type.value() != DataType::OWNSHIP_PRESSURE_V1)
         {
             return etl::nullopt;
         }
-        const auto pressure_altitude_m = reader.read<uint16_t>();
+        const auto pressure = reader.read<uint16_t>();
         const auto qnh = reader.read<uint16_t>();
-        const auto rawSource = reader.read<uint8_t>();
-        if (!pressure_altitude_m || !qnh || !rawSource)
+        const auto source = reader.read<uint8_t>();
+        if (!pressure || !qnh || !source ||
+            source.value() >= static_cast<uint8_t>(GATAS::PressureSource::PRESSURE_SOURCE_NO_ITEMS))
         {
             return etl::nullopt;
         }
 
-        return GATAS::PressureAltQnh{
-            pressure_altitude_m.value() == 0xFFFFU ? GATAS::INVALID_BARO_ALTITUDE : static_cast<int32_t>(pressure_altitude_m.value()) - PRESSURE_ALTITUDE_OFFSET_M,
-            qnh.value() == 0xFFFFU ? GATAS::INVALID_QNH : static_cast<float>(qnh.value()) / 10.0f,
-            static_cast<GATAS::PressureSource>(rawSource.value())};
+        return GATAS::BarometricPressure{
+            pressure.value() == UINT16_MAX || pressure.value() == 0
+                ? GATAS::INVALID_PRESSSURE_HPA
+                : static_cast<float>(pressure.value()) / 10.0f,
+            static_cast<GATAS::PressureSource>(source.value())};
     }
 
     /**

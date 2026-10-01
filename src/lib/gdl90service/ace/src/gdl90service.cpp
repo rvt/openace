@@ -28,7 +28,7 @@ void Gdl90Service::getData(etl::string_stream &stream, const etl::string_view pa
     stream << ",\"ownEncodingFailure:err\":" << statistics.ownEncodingFailureErr;
     stream << ",\"heartBeatEncodingFailure:err\":" << statistics.heartBeatEncodingFailureErr;
     stream << ",\"packingFailure:err\":" << statistics.packingFailureErr;
-    stream << ",\"useMslAltitudeFallback\":" << (useMslAltitudeFallback ? "true" : "false");
+    stream << ",\"mslAltFallback\":" << (mslAltFallback ? "true" : "false");
     stream << "}";
 }
 
@@ -115,12 +115,13 @@ GDL90::EMITTER Gdl90Service::aircraftTypeToEmitter(GATAS::AircraftCategory categ
 
 void Gdl90Service::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
-    if (msg.moduleName == Configuration::NAME)
+    if (msg.moduleName == Gdl90Service::NAME || msg.moduleName == Configuration::NAME)
     {
         const Configuration &config = msg.config;
         auto gaTasConfig = config.gaTasConfig();
         auto ownCallSign = config.getCallSignFromHex(gaTasConfig.conspicuity.icaoAddress);
-        useMslAltitudeFallback = config.valueByPath(false, NAME, "useMslAltitudeFallback");
+        mslAltFallback = config.valueByPath(false, NAME, "mslAltFallback");
+
         if (auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()})
         {
             ownshipCallsign = makeGdlCallsign(ownCallSign);
@@ -171,7 +172,7 @@ GATAS::CallSign Gdl90Service::makeGdlCallsign(const GATAS::CallSign &callSign) c
 void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &)
 {
     const auto pos = ownshipState.location.load();
-    const auto pressureAltitude = ownshipState.calculatePressureAltitude(!useMslAltitudeFallback);
+    const auto pressureAltitude = ownshipState.calculatePressureAltitude();
 
     uint32_t latitude;
     uint32_t longitude;
@@ -202,6 +203,8 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &)
     auto nacp = calcNACp(hfom);
     auto nic = calcNIC(hpl);
 
+    auto pressureAltValue = pressureAltitude ? static_cast<int32_t>(pressureAltitude.value()) : GATAS::INVALID_BARO_ALTITUDE;
+
     if (gdl90.ownership_or_traffic_report_encode(
             unpacked,
             true,
@@ -210,8 +213,7 @@ void Gdl90Service::on_receive(const GATAS::OwnshipPositionMsg &)
             pos.conspicuity.icaoAddress,
             latitude,
             longitude,
-            encodePressureAltitude(pressureAltitude ? static_cast<int32_t>(pressureAltitude.value()) : GATAS::INVALID_BARO_ALTITUDE,
-                                   pos.heightMsl(), useMslAltitudeFallback),
+            encodePressureAltitude(pressureAltValue, pos.heightMsl(), mslAltFallback),
             // Same as for tracked aircraft, force to AIRBORN unless we can understand how forflight handles this bit
             GDL90::MISC_TT_HEADING_TRUE_MASK | GDL90::MISC_AIRBORNE_MASK,
             // GDL90::MISC_TT_HEADING_TRUE_MASK | (msg.position.airborne ? GDL90::MISC_AIRBORNE_MASK : GDL90::MISC_ON_GROUND_MASK),
@@ -299,6 +301,7 @@ uint32_t Gdl90Service::encodePressureAltitude(int32_t pressureAltitude, int32_t 
     {
         pressureAltitude = heightMsl;
     }
+
     uint32_t encodedAltitude = GDL90::ALTITUDE_ENCODED_INVALID;
     if (!gdl90.altitude_encode(encodedAltitude, pressureAltitude * M_TO_FT))
     {
@@ -354,11 +357,11 @@ void Gdl90Service::on_receive(const GATAS::EgressAircraftPositionMsg &msg)
 
     gdl90.latlon_encode(latitude, pos.lat);
     gdl90.latlon_encode(longitude, pos.lon);
-    altitude = encodePressureAltitude(pos.pressureAlt, pos.ellipseHeight - ownshipState.location.load().geoidSeparation);
+    altitude = encodePressureAltitude(pos.pressureAlt, pos.ellipseHeight - ownshipState.location.load().geoidSeparation, false);
     gdl90.horizontal_velocity_encode(horiz_velocity, pos.groundSpeed * MS_TO_KN);
     gdl90.vertical_velocity_encode(vert_velocity, pos.verticalSpeed * MS_TO_FTPMIN);
     gdl90.track_hdg_encode(track_hdg, pos.track);
-//    GDL90::ADDR_TYPE type = pos.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
+    //    GDL90::ADDR_TYPE type = pos.addressType == GATAS::AddressType::ICAO ? GDL90::ADDR_TYPE::ADSB_WITH_ICAO_ADDR : GDL90::ADDR_TYPE::ADSB_WITH_SELF_ADDR;
     GDL90::ADDR_TYPE type = GDL90::ADDR_TYPE::TISB_WITH_ICAO_ADDR;
 
     GDL90::RawBytes unpacked;
