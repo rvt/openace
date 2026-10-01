@@ -366,8 +366,17 @@ TEST_CASE("GDL90 ownship and traffic reports prefer pressure altitude and fall b
         REQUIRE(gdl90.unpack(receiver.msg, unpacked));
         REQUIRE(unpacked.size() == 28);
         REQUIRE(unpacked[0] == (ownship ? 0x0A : 0x14));
-        REQUIRE(unpacked[11] == test.highByte);
-        REQUIRE((unpacked[12] & 0xF0) == test.lowNibble);
+        // Ownship reports may use the configured MSL fallback. Traffic reports
+        // must not use the ownship state, so an unavailable pressure altitude
+        // remains encoded as unavailable.
+        const auto expectedHighByte = !ownship && test.meters == GATAS::INVALID_BARO_ALTITUDE
+            ? 0xFF
+            : test.highByte;
+        const auto expectedLowNibble = !ownship && test.meters == GATAS::INVALID_BARO_ALTITUDE
+            ? 0xF0
+            : test.lowNibble;
+        REQUIRE(unpacked[11] == expectedHighByte);
+        REQUIRE((unpacked[12] & 0xF0) == expectedLowNibble);
     }
 }
 
