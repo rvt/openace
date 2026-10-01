@@ -162,10 +162,10 @@ namespace GATAS
         return CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, lat, lon);
     }
 
-    CoreUtils::distanceRelNorthRelEastInt AircraftPositionInfo::relativeFromOwn(const OwnshipMinimalPositionInfo &ownship) const
-    {
-        return relativeFromOwn(ownship.lat, ownship.lon);
-    }
+    // CoreUtils::distanceRelNorthRelEastInt AircraftPositionInfo::relativeFromOwn(const OwnshipMinimalPositionInfo &ownship) const
+    // {
+    //     return relativeFromOwn(ownship.lat, ownship.lon);
+    // }
 
     CoreUtils::distanceRelNorthRelEastInt AircraftPositionInfo::relativeFromOwn(const OwnshipPositionInfo &ownship) const
     {
@@ -177,10 +177,10 @@ namespace GATAS
         return relativeFromOwn(ownshipLat, ownshipLon).relNorth;
     }
 
-    int32_t AircraftPositionInfo::relNorthFromOwn(const OwnshipMinimalPositionInfo &ownship) const
-    {
-        return relativeFromOwn(ownship).relNorth;
-    }
+    // int32_t AircraftPositionInfo::relNorthFromOwn(const OwnshipMinimalPositionInfo &ownship) const
+    // {
+    //     return relativeFromOwn(ownship).relNorth;
+    // }
 
     int32_t AircraftPositionInfo::relNorthFromOwn(const OwnshipPositionInfo &ownship) const
     {
@@ -192,10 +192,10 @@ namespace GATAS
         return relativeFromOwn(ownshipLat, ownshipLon).relEast;
     }
 
-    int32_t AircraftPositionInfo::relEastFromOwn(const OwnshipMinimalPositionInfo &ownship) const
-    {
-        return relativeFromOwn(ownship).relEast;
-    }
+    // int32_t AircraftPositionInfo::relEastFromOwn(const OwnshipMinimalPositionInfo &ownship) const
+    // {
+    //     return relativeFromOwn(ownship).relEast;
+    // }
 
     int32_t AircraftPositionInfo::relEastFromOwn(const OwnshipPositionInfo &ownship) const
     {

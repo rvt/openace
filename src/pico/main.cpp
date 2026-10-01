@@ -30,6 +30,7 @@
 #include "ace/constants.hpp"
 #include "ace/aircrafttracker.hpp"
 #include "ace/basemodule.hpp"
+#include "ace/ownshipstate.hpp"
 #include "ace/config.hpp"
 #include "ace/inmemorystore.hpp"
 #include "ace/flashstore.hpp"
@@ -125,6 +126,11 @@ void registerModules()
 
 GATAS::GlobalPoolConfiguration pool;
 
+namespace
+{
+    GATAS::OwnshipState ownshipState;
+}
+
 void disabled(etl::string_view name, Configuration &config)
 {
     // clang-format off
@@ -141,25 +147,29 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
 {
     // clang-format off
     if (name == Ogn1::NAME)
-        return new Ogn1(bus, config);
+    {
+        return new Ogn1(bus, config, ownshipState);
+    }
     if (name == FanetAce::NAME)
-        return new FanetAce(bus, config);
+        return new FanetAce(bus, config, ownshipState);
     if (name == ADSLAce::NAME)
-        return new ADSLAce(bus, config);
+        return new ADSLAce(bus, config, ownshipState);
     if (name == Flarm2024::NAME)
-        return new Flarm2024(bus, config);
+        return new Flarm2024(bus, config, ownshipState);
     if (name == AirConnect::NAME)
         return new AirConnect(bus, config);
     if (name == GatasConnect::NAME)
-        return new GatasConnect(bus, config);
+    {
+        return new GatasConnect(bus, config, ownshipState);
+    }
     if (name == GatasConnectUDP::NAME)
         return new GatasConnectUDP(bus, config);
     if (name == Bluetooth::NAME)
         return new Bluetooth(bus, config);
     if (name == DataPort::NAME)
-        return new DataPort(bus, config);
+        return new DataPort(bus, config, ownshipState);
     if (name == AircraftTracker::NAME)
-        return new AircraftTracker(bus, config);
+        return new AircraftTracker(bus, config, ownshipState);
     if (name == Dump1090Client::NAME)
         return new Dump1090Client(bus, config);
     if (name == SerialADSB::NAME)
@@ -171,15 +181,15 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == StaticGPS::NAME)
         return new StaticGPS(bus, config);
     if (name == GpsDecoder::NAME)
-        return new GpsDecoder(bus, config);
+        return new GpsDecoder(bus, config, ownshipState);
     if (name == GDLoverUDP::NAME)
         return new GDLoverUDP(bus, config);
     if (name == ADSBDecoder::NAME)
-        return new ADSBDecoder(bus, config);
+        return new ADSBDecoder(bus, config, ownshipState);
     if (name == RadioTunerRx::NAME)
-        return new RadioTunerRx(bus, config);
+        return new RadioTunerRx(bus, config, ownshipState);
     if (name == RadioTunerTx::NAME)
-        return new RadioTunerTx(bus, config);
+        return new RadioTunerTx(bus, config, ownshipState);
     if (name == RxDataFrameQueue::NAME)
         return new RxDataFrameQueue(bus, config);
     if (name == Sx1262::NAMES[0])
@@ -193,9 +203,13 @@ BaseModule *loadModule(etl::string_view name, etl::imessage_bus &bus, Configurat
     if (name == WifiService::NAME)
         return new WifiService(bus, config);
     if (name == Gdl90Service::NAME)
-        return new Gdl90Service(bus, config);
+    {
+        return new Gdl90Service(bus, config, ownshipState);
+    }
     if (name == Bmp280::NAME)
-        return new Bmp280(bus, config);
+    {
+        return new Bmp280(bus, config, ownshipState);
+    }
     if (name == AceSpi::NAMES[0])
         return new AceSpi(bus, config, 0);
     if (name == AceSpi::NAMES[1])
@@ -321,6 +335,7 @@ static void loadModules(void *arg)
     (void)arg;
 
     CoreUtils::init();
+    ownshipState.init(CoreUtils::sharedSpinLock());
     config.postConstruct();
     config.start();
 

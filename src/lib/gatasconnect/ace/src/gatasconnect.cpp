@@ -52,11 +52,6 @@ void GatasConnect::on_receive(const GATAS::GpsStatsMsg &msg)
     hasGpsFix = msg.gpsStats.gpsFix.hasFix;
 }
 
-void GatasConnect::on_receive(const GATAS::OwnshipPositionMsg &msg)
-{
-    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
-}
-
 void GatasConnect::on_receive(const GATAS::ConfigUpdatedMsg &msg)
 {
     if (msg.moduleName == GatasConnect::NAME || msg.moduleName == Configuration::NAME)
@@ -98,7 +93,7 @@ void GatasConnect::on_receive(const GATAS::GatasConnectRx &msg)
         return;
     }
 
-    auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+    auto ownship = ownshipState.location.load();
     cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(msg.cobsMessage.get(), msg.length));
 }
 
@@ -161,16 +156,15 @@ void GatasConnect::sendOwnshipPosition()
     bool groundStationSnap = false;
     bool hasGpsFixSnap = false;
     uint64_t lastRadioTrafficUsSnap = 0;
-    GATAS::OwnshipPositionInfo ownshipSnap{};
+    auto ownshipSnap = ownshipState.location.load();
     GATAS::GatasConnectOutput outputSnap = GATAS::GatasConnectOutput::NOOP;
 
     if (auto guard = SpinlockGuard{CoreUtils::sharedSpinLock()})
     {
+        const uint32_t nowUs = CoreUtils::timeUs32();
         groundStationSnap = groundStation;
         hasGpsFixSnap = hasGpsFix;
         lastRadioTrafficUsSnap = lastRadioTrafficUs;
-        ownshipSnap = ownshipPosition;
-        const uint32_t nowUs = CoreUtils::timeUs32();
         // In UDP + Bluetooth mode, prefer UDP while it is receiving traffic;
         // otherwise keep both transports active so Bluetooth provides fallback.
         const bool udpTrafficActive = hasUdpTraffic && (nowUs - lastUdpTrafficUs) < UDP_TRAFFIC_TIMEOUT_US;
@@ -196,7 +190,7 @@ void GatasConnect::sendOwnshipPosition()
         return;
     }
 
-    const size_t ownshipFrameSize = BinaryMessages::serializeOwnshipPositionFramedSizeV1();
+    const size_t ownshipFrameSize = BinaryMessages::serializeOwnshipPositionFramedSizeV2();
     auto &pool = BaseModule::getGlobalPool();
     auto *cobsPayload = static_cast<uint8_t *>(pool.alloc(ownshipFrameSize));
     if (cobsPayload == nullptr)
@@ -205,7 +199,7 @@ void GatasConnect::sendOwnshipPosition()
         return;
     }
 
-    const size_t written = BinaryMessages::serializeOwnshipPositionV1(cobsPayload, ownshipFrameSize, ownshipSnap);
+    const size_t written = BinaryMessages::serializeOwnshipPositionV2(cobsPayload, ownshipFrameSize, ownshipSnap);
     if (written == 0)
     {
         GATAS_WARN("GatasConnect: failed to encode ownship request payload");

@@ -44,14 +44,16 @@ public:
 
     // Call this once to perform self-testing of these functions.
     // Be sure to check the return value to see if it passed.
-    bool     self_test( void );
+    bool     self_test( void ) const;
 
+    // Small reports; callers handling UAT uplinks must supply a larger ivector.
+    // Callers must provide sufficient output capacity. Capacity checks are debug-only (!NDEBUG).
     using RawBytes = etl::vector<uint8_t, 52>;
 
     // pack   - take encoded rawbytes and add escape sequences, CRC, and start/end delimiters so message is ready to send out
     // unpack - inverse; returns false if message is corrupted or has an incorrect format
-    bool     pack(         etl::ivector<uint8_t>& packed, const etl::ivector<uint8_t>& unpacked );
-    bool     unpack( const etl::ivector<uint8_t>& packed,       etl::ivector<uint8_t>& unpacked );
+    bool     pack(         etl::ivector<uint8_t>& packed, const etl::ivector<uint8_t>& unpacked ) const;
+    bool     unpack( const etl::ivector<uint8_t>& packed,       etl::ivector<uint8_t>& unpacked ) const;
 
     // message types
     enum class MESSAGE_ID
@@ -77,8 +79,8 @@ public:
     };
 
     // predecode helpers
-    bool     id_decode( MESSAGE_ID& id, const etl::ivector<uint8_t>& unpacked );
-    bool     foreflight_subid_decode( MESSAGE_FOREFLIGHT_SUBID& subid, const etl::ivector<uint8_t>& unpacked );
+    bool     id_decode( MESSAGE_ID& id, const etl::ivector<uint8_t>& unpacked ) const;
+    bool     foreflight_subid_decode( MESSAGE_FOREFLIGHT_SUBID& subid, const etl::ivector<uint8_t>& unpacked ) const;
 
     // HEARTBEAT
     static constexpr uint32_t HEARTBEAT_STATUS_UAT_INITIALIZED_MASK = 0x0001;
@@ -103,8 +105,8 @@ public:
                                                                             HEARTBEAT_STATUS_CSA_REQUESTED_MASK;
     static constexpr uint32_t HEARTBEAT_STATUS_DISALLOWED_MASK      = ~HEARTBEAT_STATUS_ALLOWED_MASK;
 
-    bool     heartbeat_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  status, uint32_t  timestamp, uint32_t  msg_count_uplink, uint32_t  msg_count_basic_and_long );
-    bool     heartbeat_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& status, uint32_t& timestamp, uint32_t& msg_count_uplink, uint32_t& msg_count_basic_and_long );
+    bool     heartbeat_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  status, uint32_t  timestamp, uint32_t  msg_count_uplink, uint32_t  msg_count_basic_and_long ) const;
+    bool     heartbeat_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& status, uint32_t& timestamp, uint32_t& msg_count_uplink, uint32_t& msg_count_basic_and_long ) const;
 
     // INITIALIZATION
     static constexpr uint32_t INIT_CONFIG_CDTI_OK_MASK              = 0x0001;
@@ -119,22 +121,22 @@ public:
                                                                             INIT_CONFIG_CSA_AUDIO_DISABLE_MASK;
     static constexpr uint32_t INIT_CONFIG_DISALLOWED_MASK           = ~INIT_CONFIG_ALLOWED_MASK;
 
-    bool     initialization_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  config );
-    bool     initialization_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& config );
+    bool     initialization_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  config ) const;
+    bool     initialization_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& config ) const;
 
     // UPLINK_DATA, BASIC_UAT_REPORT, LONG_UAT_REPORT
     static constexpr uint32_t TIME_OF_RECEPTION_FRAC_ENCODED_INVALID = 0xffffff;
-    bool     time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac );  // frac is fractions of a second since the heartbeat timestamp
-    bool     time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac );  // frac set to NaN  if frac_encoded==TIME_OF_RECEPTION_FRAC_ENCODED_INVALID
+    bool     time_of_reception_frac_encode( uint32_t& frac_encoded, float  frac ) const;  // frac is fractions of a second since the heartbeat timestamp
+    bool     time_of_reception_frac_decode( uint32_t  frac_encoded, float& frac ) const;  // frac set to NaN  if frac_encoded==TIME_OF_RECEPTION_FRAC_ENCODED_INVALID
 
-    bool     uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload );
-    bool     uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload );
+    bool     uplink_data_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload ) const;
+    bool     uplink_data_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload ) const;
 
-    bool     basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload );
-    bool     basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload );
+    bool     basic_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload ) const;
+    bool     basic_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload ) const;
 
-    bool     long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload );
-    bool     long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload );
+    bool     long_uat_report_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  time_of_reception_frac, const etl::array_view<uint8_t>& payload ) const;
+    bool     long_uat_report_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& time_of_reception_frac,       etl::ivector<uint8_t>& payload ) const;
 
 
     // OWNERSHIP_REPORT, TRAFFIC_REPORT
@@ -193,7 +195,7 @@ public:
         LT_0_5_NM               = 5,
         LT_0_3_NM               = 6,
         LT_0_1_NM               = 7,
-        LT_0_01_NM              = 8,
+        LT_0_05_NM              = 8,
         HFOM_LT_30_VFOM_LT_45   = 9,
         HFOM_LT_10_VFOM_LT_15   = 10,
         HFOM_LT_3_VFOM_LT_4     = 11,
@@ -210,7 +212,7 @@ public:
         HEAVY                   = 5,
         HIGHLY_MANEUVERABLE     = 6,
         ROTOCRAFT               = 7,
-        GLIDER_SAILPLANE        = 8,
+        GLIDER_SAILPLANE        = 9,
         LIGHTER_THAN_AIR        = 10,
         PARACHUTIST             = 11,
         ULTRA_LIGHT             = 12,
@@ -236,80 +238,83 @@ public:
         __LAST                  = 6,
     };
 
-    bool     latlon_encode( uint32_t& latlon_encoded, float  latlon );  // latlon must be -180.0 .. 180.0(minus LSB epsilon); north and east are considered positive
-    bool     latlon_decode( uint32_t  latlon_encoded, float& latlon );
+    bool     latlon_encode( uint32_t& latlon_encoded, float  latlon ) const;  // latlon must be -180.0 .. 180.0(minus LSB epsilon); north and east are considered positive
+    bool     latlon_decode( uint32_t  latlon_encoded, float& latlon ) const;
 
     static constexpr uint32_t ALTITUDE_ENCODED_INVALID                = 0xfff;
-    bool     altitude_encode( uint32_t& altitude_encoded, float  altitude );  // altitude must be -1000 ft to +101,350 ft
-    bool     altitude_decode( uint32_t  altitude_encoded, float& altitude );  // altitude is set to NaN if altitude_encoded==ALTITUDE_ENCODED_INVALID
+    bool     altitude_encode( uint32_t& altitude_encoded, float  altitude ) const;  // altitude must be -1000 ft to +101,350 ft
+    bool     altitude_decode( uint32_t  altitude_encoded, float& altitude ) const;  // altitude is set to NaN if altitude_encoded==ALTITUDE_ENCODED_INVALID
 
     static constexpr uint32_t HORIZONTAL_VELOCITY_ENCODED_INVALID          = 0xfff;
-    bool     horizontal_velocity_encode( uint32_t& velocity_encoded, float  velocity );  // valid range is 0 .. 4094 knots; if exceeded, then it is hammered to 4094
-    bool     horizontal_velocity_decode( uint32_t  velocity_encoded, float& velocity );  // velocity is set to NaN if velocity_encoded==HORIZONTAL_VELOCITY_ENCODED_INVALID
+    bool     horizontal_velocity_encode( uint32_t& velocity_encoded, float  velocity ) const;  // valid range is 0 .. 4094 knots; if exceeded, then it is hammered to 4094
+    bool     horizontal_velocity_decode( uint32_t  velocity_encoded, float& velocity ) const;  // velocity is set to NaN if velocity_encoded==HORIZONTAL_VELOCITY_ENCODED_INVALID
 
     static constexpr uint32_t VERTICAL_VELOCITY_ENCODED_INVALID          = 0x800;
-    bool     vertical_velocity_encode( uint32_t& velocity_encoded, float  velocity );  // valid range is +/- 32,576 FPM; if exceeded, then it is hammered to +/- 32,640
-    bool     vertical_velocity_decode( uint32_t  velocity_encoded, float& velocity );  // velocity is set to NaN if velocity_encoded==VERTICAL_VELOCITY_ENCODED_INVALID
+    bool     vertical_velocity_encode( uint32_t& velocity_encoded, float  velocity ) const;  // valid range is +/- 32,576 FPM; if exceeded, then it is hammered to +/- 32,640
+    bool     vertical_velocity_decode( uint32_t  velocity_encoded, float& velocity ) const;  // velocity is set to NaN if velocity_encoded==VERTICAL_VELOCITY_ENCODED_INVALID
 
-    bool     track_hdg_encode( uint32_t& track_hdg_encoded, float  track_hdg );        // valid range is 0-360 deg
-    bool     track_hdg_decode( uint32_t  track_hdg_encoded, float& track_hdg );
+    bool     track_hdg_encode( uint32_t& track_hdg_encoded, float  track_hdg ) const;        // valid range is 0-360 deg
+    bool     track_hdg_decode( uint32_t  track_hdg_encoded, float& track_hdg ) const;
 
-    bool     is_valid_call_sign( const etl::string_view call_sign );
+    bool     is_valid_call_sign( const etl::string_view call_sign ) const;
 
     bool     ownership_or_traffic_report_encode(       etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS alert_status, ADDR_TYPE addr_type, uint32_t participant_address,
                                                                                  uint32_t latitude, uint32_t longitude, uint32_t altitude, uint32_t misc,
                                                                                  NIC nic, NACP nacp, uint32_t horiz_velocity, uint32_t vert_velocity, uint32_t track_hdg,
-                                                                                 EMITTER emitter, const etl::string_view call_sign, EMERGENCY_PRIO emergency_prio_code );
+                                                                                 EMITTER emitter, const etl::string_view call_sign, EMERGENCY_PRIO emergency_prio_code ) const;
     bool     ownership_or_traffic_report_decode( const etl::ivector<uint8_t>& unpacked, bool is_ownership, ALERT_STATUS& alert_status, ADDR_TYPE& addr_type, uint32_t& participant_address,
                                                                                  uint32_t& latitude, uint32_t& longitude, uint32_t& altitude, uint32_t& misc,
                                                                                  NIC& nic, NACP& nacp, uint32_t& horiz_velocity, uint32_t& vert_velocity, uint32_t& track_hdg,
-                                                                                 EMITTER& emitter, etl::istring & call_sign, EMERGENCY_PRIO& emergency_prio_code );
+                                                                                 EMITTER& emitter, etl::istring & call_sign, EMERGENCY_PRIO& emergency_prio_code ) const;
 
     // HEIGHT_ABOVE_TERRAIN
-    static constexpr uint32_t HEIGHT_ENCODED_INVALID = 0x80000;
-    bool     height_encode( uint32_t& height_encoded, float  height );  // height must be -32767 .. 32767; if NaN, height_encoded is set to HEIGHT_ENCODED_INVALID
-    bool     height_decode( uint32_t  height_encoded, float& height );  // height is set to NaN if height_encoded==HEIGHT_ENCODED_INVALID
+    static constexpr uint32_t HEIGHT_ENCODED_INVALID = 0x8000;
+    bool     height_encode( uint32_t& height_encoded, float  height ) const;  // height must be -32767 .. 32767; if NaN, height_encoded is set to HEIGHT_ENCODED_INVALID
+    bool     height_decode( uint32_t  height_encoded, float& height ) const;  // height is set to NaN if height_encoded==HEIGHT_ENCODED_INVALID
 
-    bool     height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  height );
-    bool     height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& height );
+    bool     height_above_terrain_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  height ) const;
+    bool     height_above_terrain_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& height ) const;
 
     // OWNERSHIP_GEOMETRIC_ALTITUDE
-    bool     geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude );  // geo_altitude must be -5*32768 .. 5*32767;
-    bool     geo_altitude_decode( uint32_t  geo_altitude_encoded, float& geo_altitude );
+    bool     geo_altitude_encode( uint32_t& geo_altitude_encoded, float  geo_altitude ) const;  // geo_altitude must be -5*32768 .. 5*32767;
+    bool     geo_altitude_decode( uint32_t  geo_altitude_encoded, float& geo_altitude ) const;
 
     static constexpr uint32_t VERTICAL_FIGURE_OF_MERIT_NOT_AVAIL = 0x7fff;
     static constexpr uint32_t VERTICAL_FIGURE_OF_MERIT_GE_32766  = 0x7ffe;
-    bool     vertical_figure_of_merit_encode( uint32_t& vertical_figure_of_merit_encoded, float  vertical_figure_of_merit ); // must be in meters and >= 0; NaN => NOT_AVAIL
-    bool     vertical_figure_of_merit_decode( uint32_t  vertical_figure_of_merit_encoded, float& vertical_figure_of_merit ); // set to NaN if VERTICAL_FIGURE_OF_MERIT_NOT_AVAIL
+    bool     vertical_figure_of_merit_encode( uint32_t& vertical_figure_of_merit_encoded, float  vertical_figure_of_merit ) const; // must be in meters and >= 0; NaN => NOT_AVAIL
+    bool     vertical_figure_of_merit_decode( uint32_t  vertical_figure_of_merit_encoded, float& vertical_figure_of_merit ) const; // set to NaN if VERTICAL_FIGURE_OF_MERIT_NOT_AVAIL
 
-    bool     ownership_geometric_altitude_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  geo_altitude, bool  vertical_warning, uint32_t  vertical_figure_of_merit );
-    bool     ownership_geometric_altitude_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& geo_altitude, bool& vertical_warning, uint32_t& vertical_figure_of_merit );
+    bool     ownership_geometric_altitude_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  geo_altitude, bool  vertical_warning, uint32_t  vertical_figure_of_merit ) const;
+    bool     ownership_geometric_altitude_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& geo_altitude, bool& vertical_warning, uint32_t& vertical_figure_of_merit ) const;
 
     // FOREFLIGHT ID
-    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_GEO_ALTITUDE_USED_MASK = 0x00000001; // in OWNERSHIP_GEOMETRIC_ALTITUDE message
-    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_WGS84_ELLIPSOID_MASK   = 0x00000002; // per GDL90 spec
-    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_ALLOWED_MASK           = FOREFLIGHT_CAPABILITIES_GEO_ALTITUDE_USED_MASK |
-                                                                               FOREFLIGHT_CAPABILITIES_WGS84_ELLIPSOID_MASK;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_MSL_ALTITUDE_MASK = 0x00000001; // clear = WGS-84 ellipsoid
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_INTERNET_POLICY_MASK = 0x00000006;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_INTERNET_UNRESTRICTED = 0x00000000;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_INTERNET_EXPENSIVE = 0x00000002;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_INTERNET_DISALLOWED = 0x00000004;
+    static constexpr uint32_t FOREFLIGHT_CAPABILITIES_ALLOWED_MASK = FOREFLIGHT_CAPABILITIES_MSL_ALTITUDE_MASK |
+                                                                     FOREFLIGHT_CAPABILITIES_INTERNET_POLICY_MASK;
     static constexpr uint32_t FOREFLIGHT_CAPABILITIES_DISALLOWED_MASK        = ~FOREFLIGHT_CAPABILITIES_ALLOWED_MASK;
 
     static constexpr uint64_t FOREFLIGHT_DEVICE_SERIAL_NUMBER_INVALID = 0xffffffffffffffffULL;
 
-    bool     foreflight_id_encode(       etl::ivector<uint8_t>& unpacked, uint64_t  device_serial_number, const etl::string_view device_name, const etl::string_view device_long_name, uint32_t  capabilities_mask );
-    bool     foreflight_id_decode( const etl::ivector<uint8_t>& unpacked, uint64_t& device_serial_number, etl::istring & device_name, etl::istring & device_long_name, uint32_t& capabilities_mask );
+    bool     foreflight_id_encode(       etl::ivector<uint8_t>& unpacked, uint64_t  device_serial_number, const etl::string_view device_name, const etl::string_view device_long_name, uint32_t  capabilities_mask ) const;
+    bool     foreflight_id_decode( const etl::ivector<uint8_t>& unpacked, uint64_t& device_serial_number, etl::istring & device_name, etl::istring & device_long_name, uint32_t& capabilities_mask ) const;
 
     // FOREFLIGHT AHRS
     static constexpr uint32_t FOREFLIGHT_ROLL_PITCH_INVALID = 0x7fff;
-    bool     foreflight_roll_pitch_encode( uint32_t& roll_pitch_encoded, float  roll_pitch );  // roll/pitch must be -180.0 .. 180.0; NaN => FOREFLIGHT_ROLL_PITCH_INVALID
-    bool     foreflight_roll_pitch_decode( uint32_t  roll_pitch_encoded, float& roll_pitch );  // if FOREFLIGHT_ROLL_PITCH_INVALID, roll_pitch will be set to NaN
+    bool     foreflight_roll_pitch_encode( uint32_t& roll_pitch_encoded, float  roll_pitch ) const;  // roll/pitch must be -180.0 .. 180.0; NaN => FOREFLIGHT_ROLL_PITCH_INVALID
+    bool     foreflight_roll_pitch_decode( uint32_t  roll_pitch_encoded, float& roll_pitch ) const;  // if FOREFLIGHT_ROLL_PITCH_INVALID, roll_pitch will be set to NaN
 
     static constexpr uint32_t FOREFLIGHT_HEADING_INVALID = 0xffff;
-    bool     foreflight_heading_encode( uint32_t& heading_encoded, float  heading, bool  is_magnetic );  // heading must be -360.0 .. 360.0; NaN => FOREFLIGHT_HEADING_INVALID
-    bool     foreflight_heading_decode( uint32_t  heading_encoded, float& heading, bool& is_magnetic );  // if FOREFLIGHT_HEADING_INVALID, heading will be set to NaN
+    bool     foreflight_heading_encode( uint32_t& heading_encoded, float  heading, bool  is_magnetic ) const;  // heading must be -360.0 .. 360.0; NaN => FOREFLIGHT_HEADING_INVALID
+    bool     foreflight_heading_decode( uint32_t  heading_encoded, float& heading, bool& is_magnetic ) const;  // if FOREFLIGHT_HEADING_INVALID, heading will be set to NaN
 
     static constexpr uint32_t FOREFLIGHT_AIRSPEED_INVALID = 0xffff;
 
-    bool     foreflight_ahrs_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  roll, uint32_t  pitch, uint32_t  heading, uint32_t  ias, uint32_t  tas );
-    bool     foreflight_ahrs_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& roll, uint32_t& pitch, uint32_t& heading, uint32_t& ias, uint32_t& tas );
+    bool     foreflight_ahrs_encode(       etl::ivector<uint8_t>& unpacked, uint32_t  roll, uint32_t  pitch, uint32_t  heading, uint32_t  ias, uint32_t  tas ) const;
+    bool     foreflight_ahrs_decode( const etl::ivector<uint8_t>& unpacked, uint32_t& roll, uint32_t& pitch, uint32_t& heading, uint32_t& ias, uint32_t& tas ) const;
 
 
     //           0 = No fix
@@ -326,14 +331,14 @@ public:
                                 uint16_t num978, uint16_t num1090,
                                 uint16_t rate978, uint16_t rate1090,
                                 float cpuTemp,
-                                const etl::span<etl::pair<float, float>> &towers);
+                                const etl::span<etl::pair<float, float>> &towers) const;
 
 private:
     uint16_t crc_table[256];
     void     crc_init( void );                            // computes crc_table once
-    uint16_t crc_compute( const etl::ivector<uint8_t>& unpacked, size_t length );
+    uint16_t crc_compute( const etl::ivector<uint8_t>& unpacked, size_t length ) const;
 
-    inline bool error( )
+    inline bool error( ) const
     {
         if ( abort_on_error ) {
             // std::cout << "ERROR: " << msg << "\n";

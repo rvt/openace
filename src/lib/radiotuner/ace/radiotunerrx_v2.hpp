@@ -127,6 +127,7 @@ private:
 
     // Current zone we are flying in
     Property<CountryRegulations::Zone> currentZone;
+    const GATAS::OwnshipState &ownshipState;
     EventSync eventSync = {};
     TaskHandle_t taskHandle = nullptr;
 
@@ -145,8 +146,8 @@ private:
 public:
     static constexpr const etl::string_view NAME = "RadioTunerRx";
 
-    RadioTunerRx(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
-                                                                        currentZone(CountryRegulations::Zone::ZONE0)
+    RadioTunerRx(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME),
+                                                                        currentZone(CountryRegulations::Zone::ZONE0), ownshipState(ownshipState_)
     {
         configuredDatasources = config.gaTasConfig().protocols;
         currentZone.set(CountryRegulations::Zone::ZONE0);

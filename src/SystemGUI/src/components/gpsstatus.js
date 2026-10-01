@@ -49,6 +49,9 @@ class GpsStatus extends El {
     const groundspeed = formatUnit(this.state.data['groundspeed:kt'], "kt");
     const geoidSeparation = formatUnit(this.state.data['geoidSeparation:ft'], "ft");
     const altitudeGeoid = formatUnit(this.state.data['altitudeGeoid:ft'], "ft");
+    const pressureAltitude = this.state.data['pressureAltitude:ft'] == null
+      ? "N/A"
+      : formatUnit(this.state.data['pressureAltitude:ft'], "ft");
     const track = formatUnit(this.state.data['track:deg'], "deg");
     const receivedGGA = formatUnit(this.state.data['receivedGGA:k'], "k");
     const groundStation = formatUnit(this.state.data['groundStation:b'], "b");
@@ -70,6 +73,7 @@ class GpsStatus extends El {
             ${this._row(html, "Latitude", this.state.data?.latitude)}
             ${this._row(html, "Geoid Separation", geoidSeparation)}
             ${this._row(html, "WGS84 Ellipsoid", altitudeGeoid)}
+            ${this._row(html, "Pressure Altitude", pressureAltitude)}
             ${this._row(html, "Groundspeed", groundspeed)}
             ${this._row(html, "Track", track)}
             ${this._row(html, "pDOP", this.state.data?.pDop + " / " + this.state.data?.dopValue)} 

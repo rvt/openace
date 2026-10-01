@@ -21,7 +21,7 @@
 #include "ace/coreutils.hpp"
 #include "ace/datasourcetimestatstable.hpp"
 
-class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg>
+class Flarm2024 : public BaseModule, public etl::message_router<Flarm2024, GATAS::RadioRxManchesterMsg, GATAS::RadioTxPositionRequestMsg>
 {
     friend class message_router;
     static constexpr uint32_t DEFAULT_IGNORE_DISTANCE = 25000;
@@ -40,13 +40,13 @@ private:
 
     GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
 
-    GATAS::OwnshipPositionInfo ownshipPosition{};
+    const GATAS::OwnshipState &ownshipState;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
     uint32_t distanceIgnore;
 
 public:
     static constexpr const etl::string_view NAME = "Flarm";
-    Flarm2024(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
+    Flarm2024(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_)
     {
         uint32_t di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, NAME, "distanceIgnore");
         distanceIgnore = etl::clamp(di, static_cast<uint32_t>(0), MAX_IGNORE_DISTANCE);
@@ -65,7 +65,6 @@ private:
      * This will release the sender from the task and allow it to continue in a seperate thread
      */
     void on_receive(const GATAS::RadioRxManchesterMsg &msg);
-    void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
 
     void on_receive_unknown(const etl::imessage &msg)

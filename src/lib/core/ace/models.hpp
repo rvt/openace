@@ -14,6 +14,10 @@ namespace CoreUtils
 
 namespace GATAS
 {
+    static constexpr int32_t INVALID_BARO_ALTITUDE = INT32_MIN;
+    static constexpr float INVALID_QNH = -1.0f;
+    static constexpr float INVALID_PRESSSURE_HPA = -1.0f;
+
     /*
      * Result after the POST_CONSTRUCT call to indicate the status of the module, eg what happened and if the module is in a good state to run
      */
@@ -206,13 +210,13 @@ namespace GATAS
         ADSLO_HDR = 2,
         FANET = 3,
         OGN = 4,
-        _RADIO = 5, // ANything beflore Radio can only be received over hardware
+        _RADIO = 5,          // ANything beflore Radio can only be received over hardware
         _TRANSPROTOCOLS = 5, // Indicate maximum RADIO that can be received over low power (868MHZ etc..) used to limit array sizes
         ADSB = 5,
         MLAT = 6,
-        ADSLFLARM = 253,     // Combination of ADSL/FLARM, not an acutal protocol but needed for RX of multiple protocols
-        ADSLOGN = 254,       // Combination of ADSL/OGN, not an acutal protocol but needed for RX of multiple protocols
-        NONE = 255           // Note: Never use this! Unly used for stringToEnum(..)
+        ADSLFLARM = 253, // Combination of ADSL/FLARM, not an acutal protocol but needed for RX of multiple protocols
+        ADSLOGN = 254,   // Combination of ADSL/OGN, not an acutal protocol but needed for RX of multiple protocols
+        NONE = 255       // Note: Never use this! Unly used for stringToEnum(..)
     };
 
     // Get a string representation of a datasource
@@ -254,8 +258,6 @@ namespace GATAS
             return (mode == DataSourceMode::TX || mode == DataSourceMode::RX_TX);
         }
     };
-
-
 
     namespace Config
     {
@@ -324,9 +326,9 @@ namespace GATAS
     {
         enum enum_type : uint8_t
         {
-            NC=0,
-            AP=1,
-            CLIENT=2,
+            NC = 0,
+            AP = 1,
+            CLIENT = 2,
         };
 
         ETL_DECLARE_ENUM_TYPE(WifiMode, uint8_t)
@@ -336,38 +338,39 @@ namespace GATAS
         ETL_END_ENUM_TYPE
     };
 
-    struct OwnshipMinimalPositionInfo
-    {
-        AircraftAddress icaoAddress = 0;
-        float lat = 0;
-        float lon = 0;
-        int32_t ellipseHeight = 0;
-    };
+    // struct OwnshipMinimalPositionInfo
+    // {
+    //     AircraftAddress icaoAddress = 0;
+    //     float lat = 0;
+    //     float lon = 0;
+    //     int32_t ellipseHeight = 0;
+    // };
 
     struct OwnshipPositionInfo
     {
         uint32_t timestamp; // Timestamp when the position was received
         float lat;
         float lon;
-        int32_t ellipseHeight;           // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
-        float verticalSpeed;             // in m/s
-        float groundSpeed;               // in m/s
-        float track;                     // 0..359
-        float hTurnRate;                 // deg/s Turn rate in the horizontal plane
-//        float velocityNorth;             // North velocity in m/s
-//        float velocityEast;              // East velocity in m/s
-        int16_t geoidSeparation;         // The distance from the surface of an ellipsoid to the surface of the geoid.
-        bool airborne;                   // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
-        Config::Conspicuity conspicuity; // Configuration for this aircraft, used to send out the correct data
+        int32_t ellipseHeight;                   // Height above the Ellipsoid (WGS84) in meters. For aircraft where altitude is based from BARO, this is an estimate
+        float verticalSpeed;                     // in m/s
+        float groundSpeed;                       // in m/s
+        float track;                             // 0..359
+        float hTurnRate;                         // deg/s Turn rate in the horizontal plane
+                                                 //        float velocityNorth;             // North velocity in m/s
+                                                 //        float velocityEast;              // East velocity in m/s
+        int16_t geoidSeparation;                 // The distance from the surface of an ellipsoid to the surface of the geoid.
+        bool airborne;                           // Is the aircraft airborne, can this be taken from GS? It can be rare under normal situations that GS is low, even though we are flying (large headwind??)
+        Config::Conspicuity conspicuity;         // Configuration for this aircraft, used to send out the correct data
+        int32_t baroAlt = INVALID_BARO_ALTITUDE; // Pressure altitude in meters, when available
         int32_t heightMsl() const
         {
             return ellipseHeight - geoidSeparation;
         }
 
-        const OwnshipMinimalPositionInfo assignTo() const
-        {
-            return OwnshipMinimalPositionInfo{conspicuity.icaoAddress, lat, lon, ellipseHeight};
-        }
+        // const OwnshipMinimalPositionInfo assignTo() const
+        // {
+        //     return OwnshipMinimalPositionInfo{conspicuity.icaoAddress, lat, lon, ellipseHeight};
+        // }
     };
 
     /**
@@ -398,19 +401,20 @@ namespace GATAS
         // These can be used by received to understand where the target is relative to ownship
         uint32_t distanceFromOwn; // Distance to ownship in meters,
         //        int16_t bearingFromOwn;   // Bearing to ownship in degrees, currently only used in AntennaRadiationPattern?
+        int32_t pressureAlt = INVALID_BARO_ALTITUDE; // Pressure altitude in meters, when available
 
         CoreUtils::distanceRelNorthRelEastInt relativeFromOwn(float ownshipLat, float ownshipLon) const;
-        CoreUtils::distanceRelNorthRelEastInt relativeFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
+//        CoreUtils::distanceRelNorthRelEastInt relativeFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
         CoreUtils::distanceRelNorthRelEastInt relativeFromOwn(const OwnshipPositionInfo &ownship) const;
         int32_t relNorthFromOwn(float ownshipLat, float ownshipLon) const;
-        int32_t relNorthFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
+//        int32_t relNorthFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
         int32_t relNorthFromOwn(const OwnshipPositionInfo &ownship) const;
         int32_t relEastFromOwn(float ownshipLat, float ownshipLon) const;
-        int32_t relEastFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
+//        int32_t relEastFromOwn(const OwnshipMinimalPositionInfo &ownship) const;
         int32_t relEastFromOwn(const OwnshipPositionInfo &ownship) const;
 
-        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t track_, float hTurnRate_, uint32_t distanceFromOwn_, int16_t squawk_ = -1 /*, int16_t bearingFromOwn_*/)
-            : timestamp(timestamp_), callSign(callSign_), squawk(squawk_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), track(track_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_) // , bearingFromOwn(bearingFromOwn_)
+        AircraftPositionInfo(uint32_t timestamp_, GATAS::CallSign callSign_, AircraftAddress address_, AddressType addressType_, DataSource dataSource_, AircraftCategory aircraftType_, bool stealth_, bool noTrack_, bool airborne_, float lat_, float lon_, int32_t ellipseHeight_, float verticalSpeed_, float groundSpeed_, int16_t track_, float hTurnRate_, uint32_t distanceFromOwn_, int16_t squawk_ = -1, int32_t pressureAlt_ = INVALID_BARO_ALTITUDE /*, int16_t bearingFromOwn_*/)
+            : timestamp(timestamp_), callSign(callSign_), squawk(squawk_), address(address_), addressType(addressType_), dataSource(dataSource_), aircraftType(aircraftType_), stealth(stealth_), noTrack(noTrack_), airborne(airborne_), lat(lat_), lon(lon_), ellipseHeight(ellipseHeight_), verticalSpeed(verticalSpeed_), groundSpeed(groundSpeed_), track(track_), hTurnRate(hTurnRate_), distanceFromOwn(distanceFromOwn_), pressureAlt(pressureAlt_) // , bearingFromOwn(bearingFromOwn_)
         {
         }
         // Default constructor
@@ -596,10 +600,24 @@ namespace GATAS
         float vDop = 100.f;         // From GSA Sentence
     };
 
+    // COBS ownship-pressure source values, matching the server.
+    enum class PressureSource : uint8_t
+    {
+        Unavailable = 0,
+        Calculated = 1,
+        PressureSensor = 2,
+        PRESSURE_SOURCE_NO_ITEMS = 3
+    };
+
     struct BarometricPressure
     {
-        float pressurehPa;    // Preasure in hPa (hectopascal)
-        uint32_t usSinceBoot; // Time since boot
+        float pressurehPa = GATAS::INVALID_PRESSSURE_HPA; // Ambient pressure in hPa; INVALID_PRESSSURE_HPA when unavailable
+        PressureSource source = PressureSource::Unavailable;
+
+        BarometricPressure(float pressurehPa_ = GATAS::INVALID_PRESSSURE_HPA, PressureSource source_ = PressureSource::Unavailable)
+            : pressurehPa(pressurehPa_), source(source_)
+        {
+        }
     };
 
     /**

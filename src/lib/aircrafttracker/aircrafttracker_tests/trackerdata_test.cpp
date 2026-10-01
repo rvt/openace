@@ -1,6 +1,7 @@
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #define private public
 
@@ -26,6 +27,214 @@ public:
     uint8_t callBacks = 0;
     void onNext(const GATAS::AircraftPositionInfo &) { nextCalled = true; callBacks += 1; }
 };
+
+class PositionCollector
+{
+public:
+    etl::vector<GATAS::AircraftPositionInfo, 32> positions;
+
+    void onNext(const GATAS::AircraftPositionInfo &position)
+    {
+        positions.push_back(position);
+    }
+};
+
+TEST_CASE("TrackerData filters expired output before maintenance including clock wrap", "[expiry]")
+{
+    const uint32_t start = GENERATE(1'000'000U, UINT32_MAX - 5'000'000U);
+    const uint32_t age = GENERATE(9'999'999U, 10'000'000U, 10'000'001U);
+    const bool predictionEnabled = GENERATE(false, true);
+    CAPTURE(start, age, predictionEnabled);
+    time_us_Value = start;
+    TrackerData<32, 10, 6> tracker;
+    tracker.pathPrediction(predictionEnabled);
+    const auto ownship = makeOwnship(52.0f, 4.0f);
+
+    GATAS::AircraftPositionInfo position;
+    position.address = 42;
+    position.timestamp = start;
+    position.lat = ownship.lat;
+    position.lon = ownship.lon;
+    position.distanceFromOwn = 0;
+    position.groundSpeed = 50.0f;
+    position.track = 90;
+    REQUIRE(tracker.insert(position));
+
+    time_us_Value = static_cast<uint64_t>(start) + age;
+    const size_t expectedCount = age < 10'000'000U ? 1 : 0;
+    PositionCollector collector;
+    auto callback = etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<PositionCollector, &PositionCollector::onNext>(collector);
+    tracker.sendScheduled(callback, ownship);
+    auto uplink = tracker.adslUplinkTrigger(ownship);
+    REQUIRE(collector.positions.size() == expectedCount);
+    REQUIRE(uplink.size() == expectedCount);
+    if (expectedCount != 0)
+    {
+        const uint32_t expectedTimestamp = predictionEnabled ? static_cast<uint32_t>(time_us_Value) : start;
+        REQUIRE(collector.positions[0].timestamp == expectedTimestamp);
+        REQUIRE(uplink[0].timestamp == expectedTimestamp);
+    }
+
+    // Filtering must leave storage reclamation to the existing cleanup paths.
+    REQUIRE(tracker.size() == 1);
+    tracker.maintenance();
+    REQUIRE(tracker.size() == expectedCount);
+}
+
+TEST_CASE("Predicted output expires by measurement age and resumes after a fresh update", "[expiry]")
+{
+    time_us_Value = 0;
+    TrackerData<32, 10, 6> tracker;
+    tracker.pathPrediction(true);
+    const auto ownship = makeOwnship(52.0f, 4.0f);
+    GATAS::AircraftPositionInfo position;
+    position.address = 42;
+    position.lat = ownship.lat;
+    position.lon = ownship.lon;
+    position.distanceFromOwn = 0;
+    position.groundSpeed = 50.0f;
+    position.track = 90;
+    REQUIRE(tracker.insert(position));
+
+    PositionCollector collector;
+    auto callback = etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<PositionCollector, &PositionCollector::onNext>(collector);
+    time_us_Value = 9'000'000;
+    tracker.sendScheduled(callback, ownship);
+    REQUIRE(collector.positions.size() == 1);
+    REQUIRE(collector.positions[0].timestamp == 9'000'000);
+    REQUIRE(static_cast<float>(collector.positions[0].distanceFromOwn) == Catch::Approx(450.0f).margin(2.0f));
+    auto uplink = tracker.adslUplinkTrigger(ownship);
+    REQUIRE(uplink.size() == 1);
+    REQUIRE(uplink[0].timestamp == 9'000'000);
+
+    time_us_Value = 10'000'000;
+    collector.positions.clear();
+    tracker.sendScheduled(callback, ownship);
+    REQUIRE(collector.positions.empty());
+    REQUIRE(tracker.adslUplinkTrigger(ownship).empty());
+    REQUIRE(tracker.size() == 1);
+
+    time_us_Value = 11'000'000;
+    position.timestamp = 11'000'000;
+    position.lon = 4.008f;
+    position.distanceFromOwn = 550;
+    REQUIRE(tracker.insert(position));
+    tracker.sendScheduled(callback, ownship);
+    REQUIRE(collector.positions.size() == 1);
+    REQUIRE(collector.positions[0].timestamp == position.timestamp);
+    REQUIRE(collector.positions[0].lon == position.lon);
+    uplink = tracker.adslUplinkTrigger(ownship);
+    REQUIRE(uplink.size() == 1);
+    REQUIRE(uplink[0].timestamp == position.timestamp);
+}
+
+TEST_CASE("Expired tracks do not consume scheduled output slots even without predictor history", "[expiry]")
+{
+    time_us_Value = 0;
+    TrackerData<32, 10, 1> tracker;
+    tracker.pathPrediction(true);
+    // Ten expired tracks precede the live tracks in this map's iteration order.
+    for (uint32_t address = 0; address < 10; ++address)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = address;
+        position.distanceFromOwn = 100;
+        REQUIRE(tracker.insert(position));
+    }
+    time_us_Value = 9'000'000;
+    for (uint32_t address = 10; address < 12; ++address)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = address;
+        position.timestamp = 9'000'000;
+        position.distanceFromOwn = 1000;
+        REQUIRE(tracker.insert(position));
+    }
+
+    time_us_Value = 10'000'000;
+    PositionCollector collector;
+    auto callback = etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<PositionCollector, &PositionCollector::onNext>(collector);
+    tracker.sendScheduled(callback, makeOwnship());
+    REQUIRE(collector.positions.size() == 2);
+    REQUIRE(collector.positions[0].address != collector.positions[1].address);
+    for (const auto &position : collector.positions)
+    {
+        REQUIRE(position.address >= 10);
+        // Both live tracks lack a predictor slot, so they retain their measurement time.
+        REQUIRE(position.timestamp == 9'000'000);
+    }
+    REQUIRE(tracker.size() == 12);
+}
+
+TEST_CASE("ADS-L nearest selection skips expired tracks when more than ten are stored", "[expiry]")
+{
+    const uint32_t liveCount = GENERATE(0U, 1U, 9U, 10U, 11U, 20U);
+    CAPTURE(liveCount);
+    time_us_Value = 0;
+    TrackerData<32, 10, 6> tracker;
+    // Interleave close expired tracks with live tracks in the map's iteration order.
+    for (uint32_t i = 0; i < 12; ++i)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = 2 * i;
+        position.distanceFromOwn = 1;
+        REQUIRE(tracker.insert(position));
+    }
+    time_us_Value = 9'000'000;
+    for (uint32_t i = 0; i < liveCount; ++i)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = 2 * i + 1;
+        position.timestamp = 9'000'000;
+        position.distanceFromOwn = 1000 + 100 * i;
+        REQUIRE(tracker.insert(position));
+    }
+
+    time_us_Value = 10'000'000;
+    auto uplink = tracker.adslUplinkTrigger(makeOwnship());
+    const uint32_t expectedCount = liveCount < 10 ? liveCount : 10;
+    REQUIRE(uplink.size() == expectedCount);
+    // Verify every expected address, independent of heap output order.
+    for (uint32_t i = 0; i < expectedCount; ++i)
+    {
+        uint32_t occurrences = 0;
+        for (const auto &position : uplink)
+        {
+            if (position.address == 2 * i + 1)
+            {
+                ++occurrences;
+            }
+        }
+        REQUIRE(occurrences == 1);
+    }
+    REQUIRE(tracker.size() == 12 + liveCount);
+}
+
+TEST_CASE("Full storage still reclaims expired tracks on insertion", "[expiry]")
+{
+    time_us_Value = 0;
+    TrackerData<32, 10, 6> tracker;
+    for (uint32_t address = 0; address < 32; ++address)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = address;
+        position.distanceFromOwn = 1000;
+        REQUIRE(tracker.insert(position));
+    }
+    REQUIRE(tracker.full());
+
+    time_us_Value = 10'000'000;
+    GATAS::AircraftPositionInfo position;
+    position.address = 100;
+    position.timestamp = 10'000'000;
+    position.distanceFromOwn = 1000;
+    REQUIRE(tracker.insert(position));
+    REQUIRE(tracker.size() == 1);
+    REQUIRE(tracker.radius() == 75000);
+    auto uplink = tracker.adslUplinkTrigger(makeOwnship());
+    REQUIRE(uplink.size() == 1);
+    REQUIRE(uplink[0].address == 100);
+}
 
 TEST_CASE("TrackerData ", "[single-file]")
 {
@@ -159,6 +368,7 @@ TEST_CASE("TrackerData Insert within adaptiveRadius", "[single-file]")
 
 TEST_CASE("TrackerData Insert many and re-calculate adaptiveRadius ", "[single-file]")
 {
+    time_us_Value = 0;
     TrackerData<100, 2> trackedAircraft;
 
     int i = 0;
@@ -171,16 +381,16 @@ TEST_CASE("TrackerData Insert many and re-calculate adaptiveRadius ", "[single-f
     }
     REQUIRE(trackedAircraft.size() == 100);
 
-    SECTION("One more should recalculate radius and must have free room")
+    SECTION("A distant newcomer is rejected after cleanup reduces the radius")
     {
         REQUIRE(trackedAircraft.radius() == 75000);
         GATAS::AircraftPositionInfo aircraftPosition;
         aircraftPosition.distanceFromOwn = 10000 + 100 * i;
         aircraftPosition.address = i;
-        REQUIRE(trackedAircraft.insert(aircraftPosition) == true);
-        REQUIRE(trackedAircraft.size() < 100); // Just be smaller than 100 really
-        REQUIRE(trackedAircraft.size() > 85);  // But just not to much should have been removed
-        REQUIRE(trackedAircraft.radius() == 18500);
+        REQUIRE_FALSE(trackedAircraft.insert(aircraftPosition));
+        REQUIRE(trackedAircraft.size() == 90);
+        // Ten farthest tracks are removed; the last removed distance is the cutoff.
+        REQUIRE(trackedAircraft.radius() == 19000);
     }
 
     SECTION("Must recalculate adaptive radius when planes added within")
@@ -208,6 +418,147 @@ TEST_CASE("TrackerData Insert many and re-calculate adaptiveRadius ", "[single-f
             REQUIRE(trackedAircraft.radius() == trackedAircraft.ADAPTIVE_RADIUS_MAX);
         }
     }
+}
+
+TEST_CASE("Newcomer admission uses the radius after full-storage cleanup", "[capacity]")
+{
+    const uint32_t candidateDistance = GENERATE(28'999U, 29'000U, 29'001U, 70'000U);
+    const bool storedTracksExpired = GENERATE(false, true);
+    CAPTURE(candidateDistance, storedTracksExpired);
+    time_us_Value = 0;
+    TrackerData<32, 10, 6> tracker;
+    for (uint32_t address = 0; address < 32; ++address)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = address;
+        position.distanceFromOwn = (address + 1) * 1000;
+        REQUIRE(tracker.insert(position));
+    }
+    REQUIRE(tracker.full());
+
+    time_us_Value = storedTracksExpired ? 10'000'000 : 1'000'000;
+    GATAS::AircraftPositionInfo newcomer;
+    newcomer.address = 100;
+    newcomer.timestamp = static_cast<uint32_t>(time_us_Value);
+    newcomer.distanceFromOwn = candidateDistance;
+    const bool expectedAccepted = storedTracksExpired || candidateDistance <= 29'000;
+    REQUIRE(tracker.insert(newcomer) == expectedAccepted);
+    REQUIRE(tracker.radius() == (storedTracksExpired ? 75'000 : 29'000));
+    REQUIRE(tracker.size() == (storedTracksExpired ? 0 : 28) + (expectedAccepted ? 1 : 0));
+
+    uint32_t candidateOccurrences = 0;
+    tracker.forEachPosition([&](const GATAS::AircraftPositionInfo &position)
+    {
+        REQUIRE(position.distanceFromOwn <= tracker.radius());
+        if (position.address == newcomer.address)
+        {
+            ++candidateOccurrences;
+        }
+    });
+    REQUIRE(candidateOccurrences == (expectedAccepted ? 1 : 0));
+    if (!expectedAccepted)
+    {
+        REQUIRE_FALSE(tracker.pathPredictor.contains(newcomer.address));
+        // Cleanup still leaves space for the next, nearer arrival.
+        newcomer.distanceFromOwn = 500;
+        REQUIRE(tracker.insert(newcomer));
+        REQUIRE(tracker.size() == 29);
+    }
+}
+
+TEST_CASE("Capacity cleanup retains clustered aircraft and their predictor state", "[capacity]")
+{
+    const uint32_t baseDistance = GENERATE(100U, 10'000U);
+    const uint32_t spacing = GENERATE(0U, 1U);
+    const bool reverseInsertion = GENERATE(false, true);
+    CAPTURE(baseDistance, spacing, reverseInsertion);
+    time_us_Value = 0;
+    TrackerData<32, 10, 32> tracker;
+    for (uint32_t i = 0; i < 32; ++i)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = reverseInsertion ? 31 - i : i;
+        position.distanceFromOwn = baseDistance + spacing * position.address;
+        REQUIRE(tracker.insert(position));
+    }
+
+    GATAS::AircraftPositionInfo newcomer;
+    newcomer.address = 100;
+    newcomer.distanceFromOwn = 0;
+    REQUIRE(tracker.insert(newcomer));
+    REQUIRE(tracker.size() == 29);
+    REQUIRE(tracker.pathPredictor.size() == 29);
+    for (uint32_t address = 0; address < 32; ++address)
+    {
+        uint32_t occurrences = 0;
+        tracker.forEachPosition([&](const GATAS::AircraftPositionInfo &position)
+        {
+            if (position.address == address)
+            {
+                ++occurrences;
+            }
+        });
+        REQUIRE(occurrences == (address < 28 ? 1 : 0));
+        REQUIRE(tracker.pathPredictor.contains(address) == (address < 28));
+    }
+    REQUIRE(tracker.pathPredictor.contains(newcomer.address));
+
+    // A retained aircraft must not be removed on its next unchanged-distance update.
+    time_us_Value = 1;
+    for (uint32_t address = 0; address < 28; ++address)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = address;
+        position.timestamp = 1;
+        position.distanceFromOwn = baseDistance + spacing * address;
+        REQUIRE(position.distanceFromOwn <= tracker.radius());
+        REQUIRE(tracker.insert(position));
+    }
+    REQUIRE(tracker.size() == 29);
+}
+
+TEST_CASE("Repeated capacity pressure removes only four tracks per cleanup", "[capacity]")
+{
+    time_us_Value = 0;
+    TrackerData<32, 10, 6> tracker;
+    for (uint32_t address = 0; address < 64; ++address)
+    {
+        const auto previousSize = tracker.size();
+        GATAS::AircraftPositionInfo position;
+        position.address = address;
+        position.distanceFromOwn = 100;
+        REQUIRE(tracker.insert(position));
+        REQUIRE(tracker.size() == (previousSize == 32 ? 29 : previousSize + 1));
+        REQUIRE(tracker.radius() >= 100);
+    }
+
+    time_us_Value = 10'000'000;
+    tracker.maintenance();
+    REQUIRE(tracker.size() == 0);
+    REQUIRE(tracker.radius() == 1100);
+}
+
+TEST_CASE("Small tracker capacity cleanup still leaves room for a new aircraft", "[capacity]")
+{
+    time_us_Value = 0;
+    TrackerData<4, 2> tracker;
+    for (uint32_t address = 0; address < 4; ++address)
+    {
+        GATAS::AircraftPositionInfo position;
+        position.address = address;
+        position.distanceFromOwn = 100;
+        REQUIRE(tracker.insert(position));
+    }
+    GATAS::AircraftPositionInfo newcomer;
+    newcomer.address = 10;
+    newcomer.distanceFromOwn = 0;
+    REQUIRE(tracker.insert(newcomer));
+    REQUIRE(tracker.size() == 4);
+    REQUIRE_FALSE(tracker.pathPredictor.contains(3));
+    REQUIRE(tracker.pathPredictor.contains(0));
+    REQUIRE(tracker.pathPredictor.contains(1));
+    REQUIRE(tracker.pathPredictor.contains(2));
+    REQUIRE(tracker.pathPredictor.contains(10));
 }
 
 TEST_CASE("sendScheduled distributes 4 aircraft across 2 timeslices", "[single-file]")
@@ -249,6 +600,77 @@ TEST_CASE("sendScheduled distributes 4 aircraft across 2 timeslices", "[single-f
     time_us_Value = time_us_Value + 500'000;
     trackedAircraft.sendScheduled(delegate, ownship);
     REQUIRE(testHandler.callBacks == 6);
+}
+
+TEST_CASE("Position updates preserve scheduled output for every aircraft", "[scheduling]")
+{
+    const uint32_t start = GENERATE(1'000'000U, UINT32_MAX - 500'000U);
+    const uint32_t updateEveryTicks = GENERATE(1U, 10U); // 10 Hz and normal 1 Hz input.
+    const bool updateAllAircraft = GENERATE(false, true);
+    CAPTURE(start, updateEveryTicks, updateAllAircraft);
+    time_us_Value = start;
+    TrackerData<32, 10, 6> tracker;
+    const auto ownship = makeOwnship();
+    etl::array<GATAS::AircraftPositionInfo, 10> latest;
+    etl::array<uint32_t, 10> counts = {};
+    etl::array<uint32_t, 10> lastSentTime = {};
+    for (uint32_t address = 0; address < latest.size(); ++address)
+    {
+        latest[address].address = address;
+        latest[address].timestamp = start;
+        latest[address].distanceFromOwn = 1000;
+        latest[address].ellipseHeight = 1000;
+        REQUIRE(tracker.insert(latest[address]));
+    }
+
+    PositionCollector collector;
+    auto callback = etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<PositionCollector, &PositionCollector::onNext>(collector);
+    uint32_t frequentAddress = 0;
+    for (uint32_t tick = 0; tick < 30; ++tick)
+    {
+        time_us_Value = static_cast<uint64_t>(start) + tick * 100'000U;
+        if (tick != 0 && tick % updateEveryTicks == 0)
+        {
+            for (auto &position : latest)
+            {
+                if (updateAllAircraft || position.address == frequentAddress)
+                {
+                    position.timestamp = static_cast<uint32_t>(time_us_Value);
+                    position.ellipseHeight = 1000 + tick;
+                    REQUIRE(tracker.insert(position));
+                }
+            }
+        }
+
+        collector.positions.clear();
+        tracker.sendScheduled(callback, ownship);
+        // Ten tracks / ten timeslices permits exactly one output per round.
+        REQUIRE(collector.positions.size() == 1);
+        const auto &output = collector.positions[0];
+        REQUIRE(output.address < latest.size());
+        if (tick == 0)
+        {
+            // Exercise whichever aircraft is first, without assuming map order.
+            frequentAddress = output.address;
+        }
+        REQUIRE(output.timestamp == latest[output.address].timestamp);
+        REQUIRE(output.ellipseHeight == latest[output.address].ellipseHeight);
+        if (counts[output.address] != 0)
+        {
+            const uint32_t interval = static_cast<uint32_t>(time_us_Value) - lastSentTime[output.address];
+            REQUIRE(interval == 1'000'000);
+        }
+        lastSentTime[output.address] = static_cast<uint32_t>(time_us_Value);
+        ++counts[output.address];
+
+        if ((tick + 1) % 10 == 0)
+        {
+            for (const auto count : counts)
+            {
+                REQUIRE(count == (tick + 1) / 10);
+            }
+        }
+    }
 }
 
 TEST_CASE("Should update data", "[single-file]")
@@ -531,6 +953,65 @@ TEST_CASE("TrackerData rejects out-of-order position updates", "[single-file]")
     REQUIRE(stored->second.sendTime == 2'000'000);
 }
 
+TEST_CASE("Radio priority is checked before out-of-range deletion", "[radio-priority]")
+{
+    const uint32_t start = GENERATE(2'000'000U, UINT32_MAX - 2'000'000U);
+    const uint32_t age = GENERATE(3'999'999U, 4'000'000U, 4'000'001U);
+    const auto source = GENERATE(GATAS::DataSource::ADSB, GATAS::DataSource::MLAT, GATAS::DataSource::OGN);
+    const int sampleOrder = GENERATE(-1, 0, 1);
+    CAPTURE(start, age, source, sampleOrder);
+    time_us_Value = start;
+    TrackerData<32, 10, 6> tracker;
+    tracker.pathPrediction(true);
+
+    GATAS::AircraftPositionInfo radio;
+    radio.address = 42;
+    radio.timestamp = start;
+    radio.distanceFromOwn = 74'990;
+    radio.dataSource = GATAS::DataSource::OGN;
+    radio.lat = 52.0f;
+    radio.lon = 4.0f;
+    radio.groundSpeed = 50.0f;
+    radio.hTurnRate = 2.0f;
+    REQUIRE(tracker.insert(radio));
+
+    // Put the track on its next heartbeat deadline before testing rejection.
+    TestHandler handler;
+    auto callback = etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<TestHandler, &TestHandler::onNext>(handler);
+    tracker.sendScheduled(callback, makeOwnship());
+    REQUIRE(handler.callBacks == 1);
+    const auto deadline = tracker.trackedAircraft.find(radio.address)->second.sendTime;
+
+    time_us_Value = static_cast<uint64_t>(start) + age;
+    const auto predictionBefore = tracker.pathPredictor.extrapolatedPos(static_cast<uint32_t>(time_us_Value), radio);
+    auto incoming = radio;
+    incoming.timestamp = sampleOrder < 0 ? start - 1 : (sampleOrder == 0 ? start : static_cast<uint32_t>(time_us_Value));
+    incoming.distanceFromOwn = 75'010;
+    incoming.dataSource = source;
+    incoming.hTurnRate = -10.0f;
+    REQUIRE_FALSE(tracker.insert(incoming));
+
+    const bool shouldRetain = sampleOrder < 0 || (source != GATAS::DataSource::OGN && age < 4'000'000U);
+    REQUIRE(tracker.size() == (shouldRetain ? 1 : 0));
+    REQUIRE(tracker.pathPredictor.contains(radio.address) == shouldRetain);
+    if (shouldRetain)
+    {
+        auto stored = tracker.trackedAircraft.find(radio.address);
+        REQUIRE(stored != tracker.trackedAircraft.end());
+        REQUIRE(stored->second.sendTime == deadline);
+        REQUIRE(stored->second.position.timestamp == radio.timestamp);
+        REQUIRE(stored->second.position.dataSource == radio.dataSource);
+        REQUIRE(stored->second.position.distanceFromOwn == radio.distanceFromOwn);
+        REQUIRE(stored->second.position.lat == radio.lat);
+        REQUIRE(stored->second.position.lon == radio.lon);
+        const auto predictionAfter = tracker.pathPredictor.extrapolatedPos(static_cast<uint32_t>(time_us_Value), radio);
+        REQUIRE(predictionAfter.lat == predictionBefore.lat);
+        REQUIRE(predictionAfter.lon == predictionBefore.lon);
+        REQUIRE(predictionAfter.track == predictionBefore.track);
+        REQUIRE(predictionAfter.hTurnRate == predictionBefore.hTurnRate);
+    }
+}
+
 TEST_CASE("Radio priority: fresh RADIO, MLAT incoming - should NOT update", "[single-file]")
 {
     TrackerData<100, 4> trackedAircraft;
@@ -649,6 +1130,7 @@ TEST_CASE("Radio priority: fresh RADIO, ADSB incoming - should NOT update", "[si
 
 TEST_CASE("Data source prefix preserves fixed callsign length", "[single-file]")
 {
+    time_us_Value = 0;
     TrackerData<100, 4> trackedAircraft;
     trackedAircraft.prefixEnabled(true);
     const auto ownship = makeOwnship();
@@ -663,17 +1145,22 @@ TEST_CASE("Data source prefix preserves fixed callsign length", "[single-file]")
     class VerifyPrefixLengthHandler
     {
     public:
+        uint8_t callCount = 0;
+
         void onNext(const GATAS::AircraftPositionInfo &position)
         {
+            ++callCount;
             REQUIRE(position.callSign == "flPH-ABCDEFG");
         }
     } handler;
 
     trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifyPrefixLengthHandler, &VerifyPrefixLengthHandler::onNext>(handler), ownship);
+    REQUIRE(handler.callCount == 1);
 }
 
 TEST_CASE("Data source prefix does create callsigns for empty values", "[single-file]")
 {
+    time_us_Value = 0;
     TrackerData<100, 4> trackedAircraft;
     trackedAircraft.prefixEnabled(true);
     const auto ownship = makeOwnship();
@@ -687,13 +1174,17 @@ TEST_CASE("Data source prefix does create callsigns for empty values", "[single-
     class VerifyEmptyHandler
     {
     public:
+        uint8_t callCount = 0;
+
         void onNext(const GATAS::AircraftPositionInfo &position)
         {
+            ++callCount;
             REQUIRE(position.callSign == "ab");
         }
     } handler;
 
     trackedAircraft.sendScheduled(etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<VerifyEmptyHandler, &VerifyEmptyHandler::onNext>(handler), ownship);
+    REQUIRE(handler.callCount == 1);
 }
 
 TEST_CASE("Squawk display replaces callsign when squawk is known", "[single-file]")

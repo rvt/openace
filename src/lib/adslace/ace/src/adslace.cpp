@@ -140,11 +140,6 @@ bool ADSLAce::adsl_sendFrame(const void *ctx, const uint8_t *data, size_t length
     return true;
 }
 
-void ADSLAce::on_receive(const GATAS::OwnshipPositionMsg &msg)
-{
-    ownshipPosition = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), msg.position);
-}
-
 void ADSLAce::on_receive(const GATAS::GpsStatsMsg &msg)
 {
     gpsStats = msg.gpsStats;
@@ -160,7 +155,7 @@ void ADSLAce::on_receive(const GATAS::RadioTxPositionRequestMsg &msg)
         return;
     }
 
-    auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+    auto ownship = ownshipState.location.load();
     auto tp = buildOwnshipTrafficPayload(ownship);
 
     Tx_Struct *txParams;
@@ -208,7 +203,7 @@ void ADSLAce::on_receive(const GATAS::EgressAircraftPositionsMsg &msg)
 // Called when a payload/header/status is received by the protocol layer
 void ADSLAce::adsl_receivedTraffic(const ADSL::Header &header, const ADSL::TrafficPayload &tp)
 {
-    auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+    auto ownship = ownshipState.location.load();
     statistics.receivedAircraftPositions += 1;
 
     // Own Address
@@ -264,7 +259,8 @@ void ADSLAce::adsl_receivedStatus(const ADSL::Header &header, const ADSL::Status
 void ADSLAce::adsl_receivedUplinkTraffic(const ADSL::Header &header, etl::span<const ADSL::UplinkEntry> entries)
 {
     (void)header;
-    auto ownship = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+    auto ownship = ownshipState.location.load();
+
     etl::vector<GATAS::AircraftPositionInfo, ADSL::Protocol::MAX_UPLINK_TARGETS> positions;
     statistics.uplinksPacketsReceived += 1;
     for (const auto &entry : entries)

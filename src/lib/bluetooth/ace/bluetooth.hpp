@@ -230,7 +230,6 @@ private:
     btstack_packet_callback_registration_t smEventCallback;
     btstack_timer_source_t heartbeat;
     uint8_t spp_service_buffer[100]; // SPP (Serial Port Profile) Showed as length to 91
-    GATAS::OwnshipMinimalPositionInfo ownshipPosition;
     GATAS::SsidOrPasswdStr localName;
 
     SemaphoreHandle_t bufferMutex;

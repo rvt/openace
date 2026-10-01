@@ -3,6 +3,7 @@
 #include "constants.hpp"
 #include "basemodule.hpp"
 #include "models.hpp"
+#include "ownshipstate.hpp"
 #include "poolallocator.hpp"
 #include "constants.hpp"
 
@@ -104,8 +105,6 @@ namespace GATAS
      */
     struct OwnshipPositionMsg : public etl::message<6>
     {
-        const OwnshipPositionInfo position;
-        OwnshipPositionMsg(const OwnshipPositionInfo &position_) : position(position_) {}
     };
 
     struct UtcTimeMsg : public etl::message<12>
@@ -129,9 +128,6 @@ namespace GATAS
 
     struct BarometricPressureMsg : public etl::message<15>
     {
-        GATAS::BarometricPressure barometricPressure;
-        BarometricPressureMsg(const GATAS::BarometricPressure &barometricPressure_) : barometricPressure(barometricPressure_) {}
-        BarometricPressureMsg() : barometricPressure{} {}
     };
 
     struct RadioRxMsgBase

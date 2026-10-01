@@ -13,7 +13,7 @@
 
 #include "fanet/fanet.hpp"
 
-class FanetAce : public BaseModule, public FANET::Connector, public etl::message_router<FanetAce, GATAS::RadioTxPositionRequestMsg, GATAS::RadioRxMsg, GATAS::OwnshipPositionMsg, GATAS::ConfigUpdatedMsg>
+class FanetAce : public BaseModule, public FANET::Connector, public etl::message_router<FanetAce, GATAS::RadioTxPositionRequestMsg, GATAS::RadioRxMsg, GATAS::ConfigUpdatedMsg>
 {
     static constexpr uint8_t QUEUE_SIZE = 6;
 
@@ -43,7 +43,6 @@ private:
 
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);
     void on_receive(const GATAS::RadioRxMsg &msg);
-    void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
 
     virtual uint32_t fanet_getTick() const override;
@@ -58,7 +57,7 @@ private:
     uint8_t radioNo = 0;
     uint32_t distanceIgnore;
 
-    GATAS::OwnshipPositionInfo ownshipPosition;
+    const GATAS::OwnshipState &ownshipState;
     GATAS::Config::GaTasConfiguration gaTasConfiguration;
     GATAS::RadioParameters radioParameters;
 
@@ -68,7 +67,7 @@ private:
 public:
     static constexpr const etl::string_view NAME = "Fanet";
 
-    FanetAce(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME), protocol(this), distanceIgnore(DEFAULT_IGNORE_DISTANCE), ownshipPosition{}, gaTasConfiguration(config.gaTasConfig())
+    FanetAce(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), protocol(this), distanceIgnore(DEFAULT_IGNORE_DISTANCE), ownshipState(ownshipState_), gaTasConfiguration(config.gaTasConfig())
     {
         protocol.ownAddress(FANET::Address{gaTasConfiguration.conspicuity.icaoAddress});
         uint32_t di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, NAME, "distanceIgnore");

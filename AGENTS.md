@@ -192,6 +192,10 @@ Firmware code favors fixed-size containers and predictable memory behavior. Pref
 - For packet formats that only encode time within a minute, resolve the timestamp as now-or-past, never as a future timestamp. Use a small max-delta window to reject ambiguous or stale data.
 - When converting packet send time to `AircraftPositionInfo.timestamp`, compute elapsed time against `CoreUtils::msSinceEpoch()` and subtract that elapsed duration from `CoreUtils::timeUs32()`.
 
+## GDL90 Nearby-Traffic Altitude Decision
+
+- For traffic aircraft within the tracker’s intended nearby operating range, using the ownship geoid separation to convert a remote ellipsoid height is an accepted approximation. The WGS-84 geoid separation changes negligibly over this local range for the display accuracy required by the project. Revisit this decision if traffic is reported over substantially larger distances or if an aircraft-specific geoid separation becomes available.
+
 ## Testing Notes
 
 - Desktop tests use Catch2 with mocks in `src/lib/mocks/` for FreeRTOS, pico-sdk, and hardware APIs.

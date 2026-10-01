@@ -70,8 +70,6 @@ private:
     TrackerData<MAX_TRACKING_PLANES, TIMESLICES, MAX_PREDICTED_AIRCRAFT> trackedAircraft;
     GATAS::AircraftAddress ownshipAddress;
     bool groundStation = false;
-    bool ownshipPositionValid = false;
-    GATAS::OwnshipPositionInfo ownshipPosition = {};
 
     // Producer Consumer queue to handle data between this task and the send task
     etl::queue_mpmc_mutex<GATAS::AircraftPositionInfo, 16, etl::memory_model::MEMORY_MODEL_SMALL> queue;
@@ -79,6 +77,8 @@ private:
 
     using ProtocolRadPattern = GATAS::AntennaRadiationPattern<GATAS_STATSCOLLECTOR_NUM_RADIALS>;
     etl::array<ProtocolRadPattern, static_cast<uint8_t>(GATAS::DataSource::_TRANSPROTOCOLS)> antennaRadiationPattern;
+    const GATAS::OwnshipState &ownshipState;
+    bool ownshipPositionValid = false;
 
     enum TaskState : uint32_t
     {
@@ -109,7 +109,7 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "AircraftTracker";
-    AircraftTracker(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
+    AircraftTracker(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_)
     {
         on_receive(GATAS::ConfigUpdatedMsg{config, Configuration::NAME});
     }
