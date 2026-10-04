@@ -24,6 +24,10 @@ test("formatUnit formats meters unit m as m below 1000 and Km above", () => {
   assert.equal(formatUnit(55_101, "m", "en-US"), "55.1Km");
 });
 
+test("formatUnit converts negative values while preserving the sign", () => {
+  assert.equal(formatUnit(-32.9, "ft", "en-US"), "-108ft");
+});
+
 test("formatUnit formats elapsed seconds with unit el", () => {
   assert.equal(formatUnit(3661, "el"), "1hour 1min 1sec");
   assert.equal(formatUnit(0, "el"), "0secs");

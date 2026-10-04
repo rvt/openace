@@ -65,6 +65,7 @@ class GpsDecoder : public BaseModule, public etl::message_router<GpsDecoder, GAT
     GATAS::Config::Conspicuity conspicuity;
     int16_t heightAboveGps = 0;
     bool groundStation = false;
+    GATAS::OwnshipState &ownshipState;
 private:
     void on_receive(const GATAS::GPSSentenceMsg &msg);
     void on_receive(const GATAS::ConfigUpdatedMsg &msg);
@@ -100,7 +101,7 @@ private:
 
 public:
     static constexpr const etl::string_view NAME = "GpsDecoder";
-    GpsDecoder(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME),
+    GpsDecoder(etl::imessage_bus &bus, const Configuration &config, GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME),
                                                                       satsUsedForFix(0),
                                                                       pDop(255),
                                                                       hDop(255),
@@ -108,7 +109,8 @@ public:
                                                                       lastGGATimestamp({0, 0, 0, 0}),
                                                                       taskStartTime(CoreUtils::timeS32()),
                                                                       fixQuality(0),
-                                                                      fixType(GATAS::GpsFixType::NO_FIX)
+                                                                      fixType(GATAS::GpsFixType::NO_FIX),
+                                                                      ownshipState(ownshipState_)
     {
         conspicuity = config.gaTasConfig().conspicuity;
         heightAboveGps = conspicuity.heightAboveGps;

@@ -33,7 +33,7 @@ private:
     // Retry startup synchronization promptly. Successful synchronization uses
     // the much longer refresh interval below.
     static constexpr uint64_t NTP_RETRY_INTERVAL_US = 5ULL * 1'000'000ULL;
-    // Re-discipline the software PPS often enough to limit RP2040 crystal
+    // Re-discipline the software PPS often enough to limit RPXXXX crystal
     // drift while avoiding excessive traffic to the configured NTP server.
     static constexpr uint64_t NTP_REFRESH_INTERVAL_US = 5ULL * 60ULL * 1'000'000ULL;
 

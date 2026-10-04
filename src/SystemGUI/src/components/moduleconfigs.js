@@ -207,6 +207,66 @@ class DataPortConfig extends ModuleConfig {
 }
 customElements.define("dataport-config", DataPortConfig);
 
+class Gdl90ServiceConfig extends ModuleConfig {
+  created() {
+    this._initForm(store.getModuleData("Gdl90Service"));
+  }
+
+  mounted() {
+    const validator = new JustValidate(this.$refs.form);
+    validator.onSuccess(() => {
+      const data = this._getFormData();
+      store.updateModuleData("Gdl90Service", { ...this.copyOfData, ...data }).then(() => {
+        this.close();
+      });
+    });
+  }
+
+  _setFormData(data) {
+    this.$refs.mslAltFallback.checked = data.mslAltFallback === true || data.mslAltFallback === 1;
+  }
+
+  _getFormData() {
+    return {
+      mslAltFallback: this.$refs.mslAltFallback.checked,
+    };
+  }
+
+  render(html) {
+    const mslAltFallback = this.state?.data?.mslAltFallback === true || this.state?.data?.mslAltFallback === 1;
+    return html`
+      <h4>Configuration of the GDL90 Service</h4>
+      <p>GDL90 requires pressure altitude for its ownship report.</p>
+      <form ref="form" autocomplete="off" novalidate="novalidate">
+        <div class="page-section">
+          <div class="config-field-heading">
+            <label for="mslAltFallback">Use MSL altitude when pressure altitude is unavailable</label>
+            <span class="help-label" tabindex="0" aria-label="About MSL altitude fallback">
+              ${html.raw(icon.help)}
+              <span class="app-tooltip" role="tooltip">
+                When disabled, GDL90 sends pressure altitude as unavailable if no pressure altitude is available. When enabled, GDL90 substitutes GPS-derived MSL altitude.
+              </span>
+            </span>
+          </div>
+          <input
+            type="checkbox"
+            id="mslAltFallback"
+            ref="mslAltFallback"
+            onchange=${(event) => { this.state.data.mslAltFallback = event.target.checked; }}
+          />
+          ${mslAltFallback
+            ? html`<div class="notice notice--warning">
+                MSL altitude is not pressure altitude. Use this fallback for conspicuity only; do not rely on it for flying or vertical separation.
+              </div>`
+            : ""}
+        </div>
+        ${this.buttonArray(html)}
+      </form>
+    `;
+  }
+}
+customElements.define("gdl90service-config", Gdl90ServiceConfig);
+
 class WifiServiceConfig extends ModuleConfig {
   created() {
     this._initForm(store.getModuleData("WifiService"));

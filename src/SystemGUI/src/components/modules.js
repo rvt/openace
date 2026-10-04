@@ -50,6 +50,7 @@ class GaTasModules extends El {
 
     this.configurable = [
       "AircraftTracker",
+      "Gdl90Service",
       "DataPort",
       "L76B",
       "UbloxM8N",

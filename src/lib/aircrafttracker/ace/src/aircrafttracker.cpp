@@ -120,7 +120,7 @@ void AircraftTracker::getData(etl::string_stream &stream, const etl::string_view
 void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
 {
     GATAS_MEASURE("on_receive", 1000);
-    auto op = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(), ownshipPosition);
+    auto op = ownshipState.location.load();
     for (const auto &aircraft : msg.positions)
     {
         if (ownshipAddress == aircraft.address)
@@ -141,12 +141,8 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionsMsg &msg)
     xTaskNotify(taskHandle, TaskState::NEW, eSetBits);
 }
 
-void AircraftTracker::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void AircraftTracker::on_receive(const GATAS::OwnshipPositionMsg &)
 {
-    {
-        SpinlockGuard guard(CoreUtils::sharedSpinLock());
-        ownshipPosition = msg.position;
-    }
     ownshipPositionValid = true;
 }
 
@@ -176,7 +172,7 @@ void AircraftTracker::on_receive(const GATAS::IngressAircraftPositionMsg &msg)
     }
 
     uint8_t dataSource = static_cast<uint8_t>(msg.position.dataSource);
-    auto op = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(),  ownshipPosition);
+    auto op = ownshipState.location.load();
     if (ownshipPositionValid && dataSource < antennaRadiationPattern.size())
     {
         antennaRadiationPattern[dataSource].put(msg, op.lat, op.lon, op.track);
@@ -267,7 +263,7 @@ void AircraftTracker::handleTrackedAircraft(const GATAS::AircraftPositionInfo &p
 
 void AircraftTracker::sendEligibleAircraft()
 {
-    auto op = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(),  ownshipPosition);
+    auto op = ownshipState.location.load();
 
     trackedAircraft.sendScheduled(
         etl::delegate<void(const GATAS::AircraftPositionInfo &)>::create<AircraftTracker, &AircraftTracker::handleTrackedAircraft>(*this), op);
@@ -277,7 +273,7 @@ void AircraftTracker::closest10()
 {
     if (Tx_Struct msg; tXqueue.pop(msg))
     {
-        auto op = SpinlockGuard::copyWithLock(CoreUtils::sharedSpinLock(),  ownshipPosition);
+        auto op = ownshipState.location.load();
         auto aircraft = trackedAircraft.adslUplinkTrigger(op);
         getBus().receive(GATAS::EgressAircraftPositionsMsg(aircraft, msg.radioParameters, msg.radioNo));
         tXqueue.clear();

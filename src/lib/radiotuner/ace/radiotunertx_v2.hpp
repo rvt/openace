@@ -51,6 +51,7 @@ private:
 
 private:
     friend class message_router;
+    const GATAS::OwnshipState &ownshipState;
 
     // Current zone we are flying in
     CountryRegulations::Zone currentZone = CountryRegulations::Zone::ZONE0;
@@ -80,7 +81,7 @@ private:
 public:
     static constexpr const etl::string_view NAME = "RadioTunerTx";
 
-    RadioTunerTx(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
+    RadioTunerTx(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_)
     {
         (void)config;
     }

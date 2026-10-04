@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "../gpsdecoder.hpp"
+#include "ace/ownshipstate.hpp"
 #include "ace/moreutils.hpp"
 #include "etl/algorithm.h"
 
@@ -34,6 +35,7 @@ void GpsDecoder::start()
 void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path) const
 {
     (void)path;
+    const auto pressureAltitude = ownshipState.calculatePressureAltitude();
     constexpr etl::format_spec width2fill0 = etl::format_spec().width(2).fill('0');
     const char *dopValue = GATAS::DOPInterpretationToString(GATAS::floatToDOPInterpretation(pDop));
     stream << "{";
@@ -47,6 +49,15 @@ void GpsDecoder::getData(etl::string_stream &stream, const etl::string_view path
     stream << ",\"latitude\":" << etl::format_spec{}.precision(5) << latitude;
     stream << ",\"longitude\":" << longitude << etl::format_spec{}.precision(1);
     stream << ",\"altitudeGeoid:ft\":" << altitudeGeoid();
+    stream << ",\"pressureAltitude:ft\":";
+    if (!pressureAltitude)
+    {
+        stream << "null";
+    }
+    else
+    {
+        stream << (pressureAltitude.value());
+    }
     stream << ",\"geoidSeparation:ft\":" << geoidSeparation;
     stream << ",\"groundspeed:kt\":" << groundSpeed;
     stream << ",\"track:deg\":" << course();
@@ -130,9 +141,26 @@ void GpsDecoder::on_receive(const GATAS::GPSSentenceMsg &msg)
             time_t t = (time_t)secondsSinceEpoch;
             struct tm *timeinfo = localtime(&t); // or gmtime() for UTC
 
-            if ((timeinfo->tm_hour != frame.time.hours ||
-                 timeinfo->tm_min != frame.time.minutes ||
-                 timeinfo->tm_sec != frame.time.seconds) &&
+            const int32_t localMillisecondsOfDay =
+                ((timeinfo->tm_hour * 60 + timeinfo->tm_min) * 60 + timeinfo->tm_sec) * 1'000 + msSinceEpoch;
+            const int32_t rmcMillisecondsOfDay =
+                ((frame.time.hours * 60 + frame.time.minutes) * 60 + frame.time.seconds) * 1'000 + millis;
+            int32_t timeDifferenceMs = localMillisecondsOfDay - rmcMillisecondsOfDay;
+            constexpr int32_t millisecondsPerDay = 24 * 60 * 60 * 1'000;
+            if (timeDifferenceMs > millisecondsPerDay / 2)
+            {
+                timeDifferenceMs -= millisecondsPerDay;
+            }
+            else if (timeDifferenceMs < -millisecondsPerDay / 2)
+            {
+                timeDifferenceMs += millisecondsPerDay;
+            }
+
+            // RMC can arrive just after the local clock crosses a second boundary.
+            // Allow the expected sentence/transport delay before reporting drift.
+            constexpr int32_t maximumExpectedDifferenceMs = 1'200;
+            const int32_t absoluteTimeDifferenceMs = timeDifferenceMs < 0 ? -timeDifferenceMs : timeDifferenceMs;
+            if (absoluteTimeDifferenceMs > maximumExpectedDifferenceMs &&
                 secondsSinceEpoch > 1000'000'000)
             {
 
@@ -310,9 +338,7 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
         auto altGeoid = altitudeGeoid();
 
         // TODO: Can we get bank angle from turnrate?? https://aviation.stackexchange.com/questions/65628/what-is-the-formula-for-the-bank-angle-required-for-a-turn-in-line-abreast-forma
-        getBus().receive(
-            GATAS::OwnshipPositionMsg{
-                GATAS::OwnshipPositionInfo{
+        const GATAS::OwnshipPositionInfo position{
                     .timestamp = CoreUtils::timeUs32(),
                     .lat = latitude,
                     .lon = longitude,
@@ -325,6 +351,8 @@ void GpsDecoder::sendMessageWhenGGAisRMC()
 //                    .velocityEast = velocityEast,
                     .geoidSeparation = static_cast<int16_t>(geoidSeparation),
                     .airborne = CoreUtils::isAirborn(conspicuity.category, groundSpeed),
-                    .conspicuity = conspicuity}});
+                    .conspicuity = conspicuity};
+        ownshipState.location.store(position);
+        getBus().receive(GATAS::OwnshipPositionMsg{});
     }
 }

@@ -13,7 +13,8 @@
 
 GATAS::ThreadSafeBus<50> bus;
 MockConfig mockConfig{bus};
-Flarm2024 flarm{bus, mockConfig};
+GATAS::OwnshipState ownshipState;
+Flarm2024 flarm{bus, mockConfig, ownshipState};
 
 TEST_CASE("addressTypeToFlarm", "[single-file]")
 {

@@ -22,6 +22,7 @@
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
+#include "ace/ownshipstate.hpp"
 #include "ace/coreutils.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/datasourcetimestatstable.hpp"
@@ -32,7 +33,7 @@
 
 #include "ognpacket.hpp"
 
-class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxManchesterMsg, GATAS::OwnshipPositionMsg, GATAS::RadioTxPositionRequestMsg, GATAS::BarometricPressureMsg, GATAS::GpsStatsMsg>
+class Ogn1 : public BaseModule, public etl::message_router<Ogn1, GATAS::RadioRxManchesterMsg, GATAS::RadioTxPositionRequestMsg, GATAS::GpsStatsMsg>
 {
 public:
     static constexpr uint8_t OGN_PACKET_LENGTH = 20;
@@ -98,15 +99,14 @@ private:
 
     GATAS::DataSourceTimeStatsTable<2> datasourceTimeStats;
 
-    GATAS::OwnshipPositionInfo ownshipPosition{};
-    GATAS::BarometricPressure lastBarometricPressure{0, 0};
+    const GATAS::OwnshipState &ownshipState;
     GATAS::GpsStats gpsStats{};
     uint32_t distanceIgnore;
     static LDPC_Decoder<Ogn1::OGN_PACKET_LENGTH * 8, 48> decoder;
 
 public:
     static constexpr const etl::string_view NAME = "Ogn1";
-    Ogn1(etl::imessage_bus &bus, const Configuration &config) : BaseModule(bus, NAME)
+    Ogn1(etl::imessage_bus &bus, const Configuration &config, const GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_)
     {
         uint32_t di = config.valueByPath(DEFAULT_IGNORE_DISTANCE, NAME, "distanceIgnore");
         distanceIgnore = etl::clamp(di, static_cast<uint32_t>(0), MAX_IGNORE_DISTANCE);
@@ -120,7 +120,6 @@ public:
 
 private:
     void on_receive(const GATAS::RadioRxManchesterMsg &msg);
-    void on_receive(const GATAS::OwnshipPositionMsg &msg);
     void on_receive(const GATAS::BarometricPressureMsg &msg);
     void on_receive(const GATAS::GpsStatsMsg &msg);
     void on_receive(const GATAS::RadioTxPositionRequestMsg &msg);

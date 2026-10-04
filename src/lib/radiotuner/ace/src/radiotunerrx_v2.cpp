@@ -157,14 +157,15 @@ void RadioTunerRx::radioTuneTask(void *arg)
 
 // ******************** Message bus receive handlers ********************
 
-void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &msg)
+void RadioTunerRx::on_receive(const GATAS::OwnshipPositionMsg &)
 {
+    const auto position = ownshipState.location.load();
     static auto lastTime = CoreUtils::timeUs32Raw();
 
     if (CoreUtils::isUsReachedRaw(lastTime) || currentZone.value() == CountryRegulations::Zone::ZONE0)
     {
         lastTime = CoreUtils::timeUs32Raw() + UPDATE_ZONE_REGULATION_EVERY;
-        currentZone.set(CountryRegulations::zone(msg.position.lat, msg.position.lon));
+        currentZone.set(CountryRegulations::zone(position.lat, position.lon));
 
         if (currentZone.isModified())
         {

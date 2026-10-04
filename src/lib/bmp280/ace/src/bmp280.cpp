@@ -125,7 +125,7 @@ void Bmp280::on_receive_unknown(const etl::imessage &msg)
     (void)msg;
 }
 
-void Bmp280::on_receive(const GATAS::Every30SecMsg &msg)
+void Bmp280::on_receive(const GATAS::Every1SecMsg &msg)
 {
     (void)msg;
 
@@ -142,12 +142,13 @@ void Bmp280::on_receive(const GATAS::Every30SecMsg &msg)
         int32_t pressure = ((uint32_t)buffer[0] << 12) | ((uint32_t)buffer[1] << 4) | (buffer[2] >> 4);
         int32_t temperature = ((uint32_t)buffer[3] << 12) | ((uint32_t)buffer[4] << 4) | (buffer[5] >> 4);
 
+        // Always run the temperature compensations, as this is stored internally
         temperature = compensate_temp(temperature);
         pressure = compensate_pressure(pressure);
 
         statistics.lastPressurehPa = (pressure + compensation) / 100.0f;
-        getBus().receive(GATAS::BarometricPressureMsg(
-            GATAS::BarometricPressure(
-                statistics.lastPressurehPa, CoreUtils::timeUs32Raw())));
+        const GATAS::BarometricPressure sample{statistics.lastPressurehPa, GATAS::PressureSource::PressureSensor};
+        ownshipState.updateBarometricPressure(GATAS::BarometricSource::Internal, sample, CoreUtils::msSinceEpoch());
+        getBus().receive(GATAS::BarometricPressureMsg{});
     }
 }

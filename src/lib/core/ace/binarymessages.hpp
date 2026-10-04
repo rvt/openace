@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <cmath>
+
 #include <etl/bit_stream.h>
 #include <etl/algorithm.h>
 #include <etl/span.h>
@@ -39,47 +41,103 @@ public:
     {
         enum enum_type : uint8_t
         {
-            AIRCRAFT_POSITION_TYPE_V1 = 1,    // Deprecated BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
-            AIRCRAFT_POSITION_REQUEST_V1 = 2, // Binary message of a request for other aircraft from gatasConnect
-//          AIRCRAFT_CONFIGURATIONS_V1 = 3,   // Deprecated, see AIRCRAFT_CONFIGURATIONS_V2 Current GATAS COnfiguration 1.0.0-prerelease
-            SET_ICAO_ADDRESS_V1 = 4,          // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
-            AIRCRAFT_CONFIGURATIONS_V2 = 5,   // Current GATAS COnfiguration V2
+            AIRCRAFT_POSITION_TYPE_V1 = 1,     // Deprecated BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
+            AIRCRAFT_POSITION_REQUEST_V1 = 2,  // Binary message of a request for other aircraft from gatasConnect
+                                               //          AIRCRAFT_CONFIGURATIONS_V1 = 3,   // Deprecated, see AIRCRAFT_CONFIGURATIONS_V2 Current GATAS COnfiguration 1.0.0-prerelease
+            SET_ICAO_ADDRESS_V1 = 4,           // Set a new aircraft configuration based on hexcode, this is like if you set from teh AI a other aircraft
+            AIRCRAFT_CONFIGURATIONS_V2 = 5,    // Current GATAS COnfiguration V2
             GDL90_V1 = 6,                      // Packed GDL90 message for bridge transports
-            SET_WIFI_MODE_V1 = 7,             // Request that OpenAce changes WiFi mode
-            AIRCRAFT_POSITION_TYPE_V2 = 8,    // BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
+            SET_WIFI_MODE_V1 = 7,              // Request that OpenAce changes WiFi mode
+            AIRCRAFT_POSITION_TYPE_V2 = 8,     // BinaryMessage type of an aircraft other than our own, this can be injexted in the system to process and display
+            AIRCRAFT_POSITION_TYPE_V3 = 9,     // Aircraft position with pressure altitude and QNH
+            AIRCRAFT_POSITION_REQUEST_V2 = 10, // Request aircraft positions using the versioned response format
+            OWNSHIP_PRESSURE_V1 = 11, // Ownship ambient pressure and QNH
         };
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V1, "Aircraft Data")
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_REQUEST_V1, "conspicuity Data Request")
-//      ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V1, "Current GATAS Configuration see AIRCRAFT_CONFIGURATIONS_V2")
+        //      ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V1, "Current GATAS Configuration see AIRCRAFT_CONFIGURATIONS_V2")
         ETL_ENUM_TYPE(SET_ICAO_ADDRESS_V1, "Set new aircraft from configuration")
         ETL_ENUM_TYPE(AIRCRAFT_CONFIGURATIONS_V2, "Current GATAS Configuration")
         ETL_ENUM_TYPE(GDL90_V1, "GDL90 Message")
         ETL_ENUM_TYPE(SET_WIFI_MODE_V1, "Set WiFi Mode")
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V2, "Aircraft Data")
+        ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V3, "Aircraft Data with pressure altitude and QNH")
+        ETL_ENUM_TYPE(AIRCRAFT_POSITION_REQUEST_V2, "Versioned conspicuity data request")
+        ETL_ENUM_TYPE(OWNSHIP_PRESSURE_V1, "Ownship ambient pressure and QNH")
         ETL_END_ENUM_TYPE
     };
 
     static constexpr uint8_t AIRCRAFT_CONFIGURATION_WIFI_MODE_MASK = 0x03U;
 
+    static constexpr int32_t LEGACY_ELLIPSOID_HEIGHT_OFFSET_M = 100;
+    static constexpr int32_t V3_ELLIPSOID_HEIGHT_OFFSET_M = 1000;
+    static constexpr int32_t PRESSURE_ALTITUDE_OFFSET_M = 1000;
+
+    static bool hasValidAircraftPositionSize(const etl::bit_stream_reader &reader, size_t fixedSize)
+    {
+        const auto data = reader.data();
+        if (data.size() < fixedSize)
+        {
+            return false;
+        }
+        const uint8_t callSignLength = static_cast<uint8_t>(data[fixedSize - 1]);
+        return callSignLength <= GATAS::MAX_CALLSIGN_LENGTH && data.size() == fixedSize + callSignLength;
+    }
+
+    // Six-byte payload: type (u8), pressure (u16, 0.1 hPa),
+    // QNH (u16, 0.1 hPa), source (u8). Multi-byte fields are big endian.
+    // Pressure 0xffff is unavailable. QNH is consumed but not stored.
+    static etl::optional<GATAS::BarometricPressure> deserializeOwnshipPressureV1(etl::bit_stream_reader &reader)
+    {
+        if (reader.size_bytes() != 6U)
+        {
+            return etl::nullopt;
+        }
+        const auto type = reader.read<uint8_t>();
+        if (!type || type.value() != DataType::OWNSHIP_PRESSURE_V1)
+        {
+            return etl::nullopt;
+        }
+        const auto pressure = reader.read<uint16_t>();
+        const auto qnh = reader.read<uint16_t>();
+        const auto source = reader.read<uint8_t>();
+        if (!pressure || !qnh || !source ||
+            source.value() >= static_cast<uint8_t>(GATAS::PressureSource::PRESSURE_SOURCE_NO_ITEMS))
+        {
+            return etl::nullopt;
+        }
+
+        return GATAS::BarometricPressure{
+            pressure.value() == UINT16_MAX || pressure.value() == 0
+                ? GATAS::INVALID_PRESSSURE_HPA
+                : static_cast<float>(pressure.value()) / 10.0f,
+            static_cast<GATAS::PressureSource>(source.value())};
+    }
+
     /**
      * Read Aircraft Position Info from a bit stream reader
      */
-    static GATAS::AircraftPositionInfo deserializeAircraftPositionV1(float ownshipLat, float ownshipLon, etl::bit_stream_reader &reader)
+    static etl::optional<GATAS::AircraftPositionInfo> deserializeAircraftPositionV1(float ownshipLat, float ownshipLon,
+                                                                                    etl::bit_stream_reader &reader)
     {
+        if (!hasValidAircraftPositionSize(reader, 24U))
+        {
+            return etl::nullopt;
+        }
         auto timeStamp = CoreUtils::timeUs32();
         auto type = reader.read_unchecked<uint8_t>(8U);
         if (type != DataType(DataType::AIRCRAFT_POSITION_TYPE_V1).get_value())
         {
-            return GATAS::AircraftPositionInfo();
+            return etl::nullopt;
         }
         uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
         uint8_t addressTypeIdx = reader.read_unchecked<uint8_t>(8U);
         uint8_t dataSourceIdx = reader.read_unchecked<uint8_t>(8U);
         float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
         float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
-        int16_t heightHAE = reader.read_unchecked<int16_t>(16U) - 100; // Aircraft message needs to be in ellipsoid
+        int32_t heightHAE = static_cast<int32_t>(reader.read_unchecked<uint16_t>(16U)) - LEGACY_ELLIPSOID_HEIGHT_OFFSET_M;
         float track = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
         float turnRate = static_cast<float>(reader.read_unchecked<int8_t>(8U)) / 5.0f;
         float groundSpeed = static_cast<float>(reader.read_unchecked<uint16_t>(16U)) / 100.f;
@@ -120,6 +178,10 @@ public:
     static etl::optional<GATAS::AircraftPositionInfo> deserializeAircraftPositionV2(float ownshipLat, float ownshipLon,
                                                                                     etl::bit_stream_reader &reader)
     {
+        if (!hasValidAircraftPositionSize(reader, 28U))
+        {
+            return etl::nullopt;
+        }
         auto type = reader.read_unchecked<uint8_t>(8U);
         if (type != DataType(DataType::AIRCRAFT_POSITION_TYPE_V2).get_value())
         {
@@ -136,7 +198,7 @@ public:
         uint8_t dataSourceIdx = reader.read_unchecked<uint8_t>(8U);
         float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
         float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
-        int16_t heightHAE = reader.read_unchecked<int16_t>(16U) - 100; // Aircraft message needs to be in ellipsoid
+        int32_t heightHAE = static_cast<int32_t>(reader.read_unchecked<uint16_t>(16U)) - LEGACY_ELLIPSOID_HEIGHT_OFFSET_M;
         float track = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
         float turnRate = static_cast<float>(reader.read_unchecked<int8_t>(8U)) / 5.0f;
         float groundSpeed = static_cast<float>(reader.read_unchecked<uint16_t>(16U)) / 100.f;
@@ -159,9 +221,9 @@ public:
             static_cast<GATAS::AddressType>(addressTypeIdx),
             static_cast<GATAS::DataSource>(dataSourceIdx),
             static_cast<GATAS::AircraftCategory>(aircraftCategoryIdx),
-            false, // stealth
-            false, // noTrack
-            groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN,  // airborne
+            false,                                                // stealth
+            false,                                                // noTrack
+            groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN, // airborne
             lat,
             lon,
             heightHAE,
@@ -173,24 +235,104 @@ public:
             squawk);
     }
 
+    static etl::optional<GATAS::AircraftPositionInfo> deserializeAircraftPositionV3(float ownshipLat, float ownshipLon,
+                                                                                    etl::bit_stream_reader &reader)
+    {
+        if (!hasValidAircraftPositionSize(reader, 32U))
+        {
+            return etl::nullopt;
+        }
+        auto type = reader.read_unchecked<uint8_t>(8U);
+        if (type != DataType(DataType::AIRCRAFT_POSITION_TYPE_V3).get_value())
+        {
+            return etl::nullopt;
+        }
+        uint16_t msInMinute = reader.read_unchecked<uint16_t>(16U);
+        auto timeStamp = CoreUtils::timeUs32FromMsInMinute(msInMinute);
+        if (!timeStamp.has_value())
+        {
+            return etl::nullopt;
+        }
+        uint32_t addressRaw = reader.read_unchecked<uint32_t>(24U);
+        uint8_t addressTypeIdx = reader.read_unchecked<uint8_t>(8U);
+        uint8_t dataSourceIdx = reader.read_unchecked<uint8_t>(8U);
+        float lat = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
+        float lon = static_cast<float>(reader.read_unchecked<int32_t>(32U)) / 1E7f;
+        int32_t heightHAE = static_cast<int32_t>(reader.read_unchecked<uint16_t>(16U)) - V3_ELLIPSOID_HEIGHT_OFFSET_M;
+        float track = static_cast<float>(reader.read_unchecked<uint8_t>(8U)) * (360.f / 255.f);
+        float turnRate = static_cast<float>(reader.read_unchecked<int8_t>(8U)) / 5.0f;
+        float groundSpeed = static_cast<float>(reader.read_unchecked<uint16_t>(16U)) / 100.f;
+        float verticalRate = static_cast<float>(reader.read_unchecked<int16_t>(16U)) / 1024.f;
+        uint8_t aircraftCategoryIdx = reader.read_unchecked<uint8_t>(8U);
+        int16_t squawk = reader.read_unchecked<int16_t>(16U);
+        uint16_t pressureAltitudeRaw = reader.read_unchecked<uint16_t>(16U);
+        int32_t pressureAltitude = pressureAltitudeRaw == 0xFFFFU
+                                       ? GATAS::INVALID_BARO_ALTITUDE
+                                       : static_cast<int32_t>(pressureAltitudeRaw) - PRESSURE_ALTITUDE_OFFSET_M;
+        // Keep the wire QNH field for compatibility; nearby traffic uses local QNH when needed.
+        (void)reader.read_unchecked<uint16_t>(16U);
+
+        uint8_t callSignLen = etl::min(GATAS::MAX_CALLSIGN_LENGTH, reader.read_unchecked<uint8_t>(8U));
+        char callSignBuffer[GATAS::MAX_CALLSIGN_LENGTH + 1] = {0};
+        for (int i = 0; i < callSignLen; ++i)
+        {
+            callSignBuffer[i] = static_cast<char>(reader.read_unchecked<uint8_t>(8));
+        }
+        auto rel = CoreUtils::getDistanceRelNorthRelEastInt(ownshipLat, ownshipLon, lat, lon);
+
+        return GATAS::AircraftPositionInfo(
+            timeStamp.value(),
+            GATAS::CallSign(callSignBuffer),
+            static_cast<GATAS::AircraftAddress>(addressRaw),
+            static_cast<GATAS::AddressType>(addressTypeIdx),
+            static_cast<GATAS::DataSource>(dataSourceIdx),
+            static_cast<GATAS::AircraftCategory>(aircraftCategoryIdx),
+            false,
+            false,
+            groundSpeed > GATAS::GROUNDSPEED_CONSIDERING_AIRBORN,
+            lat,
+            lon,
+            heightHAE,
+            verticalRate,
+            groundSpeed,
+            track,
+            turnRate,
+            rel.distance,
+            squawk,
+            pressureAltitude);
+    }
+
     /**
      * Create a bitstream from an OwnshipPositionInfo to be send to gatasServer witg a requets
      * to send back aircraft
      */
-    static void serializeOwnshipPositionV1(etl::bit_stream_writer &writer, const GATAS::OwnshipPositionInfo &ownship)
+    static void serializeOwnshipPosition(etl::bit_stream_writer &writer,
+                                         const GATAS::OwnshipPositionInfo &ownship,
+                                         DataType::enum_type requestType = DataType::AIRCRAFT_POSITION_REQUEST_V1)
     {
-        writer.write_unchecked(DataType(DataType::AIRCRAFT_POSITION_REQUEST_V1).get_value(), 8U);
+        writer.write_unchecked(DataType(requestType).get_value(), 8U);
         writer.write_unchecked(CoreUtils::secondsSinceEpoch(), 32U);
         writer.write_unchecked(ownship.conspicuity.icaoAddress, 24U);
         writer.write_unchecked(static_cast<uint8_t>(ownship.conspicuity.addressType), 8U);
         writer.write_unchecked(GATAS::AircraftCategory(ownship.conspicuity.category).get_value(), 8U);
-        writer.write_unchecked(static_cast<int32_t>(ownship.lat * 1E7 + 0.5f), 32U);
-        writer.write_unchecked(static_cast<int32_t>(ownship.lon * 1E7 + 0.5f), 32U);
-        writer.write_unchecked(ownship.ellipseHeight + 100, 16U); // Aircraft message needs to be in ellipsoid
+        writer.write_unchecked(static_cast<int32_t>(std::round(ownship.lat * 1E7f)), 32U);
+        writer.write_unchecked(static_cast<int32_t>(std::round(ownship.lon * 1E7f)), 32U);
+        writer.write_unchecked(ownship.ellipseHeight + LEGACY_ELLIPSOID_HEIGHT_OFFSET_M, 16U);
         writer.write_unchecked(static_cast<uint8_t>(ownship.track / (360.f / 255.f)), 8U);
         writer.write_unchecked(static_cast<int8_t>(ownship.hTurnRate * 5.0f), 8U);
         writer.write_unchecked(static_cast<uint16_t>(ownship.groundSpeed * 10.f), 16U);
         writer.write_unchecked(static_cast<int16_t>(ownship.verticalSpeed * 100.f), 16U);
+    }
+
+    static void serializeOwnshipPositionV1(etl::bit_stream_writer &writer, const GATAS::OwnshipPositionInfo &ownship)
+    {
+        serializeOwnshipPosition(writer, ownship);
+    }
+
+    static void serializeOwnshipPositionV2(etl::bit_stream_writer &writer, const GATAS::OwnshipPositionInfo &ownship)
+    {
+        serializeOwnshipPosition(writer, ownship, DataType::AIRCRAFT_POSITION_REQUEST_V2);
+        writer.write_unchecked(3U, 8U); // Request aircraft position response V3 with pressure altitude and QNH.
     }
 
     static size_t serializeOwnshipPositionV1(uint8_t *out, size_t outSize, const GATAS::OwnshipPositionInfo &ownship)
@@ -208,6 +350,21 @@ public:
         return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
     }
 
+    static size_t serializeOwnshipPositionV2(uint8_t *out, size_t outSize, const GATAS::OwnshipPositionInfo &ownship)
+    {
+        const size_t rawSize = serializeOwnshipPositionSizeV2().items(1);
+        const size_t framedSize = serializeOwnshipPositionFramedSizeV2();
+        if (outSize < framedSize || rawSize > MAX_COBS_FRAME_SIZE)
+        {
+            return 0;
+        }
+
+        uint8_t rawBuffer[MAX_COBS_FRAME_SIZE];
+        etl::bit_stream_writer writer(rawBuffer, rawSize, etl::endian::big);
+        serializeOwnshipPositionV2(writer, ownship);
+        return encodeCOBS(rawBuffer, rawSize, out, outSize, true);
+    }
+
     constexpr static BinaryMessages::SizeType serializeOwnshipPositionSizeV1()
     {
         size_t size = 1 + 4 + 3 + 1 + 1 + 4 + 4 + 2 + 1 + 1 + 2 + 2;
@@ -216,9 +373,21 @@ public:
             .size = size};
     }
 
+    constexpr static BinaryMessages::SizeType serializeOwnshipPositionSizeV2()
+    {
+        return BinaryMessages::SizeType{
+            .base = 0,
+            .size = serializeOwnshipPositionSizeV1().items(1) + 1};
+    }
+
     static size_t serializeOwnshipPositionFramedSizeV1()
     {
         return getCOBSBufferSize(serializeOwnshipPositionSizeV1().items(1), true);
+    }
+
+    static size_t serializeOwnshipPositionFramedSizeV2()
+    {
+        return getCOBSBufferSize(serializeOwnshipPositionSizeV2().items(1), true);
     }
 
     static void serializeAircraftConfigurationV2(etl::bit_stream_writer &writer, uint32_t gatasId, uint32_t icaoAddressSnap, const etl::span<uint32_t> &addresses, uint32_t gatasIp, uint32_t pinCode, GATAS::WifiMode wifiMode)
@@ -309,12 +478,17 @@ public:
 
     static uint32_t deserializeSetIcaoAddressV1(etl::bit_stream_reader &reader)
     {
-        auto type = reader.read_unchecked<uint8_t>(8U);
-        if (type != DataType(DataType::SET_ICAO_ADDRESS_V1).get_value())
+        if (reader.size_bytes() != 4U)
         {
             return 0x00;
         }
-        return reader.read_unchecked<uint32_t>(24U);
+        const auto type = reader.read<uint8_t>();
+        const auto address = reader.read<uint32_t>(24U);
+        if (!type || !address || type.value() != DataType(DataType::SET_ICAO_ADDRESS_V1).get_value())
+        {
+            return 0x00;
+        }
+        return address.value();
     }
 
     /**
@@ -325,13 +499,18 @@ public:
      */
     static bool deserializeSetWifiModeV1(etl::bit_stream_reader &reader, GATAS::WifiMode &wifiMode)
     {
-        auto type = reader.read_unchecked<uint8_t>(8U);
-        if (type != DataType(DataType::SET_WIFI_MODE_V1).get_value())
+        if (reader.size_bytes() != 2U)
+        {
+            return false;
+        }
+        const auto type = reader.read<uint8_t>();
+        const auto modeValue = reader.read<uint8_t>();
+        if (!type || !modeValue || type.value() != DataType(DataType::SET_WIFI_MODE_V1).get_value())
         {
             return false;
         }
 
-        const auto mode = reader.read_unchecked<uint8_t>(8U);
+        const auto mode = modeValue.value();
         if (mode == GATAS::WifiMode::AP)
         {
             wifiMode = GATAS::WifiMode::AP;
