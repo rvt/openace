@@ -369,13 +369,16 @@ static void loadModules(void *arg)
     load(AirConnect::NAME, bus, config);
     load(GatasConnect::NAME, bus, config);
     load(GatasConnectUDP::NAME, bus, config);
-    load(Bmp280::NAME, bus, config);
 
     load(RxDataFrameQueue::NAME, bus, config, true);
     for (uint8_t i = 0; i < GATAS_MAX_RADIOS; i++)
     {
         load(Sx1262::NAMES[i], bus, config);
     }
+
+    // Loaded after Sx1262 for now due to conflict at startup (SPI bus is not locked at that time)
+    load(Bmp280::NAME, bus, config);
+
     // Other for these two are currently important to ensure configuration on TX is set before RX
     // see RadioTunerRx::enableDisableDatasources()
     // Data sources

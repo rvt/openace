@@ -11,7 +11,7 @@
     "aircraftId": "XX-XXX"
   },
   "_comment_modules": "All modules that will be loaded when GATAS starts up",
-  "modules": "Ogn1,Flarm,GDLoverUDP,Gdl90Service,ADSL,_SerialADSB,Sx1262_1,Sx1262_0,WifiClient,GpsDecoder,RadioTunerRx,RadioTunerTx,DataPort,L76B",
+  "modules": "Ogn1,Flarm,GDLoverUDP,Gdl90Service,ADSL,_SerialADSB,Sx1262_1,Sx1262_0,WifiClient,GpsDecoder,RadioTunerRx,RadioTunerTx,DataPort,L76B,UbloxM8N",
   "aircraft": {
     "_comment": "All aircrafts and their configurations settings, config::aircraftId will be used to setup the hardware and load the configuration for that aircraft",
     "XX-XXX": {
@@ -83,8 +83,7 @@
       "disabled": false
     },
     "_comment_clients": "A list of Access Points GATAS will be trying to to connect to.",
-    "clients": [
-    ]
+    "clients": []
   },
   "AceSpi": {},
   "Bmp280": {
@@ -158,6 +157,7 @@
     "UbloxM8N": {
       "tx": 0,
       "rx": 1,
+      "_busy": "Used as PPS",
       "busy": 18
     },
     "SerialADSB": {
@@ -239,6 +239,10 @@
     },
     "port5": {
       "O0": 26
+    },
+    "Bmp280": {
+      "cs": 21,
+      "dev": 0
     }
   }
 }
