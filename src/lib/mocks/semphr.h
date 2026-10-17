@@ -4,20 +4,31 @@
 #include <stdio.h>
 #include "FreeRTOS.h"
 #include "queue.h"
+#include <mutex>
 
 // typedef QueueHandle_t SemaphoreHandle_t;
 
 inline SemaphoreHandle_t xSemaphoreCreateRecursiveMutex()
 {
     printf("xSemaphoreCreateRecursiveMutex\n");
-    return NULL;
+    return reinterpret_cast<SemaphoreHandle_t>(new std::recursive_mutex);
 }
 
 #define vSemaphoreDelete(xSemaphore) vQueueDelete((QueueHandle_t)(xSemaphore))
 
-#define xSemaphoreTakeRecursive(xMutex, xBlockTime) xQueueTakeMutexRecursive((QueueHandle_t)(xMutex), (xBlockTime))
+inline BaseType_t mockTakeRecursive(SemaphoreHandle_t mutex, uint32_t)
+{
+    reinterpret_cast<std::recursive_mutex *>(mutex)->lock();
+    return pdTRUE;
+}
+inline BaseType_t mockGiveRecursive(SemaphoreHandle_t mutex)
+{
+    reinterpret_cast<std::recursive_mutex *>(mutex)->unlock();
+    return pdTRUE;
+}
+#define xSemaphoreTakeRecursive(xMutex, xBlockTime) mockTakeRecursive((xMutex), (xBlockTime))
 
-#define xSemaphoreGiveRecursive(xMutex) xQueueGiveMutexRecursive((QueueHandle_t)(xMutex))
+#define xSemaphoreGiveRecursive(xMutex) mockGiveRecursive((xMutex))
 
 inline uint32_t xSemaphoreTakeValue = pdFALSE;
 inline uint32_t xSemaphoreTake(SemaphoreHandle_t, uint32_t)

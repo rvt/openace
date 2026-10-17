@@ -52,6 +52,8 @@ public:
             AIRCRAFT_POSITION_TYPE_V3 = 9,     // Aircraft position with pressure altitude and QNH
             AIRCRAFT_POSITION_REQUEST_V2 = 10, // Request aircraft positions using the versioned response format
             OWNSHIP_PRESSURE_V1 = 11, // Ownship ambient pressure and QNH
+            DEVICE_ACTION_REQUEST_V1 = 12,
+            DEVICE_ACTION_RESPONSE_V1 = 13,
         };
 
         ETL_DECLARE_ENUM_TYPE(DataType, uint8_t)
@@ -66,6 +68,8 @@ public:
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_TYPE_V3, "Aircraft Data with pressure altitude and QNH")
         ETL_ENUM_TYPE(AIRCRAFT_POSITION_REQUEST_V2, "Versioned conspicuity data request")
         ETL_ENUM_TYPE(OWNSHIP_PRESSURE_V1, "Ownship ambient pressure and QNH")
+        ETL_ENUM_TYPE(DEVICE_ACTION_REQUEST_V1, "Device action request")
+        ETL_ENUM_TYPE(DEVICE_ACTION_RESPONSE_V1, "Device action response")
         ETL_END_ENUM_TYPE
     };
 

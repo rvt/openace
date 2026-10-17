@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include "ace/cobs.hpp"
+#include "ace/deviceactioncodec.hpp"
 #include "ace/debug.hpp"
 #include "ace/gulp.hpp"
 #include "ace/binarymessages.hpp"
@@ -16,19 +17,25 @@ class CobsStreamHandler
 {
 private:
     etl::imessage_bus &bus;
-    Configuration &config;
     GATAS::OwnshipState &ownshipState;
     // gulpBuffer needs to be at least the size of one array of length ending with DelimiterBitmap
     etl::vector<uint8_t, 64> gulpBuffer;
     Gulp gulp;
+    uint32_t lastBleSession = 0;
 
 public:
-    CobsStreamHandler(etl::imessage_bus &bus_, Configuration &config_, GATAS::OwnshipState &ownshipState_) : bus(bus_), config(config_), ownshipState(ownshipState_), gulp(gulpBuffer, DelimiterBitmap::Null())
+    CobsStreamHandler(etl::imessage_bus &bus_, GATAS::OwnshipState &ownshipState_) : bus(bus_), ownshipState(ownshipState_), gulp(gulpBuffer, DelimiterBitmap::Null())
     {
     }
 
-    void handle(float ownShipLat, float ownShipLon, etl::span<uint8_t> cobsBuffer)
+    void handle(float ownShipLat, float ownShipLon, etl::span<uint8_t> cobsBuffer, uint32_t bleSession = 0, bool allowLegacy = true)
     {
+        // Never finish a buffered frame using another transport/connection.
+        if (lastBleSession != bleSession)
+        {
+            gulp.erase();
+            lastBleSession = bleSession;
+        }
         gulp.setRef(cobsBuffer);
         etl::vector<GATAS::AircraftPositionInfo, GATAS::IngressAircraftPositionsMsg::MAX_POSITIONS> positionMessages;
         auto addPosition = [&](const GATAS::AircraftPositionInfo &position)
@@ -64,6 +71,24 @@ public:
             data = data.first(decodedSize);
             uint8_t frameType = data[0];
             etl::bit_stream_reader reader(data, etl::endian::big);
+
+            if (frameType == GATAS::DeviceActionCodec::REQUEST)
+            {
+                // Management is BLE-only and deliberately bypasses the legacy
+                // aircraft/configuration holdback during connection startup.
+                if (bleSession != 0)
+                {
+                    if (const auto request = GATAS::DeviceActionCodec::decode(data))
+                    {
+                        bus.receive(GATAS::DeviceActionRequestMsg{request.value(), bleSession});
+                    }
+                }
+                continue;
+            }
+            if (frameType == GATAS::DeviceActionCodec::RESPONSE || !allowLegacy)
+            {
+                continue;
+            }
 
             if (frameType == BinaryMessages::DataType::OWNSHIP_PRESSURE_V1)
             {
@@ -121,19 +146,7 @@ public:
                 auto icaoAddress = BinaryMessages::deserializeSetIcaoAddressV1(reader);
                 if (icaoAddress != 0)
                 {
-                    auto current = config.gaTasConfig();
-                    auto callSign = config.getCallSignFromHex(icaoAddress);
-                    if (!callSign.empty() && current.conspicuity.icaoAddress != icaoAddress)
-                    {
-                        config.setValueBypath("config/aircraftId", callSign);
-
-                        // Tell attached systems to load any new data
-                        bus.receive(
-                            GATAS::ConfigUpdatedMsg{
-                                config,
-                                Configuration::NAME,
-                            });
-                    }
+                    bus.receive(GATAS::SelectAircraftRequestMsg{icaoAddress});
                 }
             }
 

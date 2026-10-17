@@ -23,7 +23,7 @@
  * framed binary protocol while transport specific modules subscribe to
  * GatasConnectTx and publish GatasConnectRx.
  */
-class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::IngressAircraftPositionMsg, GATAS::GatasConnectRx, GATAS::GdlMsg>
+class GatasConnect : public BaseModule, public etl::message_router<GatasConnect, GATAS::WifiConnectionStateMsg, GATAS::ConfigUpdatedMsg, GATAS::GpsStatsMsg, GATAS::IngressAircraftPositionMsg, GATAS::GatasConnectRx, GATAS::GdlMsg, GATAS::DeviceActionResponseMsg>
 {
     friend class message_router;
 
@@ -64,6 +64,7 @@ private:
     void on_receive(const GATAS::IngressAircraftPositionMsg &msg);
     void on_receive(const GATAS::GatasConnectRx &msg);
     void on_receive(const GATAS::GdlMsg &msg);
+    void on_receive(const GATAS::DeviceActionResponseMsg &msg);
 
     static void requestTimerCallbackTrampoline(TimerHandle_t xTimer);
     void requestTimerCallback(TimerHandle_t xTimer);
@@ -73,7 +74,7 @@ private:
     void getConfig(const Configuration &config);
 public:
     static constexpr const char *NAME = "GatasConnect";
-    GatasConnect(etl::imessage_bus &bus, Configuration &config, GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_), cobsStreamHandler(bus, config, ownshipState_)
+    GatasConnect(etl::imessage_bus &bus, Configuration &config, GATAS::OwnshipState &ownshipState_) : BaseModule(bus, NAME), ownshipState(ownshipState_), cobsStreamHandler(bus, ownshipState_)
     {
         getConfig(config);
     }

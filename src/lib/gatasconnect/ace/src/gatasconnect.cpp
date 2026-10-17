@@ -82,10 +82,10 @@ void GatasConnect::on_receive(const GATAS::GatasConnectRx &msg)
         }
     }
 
-    if (localConfigurationUpdateCnt)
+    const bool allowLegacy = localConfigurationUpdateCnt == 0;
+    if (!allowLegacy)
     {
         localConfigurationUpdateCnt -= 1;
-        return;
     }
 
     if (!msg.cobsMessage || msg.length == 0)
@@ -94,7 +94,26 @@ void GatasConnect::on_receive(const GATAS::GatasConnectRx &msg)
     }
 
     auto ownship = ownshipState.location.load();
-    cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(msg.cobsMessage.get(), msg.length));
+    cobsStreamHandler.handle(ownship.lat, ownship.lon, etl::span<uint8_t>(msg.cobsMessage.get(), msg.length),
+        msg.source == GATAS::GatasConnectTransport::Bluetooth ? msg.bleSession : 0, allowLegacy);
+}
+
+void GatasConnect::on_receive(const GATAS::DeviceActionResponseMsg &msg)
+{
+    const auto capacity = getCOBSBufferSize(GATAS::DeviceActionCodec::RESPONSE_SIZE, true);
+    auto &pool = BaseModule::getGlobalPool();
+    auto *payload = static_cast<uint8_t *>(pool.alloc(capacity));
+    if (payload == nullptr)
+    {
+        return;
+    }
+    const auto written = GATAS::DeviceActionCodec::encode(msg.response, payload, capacity);
+    if (written == 0)
+    {
+        pool.release(payload);
+        return;
+    }
+    getBus().receive(GATAS::GatasConnectTx{pool, GATAS::GatasConnectOutput::Bluetooth, payload, written, msg.session});
 }
 
 void GatasConnect::on_receive(const GATAS::GdlMsg &msg)

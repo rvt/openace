@@ -105,7 +105,7 @@ TEST_CASE("COBS pressure updates source state before notifying and recovers afte
     MockConfig config{bus};
     PressureReceiver receiver{state};
     bus.subscribe(receiver);
-    CobsStreamHandler handler{bus, config, state};
+    CobsStreamHandler handler{bus, state};
 
     // COBS encoding of [11, 0x27, 0x95, 0x27, 0x95, 1], split mid-frame.
     uint8_t first[] = {7, 11, 0x27};
@@ -148,7 +148,7 @@ TEST_CASE("External COBS pressure cannot overwrite fresh internal pressure", "[b
         {898.7628f, GATAS::PressureSource::PressureSensor}, now);
     etl::message_bus<2> bus;
     MockConfig config{bus};
-    CobsStreamHandler handler{bus, config, state};
+    CobsStreamHandler handler{bus, state};
     // External measured pressure uses the same method key as the BMP280.
     uint8_t measured[] = {7, 11, 0x27, 0x95, 0x27, 0x95, 2, 0};
     handler.handle(0.0f, 0.0f, measured);

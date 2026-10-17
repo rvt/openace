@@ -47,6 +47,7 @@ set( ACE_SOURCE_FILES
         ../../core/ace/src/models.cpp
         ../../core/ace/src/coreutils.cpp
         ../../utils/ace/src/moreutils.cpp
+        ../../utils/ace/src/cobs.cpp
         ../ace/src/config.cpp
 )
 

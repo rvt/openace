@@ -1,4 +1,5 @@
 #pragma once
+#include "deviceactions.hpp"
 
 #include "constants.hpp"
 #include "basemodule.hpp"
@@ -324,9 +325,10 @@ namespace GATAS
         mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> cobsMessage;
         size_t length;
         GATAS::GatasConnectOutput output;
+        uint32_t bleSession = 0; // Zero preserves legacy broadcast output.
 
-        GatasConnectTx(GATAS::GlobalPoolConfiguration &pool, GATAS::GatasConnectOutput output_, uint8_t *cobsMessage_, size_t length_)
-            : cobsMessage(pool, cobsMessage_), length(length_), output(output_)
+        GatasConnectTx(GATAS::GlobalPoolConfiguration &pool, GATAS::GatasConnectOutput output_, uint8_t *cobsMessage_, size_t length_, uint32_t bleSession_ = 0)
+            : cobsMessage(pool, cobsMessage_), length(length_), output(output_), bleSession(bleSession_)
         {
             GATAS_ASSERT((length != 0 && cobsMessage.get() != nullptr), "Invalid Connect Msg");
         }
@@ -346,11 +348,34 @@ namespace GATAS
         mutable PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> cobsMessage;
         size_t length;
         GATAS::GatasConnectTransport source;
+        uint32_t bleSession = 0;
 
-        GatasConnectRx(GATAS::GlobalPoolConfiguration &pool, GATAS::GatasConnectTransport source_, uint8_t *cobsMessage_, size_t length_)
-            : cobsMessage(pool, cobsMessage_), length(length_), source(source_) {}
+        GatasConnectRx(GATAS::GlobalPoolConfiguration &pool, GATAS::GatasConnectTransport source_, uint8_t *cobsMessage_, size_t length_, uint32_t bleSession_ = 0)
+            : cobsMessage(pool, cobsMessage_), length(length_), source(source_), bleSession(bleSession_) {}
 
         GatasConnectRx(PoolOwnedPtr<GATAS::GlobalPoolConfiguration, uint8_t> &&cobsMessage_, size_t length_, GATAS::GatasConnectTransport source_)
             : cobsMessage(etl::move(cobsMessage_)), length(length_), source(source_) {}
+    };
+    struct DeviceActionRequestMsg : public etl::message<39>
+    {
+        DeviceActionRequest request;
+        uint32_t session;
+        DeviceActionRequestMsg(DeviceActionRequest request_, uint32_t session_) : request(request_), session(session_) {}
+    };
+    struct DeviceActionResponseMsg : public etl::message<40>
+    {
+        DeviceActionResponse response;
+        uint32_t session;
+        DeviceActionResponseMsg(DeviceActionResponse response_, uint32_t session_) : response(response_), session(session_) {}
+    };
+    struct GatasConnectSessionClosedMsg : public etl::message<41>
+    {
+        uint32_t session;
+        explicit GatasConnectSessionClosedMsg(uint32_t session_) : session(session_) {}
+    };
+    struct SelectAircraftRequestMsg : public etl::message<42>
+    {
+        uint32_t icaoAddress;
+        explicit SelectAircraftRequestMsg(uint32_t address) : icaoAddress(address) {}
     };
 }

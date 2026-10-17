@@ -206,7 +206,7 @@ void Bluetooth::on_receive(const GATAS::GatasConnectTx &msg)
         etl::span<const uint8_t> payload(msg.cobsMessage.get(), msg.length);
         for (auto &ctx : connections)
         {
-            if (!ctx.inUse)
+            if (!ctx.inUse || (msg.bleSession != 0 && msg.bleSession != ctx.bleSession))
             {
                 continue;
             }
@@ -233,7 +233,11 @@ bool Bluetooth::createConnection(hci_con_handle_t handle, uint16_t mtu)
     auto it = instance->freeCtx();
     if (it != instance->connections.end())
     {
-        it->activate(handle, mtu);
+        if (++instance->nextBleSession == 0)
+        {
+            ++instance->nextBleSession;
+        }
+        it->activate(handle, mtu, instance->nextBleSession);
         return true;
     }
     return false;
@@ -244,7 +248,9 @@ void Bluetooth::removeConnection(uint16_t hciHandle)
     auto it = instance->ctxByHandle(hciHandle);
     if (it != instance->connections.end())
     {
+        const auto session = it->bleSession;
         it->deactivate();
+        instance->getBus().receive(GATAS::GatasConnectSessionClosedMsg{session});
     }
 }
 
@@ -634,7 +640,7 @@ int Bluetooth::attWriteCallback(hci_con_handle_t con_handle, uint16_t att_handle
                     memcpy(copy, payload.data(), payload.size());
                     // Adding a null terminator because it's expected downstream
                     copy[payload.size()] = 0;
-                    Bluetooth::instance->getBus().receive(GATAS::GatasConnectRx(pool, GATAS::GatasConnectTransport::Bluetooth, copy, payload.size() + 1));
+                    Bluetooth::instance->getBus().receive(GATAS::GatasConnectRx(pool, GATAS::GatasConnectTransport::Bluetooth, copy, payload.size() + 1, ctx.bleSession));
                 }
             }));
         // clang-format on

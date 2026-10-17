@@ -37,6 +37,11 @@ etl::string_view Config::loadLocationToString(LoadLocation location) const
 
 GATAS::PostConstruct Config::postConstruct()
 {
+    bootId = get_rand_64();
+    if (bootId == 0)
+    {
+        bootId = 1;
+    }
     auto iStore = internalStore();
     if (iStore->magic != GATAS::BinaryStore::MAGIC)
     {
@@ -101,6 +106,11 @@ void Config::start()
 
 void Config::getData(etl::string_stream &stream, const etl::string_view fullPath) const
 {
+    auto guard = SemaphoreGuard<true>(5000, configMutex);
+    if (!guard)
+    {
+        return;
+    }
     struct CustomWriter
     {
         etl::string_stream &stream;
@@ -154,6 +164,11 @@ void Config::getData(etl::string_stream &stream, const etl::string_view fullPath
 
 bool Config::setData(const etl::string_view data, const etl::string_view fullPath)
 {
+    auto guard = SemaphoreGuard<true>(5000, configMutex);
+    if (!guard)
+    {
+        return false;
+    }
     auto [idx, path] = getConfigPath(fullPath);
     bool dataMutated = false;
     bool requestSucceeded = false;
@@ -161,7 +176,7 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
     auto applyUpdate = [&](auto &&destination)
     {
         auto error = deserializeJson(destination, data.cbegin(), data.size());
-        if (error == DeserializationError::Ok)
+        if (error == DeserializationError::Ok && measureJson(doc) + 16 <= volatileStore.capacity())
         {
             return true;
         }
@@ -199,10 +214,7 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
         {
             if (path.back() == "SaveBr")
             {
-                doc["config"]["_dirty"] = false;
-                serializeToVolatile();
-                serializeToPersistent();
-                requestSucceeded = true;
+                requestSucceeded = serializeToPersistent() == GATAS::DeviceActionResult::Ok;
             }
 #if GATAS_DEBUG == 1
             // Added for automated testing. This endpoint is excluded from release firmware.
@@ -229,20 +241,17 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
             // TODO: See if its possible to make something that these two are not in the config
             else if (path.back() == "Restart")
             {
-                watchdog_reboot(0, 0, 0);
-                while (true)
+                requestSucceeded = serializeToVolatile();
+                if (requestSucceeded)
                 {
-                    tight_loop_contents();
+                    performSystemAction(GATAS::DeviceAction::Restart);
                 }
             }
             // Restart the Pico in USB mode so that the user can upload a new firmware
             else if (path.back() == "UsbBoot")
             {
-                reset_usb_boot(0, 0);
-                while (true)
-                {
-                    tight_loop_contents();
-                }
+                performSystemAction(GATAS::DeviceAction::UsbBoot);
+                requestSucceeded = true;
             }
             else
             {
@@ -283,7 +292,11 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
     if (dataMutated)
     {
         doc["config"]["_dirty"] = true;
-        serializeToVolatile();
+        if (!serializeToVolatile())
+        {
+            deserializeJson(doc, volatileStore.data());
+            return false;
+        }
 
         // Special-case: If aircraft or config entry was modified, inform all modules that would listen to Configuration::NAME
         if (path[0] == "aircraft" || path[0] == "config")
@@ -300,25 +313,49 @@ bool Config::setData(const etl::string_view data, const etl::string_view fullPat
     return requestSucceeded;
 }
 
-void Config::serializeToVolatile()
+bool Config::serializeToVolatile()
 {
+    const auto required = measureJson(doc) + 1;
+    if (required > volatileStore.capacity())
+    {
+        return false; // Never overwrite the previous complete RAM image with a partial one.
+    }
     volatileStore.rewind();
-    serializeJson(doc, volatileStore);
-    volatileStore.write(0);
+    const auto written = serializeJson(doc, volatileStore);
+    return written == required - 1 && volatileStore.write(0) == 1;
 }
 
-void Config::serializeToPersistent()
+GATAS::DeviceActionResult Config::serializeToPersistent()
 {
-    // One byte operations not yet supported, and arduinoJson wants to do these
-    // It might not work at all due to complexity of flash (no interrupts etc)
-    // So for now we do this from volatileStore
-
+    if (persistentMatchesVolatile())
+    {
+        return GATAS::DeviceActionResult::Ok;
+    }
+    // Prepare the clean representation under the configuration mutex. Do not
+    // publish a successful save until the complete flash readback matches it.
+    const bool hadConfig = doc["config"].is<JsonObject>();
+    const bool hadDirty = !doc["config"]["_dirty"].isNull();
+    const bool previousDirty = doc["config"]["_dirty"].as<bool>();
+    doc["config"]["_dirty"] = false;
+    const size_t size = measureJson(doc) + 1;
+    if (size > volatileStore.capacity() || size > permanentStore.capacity())
+    {
+        if (hadDirty) { doc["config"]["_dirty"] = previousDirty; }
+        else { doc["config"].remove("_dirty"); }
+        if (!hadConfig) { doc.remove("config"); }
+        return GATAS::DeviceActionResult::SaveFailed;
+    }
+    serializeToVolatile();
     permanentStore.rewind();
-    // Known limitation: persistence failures are not propagated to SaveBr yet.
-    // The store reports zero on failure, but the current API keeps its historic
-    // best-effort save behavior.
-    permanentStore.write(volatileStore.data(), volatileStore.writtenSize());
-    statistics.persistentStoreSize = volatileStore.writtenSize();
+    const auto written = permanentStore.write(volatileStore.data(), size);
+    if (written != size || !persistentMatchesVolatile())
+    {
+        doc["config"]["_dirty"] = true;
+        serializeToVolatile();
+        return GATAS::DeviceActionResult::SaveFailed;
+    }
+    statistics.persistentStoreSize = size;
+    return GATAS::DeviceActionResult::Ok;
 }
 
 bool Config::persistentMatchesVolatile() const
@@ -331,6 +368,11 @@ bool Config::persistentMatchesVolatile() const
 
 bool Config::deleteData(const etl::string_view fullPath)
 {
+    auto guard = SemaphoreGuard<true>(5000, configMutex);
+    if (!guard)
+    {
+        return false;
+    }
     bool dataMutated = false;
     auto [idx, path] = getConfigPath(fullPath);
 
@@ -356,7 +398,11 @@ bool Config::deleteData(const etl::string_view fullPath)
     if (dataMutated)
     {
         doc["config"]["_dirty"] = true;
-        serializeToVolatile();
+        if (!serializeToVolatile())
+        {
+            deserializeJson(doc, volatileStore.data());
+            return false;
+        }
     }
     return dataMutated;
 }
@@ -654,14 +700,110 @@ GATAS::CallSign Config::getCallSignFromHex(uint32_t transponderHex) const
 
 void Config::setValueBypath(const etl::string_view pathToValue, etl::string_view value)
 {
+    auto guard = SemaphoreGuard<true>(5000, configMutex);
+    if (!guard)
+    {
+        return;
+    }
     auto path = CoreUtils::parsePath(pathToValue, "");
     auto src = configValueBypath<JsonVariant>(path);
     src.set(value);
+    doc["config"]["_dirty"] = true;
+    if (!serializeToVolatile()) { deserializeJson(doc, volatileStore.data()); }
 }
 
 void Config::setValueBypath(const etl::string_view pathToValue, uint64_t value)
 {
+    auto guard = SemaphoreGuard<true>(5000, configMutex);
+    if (!guard)
+    {
+        return;
+    }
     auto path = CoreUtils::parsePath(pathToValue, "");
     auto src = configValueBypath<JsonVariant>(path);
     src.set(value);
+    doc["config"]["_dirty"] = true;
+    if (!serializeToVolatile()) { deserializeJson(doc, volatileStore.data()); }
+}
+
+void Config::performSystemAction(GATAS::DeviceAction action)
+{
+    if (action == GATAS::DeviceAction::Restart)
+    {
+        watchdog_reboot(0, 0, 0);
+    }
+    else
+    {
+        reset_usb_boot(0, 0);
+    }
+    while (true)
+    {
+        tight_loop_contents();
+    }
+}
+
+GATAS::DeviceActionResult Config::executeDeviceAction(const GATAS::DeviceActionRequest &request)
+{
+    if (request.action == GATAS::DeviceAction::Save)
+    {
+        return serializeToPersistent();
+    }
+    if (request.action == GATAS::DeviceAction::UsbBoot)
+    {
+        if (request.updatePolicy == GATAS::DeviceUpdatePolicy::SaveFirst)
+        {
+            const auto saved = serializeToPersistent();
+            if (saved != GATAS::DeviceActionResult::Ok)
+            {
+                return saved;
+            }
+        }
+        else if (request.updatePolicy == GATAS::DeviceUpdatePolicy::RequireSaved && !persistentMatchesVolatile())
+        {
+            return GATAS::DeviceActionResult::UnsavedChanges;
+        }
+    }
+    // RAM, not flash: an ordinary Restart preserves unsaved configuration.
+    if (!serializeToVolatile())
+    {
+        return GATAS::DeviceActionResult::Invalid;
+    }
+    performSystemAction(request.action);
+    return GATAS::DeviceActionResult::Ok;
+}
+
+void Config::on_receive(const GATAS::DeviceActionRequestMsg &msg)
+{
+    auto guard = SemaphoreGuard<true>(5000, configMutex);
+    if (!guard)
+    {
+        getBus().receive(GATAS::DeviceActionResponseMsg{{msg.request.action, msg.request.requestId,
+            GATAS::DeviceActionResult::Busy, GATAS::DEVICE_ACTION_CAPABILITIES, bootId, true}, msg.session});
+        return;
+    }
+    const auto result = deviceActions.handle(msg.request, msg.session, CoreUtils::timeUs64() / 1000, bootId,
+        [this](const GATAS::DeviceActionRequest &request) { return executeDeviceAction(request); });
+    getBus().receive(GATAS::DeviceActionResponseMsg{{msg.request.action, msg.request.requestId, result,
+        GATAS::DEVICE_ACTION_CAPABILITIES, bootId, !persistentMatchesVolatile()}, msg.session});
+}
+
+void Config::on_receive(const GATAS::GatasConnectSessionClosedMsg &msg)
+{
+    if (auto guard = SemaphoreGuard<true>(5000, configMutex))
+    {
+        deviceActions.disconnect(msg.session);
+    }
+}
+
+void Config::on_receive(const GATAS::SelectAircraftRequestMsg &msg)
+{
+    if (auto guard = SemaphoreGuard<true>(5000, configMutex))
+    {
+        const auto callSign = getCallSignFromHex(msg.icaoAddress);
+        if (!callSign.empty() && gaTasConfig().conspicuity.icaoAddress != msg.icaoAddress)
+        {
+            setValueBypath("config/aircraftId", callSign);
+            getBus().receive(GATAS::ConfigUpdatedMsg{*this, Configuration::NAME});
+        }
+    }
 }

@@ -8,6 +8,7 @@
 #include "ace/constants.hpp"
 #include "ace/basemodule.hpp"
 #include "ace/messages.hpp"
+#include "ace/semaphoreguard.hpp"
 
 #include "etl/string.h"
 #include "etl/to_arithmetic.h"
@@ -18,7 +19,7 @@ using namespace ArduinoJson;
 
 typedef std::function<void(const char *NAME, const GATAS::PinTypeMap &map)> LoadModuleCallback;
 
-class Config : public Configuration, public etl::message_router<Config>
+class Config : public Configuration, public etl::message_router<Config, GATAS::DeviceActionRequestMsg, GATAS::GatasConnectSessionClosedMsg, GATAS::SelectAircraftRequestMsg>
 {
 private:
     enum LoadLocation : uint8_t
@@ -137,8 +138,8 @@ private:
             pathParsed};
     }
 
-    void serializeToVolatile();
-    void serializeToPersistent();
+    bool serializeToVolatile();
+    GATAS::DeviceActionResult serializeToPersistent();
     bool persistentMatchesVolatile() const;
 
 private:
@@ -148,6 +149,15 @@ private:
     ConfigStore &permanentStore;
     ConfigStore &binaryStore;
     const uint8_t *defaultConfig;
+    mutable SemaphoreHandle_t configMutex = xSemaphoreCreateRecursiveMutex();
+    uint64_t bootId = 0;
+    GATAS::DeviceActionCoordinator deviceActions;
+
+    GATAS::DeviceActionResult executeDeviceAction(const GATAS::DeviceActionRequest &request);
+
+protected:
+    // Tests override this boundary; production retains the existing ROM/SDK reset path.
+    virtual void performSystemAction(GATAS::DeviceAction action);
 
 public:
     Config(etl::imessage_bus &bus, ConfigStore &volatileStore_, ConfigStore &permanentStore_, ConfigStore &binaryStore_, const uint8_t *defaultConfig_) : Configuration(bus), volatileStore(volatileStore_), permanentStore(permanentStore_), binaryStore(binaryStore_), defaultConfig(defaultConfig_)
@@ -173,6 +183,9 @@ public:
     virtual bool deleteData(const etl::string_view fullPath) override;
 
     void on_receive_unknown(const etl::imessage &msg);
+    void on_receive(const GATAS::DeviceActionRequestMsg &msg);
+    void on_receive(const GATAS::GatasConnectSessionClosedMsg &msg);
+    void on_receive(const GATAS::SelectAircraftRequestMsg &msg);
 
     /**
      * Returns the hardware configuration for this station or Aircraft
